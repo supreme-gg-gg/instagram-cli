@@ -1,10 +1,10 @@
 import typer
-from instagram.client import Client, LoginRequired
+from instagram.client import ClientWrapper, LoginRequired
 
-def login() -> Client:
+def login() -> ClientWrapper:
     """Login to Instagram"""
     typer.echo("Logging in")
-    client = Client()
+    client = ClientWrapper()
     try:
         client.login_by_session()
     except (LoginRequired, FileNotFoundError):
@@ -21,7 +21,7 @@ def login() -> Client:
 def logout():
     """Logout from Instagram"""
     typer.echo("Logging out")
-    client = Client()
+    client = ClientWrapper()
     try:
         client.login_by_session()
         client.logout()

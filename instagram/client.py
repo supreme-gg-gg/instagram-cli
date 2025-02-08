@@ -31,7 +31,7 @@ class SessionManager:
         session_dir.mkdir(parents=True, exist_ok=True)
         return session_dir
 
-    def save_session(self, client: "Client"):
+    def save_session(self, client: "ClientWrapper"):
         """Save client session"""
         self.ensure_session_dir()
         try:
@@ -45,7 +45,7 @@ class SessionManager:
         if session_path.exists():
             session_path.unlink()
 
-class Client:
+class ClientWrapper:
     def __init__(self, username: str | None = None) -> None:
         self.session_manager = SessionManager(username)
         self.username = self.session_manager.username
