@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from client import Client
+from client import ClientWrapper
 import curses
 from collections import Counter
 import matplotlib.pyplot as plt
@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 def show_updates():
     """Fetches and displays latest updates"""
 
-    cl = Client().login_by_session()
+    cl = ClientWrapper().login_by_session()
 
     data = cl.news_inbox_v1()
 
@@ -39,7 +39,7 @@ def analytics(last_n_days=30):
     """Count the number of reels you liked in the last week and generate a line graph for 
     the number of reels liked per day in the last week"""
 
-    cl = Client().login_by_session()
+    cl = ClientWrapper().login_by_session()
     data = cl.liked_medias(amount=30)
 
     last_week = []
