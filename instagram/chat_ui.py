@@ -3,8 +3,8 @@ import threading
 import curses
 import typer
 
-from .client import ClientWrapper
-from .api.direct_messages import DirectMessages
+from instagram.client import ClientWrapper
+from instagram.api import DirectMessages
 
 def start_chat():
     """Wrapper function to launch chat UI."""
