@@ -19,19 +19,14 @@ def chat():
     chat_ui.start_chat()
 
 @app.command()
-def updates():
-    """Show latest updates"""
+def notif():
+    """Show latest notifications"""
     api.show_updates()
 
 @app.command()
-def analytics():
+def stats(days: int = 7):
     """Show analytics"""
-    api.analytics()
-
-# @app.command()
-# def config():
-#     """Edit configuration"""
-#     config.configure()
+    api.analytics_bar_graph(last_n_days=days)
 
 if __name__ == "__main__":
     app()
