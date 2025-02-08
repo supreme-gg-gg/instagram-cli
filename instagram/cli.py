@@ -1,5 +1,5 @@
 import typer
-from instagram import auth, chat_ui, config
+from instagram import auth, chat_ui, api
 
 app = typer.Typer()
 
@@ -17,6 +17,16 @@ def logout():
 def chat():
     """Open chat UI"""
     chat_ui.start_chat()
+
+@app.command()
+def updates():
+    """Show latest updates"""
+    api.show_updates()
+
+@app.command()
+def analytics():
+    """Show analytics"""
+    api.analytics()
 
 # @app.command()
 # def config():
