@@ -3,12 +3,12 @@ import threading
 import curses
 import typer
 
-from .client import Client
+from .client import ClientWrapper
 from .api.direct_messages import DirectMessages
 
 def start_chat():
     """Wrapper function to launch chat UI."""
-    client = Client()
+    client = ClientWrapper()
     try:
         client.login_by_session()
     except Exception as e:
