@@ -4,9 +4,9 @@ from instagram import auth, chat_ui, api
 app = typer.Typer()
 
 @app.command()
-def login():
+def login(username: str = None, password: str = None):
     """Login to Instagram"""
-    auth.login()
+    auth.login(username, password)
 
 @app.command()
 def logout():

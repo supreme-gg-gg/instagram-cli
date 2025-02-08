@@ -10,7 +10,7 @@ class SessionManager:
         If no username is provided, the first session file found will be used.
         """
         self.username = username
-        if not username:
+        if username is None:
             self.username = self.get_default_username()
     
     def get_default_username(self) -> str | None:
@@ -92,6 +92,7 @@ class ClientWrapper:
             cl.get_timeline_feed()
         except Exception as e:
             typer.echo(f"Failed to login: {e}")
+            raise typer.Exit(code=1)
         
         self.insta_client = cl
         self.session_manager.save_session(self)

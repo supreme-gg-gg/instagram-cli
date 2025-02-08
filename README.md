@@ -2,6 +2,4 @@
 
 The ultimate weapon against brainrot
 
-We use curses to make simplistic CLI interface.
-
-> On most UNIX-like systems, this comes pre-installed. If you are on Windows, you can install it by running `pip install windows-curses`.
+For beta testing, please refer to the [beta-testing.md](beta-testing.md) docs.
