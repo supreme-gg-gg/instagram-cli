@@ -2,6 +2,7 @@ import typer
 import instagrapi
 from instagrapi.exceptions import LoginRequired
 from pathlib import Path
+from .cache import CacheManager
 from instagram import configs
 
 class SessionManager:
@@ -55,6 +56,7 @@ class ClientWrapper:
         self.session_manager = SessionManager(username)
         self.username = self.session_manager.username
         self.insta_client = None
+        self.cache_manager = CacheManager(self)
 
     def login(self, username: str | None = None, password: str | None = None, refresh_session: bool = False):
         """
@@ -70,6 +72,7 @@ class ClientWrapper:
             username = self.username
         
         cl = instagrapi.Client()
+        cl.delay_range = [1, 3]
         session_is_invalid = False
         if not refresh_session:
             try:
@@ -108,6 +111,7 @@ class ClientWrapper:
         session_path = self.session_manager.get_session_path()
         
         cl = instagrapi.Client()
+        cl.delay_range = [1, 3]
         typer.echo(f"Attempting to login with session...")
         cl.load_settings(str(session_path))
         sessionId = cl.settings["authorization_data"]["sessionid"]

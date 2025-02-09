@@ -1,13 +1,16 @@
 from instagrapi import Client as InstaClient
 from typing import Dict, List, Tuple, Protocol
+from ..cache import CacheManager
 
 class ClientWrapper(Protocol):
     insta_client: InstaClient
+    cache_manager: CacheManager
 
 class DirectMessages:
     def __init__(self, client: ClientWrapper):
         self.client = client
         self.chats: Dict[str, DirectChat] = {}
+        self.client.cache_manager.load_cache()
     
     def fetch_chat_data(self, num_chats: int, num_message_limit: int):
         """
@@ -19,6 +22,7 @@ class DirectMessages:
         Returns a dictionary of DirectChat objects.
         """
         self.chats = {thread.id: DirectChat(self.client, thread.id, thread) for thread in self.client.insta_client.direct_threads(amount=num_chats, thread_message_limit=num_message_limit)}
+        self.client.cache_manager.dump_cache()
         return self.chats
 
     def send_text_by_userid(self, userids: List[int], text: str):
@@ -33,13 +37,13 @@ class DirectChat:
         else:
             self.thread = thread_data
         
-        self.users_info_cache = {}
+        # Make sure user infos are cached
         for user in self.thread.users:
             try:
-                self.users_info_cache[self.client.insta_client.user_id_from_username(user.username)] = user
+                self.client.cache_manager.get_user_from_id(int(user.pk), fetch_mode=CacheManager.CACHE | CacheManager.PRIVATE_API)
             except Exception:
                 pass
-        self.users_info_cache[self.client.insta_client.user_id] = self.client.insta_client.user_info(self.client.insta_client.user_id)
+        self.client.cache_manager.get_user_from_id(self.client.insta_client.user_id, fetch_mode=CacheManager.CACHE | CacheManager.PRIVATE_API)
     
     def fetch_chat_history(self, num_messages: int):
         """
@@ -62,7 +66,13 @@ class DirectChat:
             if userid == self.client.insta_client.user_id:
                 chat.append(f"You: {message.text if message.item_type=='text' else '[Media]'}")
             else:
-                chat.append(f"{self.users_info_cache[message.user_id].full_name if self.users_info_cache.get(message.user_id, None) else 'Instagram User'}: {message.text if message.item_type=='text' else '[Media]'}")
+                user = self.client.cache_manager.get_user_from_id(userid)
+                name = user.full_name
+                if not name:
+                    name = user.username
+                if not name:
+                    name = "Unknown User"
+                chat.append(f"{name}: {message.text if message.item_type=='text' else '[Media]'}")
         chat.reverse() # Reverse the order to show latest messages at the bottom
         return chat
 

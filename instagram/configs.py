@@ -21,7 +21,7 @@ DEFAULT_CONFIG = {
     },
     "advanced": {
         "debug_mode": False,
-        "cache_location": "~/.instagram-cli/cache"
+        "cache_dir": "~/.instagram-cli/cache"
     }
 }
 
@@ -54,7 +54,15 @@ class Config:
                 value = value[k]
             return value
         except (KeyError, TypeError):
-            return default
+            # Try to get default value from DEFAULT_CONFIG
+            try:
+                default_value = DEFAULT_CONFIG
+                for k in key.split('.'):
+                    default_value = default_value[k]
+                typer.echo(f"Warning: Config key '{key}' not found in config.yaml file, using default value: {default_value}")
+                return default_value
+            except (KeyError, TypeError):
+                return default
 
     def set(self, key: str, value: Any):
         """Set configuration value by key (supports dot notation)"""
