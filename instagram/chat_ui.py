@@ -5,6 +5,7 @@ import typer
 
 from instagram.client import ClientWrapper
 from instagram.api import DirectMessages
+from instagram.chat_commands import cmd_registry
 
 def start_chat():
     """Wrapper function to launch chat UI."""
@@ -17,7 +18,7 @@ def start_chat():
 
     dm = DirectMessages(client)
     # Fetch up to 10 chats with a limit of 20 messages per chat
-    dm.fetch_chat_data(num_chats=10, num_message_limit=20)
+    dm.fetch_chat_data(num_chats=1, num_message_limit=10)
     curses.wrapper(lambda stdscr: main_loop(stdscr, dm))
 
 
@@ -60,16 +61,20 @@ def chat_menu(screen, dm: DirectMessages):
 
 
 def chat_interface(screen, direct_chat):
-    """Display a chat conversation view with auto-refreshing history and input line."""
     curses.curs_set(1)
     screen.clear()
     height, width = screen.getmaxyx()
 
-    # Create a separate window for chat history and input
-    chat_win = curses.newwin(height - 3, width, 0, 0)
-    input_win = curses.newwin(3, width, height - 3, 0)
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_YELLOW)  # Chat mode color
+    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_CYAN)    # Command mode color
 
-    # Shared data and control flag for refreshing
+    # Enlarge the bottom input window to 3 lines instead of 2
+    chat_win = curses.newwin(height - 4, width, 0, 0)
+    input_win = curses.newwin(3, width, height - 4, 0)
+    status_bar = curses.newwin(1, width, height - 1, 0)
+
+    mode = "chat"
     messages = []
     refresh_lock = threading.Lock()
     stop_refresh = threading.Event()
@@ -82,49 +87,76 @@ def chat_interface(screen, direct_chat):
                 with refresh_lock:
                     messages.clear()
                     messages.extend(new_messages)
-                # Redraw chat window
                 chat_win.erase()
-                with refresh_lock:
-                    # Only show the last messages that fit in the chat window
-                    display_messages = messages[-(height - 4):]
+                display_messages = messages[-(height - 5):]
                 for idx, msg in enumerate(display_messages):
                     chat_win.addstr(idx, 0, msg[:width - 1])
                 chat_win.refresh()
             except Exception:
-                # In production, you’d log the error
                 pass
             time.sleep(2)
 
     refresher = threading.Thread(target=refresh_chat, daemon=True)
     refresher.start()
 
-    # Input loop for sending messages.
     while True:
+        # Update status bar based on mode
+        status_bar.erase()
+        if mode == "chat":
+            status_bar.bkgd(' ', curses.color_pair(1))
+            status_text = "[CHAT MODE] Send ':' to enter command mode"
+        else:
+            status_bar.bkgd(' ', curses.color_pair(2))
+            status_text = "[COMMAND MODE] Send ENTER to return to chat mode"
+        status_bar.addstr(0, 0, status_text)
+        status_bar.refresh()
+
+        # Update input window
         input_win.erase()
         input_win.border()
-        input_prompt = "Type your message (or 'exit' to quit): "
-        input_win.addstr(1, 2, input_prompt)
         input_win.refresh()
 
         curses.echo()
-        user_input = input_win.getstr(1, len(input_prompt) + 2).decode().strip()
+        user_input = input_win.getstr(1, 1).decode().strip()
         curses.noecho()
 
         if user_input.lower() in ("exit", "quit"):
             stop_refresh.set()
             break
 
-        try:
-            # Send the message via API call (this call may take a few seconds)
-            direct_chat.send_text(user_input)
-        except Exception as e:
-            # Optionally display error on screen.
-            chat_win.addstr(0, 0, f"Error sending message: {e}"[:width-1])
+        # Vim-like toggling
+        if mode == "chat" and user_input == ":":
+            mode = "command"
+            continue
+        elif mode == "command" and user_input == "":
+            mode = "chat"
+            continue
+
+        if mode == "chat":
+            try:
+                direct_chat.send_text(user_input)
+            except Exception as e:
+                chat_win.addstr(0, 0, f"Error sending: {e}"[:width - 1])
+                chat_win.refresh()
+        else:
+            # Execute command and show result
+            result = cmd_registry.execute(user_input, chat=direct_chat, screen=screen)
+            
+            # Clear chat window and display result
+            chat_win.erase()
+            lines = result.split('\n')
+            for idx, line in enumerate(lines):
+                if idx < height - 5:  # Prevent overflow
+                    chat_win.addstr(idx, 0, line[:width - 1])
             chat_win.refresh()
+                
+            # Show brief notification in status bar NOTE: doesn't work
+            # status_bar.erase()
+            # status_bar.bkgd(' ', curses.color_pair(2))
+            # status_bar.addstr(0, 0, "[COMMAND] Result shown above")
+            # status_bar.refresh()
 
-    # Give a moment for the refresh thread to exit before returning.
     time.sleep(0.5)
-
 
 if __name__ == "__main__":
     start_chat()
