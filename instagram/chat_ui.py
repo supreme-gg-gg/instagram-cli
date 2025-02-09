@@ -34,19 +34,27 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat:
     screen.keypad(True)
     chats = list(dm.chats.values())
     selection = 0
+    height, width = screen.getmaxyx()
 
     while True:
         screen.clear()
         screen.addstr(0, 0, "Select a chat (Use arrow keys and press ENTER, or press 'q' to quit):")
         for idx, chat in enumerate(chats):
-            # Display a simplified chat name built from the participants' usernames.
             title = chat.get_title()
-            if idx == selection:
-                screen.attron(curses.A_REVERSE)
-                screen.addstr(idx + 2, 0, title)
-                screen.attroff(curses.A_REVERSE)
-            else:
-                screen.addstr(idx + 2, 0, title)
+            y_pos = idx + 2
+            x_pos = 2  # Add left margin
+            
+            # Ensure we don't exceed window boundaries
+            if y_pos < height:
+                if idx == selection:
+                    screen.attron(curses.A_REVERSE)
+                    # Clear the line first to prevent artifacts
+                    screen.addstr(y_pos, 0, " " * (width - 1))
+                    screen.addstr(y_pos, x_pos, title[:width - x_pos - 1])
+                    screen.attroff(curses.A_REVERSE)
+                else:
+                    screen.addstr(y_pos, x_pos, title[:width - x_pos - 1])
+        
         screen.refresh()
 
         key = screen.getch()
@@ -90,11 +98,28 @@ def chat_interface(screen, direct_chat):
                 chat_win.erase()
                 display_messages = messages[-(height - 5):]
                 for idx, msg in enumerate(display_messages):
-                    chat_win.addstr(idx, 0, msg[:width - 1])
+                    if idx < height - 5:  # Prevent overflow
+                        chat_win.addstr(idx, 0, msg[:width - 1])
                 chat_win.refresh()
-            except Exception:
-                pass
+            except Exception as e:
+                print(e)
+                chat_win.addstr(0, 0, f"Refresh error: {str(e)}")
+                chat_win.refresh()
             time.sleep(2)
+
+    # Do initial refresh before starting the thread
+    try:
+        direct_chat.fetch_chat_history(num_messages=20)
+        messages.extend(direct_chat.get_chat_history())
+        display_messages = messages[-(height - 5):]
+        for idx, msg in enumerate(display_messages):
+            if idx < height - 5:
+                chat_win.addstr(idx, 0, msg[:width - 1])
+        chat_win.refresh()
+    except Exception as e:
+        print(e)
+        chat_win.addstr(0, 0, f"Initial refresh error: {str(e)}")
+        chat_win.refresh()
 
     refresher = threading.Thread(target=refresh_chat, daemon=True)
     refresher.start()
