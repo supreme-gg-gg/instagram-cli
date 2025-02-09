@@ -1,5 +1,6 @@
 from instagrapi import Client as InstaClient
 from typing import Dict, List, Tuple, Protocol
+from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
 
 class ClientWrapper(Protocol):
     insta_client: InstaClient
@@ -33,14 +34,10 @@ class DirectChat:
         else:
             self.thread = thread_data
         
-        self.users_info_cache = {}
-        for user in self.thread.users:
-            try:
-                self.users_info_cache[self.client.insta_client.user_id_from_username(user.username)] = user
-            except Exception:
-                pass
-        self.users_info_cache[self.client.insta_client.user_id] = self.client.insta_client.user_info(self.client.insta_client.user_id)
-    
+        self.users_cache: Dict[str, UserShort] = {
+            user.pk: user for user in self.thread.users
+        }
+
     def fetch_chat_history(self, num_messages: int):
         """
         Fetch chat history for the thread.
@@ -62,14 +59,11 @@ class DirectChat:
         media_index = 0
 
         for message in self.thread.messages:
-            try:
-                userid = int(message.user_id)
-            except ValueError:
-                continue
-
-            sender = "You" if userid == self.client.insta_client.user_id else (
-                self.users_info_cache[message.user_id].full_name 
-                if self.users_info_cache.get(message.user_id, None) 
+            sender = "You" if message.user_id == str(self.client.insta_client.user_id) else (
+                self.users_cache[message.user_id].full_name
+                if self.users_cache[message.user_id].full_name
+                else self.users_cache[message.user_id].username
+                if self.users_cache[message.user_id].username
                 else 'Instagram User'
             )
 
@@ -97,6 +91,20 @@ class DirectChat:
 
         chat.reverse()  # Reverse the order to show latest messages at the bottom
         return chat, media_items
+    
+    def get_title(self) -> str:
+        """
+        Get a title for the chat.
+        """
+        title = self.thread.thread_title
+        if not title:
+            title = ', '.join([
+                user.full_name 
+                if user.full_name 
+                else user.username
+                for user in self.thread.users
+            ])
+        return title
 
     def send_text(self, message: str):
         """

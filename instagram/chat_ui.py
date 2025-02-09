@@ -18,7 +18,7 @@ def start_chat():
 
     dm = DirectMessages(client)
     # Fetch up to 10 chats with a limit of 20 messages per chat
-    dm.fetch_chat_data(num_chats=1, num_message_limit=10)
+    dm.fetch_chat_data(num_chats=10, num_message_limit=20)
     curses.wrapper(lambda stdscr: main_loop(stdscr, dm))
 
 
@@ -40,13 +40,13 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat:
         screen.addstr(0, 0, "Select a chat (Use arrow keys and press ENTER, or press 'q' to quit):")
         for idx, chat in enumerate(chats):
             # Display a simplified chat name built from the participants' usernames.
-            participants = ", ".join([user.username for user in chat.thread.users])
+            title = chat.get_title()
             if idx == selection:
                 screen.attron(curses.A_REVERSE)
-                screen.addstr(idx + 2, 0, participants)
+                screen.addstr(idx + 2, 0, title)
                 screen.attroff(curses.A_REVERSE)
             else:
-                screen.addstr(idx + 2, 0, participants)
+                screen.addstr(idx + 2, 0, title)
         screen.refresh()
 
         key = screen.getch()

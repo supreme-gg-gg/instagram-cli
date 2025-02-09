@@ -1,5 +1,6 @@
 import typer
 from instagram.client import ClientWrapper, LoginRequired
+from instagram import configs
 
 def login(un, pw) -> ClientWrapper:
     """Login to Instagram"""
@@ -21,10 +22,10 @@ def login(un, pw) -> ClientWrapper:
     else:
         typer.echo("Login failed.")
 
-def logout():
+def logout(un=None):
     """Logout from Instagram"""
     typer.echo("Logging out")
-    client = ClientWrapper()
+    client = ClientWrapper(un)
     try:
         client.login_by_session()
         client.logout()
