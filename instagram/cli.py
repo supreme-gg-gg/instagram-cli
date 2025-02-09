@@ -1,5 +1,5 @@
 import typer
-from instagram import auth, chat_ui, api
+from instagram import auth, chat_ui, api, configs
 
 app = typer.Typer()
 
@@ -27,6 +27,16 @@ def notif():
 def stats(days: int = 7):
     """Show analytics"""
     api.analytics_bar_graph(last_n_days=days)
+
+@app.command()
+def config(
+    get: str = typer.Option(None, "--get", help="Get config value"),
+    set: tuple[str, str] = typer.Option(None, "--set", help="Set config value"),
+    list: bool = typer.Option(False, "--list", help="List all config values"),
+    edit: bool = typer.Option(False, "--edit", help="Open config file in default editor")
+):
+    """Manage Instagram CLI configuration"""
+    configs.config(get, set, list, edit)
 
 if __name__ == "__main__":
     app()
