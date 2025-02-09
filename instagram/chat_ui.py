@@ -4,7 +4,7 @@ import curses
 import typer
 
 from instagram.client import ClientWrapper
-from instagram.api import DirectMessages
+from instagram.api import DirectMessages, DirectChat
 from instagram.chat_commands import cmd_registry
 
 def start_chat():
@@ -28,7 +28,7 @@ def main_loop(screen, dm: DirectMessages):
         chat_interface(screen, selected_chat)
 
 
-def chat_menu(screen, dm: DirectMessages):
+def chat_menu(screen, dm: DirectMessages) -> DirectChat:
     """Display the chat list and allow the user to select one."""
     curses.curs_set(0)
     screen.keypad(True)

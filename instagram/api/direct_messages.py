@@ -76,6 +76,22 @@ class DirectChat:
         self.client.insta_client.direct_answer(self.thread_id, message)
         return f"You: {message}"
     
+    def send_photo(self, path: str):
+        """
+        Send a photo to the chat.
+        Parameters:
+        - path: Path to the photo file.
+        """
+        self.client.insta_client.direct_send_photo(path, thread_id=self.thread_id)
+    
+    def send_video(self, path: str):
+        """
+        Send a video to the chat. Auto generate a thumbnail.
+        Parameters:
+        - path: Path to the video file.
+        """
+        self.client.insta_client.direct_send_video(path, thread_id=self.thread_id)
+
     def mark_as_seen(self):
         self.client.insta_client.direct_send_seen(self.thread_id)
     
