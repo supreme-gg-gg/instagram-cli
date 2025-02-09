@@ -49,22 +49,54 @@ class DirectChat:
         """
         self.thread.messages = self.client.insta_client.direct_messages(self.thread_id, amount=num_messages)
     
-    def get_chat_history(self) -> List[str]:
+    def get_chat_history(self) -> Tuple[List[str], Dict[int, dict]]:
         """
-        Return list of messages in the chat history.
+        Return list of messages in the chat history and a dictionary of media items.
+        Returns:
+            Tuple containing:
+            - List of formatted message strings (media messages include indices)
+            - Dictionary mapping indices to media items
         """
         chat = []
+        media_items = {}
+        media_index = 0
+
         for message in self.thread.messages:
             try:
                 userid = int(message.user_id)
             except ValueError:
-                pass
-            if userid == self.client.insta_client.user_id:
-                chat.append(f"You: {message.text if message.item_type=='text' else '[Media]'}")
+                continue
+
+            sender = "You" if userid == self.client.insta_client.user_id else (
+                self.users_info_cache[message.user_id].full_name 
+                if self.users_info_cache.get(message.user_id, None) 
+                else 'Instagram User'
+            )
+
+            if message.item_type == 'text':
+                chat.append(f"{sender}: {message.text}")
             else:
-                chat.append(f"{self.users_info_cache[message.user_id].full_name if self.users_info_cache.get(message.user_id, None) else 'Instagram User'}: {message.text if message.item_type=='text' else '[Media]'}")
-        chat.reverse() # Reverse the order to show latest messages at the bottom
-        return chat
+                chat.append(f"{sender}: [Media #{media_index}]")
+
+                # TODO: Please validate this part!!!
+                print(message)
+                # Store media information
+                media_items[media_index] = {
+                    'type': message.item_type,
+                    'media_id': message.id,
+                    'user_id': message.user_id,
+                    'timestamp': message.timestamp
+                }
+                
+                # Add specific media details if available
+                if hasattr(message, 'media'):
+                    media_items[media_index]['url'] = message.media.thumbnail_url
+                    media_items[media_index]['pk'] = message.media.pk
+                
+                media_index += 1
+
+        chat.reverse()  # Reverse the order to show latest messages at the bottom
+        return chat, media_items
 
     def send_text(self, message: str):
         """

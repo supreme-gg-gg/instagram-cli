@@ -13,12 +13,31 @@ def upload_media(context, filepath: str):
     if filepath == "":
         return "No file specified"
     
-    if filepath.endswith(".jpg") or filepath.endswith(".png"):
-        chat.send_photo(filepath)
+    if filepath.endswith(".jpg") or filepath.endswith(".png") or filepath.endswith(".jpeg"):
+        try:
+            chat.send_photo(filepath)
+        except Exception as e:
+            return f"Failed to upload photo: {e}"
     elif filepath.endswith(".mp4"):
-        chat.send_video(filepath)
+        try: 
+            chat.send_video(filepath)
+        except Exception as e:
+            return f"Failed to upload video: {e}"
     else:
         return "Unsupported file type"
+
+# TODO: Index all the media when loading and show them when rendering chat, keep track of index
+# TODO: Use the index to get the right media, download it, and show it using default viewer on device, not terminal
+# We won't support watching reels because this is anti-brainrot lmao
+"""
+Helpful api:
+photo_path = cl.photo_download(cl.media_pk_from_url('https://www.instagram.com/p/BgqFyjqloOr/'))
+video_path = cl.video_download(cl.media_pk_from_url('https://www.instagram.com/p/B3rFQPblq40/'))
+"""
+
+@cmd_registry.register("view", "View media in chat")
+def view_media(context, index: int):
+    raise NotImplementedError("Not implemented yet")
 
 # Store scheduled messages as (timestamp, message, chat) tuples
 scheduled_messages: List[Tuple[float, str, DirectChat]] = []
