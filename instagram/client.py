@@ -2,6 +2,7 @@ import typer
 import instagrapi
 from instagrapi.exceptions import LoginRequired
 from pathlib import Path
+from instagram import configs
 
 class SessionManager:
     def __init__(self, username: str | None) -> None:
@@ -14,12 +15,15 @@ class SessionManager:
             self.username = self.get_default_username()
     
     def get_default_username(self) -> str | None:
-        session_dir = self.ensure_session_dir()
-        session_files = list(session_dir.glob("*.json"))
-        if session_files:
-            return session_files[0].stem
-        else:
-            return ""
+        # Fall back to default username if current username is not set
+        return configs.Config().get("login.current_username", configs.Config().get("login.default_username", ""))
+            
+        # session_dir = self.ensure_session_dir()
+        # session_files = list(session_dir.glob("*.json"))
+        # if session_files:
+        #     return session_files[0].stem
+        # else:
+        #     return ""
     
     def get_session_path(self) -> Path:
         """Get path to session file in user's home directory"""
@@ -47,6 +51,7 @@ class SessionManager:
 
 class ClientWrapper:
     def __init__(self, username: str | None = None) -> None:
+        self.config = configs.Config()
         self.session_manager = SessionManager(username)
         self.username = self.session_manager.username
         self.insta_client = None
@@ -96,6 +101,7 @@ class ClientWrapper:
         
         self.insta_client = cl
         self.session_manager.save_session(self)
+        self.config.set("login.current_username", username)
         return cl
 
     def login_by_session(self):
@@ -109,10 +115,11 @@ class ClientWrapper:
         cl.get_timeline_feed()  # Test if session is valid
         self.insta_client = cl
         self.session_manager.save_session(self)
+        self.config.set("login.current_username", cl.username)
         return cl
 
     def logout(self):
         """Logout from Instagram"""
         self.insta_client.logout()
         self.session_manager.delete_session()
-        
+        self.config.set("login.current_username", None)

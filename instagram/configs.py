@@ -6,7 +6,8 @@ import typer
 DEFAULT_CONFIG = {
     "language": "en",
     "login": {
-        "default_username": None
+        "default_username": None,
+        "current_username": None
     },
     "chat": {
         "media_upload_path": "~/instagram/uploads",
@@ -16,7 +17,7 @@ DEFAULT_CONFIG = {
         "default_schedule_duration": "1h"
     },
     "privacy": {
-        "hide_online_status": False
+        "invisible_mode": False
     },
     "advanced": {
         "debug_mode": False,

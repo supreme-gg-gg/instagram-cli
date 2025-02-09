@@ -9,9 +9,9 @@ def login(username: str = None, password: str = None):
     auth.login(username, password)
 
 @app.command()
-def logout():
+def logout(username: str = None):
     """Logout from Instagram"""
-    auth.logout()
+    auth.logout(username)
 
 @app.command()
 def chat():
