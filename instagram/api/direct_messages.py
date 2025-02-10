@@ -100,7 +100,7 @@ class DirectChat:
                                 'image' if media.thumbnail_url else (
                                 'audio' if media.audio_url else 'unknown'
                             )))
-                        except ValidationError:
+                        except ValidationError as e:
                             print("Error extracting raven_media: "+repr(e))
                             # The media URL is empty likely due to a (expired?) view-once media
                             media_items[media_index]['url'] = None
