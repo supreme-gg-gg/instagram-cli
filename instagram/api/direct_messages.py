@@ -1,6 +1,8 @@
 from instagrapi import Client as InstaClient
 from typing import Dict, List, Tuple, Protocol
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
+from instagrapi.extractors import *
+from pydantic import ValidationError
 
 class ClientWrapper(Protocol):
     insta_client: InstaClient
@@ -59,6 +61,8 @@ class DirectChat:
         media_index = 0
 
         for message in self.thread.messages:
+            # with open('message.txt', 'a', encoding="utf-8") as f:
+            #     f.write(repr(message))
             sender = "You" if message.user_id == str(self.client.insta_client.user_id) else (
                 self.users_cache[message.user_id].full_name
                 if self.users_cache[message.user_id].full_name
@@ -70,24 +74,74 @@ class DirectChat:
             if message.item_type == 'text':
                 chat.append(f"{sender}: {message.text}")
             else:
-                chat.append(f"{sender}: [Media #{media_index}]")
-
                 # TODO: Please validate this part!!!
-                print(message)
-                # Store media information
-                media_items[media_index] = {
-                    'type': message.item_type,
-                    'media_id': message.id,
-                    'user_id': message.user_id,
-                    'timestamp': message.timestamp
-                }
-                
-                # Add specific media details if available
-                if hasattr(message, 'media'):
-                    media_items[media_index]['url'] = message.media.thumbnail_url
-                    media_items[media_index]['pk'] = message.media.pk
-                
-                media_index += 1
+                try:
+                    # print(message)
+                    # Store media information
+                    media_items[media_index] = {
+                        'type': message.item_type,
+                        'media_id': message.id,
+                        'user_id': message.user_id,
+                        'timestamp': message.timestamp
+                    }
+                    
+                    # Add specific media details if available
+                    if message.item_type == 'raven_media':
+                        try:
+                            media = extract_direct_media(message.visual_media['media'])
+                            media_items[media_index]["view_mode"] = message.visual_media.get('view_mode', "")
+                            media_items[media_index]['url'] = (
+                                media.video_url if media.video_url else (
+                                media.thumbnail_url if media.thumbnail_url else (
+                                media.audio_url if media.audio_url else None
+                            )))
+                            media_items[media_index]["media_type"] = (
+                                'video' if media.video_url else (
+                                'image' if media.thumbnail_url else (
+                                'audio' if media.audio_url else 'unknown'
+                            )))
+                        except ValidationError:
+                            print("Error extracting raven_media: "+repr(e))
+                            # The media URL is empty likely due to a (expired?) view-once media
+                            media_items[media_index]['url'] = None
+                            media_items[media_index]["media_type"] = 'view_once'
+                    elif message.media:
+                        media_items[media_index]['url'] = (
+                            message.media.video_url if message.media.video_url else (
+                            message.media.thumbnail_url if message.media.thumbnail_url else (
+                            message.media.audio_url if message.media.audio_url else None
+                        )))
+                        media_items[media_index]["media_type"] = (
+                            'video' if message.media.video_url else (
+                            'image' if message.media.thumbnail_url else (
+                            'audio' if message.media.audio_url else 'unknown'
+                        )))
+                    elif message.media_share:
+                        # Post reshare
+                        pass
+                    
+                    media_placeholder = ""
+                    if media_items[media_index]["type"] == 'raven_media':
+                        if media_items[media_index]["media_type"] == 'view_once':
+                            media_placeholder = f"[Sent a view-once media (use the Instagram app to view it)]"
+                        else:
+                            media_placeholder = f"[Sent a {media_items[media_index]['media_type']} #{media_index}]"
+                    elif media_items[media_index]["type"] in ['media', 'voice_media']:
+                        media_placeholder = f"[Sent a {media_items[media_index]['media_type']} #{media_index}]"
+                    elif media_items[media_index]["type"] == 'xma_media_share':
+                        media_placeholder = f"[Shared a post (use the Instagram app to view it)]"
+                    elif media_items[media_index]["type"] == 'clip':
+                        media_placeholder = f"[Sent brainrot]"
+                    elif media_items[media_index]["type"] == 'animated_media':
+                        media_placeholder = f"[Sent a sticker #{media_index}]"
+                    else:
+                        media_placeholder = f"[Sent a {media_items[media_index]['type']} (use the Instagram app to view it)]"
+
+                    chat.append(f"{sender}: {media_placeholder}")
+                except Exception as e:
+                    chat.append(f"{sender}: [Error: {repr(e)}]")
+                finally:
+                    media_index += 1
 
         chat.reverse()  # Reverse the order to show latest messages at the bottom
         return chat, media_items

@@ -68,7 +68,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat:
             return None
 
 
-def chat_interface(screen, direct_chat):
+def chat_interface(screen, direct_chat: DirectChat):
     curses.curs_set(1)
     screen.clear()
     height, width = screen.getmaxyx()
@@ -91,7 +91,7 @@ def chat_interface(screen, direct_chat):
         while not stop_refresh.is_set():
             try:
                 direct_chat.fetch_chat_history(num_messages=20)
-                new_messages = direct_chat.get_chat_history()
+                new_messages = direct_chat.get_chat_history()[0]
                 with refresh_lock:
                     messages.clear()
                     messages.extend(new_messages)
@@ -106,20 +106,6 @@ def chat_interface(screen, direct_chat):
                 chat_win.addstr(0, 0, f"Refresh error: {str(e)}")
                 chat_win.refresh()
             time.sleep(2)
-
-    # Do initial refresh before starting the thread
-    try:
-        direct_chat.fetch_chat_history(num_messages=20)
-        messages.extend(direct_chat.get_chat_history())
-        display_messages = messages[-(height - 5):]
-        for idx, msg in enumerate(display_messages):
-            if idx < height - 5:
-                chat_win.addstr(idx, 0, msg[:width - 1])
-        chat_win.refresh()
-    except Exception as e:
-        print(e)
-        chat_win.addstr(0, 0, f"Initial refresh error: {str(e)}")
-        chat_win.refresh()
 
     refresher = threading.Thread(target=refresh_chat, daemon=True)
     refresher.start()
