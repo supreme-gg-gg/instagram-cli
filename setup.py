@@ -13,6 +13,7 @@ setup(
     install_requires=[
         "typer",
         "art",
+        "pydantic",
         "instagrapi"
     ],
     classifiers=[

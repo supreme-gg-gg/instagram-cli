@@ -1,3 +1,4 @@
 typer
 instagrapi
 art
+pydantic
