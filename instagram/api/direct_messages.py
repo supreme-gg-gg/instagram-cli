@@ -74,7 +74,6 @@ class DirectChat:
             if message.item_type == 'text':
                 chat.append(f"{sender}: {message.text}")
             else:
-                # TODO: Please validate this part!!!
                 try:
                     # print(message)
                     # Store media information
