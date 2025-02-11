@@ -140,6 +140,8 @@ class ChatInterface:
         
         return self._handle_chat_message(user_input)
 
+    # TODO: Reply mode reaction is extremely slow for some reason...
+    # Also the real reply API are not being called properly...
     def _handle_reply_input(self):
         """
         Handle user input in reply mode.
@@ -249,11 +251,15 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
     Returns:
     - DirectChat object if a chat is selected, None if the user quits
     """
-    curses.curs_set(0)
+    curses.curs_set(1)
     screen.keypad(True)
     chats = list(dm.chats.values())
     selection = 0
     height, width = screen.getmaxyx()
+
+    search_query = ""
+    placeholder = "Search for chat by username"
+    search_win = curses.newwin(3, width, height-3, 0)
 
     while True:
         screen.clear()
@@ -276,17 +282,60 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
         
         screen.refresh()
 
+        # Search bar
+        search_win.erase()
+        search_win.border()
+        if not search_query:
+            search_win.attron(curses.A_DIM)
+            search_win.addstr(1, 2, placeholder[:width-4])
+            search_win.attroff(curses.A_DIM)
+        else:
+            search_win.addstr(1, 2, search_query[:width-4])
+        search_win.refresh()
+
         key = screen.getch()
         if key == curses.KEY_UP and selection > 0:
             selection -= 1
         elif key == curses.KEY_DOWN and selection < len(chats) - 1:
             selection += 1
         elif key == ord("\n"):
-            return chats[selection]
+            if search_query:  # If there's a search query, perform search
+                try:
+                    # Show searching indicator
+                    search_win.erase()
+                    search_win.border()
+                    search_win.addstr(1, 2, "Searching...", curses.A_BOLD)
+                    search_win.refresh()
+                    
+                    # Perform search
+                    search_result = dm.search_by_username(search_query)
+                    if search_result:
+                        return search_result
+                    else:
+                        # Show "No results" briefly
+                        search_win.erase()
+                        search_win.border()
+                        search_win.addstr(1, 2, "No results found", curses.A_DIM)
+                        search_win.refresh()
+                        curses.napms(1500)  # Show for 1.5 seconds
+                        search_query = ""  # Clear search query
+                except Exception as e:
+                    # Show error briefly
+                    search_win.erase()
+                    search_win.border()
+                    search_win.addstr(1, 2, f"Search error: {str(e)}", curses.A_DIM)
+                    search_win.refresh()
+                    curses.napms(1500)
+                    search_query = ""
+            elif chats:
+                return chats[selection]
         elif key in (ord("q"), ord("Q")):
             return None
-
-
+        elif key in (curses.KEY_BACKSPACE, 127): # Backspace
+            search_query = search_query[:-1]
+        elif 32 <= key <= 126: # Printable characters
+            search_query += chr(key)
+            
 def chat_interface(screen, direct_chat: DirectChat) -> bool:
     """
     Display the chat interface for a selected chat.
