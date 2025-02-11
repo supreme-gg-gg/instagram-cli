@@ -1,8 +1,6 @@
 import typer
 from instagram import auth, chat_ui, api, configs
-from art import text2art
-import time
-
+from art import text2art, tprint
 
 app = typer.Typer()
 
@@ -13,6 +11,8 @@ def main(ctx: typer.Context):
     # If the command is just 'instagram' without any subcommands
     if ctx.invoked_subcommand is not None:
         return
+    
+    # tprint("InstagramCLI", font="random")
     
     logo = text2art("InstagramCLI")
     
@@ -53,12 +53,12 @@ def chat():
     chat_ui.start_chat()
 
 @app.command()
-def notif():
+def notify():
     """Show latest notifications"""
     api.show_updates()
 
 @app.command()
-def stats(days: int = 7):
+def stats(days: int = 14):
     """Show analytics"""
     api.analytics_bar_graph(last_n_days=days)
 

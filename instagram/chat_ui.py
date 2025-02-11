@@ -1,3 +1,13 @@
+"""
+How this works:
+- The main function start_chat() is the entry point for the chat UI.
+- It fetches chat data and starts the main loop.
+- The main loop displays the chat menu and allows the user to select a chat.
+- After selecting a chat, the chat interface is displayed.
+- The chat interface allows the user to send messages and execute commands.
+- The user can return to the chat menu or quit the program.
+"""
+
 import time
 import threading
 import curses
@@ -8,7 +18,10 @@ from instagram.api import DirectMessages, DirectChat
 from instagram.chat_commands import cmd_registry
 
 def start_chat():
-    """Wrapper function to launch chat UI."""
+    """
+    Wrapper function to launch chat UI.
+    Fetches chat data and starts the main loop.
+    """
     client = ClientWrapper()
     try:
         client.login_by_session()
@@ -21,15 +34,33 @@ def start_chat():
     dm.fetch_chat_data(num_chats=10, num_message_limit=20)
     curses.wrapper(lambda stdscr: main_loop(stdscr, dm))
 
+def main_loop(screen, dm: DirectMessages) -> None:
+    """
+    Main loop for chat interface.
+    Parameters:
+    - screen: Curses screen object
+    - dm: DirectMessages object with a list of chats fetched
+    """
+    while True:
+        # wait for user to select a chat
+        selected_chat = chat_menu(screen, dm)
 
-def main_loop(screen, dm: DirectMessages):
-    selected_chat = chat_menu(screen, dm)
-    if selected_chat:
-        chat_interface(screen, selected_chat)
+        if not selected_chat: # user quit
+            break
 
+        # continue loop to show chat menu again
+        if not chat_interface(screen, selected_chat):
+            break
 
-def chat_menu(screen, dm: DirectMessages) -> DirectChat:
-    """Display the chat list and allow the user to select one."""
+def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
+    """
+    Display the chat list and allow the user to select one.
+    Parameters (passed from main loop):
+    - screen: Curses screen object
+    - dm: DirectMessages object with a list of chats
+    Returns:
+    - DirectChat object if a chat is selected, None if the user quits
+    """
     curses.curs_set(0)
     screen.keypad(True)
     chats = list(dm.chats.values())
@@ -68,7 +99,16 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat:
             return None
 
 
-def chat_interface(screen, direct_chat: DirectChat):
+def chat_interface(screen, direct_chat: DirectChat) -> bool:
+    """
+    Display the chat interface for a selected chat.
+    Parameters:
+    - screen: Curses screen object
+    - direct_chat: DirectChat object to display after loading chat history
+    Returns:
+    - True if the user wants to return to chat menu, False if they want to quit
+    """
+
     curses.curs_set(1)
     screen.clear()
     height, width = screen.getmaxyx()
@@ -102,7 +142,6 @@ def chat_interface(screen, direct_chat: DirectChat):
                         chat_win.addstr(idx, 0, msg[:width - 1])
                 chat_win.refresh()
             except Exception as e:
-                print(e)
                 chat_win.addstr(0, 0, f"Refresh error: {str(e)}")
                 chat_win.refresh()
             time.sleep(2)
@@ -133,7 +172,7 @@ def chat_interface(screen, direct_chat: DirectChat):
 
         if user_input.lower() in ("exit", "quit"):
             stop_refresh.set()
-            break
+            return False
 
         # Vim-like toggling
         if mode == "chat" and user_input == ":":
@@ -152,22 +191,21 @@ def chat_interface(screen, direct_chat: DirectChat):
         else:
             # Execute command and show result
             result = cmd_registry.execute(user_input, chat=direct_chat, screen=screen)
-            
-            # Clear chat window and display result
-            chat_win.erase()
-            lines = result.split('\n')
-            for idx, line in enumerate(lines):
-                if idx < height - 5:  # Prevent overflow
-                    chat_win.addstr(idx, 0, line[:width - 1])
-            chat_win.refresh()
-                
-            # Show brief notification in status bar NOTE: doesn't work
-            # status_bar.erase()
-            # status_bar.bkgd(' ', curses.color_pair(2))
-            # status_bar.addstr(0, 0, "[COMMAND] Result shown above")
-            # status_bar.refresh()
 
-    time.sleep(0.5)
+            # Signal to return to chat list
+            if result == "__BACK__":
+                stop_refresh.set()
+                time.sleep(0.5)
+                return True
+            
+            if result:
+                # Clear chat window and display result
+                chat_win.erase()
+                lines = result.split('\n')
+                for idx, line in enumerate(lines):
+                    if idx < height - 5:  # Prevent overflow
+                        chat_win.addstr(idx, 0, line[:width - 1])
+                chat_win.refresh()
 
 if __name__ == "__main__":
     start_chat()
