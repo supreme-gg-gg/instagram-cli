@@ -3,10 +3,12 @@ from typing import Dict, List, Tuple, Protocol
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
 from instagrapi.extractors import *
 from pydantic import ValidationError
+from instagram import configs
+from pathlib import Path
+# import hashlib
 
-# import logging
-
-# logging.basicConfig(filename="debug.log", level=logging.DEBUG)
+import logging
+logging.basicConfig(filename="debug.log", level=logging.DEBUG)
 
 class ClientWrapper(Protocol):
     insta_client: InstaClient
@@ -35,6 +37,7 @@ class DirectChat:
     def __init__(self, client: ClientWrapper, thread_id: str, thread_data=None):
         self.client = client
         self.thread_id = thread_id
+        self.media_items = {}
         if thread_data is None:
             self.thread = self.client.insta_client.direct_thread(thread_id)
         else:
@@ -126,15 +129,15 @@ class DirectChat:
                     media_placeholder = ""
                     if media_items[media_index]["type"] == 'raven_media':
                         if media_items[media_index]["media_type"] == 'view_once':
-                            media_placeholder = f"[Sent a view-once media (use the Instagram app to view it)]"
+                            media_placeholder = "[Sent a view-once media (use the Instagram app to view it)]"
                         else:
                             media_placeholder = f"[Sent a {media_items[media_index]['media_type']} #{media_index}]"
                     elif media_items[media_index]["type"] in ['media', 'voice_media']:
                         media_placeholder = f"[Sent a {media_items[media_index]['media_type']} #{media_index}]"
                     elif media_items[media_index]["type"] == 'xma_media_share':
-                        media_placeholder = f"[Shared a post (use the Instagram app to view it)]"
+                        media_placeholder = "[Shared a post (use the Instagram app to view it)]"
                     elif media_items[media_index]["type"] == 'clip':
-                        media_placeholder = f"[Sent brainrot]"
+                        media_placeholder = "[Sent brainrot]"
                     elif media_items[media_index]["type"] == 'animated_media':
                         media_placeholder = f"[Sent a sticker #{media_index}]"
                     else:
@@ -142,12 +145,16 @@ class DirectChat:
 
                     chat.append(f"{sender}: {media_placeholder}")
                 except Exception as e:
-                    # chat.append(f"{sender}: [Error: {repr(e)}]")
-                    chat.append("Error")
+                    chat.append(f"{sender}: [Error: {repr(e)}]")
+                    # chat.append("Error")
                 finally:
                     media_index += 1
 
         chat.reverse()  # Reverse the order to show latest messages at the bottom
+
+        # Store media items for later access
+        self.media_items = media_items
+
         return chat, media_items
     
     def get_title(self) -> str:
@@ -157,14 +164,14 @@ class DirectChat:
         title = self.thread.thread_title
         if not title:
             title = ', '.join([
-                user.full_name 
-                if user.full_name 
+                user.full_name
+                if user.full_name
                 else user.username
                 for user in self.thread.users
             ])
         return title
 
-    def send_text(self, message: str):
+    def send_text(self, message: str) -> str:
         """
         Send a text message to the chat.
         Parameters:
@@ -180,16 +187,18 @@ class DirectChat:
         - path: Path to the photo file.
         """
         self.client.insta_client.direct_send_photo(path, thread_ids=[self.thread_id])
+        return f"You: [Sent a photo at {path}]"
     
-    def send_video(self, path: str):
+    def send_video(self, path: str) -> str:
         """
         Send a video to the chat. Auto generate a thumbnail.
         Parameters:
         - path: Path to the video file.
         """
         self.client.insta_client.direct_send_video(path, thread_ids=[self.thread_id])
+        return f"You: [Sent a video at {path}]"
 
-    def mark_as_seen(self):
+    def mark_as_seen(self) -> None:
         """
         Mark the chat as seen.
         """
@@ -201,3 +210,61 @@ class DirectChat:
         """
         return self.thread.is_seen(self.client.insta_client.user_id)
     
+    def send_emoji(self, emoji_name: str):
+        """
+        Send an emoji to the chat.
+        Parameters:
+        - emoji_name: Name of the emoji.
+        """
+        raise NotImplementedError("send_emoji is not implemented yet")
+    
+    def media_download(self, media_index: int) -> str:
+        """
+        Download media item by index. Uses the cached media items for url.
+        Parameters:
+        - media_index: Index of the media item.
+        Returns:
+        - File path of the downloaded media.
+        """
+        client = self.client.insta_client
+        media_item = self.media_items[media_index]
+        if not media_item:
+            return "No media found at the index"
+        
+        if "url" not in media_item or not media_item["url"]:
+            return "Media URL not found"
+
+        save_dir = Path.home() / ".instagram-cli" / "media"
+        if not save_dir.exists():
+            save_dir.mkdir(parents=True, exist_ok=True)
+        # save_dir = configs.Config().get("advanced.media_dir", "media")
+
+        # NOTE: media_item["url"] is pydantic HttpUrl object, NOT A STRING!
+        # WARNING: If you try to use it as a string it will raise AttributeError!!!
+        
+        # Create unique filename based on URL and media ID
+        # url_hash = hashlib.md5(str(media_item['url']).encode()).hexdigest()[:8]
+        # filename = f"{media_item['media_id']}_{url_hash}"
+
+        # LMAO I just realised media ID must be unique so we can just use it as filename
+        filename = f"{media_item['media_id']}"
+
+        try:
+            if media_item["media_type"] in ['photo', 'image']:
+                file_path = client.photo_download_by_url(
+                    media_item['url'],
+                    filename=filename, # apparently it does not require the .jpg extension
+                    folder=save_dir
+                )
+            elif media_item["media_type"] in ['video']:
+                file_path = client.video_download_by_url(
+                    media_item['url'],
+                    filename=filename,
+                    folder=save_dir
+                )
+            else:
+                raise ValueError(f"Unsupported media type for viewing: {media_item['type']}")
+        except Exception as e:
+            raise e
+
+        return file_path
