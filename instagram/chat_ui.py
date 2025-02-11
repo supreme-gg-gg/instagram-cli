@@ -122,7 +122,6 @@ def chat_interface(screen, direct_chat: DirectChat) -> bool:
     input_win = curses.newwin(3, width, height - 4, 0)
     status_bar = curses.newwin(1, width, height - 1, 0)
 
-    mode = "chat"
     messages = []
     refresh_lock = threading.Lock()
     stop_refresh = threading.Event()
@@ -152,12 +151,8 @@ def chat_interface(screen, direct_chat: DirectChat) -> bool:
     while True:
         # Update status bar based on mode
         status_bar.erase()
-        if mode == "chat":
-            status_bar.bkgd(' ', curses.color_pair(1))
-            status_text = "[CHAT MODE] Send ':' to enter command mode"
-        else:
-            status_bar.bkgd(' ', curses.color_pair(2))
-            status_text = "[COMMAND MODE] Send ENTER to return to chat mode"
+        status_bar.bkgd(' ', curses.color_pair(1))
+        status_text = "[CHAT MODE] Type :help for commands available"
         status_bar.addstr(0, 0, status_text)
         status_bar.refresh()
 
@@ -173,38 +168,39 @@ def chat_interface(screen, direct_chat: DirectChat) -> bool:
         if user_input.lower() in ("exit", "quit"):
             stop_refresh.set()
             return False
+        
+        # Check if input is a command
+        if len(user_input) > 1 and user_input.startswith(':'):
+            command = user_input[1:]  # Remove the : prefix
+            result = cmd_registry.execute(command, chat=direct_chat, screen=screen)
 
-        # Vim-like toggling
-        if mode == "chat" and user_input == ":":
-            mode = "command"
-            continue
-        elif mode == "command" and user_input == "":
-            mode = "chat"
-            continue
-
-        if mode == "chat":
-            try:
-                direct_chat.send_text(user_input)
-            except Exception as e:
-                chat_win.addstr(0, 0, f"Error sending: {e}"[:width - 1])
-                chat_win.refresh()
-        else:
-            # Execute command and show result
-            result = cmd_registry.execute(user_input, chat=direct_chat, screen=screen)
-
-            # Signal to return to chat list
+            # Show command execution feedback
+            status_bar.erase()
+            status_bar.bkgd(' ', curses.color_pair(2))
+            status_bar.addstr(0, 0, f"[COMMAND MODE] {command} executed successfully"[:width - 1])
+            status_bar.refresh()
+            
+            # Wait 1 second
+            curses.napms(1000)
+            
             if result == "__BACK__":
                 stop_refresh.set()
                 time.sleep(0.5)
                 return True
             
             if result:
-                # Clear chat window and display result
                 chat_win.erase()
                 lines = result.split('\n')
                 for idx, line in enumerate(lines):
-                    if idx < height - 5:  # Prevent overflow
+                    if idx < height - 5:
                         chat_win.addstr(idx, 0, line[:width - 1])
+                chat_win.refresh()
+        else:
+            # Regular chat message
+            try:
+                direct_chat.send_text(user_input)
+            except Exception as e:
+                chat_win.addstr(0, 0, f"Error sending: {e}"[:width - 1])
                 chat_win.refresh()
 
 if __name__ == "__main__":
