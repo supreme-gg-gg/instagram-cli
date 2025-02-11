@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple, Optional, Protocol
 import instagrapi
 import instagrapi.exceptions
 import instagrapi.types
-from .configs import Config
+from instagram.configs import Config
 import os
 import shutil
 import pickle

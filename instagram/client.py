@@ -2,7 +2,6 @@ import typer
 import instagrapi
 from instagrapi.exceptions import LoginRequired
 from pathlib import Path
-from .cache import CacheManager
 from instagram import configs
 
 class SessionManager:
@@ -56,7 +55,6 @@ class ClientWrapper:
         self.session_manager = SessionManager(username)
         self.username = self.session_manager.username
         self.insta_client = None
-        self.cache_manager = CacheManager(self)
 
     def login(self, username: str | None = None, password: str | None = None, refresh_session: bool = False):
         """

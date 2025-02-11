@@ -4,32 +4,76 @@ import curses, math, time
 from collections import Counter
 
 def show_updates():
-    """Fetches and displays latest updates"""
-
+    """Fetches and displays latest updates in a structured visual format"""
     cl = ClientWrapper().login_by_session()
-
     data = cl.news_inbox_v1()
 
-    # last_update_time = datetime.fromtimestamp(data['last_updated']).strftime('%Y-%m-%d %H:%M:%S')
     def display_updates(stdscr, data):
-        stdscr.clear()
-        status = data['status']
-        total_updates = len(data.get('new_stories', [])) + len(data.get('old_stories', []))
-        story_mentions = data["story_mentions"]["mentions_count_string"]
+        # Setup colors
+        curses.start_color()
+        curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(2, curses.COLOR_CYAN, curses.COLOR_BLACK)
+        curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+        curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_BLUE)
 
-        stdscr.addstr(0, 0, f"System status: {status}")
-        stdscr.addstr(1, 0, f"Total updates available: {total_updates}")
-        stdscr.addstr(2, 0, f"Story mentions: {story_mentions}")
+        # Get screen dimensions
+        height, width = stdscr.getmaxyx()
+        
+        # Adjust window sizes to fit screen
+        title_height = 3
+        stats_height = 5
+        footer_height = 1
+        updates_height = height - (title_height + stats_height + footer_height)
 
-        if total_updates > 0:
-            stdscr.addstr(4, 0, "Latest Updates:")
-            for idx, update in enumerate(data['new_stories'][:5], start=5):
-                notif_name = update["notif_name"]
-                rich_text = update['args']["rich_text"]
-                timestamp = datetime.fromtimestamp(update['args']['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-                stdscr.addstr(idx, 0, f"{notif_name} - {rich_text} (Received at {timestamp})")
+        # Create windows with adjusted positions
+        title_win = curses.newwin(title_height, width, 0, 0)
+        stats_win = curses.newwin(stats_height, width, title_height, 0)
+        updates_win = curses.newwin(updates_height, width, title_height + stats_height, 0)
 
+        # Title block
+        title_win.bkgd(' ', curses.color_pair(4))
+        title_win.border()
+        title_win.addstr(1, 2, "Instagram Activity Dashboard".center(width-4), curses.A_BOLD)
+
+        # Stats block
+        stats_win.border()
+        stats = [
+            ("System Status", data['status']),
+            ("Total Updates", str(len(data.get('new_stories', [])) + len(data.get('old_stories', [])))),
+            ("Story Mentions", data["story_mentions"]["mentions_count_string"])
+        ]
+        
+        for idx, (label, value) in enumerate(stats):
+            stats_win.addstr(idx + 1, 2, f"▶ {label}:", curses.color_pair(2))
+            stats_win.addstr(idx + 1, 20, value, curses.color_pair(1))
+
+        # TODO: Add unread messages display box here!! See issue #4
+
+        # Updates block
+        updates_win.border()
+        updates_win.addstr(1, 2, "━━━ Recent Activity ━━━".center(width-4), curses.color_pair(2) | curses.A_BOLD)
+
+        row = 3
+        max_updates = (updates_height - 4) // 3  # Maximum updates that can fit
+        for update in data['new_stories'][:max_updates]:
+            notif_name = update["notif_name"]
+            rich_text = update['args']["rich_text"]
+            timestamp = datetime.fromtimestamp(update['args']['timestamp']).strftime('%H:%M %d/%m')
+            
+            updates_win.addstr(row, 2, "►", curses.color_pair(2))
+            updates_win.addstr(row, 4, notif_name, curses.color_pair(2) | curses.A_BOLD)
+            updates_win.addstr(row + 1, 4, rich_text[:width-8])
+            updates_win.addstr(row + 1, width-12, timestamp, curses.color_pair(3))
+            row += 3
+
+        # Footer
+        stdscr.addstr(height-1, 1, "Press any key to exit", curses.A_DIM)
+
+        # Refresh all windows
         stdscr.refresh()
+        title_win.refresh()
+        stats_win.refresh()
+        updates_win.refresh()
         stdscr.getch()
 
     curses.wrapper(display_updates, data)
@@ -130,4 +174,5 @@ def analytics_bar_graph(last_n_days=7):
             pass
 
 if __name__ == '__main__':
-    analytics_bar_graph(30)
+    # analytics_bar_graph(30)
+    show_updates()
