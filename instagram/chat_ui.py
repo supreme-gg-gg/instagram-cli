@@ -102,6 +102,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
 def chat_interface(screen, direct_chat: DirectChat) -> bool:
     """
     Display the chat interface for a selected chat.
+    The function handles both chat messages and commands.
     Parameters:
     - screen: Curses screen object
     - direct_chat: DirectChat object to display after loading chat history
@@ -130,6 +131,7 @@ def chat_interface(screen, direct_chat: DirectChat) -> bool:
         while not stop_refresh.is_set():
             try:
                 direct_chat.fetch_chat_history(num_messages=20)
+                # We do not need the media items for now, it only used in commands
                 new_messages = direct_chat.get_chat_history()[0]
                 with refresh_lock:
                     messages.clear()
@@ -195,6 +197,7 @@ def chat_interface(screen, direct_chat: DirectChat) -> bool:
                     if idx < height - 5:
                         chat_win.addstr(idx, 0, line[:width - 1])
                 chat_win.refresh()
+                curses.napms(3000)
         else:
             # Regular chat message
             try:

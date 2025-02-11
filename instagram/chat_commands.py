@@ -3,6 +3,9 @@ from instagram.api import DirectChat
 from datetime import datetime
 import threading
 import time
+import os
+import subprocess
+import tempfile
 from typing import List, Tuple
 
 cmd_registry = CommandRegistry()
@@ -38,18 +41,48 @@ def back_to_chat_list(context) -> str:
     """
     return "__BACK__"
 
-# TODO: Index all the media when loading and show them when rendering chat, keep track of index
-# TODO: Use the index to get the right media, download it, and show it using default viewer on device, not terminal
-# We won't support watching reels because this is anti-brainrot lmao
-"""
-Helpful api:
-photo_path = cl.photo_download(cl.media_pk_from_url('https://www.instagram.com/p/BgqFyjqloOr/'))
-video_path = cl.video_download(cl.media_pk_from_url('https://www.instagram.com/p/B3rFQPblq40/'))
-"""
+@cmd_registry.register("view", "View media in chat by index of media item")
+def view_media(context, index: int) -> str:
+    """
+    View media in chat. Takes the index of the media item to view.
+    Downloads the media to a temporary file and opens it with system viewer.
+    """
+    chat: DirectChat = context["chat"]
+    try:
+        file_path = chat.media_download(int(index))
 
-# @cmd_registry.register("view", "View media in chat")
-# def view_media(context, index: int):
-#     raise NotImplementedError("Not implemented yet")
+        print(file_path)
+
+        # Open with system default application
+        if os.name == 'posix':  # macOS and Linux
+            subprocess.run(
+                ['xdg-open' if os.uname().sysname == 'Linux' else 'open', file_path],
+                check=True
+            )
+        elif os.name == 'nt':  # Windows
+            subprocess.run(['start', file_path], shell=True, check=True)
+        else:
+            return "Unsupported operating system"
+
+        return f"Opening media #{index}"
+
+    except ValueError:
+        return "Unsupported media type"
+
+    except Exception as e:
+        return f"Error viewing media: {str(e)}"
+
+@cmd_registry.register("emoji", "Send an emoji based on its name")
+def send_emoji(context, emoji_name: str) -> str:
+    """
+    Send an emoji to the chat. Takes the name of the emoji.
+    """
+    chat: DirectChat = context["chat"]
+    try:
+        chat.send_emoji(emoji_name)
+        return f"Sent emoji: {emoji_name}"
+    except Exception as e:
+        return f"Failed to send emoji: {e}"
 
 # # Store scheduled messages as (timestamp, message, chat) tuples
 # scheduled_messages: List[Tuple[float, str, DirectChat]] = []
