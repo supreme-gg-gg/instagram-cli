@@ -150,6 +150,7 @@ class ChatInterface:
             return Signal.QUIT
 
         if len(user_input) > 1 and user_input.startswith(':'):
+            self.mode = ChatMode.COMMAND
             return self._handle_command(user_input[1:])
         
         return self._handle_chat_message(user_input)
