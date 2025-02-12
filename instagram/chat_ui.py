@@ -26,6 +26,16 @@ class ChatMode(Enum):
     COMMAND = auto()
     REPLY = auto()
 
+class Signal(Enum):
+    """
+    Enum to represent continue or quit chat.
+    NOTE: Please use this instead of True/False to avoid confusion.
+    Using true and false have led to unexpected behavior in the past.
+    """
+    CONTINUE = auto()
+    BACK = auto()
+    QUIT = auto()
+
 class ChatInterface:
     """
     Class to manage the chat interface.
@@ -97,8 +107,9 @@ class ChatInterface:
                 else:
                     self.chat_win.addstr(idx, 0, msg[:self.width - 1])
         self.chat_win.refresh()
+        self._update_status_bar()
 
-    def _update_status_bar(self):
+    def _update_status_bar(self, msg: str = None):
         """
         Update the status bar based on the current mode.
         """
@@ -109,19 +120,22 @@ class ChatInterface:
         elif self.mode == ChatMode.REPLY:
             self.status_bar.bkgd(' ', curses.color_pair(3))
             status_text = "[REPLY] Use ↑↓ to select, Enter to confirm, Esc to cancel"
-        else:
+        elif self.mode == ChatMode.COMMAND:
             self.status_bar.bkgd(' ', curses.color_pair(2))
-            status_text = "[COMMAND] Enter command"
+            status_text = f"[COMMAND] Command {msg} executed. Press any key to continue"
+        else:
+            status_text = "Georgian mode"
         
         self.status_bar.addstr(0, 0, status_text[:self.width - 1])
         self.status_bar.refresh()
 
-    def handle_input(self):
+    def handle_input(self) -> bool:
         """
         Handle user input based on the current mode.
+        Returns False if the user wants to quit.
         """
         if self.mode == ChatMode.REPLY:
-            return self._handle_reply_input()
+            self._handle_reply_input()
         
         # Clear and redraw input window with border
         self.input_win.erase()
@@ -133,44 +147,53 @@ class ChatInterface:
         curses.noecho()
 
         if user_input.lower() in ("exit", "quit"):
-            return False
+            return Signal.QUIT
 
         if len(user_input) > 1 and user_input.startswith(':'):
+            self.mode = ChatMode.COMMAND
             return self._handle_command(user_input[1:])
         
         return self._handle_chat_message(user_input)
 
-    # TODO: Reply mode reaction is extremely slow for some reason...
-    # Also the real reply API are not being called properly...
-    def _handle_reply_input(self):
+    def _handle_reply_input(self) -> bool:
         """
         Handle user input in reply mode.
         """
-        key = self.screen.getch()
-        if key == curses.KEY_UP and self.selection > 0:
-            self.selection -= 1
-        elif key == curses.KEY_DOWN and self.selection < len(self.messages) - 1:
-            self.selection += 1
-        elif key == 27:  # ESC
-            self.mode = ChatMode.CHAT
-        elif key == ord('\n'): # Enter
-            self.selected_message_id = self.direct_chat.get_message_id(self.selection)
-        return True
+        while True:
+            key = self.screen.getch()
+            if key == curses.KEY_UP and self.selection > 0:
+                self.selection -= 1
+                self._update_chat_window()
+            elif key == curses.KEY_DOWN and self.selection < len(self.messages) - 1:
+                self.selection += 1
+                self._update_chat_window()
+            elif key == 27:  # ESC
+                self.mode = ChatMode.CHAT
+                self.selected_message_id = None
+                self._update_chat_window()
+                return
+            elif key == ord('\n'): # Enter
+                # NOTE: temporary fix to adjust the index, seems like all one off
+                self.selected_message_id = self.direct_chat.get_message_id(-(self.selection+1))
+                return
 
-    def _handle_command(self, command: str):
+    def _handle_command(self, command: str) -> Signal:
         """
         Executes a command, listen for special return signals or display the result.
         """
         result = cmd_registry.execute(command, chat=self.direct_chat, screen=self.screen)
+        self._update_status_bar(msg=command)
         if result == "__BACK__":
             self.stop_refresh.set()
-            return False
+            return Signal.BACK
         elif result == "__REPLY__":
             self.mode = ChatMode.REPLY
+            self._update_chat_window()
+            return Signal.CONTINUE
         else:
             self._display_command_result(result)
             curses.napms(3000)
-        return True
+        return Signal.CONTINUE
     
     def _display_command_result(self, result: str):
         """
@@ -183,7 +206,7 @@ class ChatInterface:
                 self.chat_win.addstr(idx, 0, line[:self.width - 1])
         self.chat_win.refresh()
 
-    def _handle_chat_message(self, message: str):
+    def _handle_chat_message(self, message: str) -> Signal:
         """
         Send a chat message or reply to a selected message.
         """
@@ -194,18 +217,18 @@ class ChatInterface:
                 self.mode = ChatMode.CHAT # Exit reply mode
             else:
                 self.direct_chat.send_text(message)
-            return True
+            return Signal.CONTINUE
         except Exception as e:
             self.chat_win.addstr(0, 0, f"Error sending: {e}"[:self.width - 1])
             self.chat_win.refresh()
-            return True
+            return Signal.CONTINUE
 
-    def run(self) -> bool:
+    def run(self) -> Signal:
         """Main loop for the chat interface"""
-        while True:
-            self._update_status_bar()
-            if not self.handle_input():
-                return False
+        while self.handle_input() != Signal.QUIT:
+            pass
+        self.stop_refresh.set()
+        return Signal.QUIT
 
 def start_chat():
     """
@@ -239,7 +262,7 @@ def main_loop(screen, dm: DirectMessages) -> None:
             break
 
         # continue loop to show chat menu again
-        if chat_interface(screen, selected_chat):
+        if chat_interface(screen, selected_chat) == Signal.QUIT:
             break
 
 def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
@@ -268,7 +291,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
             title = chat.get_title()
             y_pos = idx + 2
             x_pos = 2  # Add left margin
-            
+        
             # Ensure we don't exceed window boundaries
             if y_pos < height:
                 if idx == selection:
@@ -279,7 +302,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
                     screen.attroff(curses.A_REVERSE)
                 else:
                     screen.addstr(y_pos, x_pos, title[:width - x_pos - 1])
-        
+
         screen.refresh()
 
         # Search bar
@@ -335,8 +358,8 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
             search_query = search_query[:-1]
         elif 32 <= key <= 126: # Printable characters
             search_query += chr(key)
-            
-def chat_interface(screen, direct_chat: DirectChat) -> bool:
+
+def chat_interface(screen, direct_chat: DirectChat) -> Signal:
     """
     Display the chat interface for a selected chat.
     Creates and runs a ChatInterface object.

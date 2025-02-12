@@ -51,8 +51,6 @@ def view_media(context, index: int) -> str:
     try:
         file_path = chat.media_download(int(index))
 
-        print(file_path)
-
         # Open with system default application
         if os.name == 'posix':  # macOS and Linux
             subprocess.run(

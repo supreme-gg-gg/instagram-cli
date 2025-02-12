@@ -14,10 +14,10 @@ def main(ctx: typer.Context):
     
     # tprint("InstagramCLI", font="random")
     
-    logo = text2art("InstagramCLI")
+    logo = text2art("InstagramCLI", "random")
     
     typer.echo(f"\033[95m{logo}\033[0m")  # Magenta text
-    typer.echo("\033[92mThe end of brainrot and scrolling.\033[0m")  # Green text
+    typer.echo("\033[92mThe end of brainrot and scrolling is here.\033[0m")  # Green text
 
     try:
         from importlib.metadata import version

@@ -2,7 +2,8 @@ from __future__ import annotations
 from typing import Dict, List, Tuple, Protocol
 from pathlib import Path
 # import hashlib
-import logging
+
+# from .utils import setup_logging
 
 from instagrapi import Client as InstaClient
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
@@ -12,7 +13,7 @@ from .utils import user_info_by_username_private
 from pydantic import ValidationError
 # from instagram import configs
 
-logging.basicConfig(filename="debug.log", level=logging.DEBUG)
+# logger = setup_logging(__name__)
 
 class ClientWrapper(Protocol):
     insta_client: InstaClient
@@ -134,7 +135,6 @@ class DirectChat:
                                 'audio' if media.audio_url else 'unknown'
                             )))
                         except ValidationError as e:
-                            print("Error extracting raven_media: "+repr(e))
                             # The media URL is empty likely due to a (expired?) view-once media
                             media_items[media_index]['url'] = None
                             media_items[media_index]["media_type"] = 'view_once'
@@ -204,8 +204,30 @@ class DirectChat:
         Parameters:
         - message: Text message to send.
         """
+        # NOTE: direct_answer is just a wrapper around direct_send
         self.client.insta_client.direct_answer(self.thread_id, message)
         return f"You: {message}"
+    
+    def get_message_id(self, message_index: int) -> str:
+        """
+        Get the message ID of a message by index.
+        Parameters:
+        - message_index: Index of the message.
+        NOTE: The index might not be reversed so you can pass in negative indices.
+        """
+        return self.thread.messages[message_index].id
+    
+    def search_message_by_id(self, message_id: str) -> DirectMessage | None:
+        """
+        Search for a message by ID.
+        Parameters:
+        - message_id: ID of the message to search for.
+        """
+        # logger.info(f"Searching for message ID: {message_id}")
+        for message in self.thread.messages:
+            if message.id == message_id:
+                return message
+        return None
     
     def send_reply_text(self, message: str, message_id: str) -> str:
         """
@@ -214,16 +236,17 @@ class DirectChat:
         - message: Text message to send.
         - message_id: ID of the message to reply to.
         """
-        self.client.insta_client.direct_send(message, thread_ids=[self.thread_id])
-        return f"You: {message}"
-    
-    def get_message_id(self, message_index: int) -> str:
-        """
-        Get the message ID of a message by index.
-        Parameters:
-        - message_index: Index of the message.
-        """
-        return self.thread.messages[message_index].id
+        # First we need to get the DirectMessage object we trying to reply to
+        if not (reply_to_message := self.search_message_by_id(message_id)):
+            return "Message not found"
+        
+        # logger.info(f"Replying to message: {reply_to_message.text[:10]}...")
+
+        # Then we can send the reply
+        self.client.insta_client.direct_send(message, thread_ids=[self.thread_id], reply_to_message=reply_to_message)
+
+        # This should add the reply to DirectMessage.reply as ReplyMessage
+        return f"You replied to \"{reply_to_message.text[:10]}...\": {message}"
 
     def send_photo(self, path: str):
         """

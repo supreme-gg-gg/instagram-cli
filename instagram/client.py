@@ -151,7 +151,7 @@ def cleanup(delete_all: bool) -> None:
     media_dir = Path(_config.get("advanced.media_dir")).expanduser()
 
     # Cleanup
-    typer.echo(f"Cleaning up cache: {cache_dir, media_dir}")
+    typer.echo(f"Cleaning up cache: {str(cache_dir), str(media_dir)}")
     if cache_dir.exists():
         for file in cache_dir.iterdir():
             file.unlink()
