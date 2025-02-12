@@ -52,6 +52,14 @@ class ChatInterface:
         self.messages: List[Tuple[str, str]] = []
         self.selection = 0
         self.selected_message_id = None
+
+        # Define UI element config
+        # I believe there is a more scalable way to do configurations
+        # it will probably come in next major UI patch with chat command changes to `config <field>=<value>`
+        self.config = {
+            "layout": "compact",
+            "colors": "on"
+        }
         
         # Initialize windows
         self.chat_win = curses.newwin(self.height - 4, self.width, 0, 0)
@@ -111,6 +119,13 @@ class ChatInterface:
         
         message_line_map = {}
         current_message_idx = 0
+        
+        # NOTE: Threading must NOT be used in this function because
+        # it is called in frequently in everywhere and results in serious 
+        # performance issues and unexpected behavior.
+        # stop_event = threading.Event()
+        # loading_thread = threading.Thread(target=create_loading_screen, args=(self.screen, stop_event))
+        # loading_thread.start()
 
         for msg in display_messages:
             if current_line >= max_lines:
@@ -130,10 +145,13 @@ class ChatInterface:
                 self.chat_win.attron(curses.A_REVERSE)
             
             # Color and bold sender name based on hash
-            color_idx = (hash(sender) % 3) + 4
-            self.chat_win.attron(curses.color_pair(color_idx) | curses.A_BOLD)
-            self.chat_win.addstr(current_line, 0, sender_text)
-            self.chat_win.attroff(curses.color_pair(color_idx) | curses.A_BOLD)
+            if self.config["colors"] == "on":
+                color_idx = (hash(sender) % 3) + 4
+                self.chat_win.attron(curses.color_pair(color_idx) | curses.A_BOLD)
+                self.chat_win.addstr(current_line, 0, sender_text)
+                self.chat_win.attroff(curses.color_pair(color_idx) | curses.A_BOLD)
+            else:
+                self.chat_win.addstr(current_line, 0, sender_text)
 
             words = content.split()
             line_buffer = []
@@ -175,8 +193,13 @@ class ChatInterface:
                 self.chat_win.attroff(curses.A_REVERSE)
 
             # Add small spacing between messages
-            current_line += 1
+            if self.config["layout"] != "compact":
+                current_line += 1
+
             current_message_idx += 1
+
+        # stop_event.set()
+        # loading_thread.join()
 
         self.chat_win.refresh()
         self._update_status_bar()
@@ -256,19 +279,36 @@ class ChatInterface:
         """
         self.mode = ChatMode.COMMAND
         result = cmd_registry.execute(command, chat=self.direct_chat, screen=self.screen)
+
+        # Update status bar based on command result
         self._update_status_bar(msg=command)
-        if result == "__BACK__":
+
+        # Handle config changes command
+        if isinstance(result, dict):
+            for key, value in result.items():
+                if key in self.config:
+                    self.config[key] = value
+            self._update_chat_window()
+            self.mode = ChatMode.CHAT
+            return Signal.CONTINUE
+
+        # Handle special return signals
+        elif result == "__BACK__":
             self.stop_refresh.set()
             return Signal.BACK
+        
         elif result == "__REPLY__":
             self.mode = ChatMode.REPLY
             self._update_chat_window()
             return Signal.CONTINUE
+        
+        # Regular command result display
         else:
             self._display_command_result(result)
             curses.napms(2000)
             self.mode = ChatMode.CHAT
             self._update_status_bar()
+
         return Signal.CONTINUE
     
     def _display_command_result(self, result: str):
@@ -304,6 +344,8 @@ class ChatInterface:
 
     def run(self) -> Signal:
         """Main loop for the chat interface"""
+        self._update_chat_window()
+        self._update_status_bar()
         while (input_signal := self.handle_input()) not in [Signal.QUIT, Signal.BACK]:
             pass
         self.stop_refresh.set()
@@ -366,9 +408,6 @@ def main_loop(screen, client: ClientWrapper, username: str) -> None:
 
     stop_event.set()
     loading_thread.join()
-
-    screen.clear()
-    screen.refresh()
 
     while True:
         if username:

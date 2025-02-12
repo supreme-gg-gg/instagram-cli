@@ -77,6 +77,20 @@ def reply_to_message(context) -> str:
     """
     return "__REPLY__"
 
+@cmd_registry.register("config", "Manage Chat UI configuration")
+def manage_config(context, options: str) -> dict:
+    """
+    Manage Chat UI configuration.
+    Options should be in format "field=value".
+    """
+    # Parse options
+    config = {}
+    for option in options.split():
+        field, value = option.split('=')
+        config[field] = value
+    
+    return config
+
 @cmd_registry.register("emoji", "Send an emoji based on its name")
 def send_emoji(context, emoji_name: str) -> str:
     """
