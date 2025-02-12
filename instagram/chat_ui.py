@@ -315,7 +315,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
                         # Show "No results" briefly
                         search_win.erase()
                         search_win.border()
-                        search_win.addstr(1, 2, "No results found", curses.A_DIM)
+                        search_win.addstr(1, 2, f"No results found for @{search_query}", curses.A_DIM)
                         search_win.refresh()
                         curses.napms(1500)  # Show for 1.5 seconds
                         search_query = ""  # Clear search query

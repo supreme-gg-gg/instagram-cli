@@ -7,6 +7,8 @@ import logging
 from instagrapi import Client as InstaClient
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
 from instagrapi.extractors import *
+from instagrapi.exceptions import UserNotFound
+from .utils import user_info_by_username_private
 from pydantic import ValidationError
 # from instagram import configs
 
@@ -35,24 +37,25 @@ class DirectMessages:
     def search_by_username(self, username: str) -> DirectChat | None:
         """
         Search for a chat by username, the workflow:
-        1. Search for user_id
-        2. Search for the thread with the user_id and get thread_id
-        3. Initialize a DirectChat object with the thread_id
+        1. Search for user_id from username
+        2. Initialize a DirectChat object with the user_id
         Parameters:
         - username: Username to search for
         Returns:
         - DirectChat object if found, None if not found
         """
+        # TODO: compare which of the following two methods is faster
+        # user = self.client.insta_client.direct_search(username) # Returns a list of search results
+        # user_id = user[0].pk # This gets the user_id of the first search result
+        user_id = None
         try:
-            user = self.client.insta_client.direct_search(username) # Returns a list of search results
-            user_id = user[0].pk # This gets the user_id of the first search result
-            thread = self.client.insta_client.direct_thread_by_participants(user_ids=[user_id])
-            thread_id = thread["thread"]["thread_id"] # this is a weird json structure
-            if thread_id:
-                return DirectChat(self.client, thread_id) # This automatically fetches the thread data
-        except Exception as e:
-            raise e
-        return None
+            user_id = user_info_by_username_private(self.client.insta_client, username).pk
+        except UserNotFound:
+            return None
+        
+        thread_data = self.client.insta_client.direct_thread_by_participants(user_ids=[user_id])
+        thread = extract_direct_thread(thread_data["thread"])  # use built-in instagrapi parsing function
+        return DirectChat(self.client, thread.id, thread)
 
     def send_text_by_userid(self, userids: List[int], text: str):
         self.client.insta_client.direct_send(text, userids)
