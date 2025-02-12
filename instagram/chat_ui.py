@@ -171,6 +171,7 @@ class ChatInterface:
                 self.mode = ChatMode.CHAT
                 self.selected_message_id = None
                 self._update_chat_window()
+                self._update_status_bar()
                 return
             elif key == ord('\n'): # Enter
                 # NOTE: temporary fix to adjust the index, seems like all one off
@@ -181,6 +182,7 @@ class ChatInterface:
         """
         Executes a command, listen for special return signals or display the result.
         """
+        self.mode = ChatMode.COMMAND
         result = cmd_registry.execute(command, chat=self.direct_chat, screen=self.screen)
         self._update_status_bar(msg=command)
         if result == "__BACK__":
@@ -193,6 +195,8 @@ class ChatInterface:
         else:
             self._display_command_result(result)
             curses.napms(3000)
+            self.mode = ChatMode.CHAT
+            self._update_status_bar()
         return Signal.CONTINUE
     
     def _display_command_result(self, result: str):
@@ -214,7 +218,10 @@ class ChatInterface:
             if self.selected_message_id and self.mode == ChatMode.REPLY:
                 self.direct_chat.send_reply_text(message, self.selected_message_id)
                 self.selected_message_id = None
-                self.mode = ChatMode.CHAT # Exit reply mode
+                # Exit reply mode
+                self.mode = ChatMode.CHAT
+                self._update_chat_window()
+                self._update_status_bar()
             else:
                 self.direct_chat.send_text(message)
             return Signal.CONTINUE
@@ -225,12 +232,12 @@ class ChatInterface:
 
     def run(self) -> Signal:
         """Main loop for the chat interface"""
-        while self.handle_input() != Signal.QUIT:
+        while (input_signal := self.handle_input()) not in [Signal.QUIT, Signal.BACK]:
             pass
         self.stop_refresh.set()
-        return Signal.QUIT
+        return input_signal
 
-def start_chat():
+def start_chat(username: str = None):
     """
     Wrapper function to launch chat UI.
     Fetches chat data and starts the main loop.
@@ -244,19 +251,29 @@ def start_chat():
 
     dm = DirectMessages(client)
     # Fetch up to 10 chats with a limit of 20 messages per chat
+    # We might want to fetch chat list only if user did not specify a recipient for better performance
+    # if username is None:
     dm.fetch_chat_data(num_chats=10, num_message_limit=20)
-    curses.wrapper(lambda stdscr: main_loop(stdscr, dm))
+    curses.wrapper(lambda stdscr: main_loop(stdscr, dm, username))
 
-def main_loop(screen, dm: DirectMessages) -> None:
+def main_loop(screen, dm: DirectMessages, username: str) -> None:
     """
     Main loop for chat interface.
     Parameters:
     - screen: Curses screen object
     - dm: DirectMessages object with a list of chats fetched
+    - username: Optional recipient's username to chat with
     """
     while True:
-        # wait for user to select a chat
-        selected_chat = chat_menu(screen, dm)
+        if username:
+            selected_chat = dm.search_by_username(username)
+            if not selected_chat:
+                typer.echo(f"Chat with @{username} not found")
+                break
+            username = None  # Reset username for next loop
+        else:
+            # wait for user to select a chat
+            selected_chat = chat_menu(screen, dm)
 
         if not selected_chat: # user quit
             break
@@ -338,7 +355,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
                         # Show "No results" briefly
                         search_win.erase()
                         search_win.border()
-                        search_win.addstr(1, 2, "No results found", curses.A_DIM)
+                        search_win.addstr(1, 2, f"No results found for @{search_query}", curses.A_DIM)
                         search_win.refresh()
                         curses.napms(1500)  # Show for 1.5 seconds
                         search_query = ""  # Clear search query
