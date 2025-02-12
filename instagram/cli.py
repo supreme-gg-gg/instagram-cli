@@ -48,9 +48,9 @@ def logout(username: str = None):
     auth.logout(username)
 
 @app.command()
-def chat():
+def chat(username: str = None):
     """Open chat UI"""
-    chat_ui.start_chat()
+    chat_ui.start_chat(username)
 
 @app.command()
 def notify():

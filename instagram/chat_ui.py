@@ -230,7 +230,7 @@ class ChatInterface:
         self.stop_refresh.set()
         return Signal.QUIT
 
-def start_chat():
+def start_chat(username: str = None):
     """
     Wrapper function to launch chat UI.
     Fetches chat data and starts the main loop.
@@ -244,19 +244,28 @@ def start_chat():
 
     dm = DirectMessages(client)
     # Fetch up to 10 chats with a limit of 20 messages per chat
-    dm.fetch_chat_data(num_chats=10, num_message_limit=20)
-    curses.wrapper(lambda stdscr: main_loop(stdscr, dm))
+    if username is None:
+        dm.fetch_chat_data(num_chats=10, num_message_limit=20)
+    curses.wrapper(lambda stdscr: main_loop(stdscr, dm, username))
 
-def main_loop(screen, dm: DirectMessages) -> None:
+def main_loop(screen, dm: DirectMessages, username: str) -> None:
     """
     Main loop for chat interface.
     Parameters:
     - screen: Curses screen object
     - dm: DirectMessages object with a list of chats fetched
+    - username: Optional recipient's username to chat with
     """
     while True:
-        # wait for user to select a chat
-        selected_chat = chat_menu(screen, dm)
+        if username:
+            selected_chat = dm.search_by_username(username)
+            if not selected_chat:
+                typer.echo(f"Chat with @{username} not found")
+                break
+            username = None  # Reset username for next loop
+        else:
+            # wait for user to select a chat
+            selected_chat = chat_menu(screen, dm)
 
         if not selected_chat: # user quit
             break
