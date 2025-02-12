@@ -51,8 +51,6 @@ def view_media(context, index: int) -> str:
     try:
         file_path = chat.media_download(int(index))
 
-        print(file_path)
-
         # Open with system default application
         if os.name == 'posix':  # macOS and Linux
             subprocess.run(
@@ -71,6 +69,13 @@ def view_media(context, index: int) -> str:
 
     except Exception as e:
         return f"Error viewing media: {str(e)}"
+
+@cmd_registry.register("reply", "Reply to a message in the chat")
+def reply_to_message(context) -> str:
+    """
+    Returns the reply signal to allow user to select message to reply to.
+    """
+    return "__REPLY__"
 
 @cmd_registry.register("emoji", "Send an emoji based on its name")
 def send_emoji(context, emoji_name: str) -> str:
