@@ -49,7 +49,10 @@ def view_media(context, index: int) -> str:
     """
     chat: DirectChat = context["chat"]
     try:
-        file_path = chat.media_download(int(index))
+        file_path = chat.media_url_download(int(index))
+
+        if file_path is None:
+            return "URL opened in browser"
 
         # Open with system default application
         if os.name == 'posix':  # macOS and Linux
