@@ -105,19 +105,30 @@ class ClientWrapper:
         self.config.set("login.current_username", username)
         return cl
 
-    def login_by_session(self):
+    def login_by_session(self) -> instagrapi.Client:
+        """
+        Login using session file
+        If this fails it will prompt the user to cleanup and relogin.
+        NOTE: This may happen intermittently due to Instagram's security measures.
+        """
         session_path = self.session_manager.get_session_path()
-        
+
         cl = instagrapi.Client()
         cl.delay_range = [1, 3]
-        typer.echo(f"Attempting to login with session...")
+        typer.echo("Attempting to login with session...")
         cl.load_settings(str(session_path))
-        sessionId = cl.settings["authorization_data"]["sessionid"]
-        cl.login_by_sessionid(sessionId)
-        cl.get_timeline_feed()  # Test if session is valid
+        session_id = cl.settings["authorization_data"]["sessionid"]
+        try:
+            cl.login_by_sessionid(session_id)
+            # NOTE: I commented out the line below since I suspect it is causing API issues and slows down
+            # cl.get_timeline_feed()  # Test if session is valid
+        except Exception as e:
+            typer.echo(f"Failed to login with session: {e}")
+            typer.echo("Suggested action: 'instagram cleanup' and relogin.")
         self.insta_client = cl
         self.session_manager.save_session(self)
         self.config.set("login.current_username", cl.username)
+
         return cl
 
     def logout(self):
@@ -125,3 +136,27 @@ class ClientWrapper:
         self.insta_client.logout()
         self.session_manager.delete_session()
         self.config.set("login.current_username", None)
+
+def cleanup(delete_all: bool) -> None:
+    """Cleanup cache and temporary files"""
+    session = SessionManager(None)
+    session.delete_session()
+    typer.echo("Session file cleaned up")
+
+    if not delete_all:
+        return
+
+    _config = configs.Config()
+    cache_dir = Path(_config.get("advanced.cache_dir")).expanduser()
+    media_dir = Path(_config.get("advanced.media_dir")).expanduser()
+
+    # Cleanup
+    typer.echo(f"Cleaning up cache: {cache_dir, media_dir}")
+    if cache_dir.exists():
+        for file in cache_dir.iterdir():
+            file.unlink()
+    
+    if media_dir.exists():
+        for file in media_dir.iterdir():
+            file.unlink()
+    typer.echo("Cleanup complete")

@@ -1,5 +1,5 @@
 import typer
-from instagram import auth, chat_ui, api, configs
+from instagram import auth, chat_ui, api, configs, client
 from art import text2art, tprint
 
 app = typer.Typer()
@@ -71,6 +71,11 @@ def config(
 ):
     """Manage Instagram CLI configuration"""
     configs.config(get, set, list, edit)
+
+@app.command()
+def cleanup(d_all: bool = typer.Option(True, "--all", help="Cleanup cache and temporary files")):
+    """Cleanup cache and temporary files"""
+    client.cleanup(d_all)
 
 if __name__ == "__main__":
     app()
