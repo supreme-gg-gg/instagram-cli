@@ -13,6 +13,7 @@ import threading
 import curses
 from enum import Enum, auto
 import typer
+from typing import List, Tuple
 
 from instagram.client import ClientWrapper
 from instagram.api import DirectMessages, DirectChat
@@ -48,7 +49,7 @@ class ChatInterface:
         self.direct_chat = direct_chat
         self.mode = ChatMode.CHAT
         self.height, self.width = screen.getmaxyx()
-        self.messages = []
+        self.messages: List[Tuple[str, str]] = []
         self.selection = 0
         self.selected_message_id = None
         
@@ -94,7 +95,8 @@ class ChatInterface:
 
     def _update_chat_window(self):
         """
-        Write chat messages to the chat window.
+        Write chat messages to the chat window with word wrapping.
+        This version also breaks up extremely long words that cannot fit on one line.
         """
         self.chat_win.erase()
         # stop_event = threading.Event()
@@ -102,15 +104,74 @@ class ChatInterface:
         # loading_thread.start()
         
         display_messages = self.messages[-(self.height - 5):]
-        for idx, msg in enumerate(display_messages):
-            if idx < self.height - 5:
-                if idx == self.selection and self.mode == ChatMode.REPLY:
-                    self.chat_win.attron(curses.A_REVERSE)
-                    self.chat_win.addstr(idx, 0, msg[:self.width - 1])
-                    self.chat_win.attroff(curses.A_REVERSE)
-                else:
-                    self.chat_win.addstr(idx, 0, msg[:self.width - 1])
+        current_line = 0
+        max_lines = self.height - 5
         
+        # Track the starting line for each message
+        message_line_map = {}
+        current_message_idx = 0
+
+        for msg in display_messages:
+            if current_line >= max_lines:
+                break
+
+            sender, content = msg
+            sender += ": "
+            message_line_map[current_message_idx] = current_line
+
+            sender_width = len(sender)
+            content_width = self.width - sender_width - 1
+
+            # Check if this is the selected message
+            is_selected = current_message_idx == self.selection and self.mode == ChatMode.REPLY
+
+            if is_selected:
+                self.chat_win.attron(curses.A_REVERSE)
+
+            self.chat_win.addstr(current_line, 0, sender)
+
+            words = content.split()
+            line_buffer = []
+            current_width = 0
+
+            def flush_line():
+                nonlocal current_line, line_buffer, current_width
+                if line_buffer and current_line < max_lines:
+                    line_content = " ".join(line_buffer)
+                    # If selected, ensure the continuation lines are also highlighted
+                    if is_selected:
+                        self.chat_win.attron(curses.A_REVERSE)
+                    self.chat_win.addstr(current_line, sender_width, line_content)
+                    current_line += 1
+                line_buffer.clear()
+                current_width = 0
+
+            for word in words:
+                while len(word) > 0:
+                    space_needed = 1 if line_buffer else 0
+                    if current_width + len(word) + space_needed <= content_width:
+                        line_buffer.append(word)
+                        current_width += len(word) + space_needed
+                        word = ""
+                    else:
+                        space_left = content_width - current_width - space_needed
+                        chunk = word[:space_left]
+                        word = word[space_left:]
+                        line_buffer.append(chunk)
+                        flush_line()
+                        if current_line >= max_lines:
+                            break
+                if current_line >= max_lines:
+                    break
+
+            if line_buffer and current_line < max_lines:
+                flush_line()
+
+            if is_selected:
+                self.chat_win.attroff(curses.A_REVERSE)
+
+            current_message_idx += 1
+
         # stop_event.set()
         # loading_thread.join()
         self.chat_win.refresh()

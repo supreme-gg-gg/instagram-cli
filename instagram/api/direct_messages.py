@@ -83,12 +83,14 @@ class DirectChat:
         """
         self.thread.messages = self.client.insta_client.direct_messages(self.thread_id, amount=num_messages)
     
-    def get_chat_history(self) -> Tuple[List[str], Dict[int, dict]]:
+    def get_chat_history(self) -> Tuple[List[Tuple[str, str]], Dict[int, dict]]:
         """
         Return list of messages in the chat history and a dictionary of media items.
         Returns:
             Tuple containing:
-            - List of formatted message strings (media messages include indices)
+            - List of tuples of:
+                - string representing message senders
+                - formatted message strings (media messages include indices)
             - Dictionary mapping indices to media items
         """
         chat = []
@@ -107,7 +109,7 @@ class DirectChat:
             )
 
             if message.item_type == 'text':
-                chat.append(f"{sender}: {message.text}")
+                chat.append((sender, f"{message.text}"))
             else:
                 try:
                     # print(message)
@@ -170,9 +172,9 @@ class DirectChat:
                     else:
                         media_placeholder = f"[Sent a {media_items[media_index]['type']} (use the Instagram app to view it)]"
 
-                    chat.append(f"{sender}: {media_placeholder}")
+                    chat.append((sender, f"{media_placeholder}"))
                 except Exception as e:
-                    chat.append(f"{sender}: [Error: {repr(e)}]")
+                    chat.append((sender, f"[Error: {repr(e)}]"))
                     # chat.append("Error")
                 finally:
                     media_index += 1
