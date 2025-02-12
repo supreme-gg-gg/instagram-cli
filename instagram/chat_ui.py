@@ -150,7 +150,6 @@ class ChatInterface:
             return Signal.QUIT
 
         if len(user_input) > 1 and user_input.startswith(':'):
-            self.mode = ChatMode.COMMAND
             return self._handle_command(user_input[1:])
         
         return self._handle_chat_message(user_input)
@@ -171,6 +170,7 @@ class ChatInterface:
                 self.mode = ChatMode.CHAT
                 self.selected_message_id = None
                 self._update_chat_window()
+                self._update_status_bar()
                 return
             elif key == ord('\n'): # Enter
                 # NOTE: temporary fix to adjust the index, seems like all one off
@@ -181,6 +181,7 @@ class ChatInterface:
         """
         Executes a command, listen for special return signals or display the result.
         """
+        self.mode = ChatMode.COMMAND
         result = cmd_registry.execute(command, chat=self.direct_chat, screen=self.screen)
         self._update_status_bar(msg=command)
         if result == "__BACK__":
@@ -193,6 +194,8 @@ class ChatInterface:
         else:
             self._display_command_result(result)
             curses.napms(3000)
+            self.mode = ChatMode.CHAT
+            self._update_status_bar()
         return Signal.CONTINUE
     
     def _display_command_result(self, result: str):
@@ -214,7 +217,10 @@ class ChatInterface:
             if self.selected_message_id and self.mode == ChatMode.REPLY:
                 self.direct_chat.send_reply_text(message, self.selected_message_id)
                 self.selected_message_id = None
-                self.mode = ChatMode.CHAT # Exit reply mode
+                # Exit reply mode
+                self.mode = ChatMode.CHAT
+                self._update_chat_window()
+                self._update_status_bar()
             else:
                 self.direct_chat.send_text(message)
             return Signal.CONTINUE
@@ -225,10 +231,10 @@ class ChatInterface:
 
     def run(self) -> Signal:
         """Main loop for the chat interface"""
-        while self.handle_input() != Signal.QUIT:
+        while (input_signal := self.handle_input()) not in [Signal.QUIT, Signal.BACK]:
             pass
         self.stop_refresh.set()
-        return Signal.QUIT
+        return input_signal
 
 def start_chat(username: str = None):
     """
@@ -244,8 +250,9 @@ def start_chat(username: str = None):
 
     dm = DirectMessages(client)
     # Fetch up to 10 chats with a limit of 20 messages per chat
-    if username is None:
-        dm.fetch_chat_data(num_chats=10, num_message_limit=20)
+    # We might want to fetch chat list only if user did not specify a recipient for better performance
+    # if username is None:
+    dm.fetch_chat_data(num_chats=10, num_message_limit=20)
     curses.wrapper(lambda stdscr: main_loop(stdscr, dm, username))
 
 def main_loop(screen, dm: DirectMessages, username: str) -> None:
