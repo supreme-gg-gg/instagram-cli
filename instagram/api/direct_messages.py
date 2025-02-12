@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple, Protocol
 from pathlib import Path
 # import hashlib
 
-from .utils import setup_logging
+# from .utils import setup_logging
 
 from instagrapi import Client as InstaClient
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
@@ -11,7 +11,7 @@ from instagrapi.extractors import *
 from pydantic import ValidationError
 # from instagram import configs
 
-logger = setup_logging(__name__)
+# logger = setup_logging(__name__)
 
 class ClientWrapper(Protocol):
     insta_client: InstaClient
@@ -220,7 +220,7 @@ class DirectChat:
         Parameters:
         - message_id: ID of the message to search for.
         """
-        logger.info(f"Searching for message ID: {message_id}")
+        # logger.info(f"Searching for message ID: {message_id}")
         for message in self.thread.messages:
             if message.id == message_id:
                 return message
@@ -237,7 +237,7 @@ class DirectChat:
         if not (reply_to_message := self.search_message_by_id(message_id)):
             return "Message not found"
         
-        logger.info(f"Replying to message: {reply_to_message.text[:10]}...")
+        # logger.info(f"Replying to message: {reply_to_message.text[:10]}...")
 
         # Then we can send the reply
         self.client.insta_client.direct_send(message, thread_ids=[self.thread_id], reply_to_message=reply_to_message)
