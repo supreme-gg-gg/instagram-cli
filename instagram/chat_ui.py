@@ -95,19 +95,20 @@ class ChatInterface:
 
     def _update_chat_window(self):
         """
-        Write chat messages to the chat window with word wrapping.
+        Write chat messages to the chat window with word wrapping and colored sender names.
         This version also breaks up extremely long words that cannot fit on one line.
         """
         self.chat_win.erase()
-        # stop_event = threading.Event()
-        # loading_thread = threading.Thread(target=create_loading_screen, args=(self.screen, stop_event))
-        # loading_thread.start()
+        
+        # Initialize colors for sender names
+        curses.init_pair(4, curses.COLOR_RED, curses.COLOR_BLACK)
+        curses.init_pair(5, curses.COLOR_BLUE, curses.COLOR_BLACK)
+        curses.init_pair(6, curses.COLOR_GREEN, curses.COLOR_BLACK)
         
         display_messages = self.messages[-(self.height - 5):]
         current_line = 0
         max_lines = self.height - 5
         
-        # Track the starting line for each message
         message_line_map = {}
         current_message_idx = 0
 
@@ -116,10 +117,10 @@ class ChatInterface:
                 break
 
             sender, content = msg
-            sender += ": "
+            sender_text = sender + ": "
             message_line_map[current_message_idx] = current_line
 
-            sender_width = len(sender)
+            sender_width = len(sender_text)
             content_width = self.width - sender_width - 1
 
             # Check if this is the selected message
@@ -127,8 +128,12 @@ class ChatInterface:
 
             if is_selected:
                 self.chat_win.attron(curses.A_REVERSE)
-
-            self.chat_win.addstr(current_line, 0, sender)
+            
+            # Color and bold sender name based on hash
+            color_idx = (hash(sender) % 3) + 4
+            self.chat_win.attron(curses.color_pair(color_idx) | curses.A_BOLD)
+            self.chat_win.addstr(current_line, 0, sender_text)
+            self.chat_win.attroff(curses.color_pair(color_idx) | curses.A_BOLD)
 
             words = content.split()
             line_buffer = []
@@ -138,7 +143,6 @@ class ChatInterface:
                 nonlocal current_line, line_buffer, current_width
                 if line_buffer and current_line < max_lines:
                     line_content = " ".join(line_buffer)
-                    # If selected, ensure the continuation lines are also highlighted
                     if is_selected:
                         self.chat_win.attron(curses.A_REVERSE)
                     self.chat_win.addstr(current_line, sender_width, line_content)
@@ -170,10 +174,10 @@ class ChatInterface:
             if is_selected:
                 self.chat_win.attroff(curses.A_REVERSE)
 
+            # Add small spacing between messages
+            current_line += 1
             current_message_idx += 1
 
-        # stop_event.set()
-        # loading_thread.join()
         self.chat_win.refresh()
         self._update_status_bar()
 
