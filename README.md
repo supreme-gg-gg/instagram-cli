@@ -39,6 +39,7 @@ The following commands will be available after installing the package:
 - `instagram`: title art!
 - `instagram --help`: view available commands
 <img width="1280" alt="Screenshot 2025-02-12 at 1 13 27 AM" src="https://github.com/user-attachments/assets/ed332ea5-b30c-42e5-a0ae-7ad4b1170d5a" />
+
 - `instagram login`: login with username and password and saves session cache
 - `instagram logout`: logout and removes session
 - `instagram chat`: chat without brainrot and convenient commands

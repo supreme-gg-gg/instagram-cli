@@ -99,6 +99,10 @@ class ChatInterface:
         This version also breaks up extremely long words that cannot fit on one line.
         """
         self.chat_win.erase()
+        # stop_event = threading.Event()
+        # loading_thread = threading.Thread(target=create_loading_screen, args=(self.screen, stop_event))
+        # loading_thread.start()
+        
         display_messages = self.messages[-(self.height - 5):]
         current_line = 0
         max_lines = self.height - 5
@@ -168,6 +172,8 @@ class ChatInterface:
 
             current_message_idx += 1
 
+        # stop_event.set()
+        # loading_thread.join()
         self.chat_win.refresh()
         self._update_status_bar()
 
@@ -181,7 +187,7 @@ class ChatInterface:
             status_text = "[CHAT] Type :help for commands"
         elif self.mode == ChatMode.REPLY:
             self.status_bar.bkgd(' ', curses.color_pair(3))
-            status_text = "[REPLY] Use ↑↓ to select, Enter to confirm, Esc to cancel"
+            status_text = "[REPLY] Use ↑↓ to select, Enter to confirm, Esc to exit"
         elif self.mode == ChatMode.COMMAND:
             self.status_bar.bkgd(' ', curses.color_pair(2))
             status_text = f"[COMMAND] Command {msg} executed. Press any key to continue"
@@ -223,10 +229,10 @@ class ChatInterface:
         """
         while True:
             key = self.screen.getch()
-            if key == curses.KEY_UP and self.selection > 0:
+            if key in (curses.KEY_UP, ord('k')) and self.selection > 0:
                 self.selection -= 1
                 self._update_chat_window()
-            elif key == curses.KEY_DOWN and self.selection < len(self.messages) - 1:
+            elif key in (curses.KEY_DOWN, ord('j')) and self.selection < len(self.messages) - 1:
                 self.selection += 1
                 self._update_chat_window()
             elif key == 27:  # ESC
@@ -256,7 +262,7 @@ class ChatInterface:
             return Signal.CONTINUE
         else:
             self._display_command_result(result)
-            curses.napms(3000)
+            curses.napms(2000)
             self.mode = ChatMode.CHAT
             self._update_status_bar()
         return Signal.CONTINUE
@@ -299,33 +305,67 @@ class ChatInterface:
         self.stop_refresh.set()
         return input_signal
 
+def create_loading_screen(screen, stop_event: threading.Event):
+    """
+    Create a loading screen with a spinning icon while fetching chat data.
+    """
+    screen.clear()
+    curses.curs_set(0)
+    height, width = screen.getmaxyx()
+    loading_text = "Loading chat data..."
+    spinner = ['|', '/', '-', '\\']
+    idx = 0
+
+    while not stop_event.is_set():
+        screen.clear()
+        screen.addstr(height // 2, (width - len(loading_text)) // 2, loading_text)
+        screen.addstr(height // 2 + 1, width // 2, spinner[idx % len(spinner)])
+        screen.refresh()
+        idx = (idx + 1) % len(spinner)
+        time.sleep(0.2)
+
+    screen.clear()
+    screen.refresh()
+
 def start_chat(username: str = None):
     """
     Wrapper function to launch chat UI.
-    Fetches chat data and starts the main loop.
+    Logs in the user and pass the client to the curses main loop.
     """
     client = ClientWrapper()
     try:
         client.login_by_session()
-    except Exception as e:
+    except Exception:
         typer.echo("Please login first.\nTry 'instagram login'")
         return
+
+    curses.wrapper(lambda stdscr: main_loop(stdscr, client, username))
+
+def main_loop(screen, client: ClientWrapper, username: str) -> None:
+    """
+    Main loop for chat interface. Chat loading happens in the main loop to enable loading screen.
+    Parameters:
+    - screen: Curses screen object
+    - client: ClientWrapper object for dm fetching
+    - username: Optional recipient's username to chat with
+    """
+    # Create a loading screen while fetching chat data
+    stop_event = threading.Event()
+    loading_thread = threading.Thread(target=create_loading_screen, args=(screen, stop_event))
+    loading_thread.start()
 
     dm = DirectMessages(client)
     # Fetch up to 10 chats with a limit of 20 messages per chat
     # We might want to fetch chat list only if user did not specify a recipient for better performance
     # if username is None:
     dm.fetch_chat_data(num_chats=10, num_message_limit=20)
-    curses.wrapper(lambda stdscr: main_loop(stdscr, dm, username))
 
-def main_loop(screen, dm: DirectMessages, username: str) -> None:
-    """
-    Main loop for chat interface.
-    Parameters:
-    - screen: Curses screen object
-    - dm: DirectMessages object with a list of chats fetched
-    - username: Optional recipient's username to chat with
-    """
+    stop_event.set()
+    loading_thread.join()
+
+    screen.clear()
+    screen.refresh()
+
     while True:
         if username:
             selected_chat = dm.search_by_username(username)
@@ -337,14 +377,14 @@ def main_loop(screen, dm: DirectMessages, username: str) -> None:
             # wait for user to select a chat
             selected_chat = chat_menu(screen, dm)
 
-        if not selected_chat: # user quit
+        if selected_chat == Signal.QUIT: # user quit
             break
 
         # continue loop to show chat menu again
         if chat_interface(screen, selected_chat) == Signal.QUIT:
             break
 
-def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
+def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
     """
     Display the chat list and allow the user to select one.
     Parameters (passed from main loop):
@@ -353,6 +393,9 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
     Returns:
     - DirectChat object if a chat is selected, None if the user quits
     """
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+
     curses.curs_set(1)
     screen.keypad(True)
     chats = list(dm.chats.values())
@@ -361,15 +404,24 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
 
     search_query = ""
     placeholder = "Search for chat by username"
-    search_win = curses.newwin(3, width, height-3, 0)
+    search_win = curses.newwin(3, width, height-4, 0)
+
+    # Static footer
+    footer = curses.newwin(1, width, height - 1, 0)
+
+    def _draw_footer():
+        footer.erase()
+        footer.bkgd(' ', curses.color_pair(1))
+        footer.addstr(0, 0, "[CHAT MENU] Select a chat (Use arrow keys and press ENTER, or ESC to quit)"[:width - 1])
+        footer.refresh()
 
     while True:
+        # Main screen
         screen.clear()
-        screen.addstr(0, 0, "Select a chat (Use arrow keys and press ENTER, or press 'q' to quit):")
         for idx, chat in enumerate(chats):
             title = chat.get_title()
-            y_pos = idx + 2
-            x_pos = 2  # Add left margin
+            y_pos = idx
+            x_pos = 2
         
             # Ensure we don't exceed window boundaries
             if y_pos < height:
@@ -382,8 +434,6 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
                 else:
                     screen.addstr(y_pos, x_pos, title[:width - x_pos - 1])
 
-        screen.refresh()
-
         # Search bar
         search_win.erase()
         search_win.border()
@@ -393,7 +443,11 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
             search_win.attroff(curses.A_DIM)
         else:
             search_win.addstr(1, 2, search_query[:width-4])
+
+        # Refresh windows
+        screen.refresh()
         search_win.refresh()
+        _draw_footer()
 
         key = screen.getch()
         if key == curses.KEY_UP and selection > 0:
@@ -408,6 +462,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
                     search_win.border()
                     search_win.addstr(1, 2, "Searching...", curses.A_BOLD)
                     search_win.refresh()
+                    _draw_footer()
                     
                     # Perform search
                     search_result = dm.search_by_username(search_query)
@@ -419,6 +474,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
                         search_win.border()
                         search_win.addstr(1, 2, f"No results found for @{search_query}", curses.A_DIM)
                         search_win.refresh()
+                        _draw_footer()
                         curses.napms(1500)  # Show for 1.5 seconds
                         search_query = ""  # Clear search query
                 except Exception as e:
@@ -427,12 +483,14 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | None:
                     search_win.border()
                     search_win.addstr(1, 2, f"Search error: {str(e)}", curses.A_DIM)
                     search_win.refresh()
+                    footer.refresh()
                     curses.napms(1500)
                     search_query = ""
             elif chats:
                 return chats[selection]
-        elif key in (ord("q"), ord("Q")):
-            return None
+        # Use esc to quit
+        elif key == 27:
+            return Signal.QUIT
         elif key in (curses.KEY_BACKSPACE, 127): # Backspace
             search_query = search_query[:-1]
         elif 32 <= key <= 126: # Printable characters
@@ -448,9 +506,8 @@ def chat_interface(screen, direct_chat: DirectChat) -> Signal:
     Returns:
     - True if the user wants to return to chat menu, False if they want to quit
     """
-
     curses.curs_set(1)
-    screen.clear()
+    # screen.clear()
 
     interface = ChatInterface(screen, direct_chat)
     return interface.run()
