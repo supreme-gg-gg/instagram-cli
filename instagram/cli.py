@@ -38,17 +38,18 @@ def main(ctx: typer.Context):
         # time.sleep(0.5)  # Simulate loading effect
 
 @app.command()
-def login(username: str = None, password: str = None):
+def login(username: str = typer.Option(None, "-u", "--username"), 
+         password: str = typer.Option(None, "-p", "--password")):
     """Login to Instagram"""
     auth.login(username, password)
 
 @app.command()
-def logout(username: str = None):
+def logout(username: str = typer.Option(None, "-u", "--username")):
     """Logout from Instagram"""
     auth.logout(username)
 
 @app.command()
-def chat(username: str = None):
+def chat(username: str = typer.Option(None, "-u", "--username")):
     """Open chat UI"""
     chat_ui.start_chat(username)
 
@@ -58,16 +59,16 @@ def notify():
     api.show_updates()
 
 @app.command()
-def stats(days: int = 14):
+def stats(days: int = typer.Option(14, "-d", "--days", help="Number of days to show analytics")):
     """Show analytics"""
     api.analytics_bar_graph(last_n_days=days)
 
 @app.command()
 def config(
-    get: str = typer.Option(None, "--get", help="Get config value"),
-    set: tuple[str, str] = typer.Option(None, "--set", help="Set config value"),
-    list: bool = typer.Option(False, "--list", help="List all config values"),
-    edit: bool = typer.Option(False, "--edit", help="Open config file in default editor")
+    get: str = typer.Option(None, "-g", "--get", help="Get config value"),
+    set: tuple[str, str] = typer.Option(None, "-s", "--set", help="Set config value"),
+    list: bool = typer.Option(False, "-l", "--list", help="List all config values"),
+    edit: bool = typer.Option(False, "-e", "--edit", help="Open config file in default editor")
 ):
     """Manage Instagram CLI configuration"""
     configs.config(get, set, list, edit)

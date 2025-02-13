@@ -125,6 +125,7 @@ def show_updates():
 
     curses.wrapper(display_updates, data)
 
+# TODO: This technically can generate the graph dynamically
 class CursesBarGraph:
     def __init__(self):
         self._window = None
@@ -137,7 +138,7 @@ class CursesBarGraph:
     def __exit__(self, exc_type, exc_value, traceback):
         curses.endwin()
 
-    def Update(self, values):
+    def Update(self, values, hold=False):
         assert self._window
         h, w = self._window.getmaxyx()
         self._max = max(1, max(values))
@@ -146,7 +147,7 @@ class CursesBarGraph:
 
         spacing = 2
         max_col_pos = 0
-        for i, v in enumerate(_AveragedChunks(values, per_bucket)):
+        for i, v in enumerate(self._AveragedChunks(values, per_bucket)):
             col_pos = i * spacing
             if col_pos < w:
                 self._DrawBar(col_pos, v, h)
@@ -154,6 +155,13 @@ class CursesBarGraph:
 
         self._DrawAxisLabels(h, w, max_col_pos, len(values))
         self._window.refresh()
+
+        if hold:
+            self._window.nodelay(False)
+            ch = self._window.getch()
+            while ch != ord('q'):
+                ch = self._window.getch()
+            raise KeyboardInterrupt
 
         # Allow quitting by pressing 'q'
         self._window.nodelay(True)
@@ -175,18 +183,19 @@ class CursesBarGraph:
             max_column_str
         )
 
-def _AveragedChunks(iterable, n):
-    summed_v = 0
-    summed_count = 0
-    for v in iterable:
-        summed_v += v
-        summed_count += 1
-        if summed_count >= n:
+    @staticmethod
+    def _AveragedChunks(iterable, n):
+        summed_v = 0
+        summed_count = 0
+        for v in iterable:
+            summed_v += v
+            summed_count += 1
+            if summed_count >= n:
+                yield float(summed_v) / summed_count
+                summed_v = 0
+                summed_count = 0
+        if summed_count > 0:
             yield float(summed_v) / summed_count
-            summed_v = 0
-            summed_count = 0
-    if summed_count > 0:
-        yield float(summed_v) / summed_count
 
 def get_brainrot_history(last_n_days):
     """Fetches liked Reels data and returns a list of counts per day."""
@@ -210,15 +219,24 @@ def get_brainrot_history(last_n_days):
     return [reels_per_day.get(day, 0) for day in days][::-1]
 
 def analytics_bar_graph(last_n_days=7):
-    """Draw bar graph once and wait until the user presses 'q' to quit."""
+    """Draw bar graph gradually and wait until the user presses 'q' to quit."""
     with CursesBarGraph() as bar_graph:
         values = get_brainrot_history(last_n_days)
         try:
-            bar_graph.Update(values)
-            while True:
-                time.sleep(0.1)  # Keep the display until 'q' is pressed
+            # Start with all zeros
+            current_values = [0] * last_n_days
+            
+            # Update 2 days at a time
+            for i in range(0, last_n_days):
+                current_values[i:i+1] = values[i:i+1]
+                if i >= last_n_days - 1:
+                    bar_graph.Update(current_values, hold=True)
+                else:
+                    bar_graph.Update(current_values)
+                time.sleep(0.2)  # Add delay for animation effect
+
         except KeyboardInterrupt:
-            pass
+            return
 
 if __name__ == '__main__':
     # analytics_bar_graph(30)

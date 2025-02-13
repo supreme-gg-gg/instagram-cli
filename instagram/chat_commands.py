@@ -6,10 +6,11 @@ import subprocess
 # import tempfile
 # from typing import List, Tuple
 
-from instagram.commands import CommandRegistry
-from instagram.api import DirectChat
 import tkinter as tk
 from tkinter import filedialog
+
+from instagram.commands import CommandRegistry
+from instagram.api import DirectChat
 
 cmd_registry = CommandRegistry()
 
