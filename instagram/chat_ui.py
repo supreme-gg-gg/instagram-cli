@@ -11,8 +11,6 @@ How this works:
 import time
 import threading
 import curses
-import curses.textpad
-import curses.ascii
 from enum import Enum, auto
 import typer
 from typing import List, Tuple
@@ -38,6 +36,103 @@ class Signal(Enum):
     CONTINUE = auto()
     BACK = auto()
     QUIT = auto()
+
+class InputBox:
+    """
+    A robust input box component that handles cursor movements and text editing.
+    """
+    def __init__(self, window, y: int, x: int, width: int):
+        self.window = window
+        self.y = y
+        self.x = x
+        self.width = width
+        self.buffer = []  # List of characters
+        self.cursor_pos = 0
+        self.display_offset = 0  # For horizontal scrolling
+
+    def handle_key(self, key: int) -> str | None:
+        """
+        Handle a keypress. Returns the final string if Enter is pressed,
+        None otherwise.
+        """
+        if key == ord('\n'):  # Enter
+            return ''.join(self.buffer)
+        
+        elif key in (curses.KEY_BACKSPACE, 127):  # Backspace
+            if self.cursor_pos > 0:
+                self.buffer.pop(self.cursor_pos - 1)
+                self.cursor_pos -= 1
+                self._adjust_display_offset()
+        
+        elif key == curses.KEY_DC:  # Delete
+            if self.cursor_pos < len(self.buffer):
+                self.buffer.pop(self.cursor_pos)
+                self._adjust_display_offset()
+        
+        elif key == curses.KEY_LEFT:  # Left arrow
+            if self.cursor_pos > 0:
+                self.cursor_pos -= 1
+                self._adjust_display_offset()
+        
+        elif key == curses.KEY_RIGHT:  # Right arrow
+            if self.cursor_pos < len(self.buffer):
+                self.cursor_pos += 1
+                self._adjust_display_offset()
+        
+        elif key == curses.KEY_HOME:  # Home
+            self.cursor_pos = 0
+            self.display_offset = 0
+        
+        elif key == curses.KEY_END:  # End
+            self.cursor_pos = len(self.buffer)
+            self._adjust_display_offset()
+        
+        elif 32 <= key <= 126:  # Printable characters
+            self.buffer.insert(self.cursor_pos, chr(key))
+            self.cursor_pos += 1
+            self._adjust_display_offset()
+        
+        return None
+
+    def _adjust_display_offset(self):
+        """Adjust horizontal scroll position to keep cursor visible"""
+        visible_width = self.width - 2  # Account for borders
+        
+        # If cursor would be off the right edge
+        while self.cursor_pos - self.display_offset >= visible_width:
+            self.display_offset += 1
+            
+        # If cursor would be off the left edge
+        while self.cursor_pos < self.display_offset:
+            self.display_offset -= 1
+            
+        # Keep display_offset >= 0
+        self.display_offset = max(0, self.display_offset)
+
+    def draw(self):
+        """Draw the input box and its contents"""
+        self.window.erase()
+        self.window.border()
+        
+        # Calculate visible portion of text
+        visible_width = self.width - 2
+        visible_text = ''.join(self.buffer[self.display_offset:self.display_offset + visible_width])
+        
+        # Draw text
+        self.window.addstr(self.y, self.x + 1, visible_text)
+        
+        # Position cursor
+        cursor_x = self.x + 1 + (self.cursor_pos - self.display_offset)
+        self.window.move(self.y, cursor_x)
+        
+        self.window.refresh()
+
+    def clear(self):
+        """Clear the input buffer"""
+        self.buffer.clear()
+        self.cursor_pos = 0
+        self.display_offset = 0
+
 
 class ChatInterface:
     """
@@ -66,6 +161,7 @@ class ChatInterface:
         # Initialize windows
         self.chat_win = curses.newwin(self.height - 4, self.width, 0, 0)
         self.input_win = curses.newwin(3, self.width, self.height - 4, 0)
+        self.input_box = InputBox(self.input_win, 1, 1, self.width - 2)
         self.status_bar = curses.newwin(1, self.width, self.height - 1, 0)
         
         # Setup colors
@@ -229,26 +325,35 @@ class ChatInterface:
     def handle_input(self) -> Signal:
         """
         Handle user input based on the current mode.
-        Returns False if the user wants to quit.
+        Returns Signal enum indicating what to do next.
         """
         if self.mode == ChatMode.REPLY:
             self._handle_reply_input()
         
-        # Clear and redraw input window with border
-        self.input_win.erase()
-        self.input_win.border()
-        self.input_win.refresh()
+        self.input_box.clear()
+        self.input_box.draw()
         
-        user_input = create_input_box(self.input_win, 1, 1, self.width-2)
-
-        if user_input.lower() in ("exit", "quit"):
-            return Signal.QUIT
-
-        if len(user_input) > 1 and user_input.startswith(':'):
-            self.mode = ChatMode.COMMAND
-            return self._handle_command(user_input[1:])
-        
-        return self._handle_chat_message(user_input)
+        while True:
+            key = self.screen.getch()
+            
+            if key == 27:  # ESC
+                return Signal.QUIT
+                
+            result = self.input_box.handle_key(key)
+            self.input_box.draw()
+            
+            if result is not None:  # Enter was pressed
+                if not result:  # Empty input
+                    continue
+                    
+                if result.lower() in ("exit", "quit"):
+                    return Signal.QUIT
+                    
+                if len(result) > 1 and result.startswith(':'):
+                    self.mode = ChatMode.COMMAND
+                    return self._handle_command(result[1:])
+                    
+                return self._handle_chat_message(result)
 
     def _handle_reply_input(self) -> bool:
         """
@@ -423,80 +528,6 @@ def main_loop(screen, client: ClientWrapper, username: str) -> None:
         # continue loop to show chat menu again
         if chat_interface(screen, selected_chat) == Signal.QUIT:
             break
-
-def create_input_box(win, y: int, x: int, width: int) -> str:
-    """
-    Create an editable input box with cursor movement support and text wrapping.
-    Returns the entered text as string.
-    """
-    max_height = 5  # Maximum number of lines for wrapped text
-    visible_width = width - 4  # Account for borders
-    edit_win = win.derwin(max_height, visible_width, y, x)
-    edit_win.keypad(True)
-    
-    text_buffer = []
-    cursor_x = 0
-
-    def get_cursor_position(pos):
-        """Calculate cursor's line and column position"""
-        line = pos // visible_width
-        col = pos % visible_width
-        return line, col
-
-    def display_wrapped_text():
-        """Display text with wrapping"""
-        edit_win.erase()
-        text = ''.join(text_buffer)
-        for i, start in enumerate(range(0, len(text), visible_width)):
-            if i < max_height:
-                line = text[start:start + visible_width]
-                edit_win.addstr(i, 0, line)
-        
-        # Position cursor
-        line, col = get_cursor_position(cursor_x)
-        if line < max_height:
-            edit_win.move(line, col)
-    
-    while True:
-        display_wrapped_text()
-        win.refresh()
-        edit_win.refresh()
-
-        ch = edit_win.getch()
-        if ch == ord('\n'):  # Enter
-            break
-        elif ch in (curses.KEY_BACKSPACE, 127):  # Backspace
-            if cursor_x > 0:
-                text_buffer.pop(cursor_x - 1)
-                cursor_x -= 1
-        elif ch == curses.KEY_LEFT and cursor_x > 0:
-            cursor_x -= 1
-        elif ch == curses.KEY_RIGHT and cursor_x < len(text_buffer):
-            cursor_x += 1
-        elif ch == curses.KEY_UP:
-            # Move cursor up one line
-            cursor_x = max(0, cursor_x - visible_width)
-        elif ch == curses.KEY_DOWN:
-            # Move cursor down one line if there's text there
-            if cursor_x + visible_width <= len(text_buffer):
-                cursor_x += visible_width
-        elif ch == curses.KEY_HOME:
-            # Move to start of current line
-            cursor_x = (cursor_x // visible_width) * visible_width
-        elif ch == curses.KEY_END:
-            # Move to end of current line or end of text
-            line_start = (cursor_x // visible_width) * visible_width
-            next_line_start = line_start + visible_width
-            cursor_x = min(len(text_buffer), next_line_start)
-        elif ch == curses.KEY_DC:  # Delete
-            if cursor_x < len(text_buffer):
-                text_buffer.pop(cursor_x)
-        elif 32 <= ch <= 126:  # Printable characters
-            if len(text_buffer) // visible_width < max_height - 1:  # Leave room for one more line
-                text_buffer.insert(cursor_x, chr(ch))
-                cursor_x += 1
-
-    return ''.join(text_buffer)
 
 def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
     """
