@@ -11,6 +11,8 @@ How this works:
 import time
 import threading
 import curses
+import curses.textpad
+import curses.ascii
 from enum import Enum, auto
 import typer
 from typing import List, Tuple
@@ -224,7 +226,7 @@ class ChatInterface:
         self.status_bar.addstr(0, 0, status_text[:self.width - 1])
         self.status_bar.refresh()
 
-    def handle_input(self) -> bool:
+    def handle_input(self) -> Signal:
         """
         Handle user input based on the current mode.
         Returns False if the user wants to quit.
@@ -237,9 +239,7 @@ class ChatInterface:
         self.input_win.border()
         self.input_win.refresh()
         
-        curses.echo()
-        user_input = self.input_win.getstr(1, 1).decode().strip()
-        curses.noecho()
+        user_input = create_input_box(self.input_win, 1, 1, self.width-2)
 
         if user_input.lower() in ("exit", "quit"):
             return Signal.QUIT
@@ -423,6 +423,80 @@ def main_loop(screen, client: ClientWrapper, username: str) -> None:
         # continue loop to show chat menu again
         if chat_interface(screen, selected_chat) == Signal.QUIT:
             break
+
+def create_input_box(win, y: int, x: int, width: int) -> str:
+    """
+    Create an editable input box with cursor movement support and text wrapping.
+    Returns the entered text as string.
+    """
+    max_height = 5  # Maximum number of lines for wrapped text
+    visible_width = width - 4  # Account for borders
+    edit_win = win.derwin(max_height, visible_width, y, x)
+    edit_win.keypad(True)
+    
+    text_buffer = []
+    cursor_x = 0
+
+    def get_cursor_position(pos):
+        """Calculate cursor's line and column position"""
+        line = pos // visible_width
+        col = pos % visible_width
+        return line, col
+
+    def display_wrapped_text():
+        """Display text with wrapping"""
+        edit_win.erase()
+        text = ''.join(text_buffer)
+        for i, start in enumerate(range(0, len(text), visible_width)):
+            if i < max_height:
+                line = text[start:start + visible_width]
+                edit_win.addstr(i, 0, line)
+        
+        # Position cursor
+        line, col = get_cursor_position(cursor_x)
+        if line < max_height:
+            edit_win.move(line, col)
+    
+    while True:
+        display_wrapped_text()
+        win.refresh()
+        edit_win.refresh()
+
+        ch = edit_win.getch()
+        if ch == ord('\n'):  # Enter
+            break
+        elif ch in (curses.KEY_BACKSPACE, 127):  # Backspace
+            if cursor_x > 0:
+                text_buffer.pop(cursor_x - 1)
+                cursor_x -= 1
+        elif ch == curses.KEY_LEFT and cursor_x > 0:
+            cursor_x -= 1
+        elif ch == curses.KEY_RIGHT and cursor_x < len(text_buffer):
+            cursor_x += 1
+        elif ch == curses.KEY_UP:
+            # Move cursor up one line
+            cursor_x = max(0, cursor_x - visible_width)
+        elif ch == curses.KEY_DOWN:
+            # Move cursor down one line if there's text there
+            if cursor_x + visible_width <= len(text_buffer):
+                cursor_x += visible_width
+        elif ch == curses.KEY_HOME:
+            # Move to start of current line
+            cursor_x = (cursor_x // visible_width) * visible_width
+        elif ch == curses.KEY_END:
+            # Move to end of current line or end of text
+            line_start = (cursor_x // visible_width) * visible_width
+            next_line_start = line_start + visible_width
+            cursor_x = min(len(text_buffer), next_line_start)
+        elif ch == curses.KEY_DC:  # Delete
+            if cursor_x < len(text_buffer):
+                text_buffer.pop(cursor_x)
+        elif 32 <= ch <= 126:  # Printable characters
+            if len(text_buffer) // visible_width < max_height - 1:  # Leave room for one more line
+                text_buffer.insert(cursor_x, chr(ch))
+                cursor_x += 1
+
+    return ''.join(text_buffer)
 
 def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
     """
