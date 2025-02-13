@@ -38,7 +38,7 @@ def main(ctx: typer.Context):
         # time.sleep(0.5)  # Simulate loading effect
 
 @app.command()
-def login(username: str = typer.Option(None, "-u", "--username"), 
+def login(username: str = typer.Option(None, "-u", "--username"),
          password: str = typer.Option(None, "-p", "--password")):
     """Login to Instagram"""
     auth.login(username, password)
@@ -74,7 +74,7 @@ def config(
     configs.config(get, set, list, edit)
 
 @app.command()
-def cleanup(d_all: bool = typer.Option(True, "--all", help="Cleanup cache and temporary files")):
+def cleanup(d_all: bool = typer.Option(True, "-a", "--all", help="Cleanup cache and temporary files")):
     """Cleanup cache and temporary files"""
     client.cleanup(d_all)
 
