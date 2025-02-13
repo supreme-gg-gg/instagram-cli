@@ -11,6 +11,7 @@ from instagrapi.extractors import *
 from instagrapi.exceptions import UserNotFound
 from .utils import user_info_by_username_private
 from pydantic import ValidationError
+import webbrowser
 # from instagram import configs
 
 # logger = setup_logging(__name__)
@@ -83,12 +84,14 @@ class DirectChat:
         """
         self.thread.messages = self.client.insta_client.direct_messages(self.thread_id, amount=num_messages)
     
-    def get_chat_history(self) -> Tuple[List[str], Dict[int, dict]]:
+    def get_chat_history(self) -> Tuple[List[Tuple[str, str]], Dict[int, dict]]:
         """
         Return list of messages in the chat history and a dictionary of media items.
         Returns:
             Tuple containing:
-            - List of formatted message strings (media messages include indices)
+            - List of tuples of:
+                - string representing message senders
+                - formatted message strings (media messages include indices)
             - Dictionary mapping indices to media items
         """
         chat = []
@@ -107,7 +110,7 @@ class DirectChat:
             )
 
             if message.item_type == 'text':
-                chat.append(f"{sender}: {message.text}")
+                chat.append((sender, f"{message.text}"))
             else:
                 try:
                     # print(message)
@@ -149,6 +152,9 @@ class DirectChat:
                             'image' if message.media.thumbnail_url else (
                             'audio' if message.media.audio_url else 'unknown'
                         )))
+                    elif message.item_type == "xma_link" and message.text:
+                        media_items[media_index]["media_type"] = 'link'
+                        media_items[media_index]['url'] = message.text
                     elif message.media_share:
                         # Post reshare
                         pass
@@ -157,12 +163,16 @@ class DirectChat:
                     if media_items[media_index]["type"] == 'raven_media':
                         if media_items[media_index]["media_type"] == 'view_once':
                             media_placeholder = "[Sent a view-once media (use the Instagram app to view it)]"
+                        elif media_items[media_index]["media_type"] == 'xma_media_share':
+                            media_placeholder = "[Shared a post (use the Instagram app to view it)]"
                         else:
                             media_placeholder = f"[Sent a {media_items[media_index]['media_type']} #{media_index}]"
                     elif media_items[media_index]["type"] in ['media', 'voice_media']:
                         media_placeholder = f"[Sent a {media_items[media_index]['media_type']} #{media_index}]"
                     elif media_items[media_index]["type"] == 'xma_media_share':
                         media_placeholder = "[Shared a post (use the Instagram app to view it)]"
+                    elif media_items[media_index]["type"] == 'xma_link':
+                        media_placeholder = f"[Sent URL #{media_index}: {media_items[media_index]['url']}]"
                     elif media_items[media_index]["type"] == 'clip':
                         media_placeholder = "[Sent brainrot]"
                     elif media_items[media_index]["type"] == 'animated_media':
@@ -170,9 +180,9 @@ class DirectChat:
                     else:
                         media_placeholder = f"[Sent a {media_items[media_index]['type']} (use the Instagram app to view it)]"
 
-                    chat.append(f"{sender}: {media_placeholder}")
+                    chat.append((sender, f"{media_placeholder}"))
                 except Exception as e:
-                    chat.append(f"{sender}: [Error: {repr(e)}]")
+                    chat.append((sender, f"[Error: {repr(e)}]"))
                     # chat.append("Error")
                 finally:
                     media_index += 1
@@ -286,9 +296,10 @@ class DirectChat:
         """
         raise NotImplementedError("send_emoji is not implemented yet")
     
-    def media_download(self, media_index: int) -> str:
+    def media_url_download(self, media_index: int) -> str | None:
         """
         Download media item by index. Uses the cached media items for url.
+        Also works if the media item is a link it opens it in the browser.
         Parameters:
         - media_index: Index of the media item.
         Returns:
@@ -297,10 +308,15 @@ class DirectChat:
         client = self.client.insta_client
         media_item = self.media_items[media_index]
         if not media_item:
-            return "No media found at the index"
+            return None
         
         if "url" not in media_item or not media_item["url"]:
-            return "Media URL not found"
+            return None
+
+        if media_item["media_type"] == 'link':
+            url = media_item['url']
+            webbrowser.open(url)
+            return None
 
         save_dir = Path.home() / ".instagram-cli" / "media"
         if not save_dir.exists():

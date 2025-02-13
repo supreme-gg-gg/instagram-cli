@@ -1,34 +1,52 @@
-from instagram.commands import CommandRegistry
-from instagram.api import DirectChat
-from datetime import datetime
-import threading
-import time
+# from datetime import datetime
+# import threading
+# import time
 import os
 import subprocess
-import tempfile
-from typing import List, Tuple
+# import tempfile
+# from typing import List, Tuple
+
+import tkinter as tk
+from tkinter import filedialog
+
+from instagram.commands import CommandRegistry
+from instagram.api import DirectChat
 
 cmd_registry = CommandRegistry()
 
-@cmd_registry.register("upload", "Upload a photo or video")
-def upload_media(context, filepath: str) -> str:
+@cmd_registry.register("upload", "Upload a photo or video", required_args=[])
+def upload_media(context, filepath: str = "") -> str:
     """
     Upload a photo or video to the chat. Supports .jpg, .png, .jpeg, and .mp4 files.
-    Takes a file path relative from where the command is run.
+    If no path is provided, opens a file dialog to select the file.
     """
     chat: DirectChat = context["chat"]
-    if filepath == "":
-        return "No file specified"
     
-    if filepath.endswith(".jpg") or filepath.endswith(".png") or filepath.endswith(".jpeg"):
+    if filepath is None or filepath == "":
+        root = tk.Tk()
+        root.withdraw()  # Hide the main window
+        filetypes = [
+            ("Image files", "*.jpg *.jpeg *.png"),
+            ("Video files", "*.mp4"),
+            ("All files", "*.*")
+        ]
+        filepath = filedialog.askopenfilename(filetypes=filetypes)
+        if not filepath:  # User canceled selection
+            return "No file selected"
+
+    if not os.path.exists(filepath):
+        return f"File not found: {filepath}"
+
+    if filepath.lower().endswith(('.jpg', '.png', '.jpeg')):
         try:
             chat.send_photo(filepath)
             return "Successfully uploaded photo at " + filepath
         except Exception as e:
             return f"Failed to upload photo: {e}"
-    elif filepath.endswith(".mp4"):
+    elif filepath.lower().endswith('.mp4'):
         try:
             chat.send_video(filepath)
+            return "Successfully uploaded video at " + filepath
         except Exception as e:
             return f"Failed to upload video: {e}"
     else:
@@ -41,7 +59,7 @@ def back_to_chat_list(context) -> str:
     """
     return "__BACK__"
 
-@cmd_registry.register("view", "View media in chat by index of media item")
+@cmd_registry.register("view", "View media in chat by index of media item", required_args=["index"])
 def view_media(context, index: int) -> str:
     """
     View media in chat. Takes the index of the media item to view.
@@ -49,7 +67,10 @@ def view_media(context, index: int) -> str:
     """
     chat: DirectChat = context["chat"]
     try:
-        file_path = chat.media_download(int(index))
+        file_path = chat.media_url_download(int(index))
+
+        if file_path is None:
+            return "URL opened in browser"
 
         # Open with system default application
         if os.name == 'posix':  # macOS and Linux
@@ -77,7 +98,21 @@ def reply_to_message(context) -> str:
     """
     return "__REPLY__"
 
-@cmd_registry.register("emoji", "Send an emoji based on its name")
+@cmd_registry.register("config", "Manage Chat UI configuration", required_args=["options"])
+def manage_config(context, options: str) -> dict:
+    """
+    Manage Chat UI configuration.
+    Options should be in format "field=value".
+    """
+    # Parse options
+    config = {}
+    for option in options.split():
+        field, value = option.split('=')
+        config[field] = value
+    
+    return config
+
+@cmd_registry.register("emoji", "Send an emoji based on its name", required_args=["emoji_name"])
 def send_emoji(context, emoji_name: str) -> str:
     """
     Send an emoji to the chat. Takes the name of the emoji.
