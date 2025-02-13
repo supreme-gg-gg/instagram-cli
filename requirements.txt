@@ -2,4 +2,4 @@ typer
 instagrapi
 art
 pydantic
-yaml
+pyyaml

@@ -15,7 +15,7 @@ setup(
         "art",
         "pydantic",
         "instagrapi",
-        "yaml"
+        "pyyaml"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

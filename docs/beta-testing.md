@@ -30,8 +30,7 @@ During beta testing, the package will not be available on PyPI. You will have to
 3. Install the package using the following command:
 
    ```bash
-    pip install .
-    pip install -e . # or edit mode if you wish to make changes to the code
+    pip install -e .
    ```
 
 This will automatically install all the dependencies required to run the app. We use curses for terminal UI (it is one of the oldest and most widely used libraries for creating terminal-based applications). On most UNIX-like systems, this comes pre-installed. However, if you are on Windows, you will need to install the `windows-curses` package using the following command:
