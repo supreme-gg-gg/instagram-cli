@@ -8,16 +8,21 @@ class Command:
     func: Callable
     help_text: str
     args: List[str]
+    required_args: List[str]
 
 class CommandRegistry:
     def __init__(self):
         self.commands: Dict[str, Command] = {}
 
-    def register(self, name: str, help_text: str = ""):
-        """Decorator to register a command"""
+    def register(self, name: str, help_text: str = "", required_args: List[str] = None):
+        """
+        Decorator to register a command
+        Usage: @cmd_registry.register("command_name", "Help text", ["arg1", "arg2"])
+        """
         def decorator(func: Callable):
             args = [p.name for p in inspect.signature(func).parameters.values()]
-            self.commands[name] = Command(name, func, help_text, args)
+            required = required_args if required_args is not None else args[1:]  # Skip context
+            self.commands[name] = Command(name, func, help_text, args, required)
             return func
         return decorator
 
@@ -35,8 +40,12 @@ class CommandRegistry:
             cmd = self.commands[cmd_name]
             args = parts[1:] if len(parts) > 1 else []
             
-            if len(args) != len(cmd.args) - 1:  # -1 for context
-                return f"Usage: {cmd_name} {' '.join(cmd.args[1:])}"
+            if len(args) < len(cmd.required_args):
+                return f"Usage: {cmd_name} {' '.join(cmd.required_args)}"
+            
+            # Pad with None for optional arguments
+            while len(args) < len(cmd.args) - 1:  # -1 for context
+                args.append(None)
                 
             return cmd.func(context, *args)
         except Exception as e:
@@ -45,6 +54,6 @@ class CommandRegistry:
     def get_help(self) -> str:
         """Get help text for all commands"""
         return "\n".join([
-            f"{name}: {cmd.help_text} (Usage: {name} {' '.join(cmd.args[1:])})"
+            f"{name}: {cmd.help_text} (Usage: {name} {' '.join(cmd.required_args)})"
             for name, cmd in self.commands.items()
         ])
