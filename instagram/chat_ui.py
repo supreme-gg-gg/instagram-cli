@@ -39,99 +39,214 @@ class Signal(Enum):
 
 class InputBox:
     """
-    A robust input box component that handles cursor movements and text editing.
+    A multi-line input box component that handles cursor movements, text editing,
+    and vertical expansion.
     """
-    def __init__(self, window, y: int, x: int, width: int):
+    def __init__(self, window, x: int, y: int, width: int, max_height: int = 5):
         self.window = window
-        self.y = y
         self.x = x
+        self.y = y
         self.width = width
+        self.max_height = max_height
         self.buffer = []  # List of characters
         self.cursor_pos = 0
-        self.display_offset = 0  # For horizontal scrolling
+        self.scroll_offset = 0  # For vertical scrolling
+        self.current_height = 1  # Current height of content
+        self.last_height = 1  # Track previous height for cleanup
+        self.placeholder = "Type a message..."  # Add placeholder text
+
+    def _calculate_cursor_position(self) -> tuple[int, int]:
+        """Calculate the cursor's row and column position"""
+        visible_width = self.width - 2
+        text_before_cursor = ''.join(self.buffer[:self.cursor_pos])
+        lines = self._wrap_text(text_before_cursor)
+        
+        if not lines:
+            return 0, 0
+            
+        row = len(lines) - 1
+        col = len(lines[-1])
+        return row, col
+
+    def _wrap_text(self, text: str) -> list[str]:
+        """Wrap text into lines based on window width"""
+        lines = []
+        visible_width = self.width - 2
+        current_line = []
+        current_width = 0
+        
+        for char in text:
+            if char == '\n':
+                lines.append(''.join(current_line))
+                current_line = []
+                current_width = 0
+                continue
+                
+            if current_width >= visible_width:
+                lines.append(''.join(current_line))
+                current_line = []
+                current_width = 0
+            
+            current_line.append(char)
+            current_width += 1
+            
+        if current_line:
+            lines.append(''.join(current_line))
+            
+        return lines
 
     def handle_key(self, key: int) -> str | None:
-        """
-        Handle a keypress. Returns the final string if Enter is pressed,
-        None otherwise.
-        """
-        if key == ord('\n'):  # Enter
-            return ''.join(self.buffer)
+        """Handle a keypress with support for multi-line input"""
+        if key == ord('\n'):
+            # Send message if Enter is pressed in end of message, 
+            # otherwise add new line
+            if self.cursor_pos < len(self.buffer):
+                self.buffer.insert(self.cursor_pos, '\n')
+                self.cursor_pos += 1
+                self._adjust_scroll()
+            else:
+                res = ''.join(self.buffer)
+                return res
         
-        elif key in (curses.KEY_BACKSPACE, 127):  # Backspace
+        elif key in (curses.KEY_BACKSPACE, 127):
             if self.cursor_pos > 0:
                 self.buffer.pop(self.cursor_pos - 1)
                 self.cursor_pos -= 1
-                self._adjust_display_offset()
+                self._adjust_scroll()
         
         elif key == curses.KEY_DC:  # Delete
             if self.cursor_pos < len(self.buffer):
                 self.buffer.pop(self.cursor_pos)
-                self._adjust_display_offset()
+                self._adjust_scroll()
         
-        elif key == curses.KEY_LEFT:  # Left arrow
+        elif key == curses.KEY_LEFT:
             if self.cursor_pos > 0:
                 self.cursor_pos -= 1
-                self._adjust_display_offset()
+                self._adjust_scroll()
         
-        elif key == curses.KEY_RIGHT:  # Right arrow
+        elif key == curses.KEY_RIGHT:
             if self.cursor_pos < len(self.buffer):
                 self.cursor_pos += 1
-                self._adjust_display_offset()
+                self._adjust_scroll()
         
-        elif key == curses.KEY_HOME:  # Home
-            self.cursor_pos = 0
-            self.display_offset = 0
+        elif key == curses.KEY_UP:
+            row, col = self._calculate_cursor_position()
+            if row > 0:
+                # Move cursor to previous line
+                target_pos = self._get_position_from_rowcol(row - 1, col)
+                self.cursor_pos = target_pos
+                self._adjust_scroll()
         
-        elif key == curses.KEY_END:  # End
-            self.cursor_pos = len(self.buffer)
-            self._adjust_display_offset()
+        elif key == curses.KEY_DOWN:
+            row, col = self._calculate_cursor_position()
+            # Move cursor to next line if it exists
+            target_pos = self._get_position_from_rowcol(row + 1, col)
+            if target_pos is not None:
+                self.cursor_pos = target_pos
+                self._adjust_scroll()
+        
+        elif key == curses.KEY_HOME:
+            # Move to start of current line
+            row, _ = self._calculate_cursor_position()
+            self.cursor_pos = self._get_position_from_rowcol(row, 0)
+            self._adjust_scroll()
+        
+        elif key == curses.KEY_END:
+            # Move to end of current line
+            row, _ = self._calculate_cursor_position()
+            next_row_start = self._get_position_from_rowcol(row + 1, 0)
+            if next_row_start is None:
+                self.cursor_pos = len(self.buffer)
+            else:
+                self.cursor_pos = next_row_start - 1
+            self._adjust_scroll()
         
         elif 32 <= key <= 126:  # Printable characters
             self.buffer.insert(self.cursor_pos, chr(key))
             self.cursor_pos += 1
-            self._adjust_display_offset()
+            self._adjust_scroll()
         
         return None
 
-    def _adjust_display_offset(self):
-        """Adjust horizontal scroll position to keep cursor visible"""
-        visible_width = self.width - 2  # Account for borders
+    def _get_position_from_rowcol(self, row: int, col: int) -> int | None:
+        """Convert row and column position to buffer index"""
+        text = ''.join(self.buffer)
+        lines = self._wrap_text(text)
         
-        # If cursor would be off the right edge
-        while self.cursor_pos - self.display_offset >= visible_width:
-            self.display_offset += 1
+        if row < 0 or row >= len(lines):
+            return None
             
-        # If cursor would be off the left edge
-        while self.cursor_pos < self.display_offset:
-            self.display_offset -= 1
+        pos = 0
+        for i in range(row):
+            pos += len(lines[i]) + 1  # +1 for newline
             
-        # Keep display_offset >= 0
-        self.display_offset = max(0, self.display_offset)
+        pos = min(pos + col, len(self.buffer))
+        return pos
+
+    def _adjust_scroll(self):
+        """Adjust vertical scroll position to keep cursor visible"""
+        row, _ = self._calculate_cursor_position()
+        visible_height = self.max_height
+        
+        if row < self.scroll_offset:
+            self.scroll_offset = row
+        elif row >= self.scroll_offset + visible_height:
+            self.scroll_offset = row - visible_height + 1
 
     def draw(self):
-        """Draw the input box and its contents"""
+        """Draw the multi-line input box and its contents"""
+        text = ''.join(self.buffer)
+        lines = self._wrap_text(text)
+        
+        # Calculate actual height needed (limited by max_height)
+        self.current_height = min(max(len(lines), 1), self.max_height)
+        
+        # Clear previous expanded area if box is shrinking
+        if self.current_height < self.last_height:
+            self.window.erase()
+            self.window.refresh()
+
+        # Calculate bottom-aligned position
+        base_y = self.y + self.max_height - self.current_height
+        self.window.resize(self.current_height + 2, self.width)
+        self.window.mvwin(base_y - 1, self.x)
         self.window.erase()
         self.window.border()
         
-        # Calculate visible portion of text
-        visible_width = self.width - 2
-        visible_text = ''.join(self.buffer[self.display_offset:self.display_offset + visible_width])
-        
-        # Draw text
-        self.window.addstr(self.y, self.x + 1, visible_text)
+        # Draw placeholder if empty
+        if not self.buffer:
+            self.window.attron(curses.A_DIM)
+            self.window.addstr(1, 1, self.placeholder[:self.width-2])
+            self.window.attroff(curses.A_DIM)
+        else:
+            # Draw visible lines
+            for i, line in enumerate(lines[self.scroll_offset:self.scroll_offset + self.current_height]):
+                self.window.addstr(i + 1, 1, line[:self.width-2])
         
         # Position cursor
-        cursor_x = self.x + 1 + (self.cursor_pos - self.display_offset)
-        self.window.move(self.y, cursor_x)
+        row, col = self._calculate_cursor_position()
+        cursor_y = row - self.scroll_offset + 1
+        cursor_x = col + 1
+        
+        if 0 <= cursor_y <= self.current_height:
+            self.window.move(cursor_y, cursor_x)
         
         self.window.refresh()
+        self.last_height = self.current_height  # Update last height
 
     def clear(self):
-        """Clear the input buffer"""
+        """Clear the input buffer and reset dimensions"""
         self.buffer.clear()
         self.cursor_pos = 0
-        self.display_offset = 0
+        self.scroll_offset = 0
+        
+        if 1:
+            self.window.erase()
+            self.window.refresh()
+
+        self.current_height = 1
+        self.last_height = 1
+        self.draw()
 
 
 class ChatInterface:
@@ -159,10 +274,18 @@ class ChatInterface:
         }
         
         # Initialize windows
-        self.chat_win = curses.newwin(self.height - 4, self.width, 0, 0)
-        self.input_win = curses.newwin(3, self.width, self.height - 4, 0)
-        self.input_box = InputBox(self.input_win, 1, 1, self.width - 2)
-        self.status_bar = curses.newwin(1, self.width, self.height - 1, 0)
+        # Initialize windows with corrected positions and sizes
+        total_height = self.height - 1  # Reserve 1 line for status bar
+        input_height = 6  # Height for input box (5 lines + border)
+        chat_height = total_height - input_height  # Rest of space for chat
+
+        # Create windows from top to bottom with correct positioning
+        self.chat_win = curses.newwin(chat_height-1, self.width, 0, 0)
+        self.input_win = curses.newwin(input_height, self.width, chat_height, 0)  # Position right after chat window
+        self.status_bar = curses.newwin(1, self.width, total_height, 0)  # Position at very bottom
+        
+        # Initialize input box with correct positioning
+        self.input_box = InputBox(self.input_win, 0, chat_height, self.width, max_height=5)
         
         # Setup colors
         curses.start_color()
@@ -213,7 +336,7 @@ class ChatInterface:
         
         display_messages = self.messages[-(self.height - 5):]
         current_line = 0
-        max_lines = self.height - 5
+        max_lines = self.height - 9
         
         message_line_map = {}
         current_message_idx = 0
