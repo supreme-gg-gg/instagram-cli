@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
+# import re
 from instagram.client import ClientWrapper
 import curses, math, time
 from collections import Counter
 
-def show_updates():
+def show_updates() -> None:
     """Fetches and displays latest updates in a structured visual format"""
     cl = ClientWrapper().login_by_session()
 
@@ -18,7 +19,7 @@ def show_updates():
     # pending_inbox = cl.direct_pending_inbox()
     # pending_count = len(pending_inbox)
 
-    def display_updates(stdscr, data):
+    def display_updates(stdscr, data) -> None:
         """
         Display updates in a structured format using curses.
         This function is not scrollable and may result in overflow of certain windows.
@@ -40,7 +41,7 @@ def show_updates():
         stats_height = 5
         footer_height = 1
         messages_height = 10
-        updates_height = len(data['new_stories']) * 3 + 4 # 3 lines per update
+        # updates_height = len(data['new_stories']) * 3 + 4 # 3 lines per update
         updates_height = height - (title_height + stats_height + footer_height + messages_height)
 
         # Create windows with adjusted positions
@@ -95,13 +96,12 @@ def show_updates():
         max_updates = (updates_height - 4) // 3  # Maximum updates that can fit
 
         # NOTE: I removed this because we are running out of real estates lol
-        # if len(data['new_stories']) < max_updates:
-        #     updates = data["new_stories"] + data["old_stories"]
-        # else:
-        #     updates = data["new_stories"][:max_updates]
-
-        updates = data["new_stories"][:max_updates]
-        for update in updates:
+        if len(data['new_stories']) < max_updates:
+            updates = data["new_stories"] + data["old_stories"]
+        else:
+            updates = data["new_stories"]
+        # updates = data["new_stories"][:max_updates]
+        for update in updates[:max_updates]:
             notif_name = update["notif_name"]
             rich_text = update['args']["rich_text"]
             timestamp = datetime.fromtimestamp(update['args']['timestamp']).strftime('%H:%M %d/%m')
@@ -122,10 +122,9 @@ def show_updates():
         messages_win.refresh()
         updates_win.refresh()
         stdscr.getch()
-
+        
     curses.wrapper(display_updates, data)
 
-# TODO: This technically can generate the graph dynamically
 class CursesBarGraph:
     def __init__(self):
         self._window = None

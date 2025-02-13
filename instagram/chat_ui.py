@@ -13,7 +13,7 @@ import threading
 import curses
 from enum import Enum, auto
 import typer
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 
 from instagram.client import ClientWrapper
 from instagram.api import DirectMessages, DirectChat
@@ -534,7 +534,7 @@ class ChatInterface:
                     
                 return self._handle_chat_message(result)
 
-    def _handle_reply_input(self) -> bool:
+    def _handle_reply_input(self) -> None:
         """
         Handle user input in reply mode.
         """
@@ -664,7 +664,7 @@ def create_loading_screen(screen, stop_event: threading.Event):
     screen.clear()
     screen.refresh()
 
-def start_chat(username: str = None):
+def start_chat(username: str | None = None):
     """
     Wrapper function to launch chat UI.
     Logs in the user and pass the client to the curses main loop.
@@ -678,7 +678,7 @@ def start_chat(username: str = None):
 
     curses.wrapper(lambda stdscr: main_loop(stdscr, client, username))
 
-def main_loop(screen, client: ClientWrapper, username: str) -> None:
+def main_loop(screen, client: ClientWrapper, username: str | None) -> None:
     """
     Main loop for chat interface. Chat loading happens in the main loop to enable loading screen.
     Parameters:
@@ -686,28 +686,47 @@ def main_loop(screen, client: ClientWrapper, username: str) -> None:
     - client: ClientWrapper object for dm fetching
     - username: Optional recipient's username to chat with
     """
-    # Create a loading screen while fetching chat data
-    stop_event = threading.Event()
-    loading_thread = threading.Thread(target=create_loading_screen, args=(screen, stop_event))
-    loading_thread.start()
-
+    # First create the DM object
     dm = DirectMessages(client)
-    # Fetch up to 10 chats with a limit of 20 messages per chat
-    # We might want to fetch chat list only if user did not specify a recipient for better performance
-    # if username is None:
-    dm.fetch_chat_data(num_chats=10, num_message_limit=20)
 
-    stop_event.set()
-    loading_thread.join()
+    def with_loading_screen(screen, func: Callable, *args, **kwargs):
+        """
+        Wrapper function that shows a loading screen while executing a given function.
+        
+        Parameters:
+        - screen: Curses screen object
+        - func: Function to execute while showing loading screen
+        - args, kwargs: Arguments to pass to the function
+        """
+        stop_event = threading.Event()
+        loading_thread = threading.Thread(target=create_loading_screen, args=(screen, stop_event))
+        loading_thread.start()
+
+        try:
+            result = func(*args, **kwargs)
+        finally:
+            stop_event.set()
+            loading_thread.join()
+
+        return result
+
+    if username is None:
+        with_loading_screen(screen, dm.fetch_chat_data, num_chats=10, num_message_limit=20)
 
     while True:
         if username:
-            selected_chat = dm.search_by_username(username)
+            selected_chat = with_loading_screen(screen, dm.search_by_username, username)
             if not selected_chat:
                 typer.echo(f"Chat with @{username} not found")
                 break
             username = None  # Reset username for next loop
         else:
+            # if chat is empty
+            if not dm.chats:
+                with_loading_screen(screen, dm.fetch_chat_data, num_chats=10, num_message_limit=20)
+            if not dm.chats:
+                typer.echo("No chats found. Try again later.")
+                break
             # wait for user to select a chat
             selected_chat = chat_menu(screen, dm)
 
