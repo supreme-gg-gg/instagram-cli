@@ -748,6 +748,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
     """
     curses.start_color()
     curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_RED)
 
     curses.curs_set(1)
     screen.keypad(True)
@@ -773,11 +774,13 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
         screen.clear()
         for idx, chat in enumerate(chats):
             title = chat.get_title()
+            is_seen = chat.is_seen()
             y_pos = idx
             x_pos = 2
         
             # Ensure we don't exceed window boundaries
-            if y_pos < height:
+            y_pos = idx * 1  # Spacing is optional
+            if y_pos < height - 6:
                 if idx == selection:
                     screen.attron(curses.A_REVERSE)
                     # Clear the line first to prevent artifacts
@@ -785,7 +788,15 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
                     screen.addstr(y_pos, x_pos, title[:width - x_pos - 1])
                     screen.attroff(curses.A_REVERSE)
                 else:
-                    screen.addstr(y_pos, x_pos, title[:width - x_pos - 1])
+                    # We add conditional styling based on seen status
+                    if not is_seen:
+                        screen.attron(curses.A_BOLD)
+                        screen.attron(curses.color_pair(2))
+                        screen.addstr(y_pos, x_pos, title[:width - x_pos - 1])
+                        screen.attroff(curses.color_pair(2))
+                        screen.attroff(curses.A_BOLD)
+                    else:
+                        screen.addstr(y_pos, x_pos, title[:width - x_pos - 1])
 
         # Search bar
         search_win.erase()
