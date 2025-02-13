@@ -324,23 +324,10 @@ class ChatInterface:
 
     def _update_chat_window(self):
         """
-        Write chat messages to the chat window with word wrapping and colored sender names.
-        This version also breaks up extremely long words that cannot fit on one line.
+        Write chat messages to the chat window from bottom up, with word wrapping and colored sender names.
+        Messages are rendered starting from the bottom of the window to ensure newest messages are visible.
         """
-        self.chat_win.erase()
-        
-        # Initialize colors for sender names
-        curses.init_pair(4, curses.COLOR_RED, curses.COLOR_BLACK)
-        curses.init_pair(5, curses.COLOR_BLUE, curses.COLOR_BLACK)
-        curses.init_pair(6, curses.COLOR_GREEN, curses.COLOR_BLACK)
-        
-        display_messages = self.messages[-(self.height - 5):]
-        current_line = 0
-        max_lines = self.height - 9
-        
-        message_line_map = {}
-        current_message_idx = 0
-        
+
         # NOTE: Threading must NOT be used in this function because
         # it is called in frequently in everywhere and results in serious 
         # performance issues and unexpected behavior.
@@ -348,80 +335,149 @@ class ChatInterface:
         # loading_thread = threading.Thread(target=create_loading_screen, args=(self.screen, stop_event))
         # loading_thread.start()
 
-        for msg in display_messages:
-            if current_line >= max_lines:
-                break
+        self.chat_win.erase()
+        
+        # Initialize colors for sender names
+        curses.init_pair(4, curses.COLOR_RED, curses.COLOR_BLACK)
+        curses.init_pair(5, curses.COLOR_BLUE, curses.COLOR_BLACK)
+        curses.init_pair(6, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        
+        max_lines = self.height - 9  # Maximum available lines for messages
 
+        # Store visible messages and their indices for selection
+        self.visible_messages = []
+        self.visible_message_indices = []
+
+        # First pass: calculate lines needed for each message
+        messages_with_lines = []
+        total_lines = 0
+    
+        for idx, msg in enumerate(reversed(self.messages)): # process messages from newest to oldest
             sender, content = msg
             sender_text = sender + ": "
-            message_line_map[current_message_idx] = current_line
-
             sender_width = len(sender_text)
             content_width = self.width - sender_width - 1
-
-            # Check if this is the selected message
-            is_selected = current_message_idx == self.selection and self.mode == ChatMode.REPLY
-
-            if is_selected:
-                self.chat_win.attron(curses.A_REVERSE)
             
-            # Color and bold sender name based on hash
-            if self.config["colors"] == "on":
-                color_idx = (hash(sender) % 3) + 4
-                self.chat_win.attron(curses.color_pair(color_idx) | curses.A_BOLD)
-                self.chat_win.addstr(current_line, 0, sender_text)
-                self.chat_win.attroff(curses.color_pair(color_idx) | curses.A_BOLD)
-            else:
-                self.chat_win.addstr(current_line, 0, sender_text)
-
+            # Calculate lines needed for this message
+            lines_needed = 0
             words = content.split()
             line_buffer = []
             current_width = 0
-
-            def flush_line():
-                nonlocal current_line, line_buffer, current_width
-                if line_buffer and current_line < max_lines:
-                    line_content = " ".join(line_buffer)
-                    if is_selected:
-                        self.chat_win.attron(curses.A_REVERSE)
-                    self.chat_win.addstr(current_line, sender_width, line_content)
-                    current_line += 1
-                line_buffer.clear()
-                current_width = 0
-
+            
             for word in words:
-                while len(word) > 0:
+                remaining_word = word
+                while remaining_word:
                     space_needed = 1 if line_buffer else 0
-                    if current_width + len(word) + space_needed <= content_width:
-                        line_buffer.append(word)
-                        current_width += len(word) + space_needed
-                        word = ""
+                    if current_width + len(remaining_word) + space_needed <= content_width:
+                        line_buffer.append(remaining_word)
+                        current_width += len(remaining_word) + space_needed
+                        remaining_word = ""
                     else:
                         space_left = content_width - current_width - space_needed
-                        chunk = word[:space_left]
-                        word = word[space_left:]
-                        line_buffer.append(chunk)
-                        flush_line()
-                        if current_line >= max_lines:
-                            break
-                if current_line >= max_lines:
-                    break
-
-            if line_buffer and current_line < max_lines:
-                flush_line()
-
-            if is_selected:
-                self.chat_win.attroff(curses.A_REVERSE)
-
-            # Add small spacing between messages
+                        if space_left > 0:
+                            line_buffer.append(remaining_word[:space_left])
+                            remaining_word = remaining_word[space_left:]
+                        lines_needed += 1
+                        line_buffer = []
+                        current_width = 0
+                        
+            if line_buffer:
+                lines_needed += 1
+            
+            if lines_needed == 0:
+                lines_needed = 1
+                
             if self.config["layout"] != "compact":
-                current_line += 1
+                lines_needed += 1  # Add spacing between messages
+                
+            messages_with_lines.append((msg, lines_needed, idx))
+            total_lines += lines_needed
 
+            if total_lines > max_lines:
+                break
+            
+            # Track visible messages and their indices
+            self.visible_messages.append(msg)
+            self.visible_message_indices.append(idx)
+
+            if total_lines > max_lines:
+                break
+        
+        # Ensure selection is within bounds of visible messages
+        if self.mode == ChatMode.REPLY:
+            if self.selection >= len(self.visible_messages):
+                self.selection = len(self.visible_messages) - 1
+            elif self.selection < 0:
+                self.selection = 0
+
+        # Second pass: render messages from bottom up
+        current_line = max_lines - 1
+        current_message_idx = 0
+        
+        for msg, lines_needed, orig_idx in messages_with_lines:
+            if current_line < 0:
+                break
+                
+            sender, content = msg
+            sender_text = sender + ": "
+            
+            sender_width = len(sender_text)
+            content_width = self.width - sender_width - 1
+            
+            # Check if this is the selected message
+            is_selected = current_message_idx == self.selection and self.mode == ChatMode.REPLY
+            
+            start_line = current_line - lines_needed + 1
+            if start_line >= 0:
+                if is_selected:
+                    self.chat_win.attron(curses.A_REVERSE)
+                
+                # Color and bold sender name
+                if self.config["colors"] == "on":
+                    color_idx = (hash(sender) % 3) + 4
+                    self.chat_win.attron(curses.color_pair(color_idx) | curses.A_BOLD)
+                    self.chat_win.addstr(start_line, 0, sender_text)
+                    self.chat_win.attroff(curses.color_pair(color_idx) | curses.A_BOLD)
+                else:
+                    self.chat_win.addstr(start_line, 0, sender_text)
+                
+                # Render content with word wrap
+                words = content.split()
+                line_buffer = []
+                current_width = 0
+                content_line = start_line
+                
+                for word in words:
+                    while len(word) > 0:
+                        space_needed = 1 if line_buffer else 0
+                        if current_width + len(word) + space_needed <= content_width:
+                            line_buffer.append(word)
+                            current_width += len(word) + space_needed
+                            word = ""
+                        else:
+                            space_left = content_width - current_width - space_needed
+                            chunk = word[:space_left]
+                            word = word[space_left:]
+                            if line_buffer:
+                                line_buffer.append(chunk)
+                            else:
+                                line_buffer = [chunk]
+                            line_content = " ".join(line_buffer)
+                            self.chat_win.addstr(content_line, sender_width, line_content)
+                            content_line += 1
+                            line_buffer = []
+                            current_width = 0
+                
+                if line_buffer:
+                    line_content = " ".join(line_buffer)
+                    self.chat_win.addstr(content_line, sender_width, line_content)
+                
+                if is_selected:
+                    self.chat_win.attroff(curses.A_REVERSE)
+            
+            current_line -= lines_needed
             current_message_idx += 1
-
-        # stop_event.set()
-        # loading_thread.join()
-
+        
         self.chat_win.refresh()
         self._update_status_bar()
 
@@ -484,12 +540,19 @@ class ChatInterface:
         """
         while True:
             key = self.screen.getch()
-            if key in (curses.KEY_UP, ord('k')) and self.selection > 0:
-                self.selection -= 1
-                self._update_chat_window()
-            elif key in (curses.KEY_DOWN, ord('j')) and self.selection < len(self.messages) - 1:
-                self.selection += 1
-                self._update_chat_window()
+            if key in (curses.KEY_UP, ord('k')):
+                # Move to older message
+                new_selection = self.selection - 1
+                if new_selection >= 0:
+                    self.selection = new_selection
+                    self._update_chat_window()
+
+            elif key in (curses.KEY_DOWN, ord('j')):
+                # Move to newer message
+                new_selection = self.selection + 1
+                if new_selection < len(self.visible_messages):
+                    self.selection = new_selection
+                    self._update_chat_window()
             elif key == 27:  # ESC
                 self.mode = ChatMode.CHAT
                 self.selected_message_id = None
@@ -497,9 +560,12 @@ class ChatInterface:
                 self._update_status_bar()
                 return
             elif key == ord('\n'): # Enter
-                # NOTE: temporary fix to adjust the index, seems like all one off
-                self.selected_message_id = self.direct_chat.get_message_id(-(self.selection+1))
-                return
+                if self.visible_messages:
+                    # Get the selected message from visible messages
+                    self.selected_message_id = self.direct_chat.get_message_id(
+                        -(self.visible_message_indices[self.selection]+1)
+                    )
+                    return
 
     def _handle_command(self, command: str) -> Signal:
         """
