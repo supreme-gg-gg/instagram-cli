@@ -280,9 +280,6 @@ class ChatInterface:
         self.mode = ChatMode.COMMAND
         result = cmd_registry.execute(command, chat=self.direct_chat, screen=self.screen)
 
-        # Update status bar based on command result
-        self._update_status_bar(msg=command)
-
         # Handle config changes command
         if isinstance(result, dict):
             for key, value in result.items():
@@ -304,10 +301,10 @@ class ChatInterface:
         
         # Regular command result display
         else:
+            self._update_status_bar(msg=command)
             self._display_command_result(result)
             curses.napms(2000)
             self.mode = ChatMode.CHAT
-            self._update_status_bar()
 
         return Signal.CONTINUE
     
