@@ -15,7 +15,9 @@ setup(
         "art",
         "pydantic",
         "instagrapi",
-        "pyyaml"
+        "pyyaml",
+        "pillow",
+        "windows-curses; platform_system=='Windows'"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

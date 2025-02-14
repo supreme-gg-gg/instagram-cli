@@ -10,9 +10,10 @@ This guide will help you get started with the beta testing process. If you haven
 
 You must have the Python programming language installed on your system to run this app. If you don't have Python installed, you can download it from the official website: [python.org](https://www.python.org/).
 
-During beta testing, the package will not be available on PyPI. You will have to clone the repository and install the package manually. Here's how you can do it:
+During beta testing, the package will not be available on PyPI, so you will also need `Git` to obtain the package. Git is a version control system that helps track changes in source code. It comes pre-installed on most UNIX-like systems (e.g. MacOS, Linux). Windows users might need to install [Git for Windows](https://git-scm.com/downloads/win).
+You will have to clone the repository and install the package manually. Here's how you can do it:
 
-1. Clone the repository using the following command:
+1. Open the terminal and clone the repository using the following command:
 
    ```bash
    git clone https://github.com/supreme-gg-gg/instagram-cli.git
@@ -33,17 +34,13 @@ During beta testing, the package will not be available on PyPI. You will have to
     pip install -e .
    ```
 
-This will automatically install all the dependencies required to run the app. We use curses for terminal UI (it is one of the oldest and most widely used libraries for creating terminal-based applications). On most UNIX-like systems, this comes pre-installed. However, if you are on Windows, you will need to install the `windows-curses` package using the following command:
+This will automatically install all the dependencies required to run the app. We use curses for terminal UI (it is one of the oldest and most widely used libraries for creating terminal-based applications). On most UNIX-like systems, this comes pre-installed. If you are on Windows, the `windows-curses` package should be installed in the last command.
 
-```bash
-pip install windows-curses
-```
-
-> NOTE: moving ahead, windows users might face some issues with the TUI. We have NOT experienced any issue yet but if you do, please report it.
+> NOTE: moving ahead, windows users might face some issues with the TUI. (see below). If you encounter any other issues, please report it.
 
 ## General Instructions
 
-Before you start testing the app, make sure you have an Instagram account. If you don't have one, you can create one [here](https://www.instagram.com/). The application will NOT store any of your data since it is totally local. You can also use a dummy account if you are concerned about your privacy.
+Before you start testing the app, make sure you have an Instagram account. If you don't have one, you can create one [here](https://www.instagram.com/). The application will NOT store any of your data since it is totally local. We recommend using a dummy account in the rare case that something goes wrong and messes up your account.
 
 > Up until this point, we have not encountered any issue with Instagram's API on any test accounts. However, if you face any issue, please report it.
 
@@ -87,6 +84,13 @@ The following section will guide you over a basic tutorial of the app.
    instagram stats --days 30
    ```
 
+> There is a known issue when running this command for Windows users. You might get an error like this:
+   ```
+    ...
+    Error: window.vline() returned ERR
+   ```
+   In this case you won't be able to access analytics right now. We will fix this asap.
+
 5. **Lastly it's time for the main feature of the app, the chat! Let's boot up the chat interface...**
 
    ```bash
@@ -125,6 +129,24 @@ The following section will guide you over a basic tutorial of the app.
     ```bash
     instagram cleanup
     ```
+
+## Troubleshooting
+
+### Login Issues
+If you receive messages like "We detected automated behavior on your account" or "We detected unusual activity on your account" when trying to log in, don't panic! This is a common security measure from Instagram. Simply:
+1. Open the Instagram mobile app
+2. Follow the verification instructions shown
+3. Try logging in through the CLI again
+> None of our test accounts have been banned or restricted due to these security checks.
+
+### Windows Display Issues
+The interface might appear visually broken on Windows systems. This is a known issue currently under investigation. We're working on a fix.
+
+### Other Issues
+For any other issues you encounter, please:
+1. Check the existing issues on GitHub
+2. If not found, create a new issue with detailed information about the problem
+3. Include your system information and steps to reproduce the issue
 
 ## Conclusion
 
