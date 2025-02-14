@@ -430,7 +430,7 @@ class ChatInterface:
         self.status_bar.erase()
         if self.mode == ChatMode.CHAT:
             self.status_bar.bkgd(' ', curses.color_pair(1))
-            status_text = "[CHAT] Type :help for commands"
+            status_text = "[CHAT] Type :help for commands, :back to return, :quit to exit"
         elif self.mode == ChatMode.REPLY:
             self.status_bar.bkgd(' ', curses.color_pair(3))
             status_text = "[REPLY] Use ↑↓ to select, Enter to confirm, Esc to exit"
@@ -515,6 +515,10 @@ class ChatInterface:
             return Signal.CONTINUE
 
         # Handle special return signals
+        elif result == "__QUIT__":
+            self.stop_refresh.set()
+            return Signal.QUIT
+
         elif result == "__BACK__":
             self.stop_refresh.set()
             return Signal.BACK
@@ -682,8 +686,8 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
     - DirectChat object if a chat is selected, None if the user quits
     """
     curses.start_color()
-    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_YELLOW)
-    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_RED)
+    curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+    curses.init_pair(8, curses.COLOR_RED, curses.COLOR_BLACK)
 
     curses.curs_set(1)
     screen.keypad(True)
@@ -700,7 +704,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
 
     def _draw_footer():
         footer.erase()
-        footer.bkgd(' ', curses.color_pair(1))
+        footer.bkgd(' ', curses.color_pair(7))
         footer.addstr(0, 0, "[CHAT MENU] Select a chat (Use arrow keys and press ENTER, or ESC to quit)"[:width - 1])
         footer.refresh()
 
@@ -709,29 +713,26 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
         screen.clear()
         for idx, chat in enumerate(chats):
             title = chat.get_title()
+            # is_seen = chat.seen
             is_seen = chat.is_seen()
-            y_pos = idx
             x_pos = 2
         
             # Ensure we don't exceed window boundaries
-            y_pos = idx * 1  # Spacing is optional
-            if y_pos < height - 6:
+            if idx < height - 6:
                 if idx == selection:
                     screen.attron(curses.A_REVERSE)
                     # Clear the line first to prevent artifacts
-                    screen.addstr(y_pos, 0, " " * (width - 1))
-                    screen.addstr(y_pos, x_pos, title[:width - x_pos - 1])
+                    screen.addstr(idx, 0, " " * (width - 1))
+                    screen.addstr(idx, x_pos, title[:width - x_pos - 1])
                     screen.attroff(curses.A_REVERSE)
                 else:
                     # We add conditional styling based on seen status
-                    if not is_seen:
-                        screen.attron(curses.A_BOLD)
-                        screen.attron(curses.color_pair(2))
-                        screen.addstr(y_pos, x_pos, title[:width - x_pos - 1])
-                        screen.attroff(curses.color_pair(2))
-                        screen.attroff(curses.A_BOLD)
+                    if is_seen is not None and not is_seen:
+                        screen.attron(curses.color_pair(8) | curses.A_BOLD)
+                        screen.addstr(idx, x_pos, "→ " + title[:width - x_pos - 3])
+                        screen.attroff(curses.color_pair(8) | curses.A_BOLD)
                     else:
-                        screen.addstr(y_pos, x_pos, title[:width - x_pos - 1])
+                        screen.addstr(idx, x_pos, title[:width - x_pos - 1])
 
         # Search bar
         search_win.erase()
