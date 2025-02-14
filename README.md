@@ -57,6 +57,7 @@ instagram cleanup                          # cleanup media and session cache fil
 The following commands should be typed and sent in the chat box in chat interface:
 
 - `:help`: view available commands
+- `:quit`: quit the application
 - `:back`: back to chat menu for selecting chat
 - `:reply`: reply mode to select and reply to messages
 - `:upload`: upload media using the file navigator

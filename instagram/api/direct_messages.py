@@ -1,17 +1,17 @@
 from __future__ import annotations
 from typing import Dict, List, Tuple, Protocol
 from pathlib import Path
+import webbrowser
 # import hashlib
 
 # from .utils import setup_logging
+from .utils import user_info_by_username_private
 
 from instagrapi import Client as InstaClient
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
 from instagrapi.extractors import *
 from instagrapi.exceptions import UserNotFound
-from .utils import user_info_by_username_private
 from pydantic import ValidationError
-import webbrowser
 # from instagram import configs
 
 # logger = setup_logging(__name__)
@@ -71,6 +71,12 @@ class DirectChat:
             self.thread = self.client.insta_client.direct_thread(thread_id)
         else:
             self.thread = thread_data
+        # We need to fetch thread first then check seen status
+        # NOTE: This is very poorly documented, but through experimentation,
+        # we found that meta returns 1 for unseen and 0 for seen for read_state
+        # Note that this is returned directly by Meta, but often disagrees with
+        # the builtin is_seen() function??
+        self.seen = self.thread.read_state # 0 if seen, 1 if unseen
 
         self.users_cache: Dict[str, UserShort] = {
             user.pk: user for user in self.thread.users
@@ -93,6 +99,8 @@ class DirectChat:
                 - string representing message senders
                 - formatted message strings (media messages include indices)
             - Dictionary mapping indices to media items
+
+        NOTE: marking as seen is done in the chat ui when this is invoked
         """
         chat = []
         media_items = {}
@@ -279,7 +287,9 @@ class DirectChat:
     def mark_as_seen(self) -> None:
         """
         Mark the chat as seen.
+        0 if seen, 1 if unseen, this is the code I believe Meta uses in their schema
         """
+        self.seen = 0
         self.client.insta_client.direct_send_seen(self.thread_id)
     
     def is_seen(self) -> bool:

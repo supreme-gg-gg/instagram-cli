@@ -5,6 +5,7 @@ import inspect
 @dataclass
 class Command:
     name: str
+    shorthand: str
     func: Callable
     help_text: str
     args: List[str]
@@ -13,16 +14,19 @@ class Command:
 class CommandRegistry:
     def __init__(self):
         self.commands: Dict[str, Command] = {}
+        self.shorthands: Dict[str, str] = {}  # Maps shorthand to full command name
 
-    def register(self, name: str, help_text: str = "", required_args: List[str] = None):
+    def register(self, name: str, help_text: str = "", required_args: List[str] = None, shorthand: str = ""):
         """
         Decorator to register a command
-        Usage: @cmd_registry.register("command_name", "Help text", ["arg1", "arg2"])
+        Usage: @cmd_registry.register("command_name", "Help text", ["arg1", "arg2"], "cmd")
         """
         def decorator(func: Callable):
             args = [p.name for p in inspect.signature(func).parameters.values()]
             required = required_args if required_args is not None else args[1:]  # Skip context
-            self.commands[name] = Command(name, func, help_text, args, required)
+            self.commands[name] = Command(name, shorthand, func, help_text, args, required)
+            if shorthand:
+                self.shorthands[shorthand] = name
             return func
         return decorator
 
@@ -34,6 +38,10 @@ class CommandRegistry:
                 return "No command specified"
             
             cmd_name = parts[0]
+            # Check if it's a shorthand and convert to full command name
+            if cmd_name in self.shorthands:
+                cmd_name = self.shorthands[cmd_name]
+                
             if cmd_name not in self.commands:
                 return f"Unknown command: {cmd_name}"
 
@@ -54,6 +62,7 @@ class CommandRegistry:
     def get_help(self) -> str:
         """Get help text for all commands"""
         return "\n".join([
-            f"{name}: {cmd.help_text} (Usage: {name} {' '.join(cmd.required_args)})"
-            for name, cmd in self.commands.items()
+            f"{cmd.name} {f'({cmd.shorthand})' if cmd.shorthand else ''}: {cmd.help_text} "
+            f"(Usage: {cmd.name} {' '.join(cmd.required_args)})"
+            for cmd in self.commands.values()
         ])
