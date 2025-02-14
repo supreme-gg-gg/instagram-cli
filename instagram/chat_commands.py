@@ -59,6 +59,13 @@ def back_to_chat_list(context) -> str:
     """
     return "__BACK__"
 
+@cmd_registry.register("quit", "Quit the chat interface")
+def quit_chat(context) -> str:
+    """
+    Quit the chat interface. Returns a special value that the chat interface will recognize.
+    """
+    return "__QUIT__"
+
 @cmd_registry.register("view", "View media in chat by index of media item", required_args=["index"])
 def view_media(context, index: int) -> str:
     """

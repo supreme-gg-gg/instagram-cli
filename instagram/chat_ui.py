@@ -465,10 +465,7 @@ class ChatInterface:
             if result is not None:  # Enter was pressed
                 if not result:  # Empty input
                     continue
-                    
-                if result.lower() in ("exit", "quit"):
-                    return Signal.QUIT
-                    
+                
                 if len(result) > 1 and result.startswith(':'):
                     self.mode = ChatMode.COMMAND
                     return self._handle_command(result[1:])
@@ -519,6 +516,10 @@ class ChatInterface:
         elif result == "__BACK__":
             self.stop_refresh.set()
             return Signal.BACK
+        
+        elif result == "__QUIT__":
+            self.stop_refresh.set()
+            return Signal.QUIT
         
         elif result == "__REPLY__":
             self.mode = ChatMode.REPLY
