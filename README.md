@@ -16,7 +16,7 @@ For beta testing, please refer to the [beta-testing.md](beta-testing.md) docs.
 
 Installing this CLI tool is much easier than scrolling reels!!! Think about it next time you login to instagram...
 
-We will soon be available on PyPI so you can download with 
+We will soon be available on PyPI so you can download with
 
 ```
 pip install instagram-cli
@@ -38,7 +38,7 @@ The following commands will be available after installing the package:
 
 - `instagram`: title art!
 - `instagram --help`: view available commands
-<img width="1280" alt="Screenshot 2025-02-12 at 1 13 27 AM" src="https://github.com/user-attachments/assets/ed332ea5-b30c-42e5-a0ae-7ad4b1170d5a" />
+  <img width="1280" alt="Screenshot 2025-02-12 at 1 13 27 AM" src="https://github.com/user-attachments/assets/ed332ea5-b30c-42e5-a0ae-7ad4b1170d5a" />
 
 - `instagram login`: login with username and password and saves session cache
 - `instagram logout`: logout and removes session
@@ -53,6 +53,7 @@ The following commands will be available after installing the package:
 The following commands should be typed and sent in the chat box in chat interface:
 
 - `:help`: view available commands
+- `:quit`: quit the application
 - `:back`: back to chat menu for selecting chat
 - `:reply`: reply mode to select and reply to messages
 - `:upload <path>`: upload media (photo or video)

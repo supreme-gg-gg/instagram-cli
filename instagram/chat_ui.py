@@ -713,8 +713,8 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
         screen.clear()
         for idx, chat in enumerate(chats):
             title = chat.get_title()
-            # is_seen = chat.seen
-            is_seen = chat.is_seen()
+            is_seen = chat.seen
+            #is_seen = chat.is_seen()
             x_pos = 2
         
             # Ensure we don't exceed window boundaries
@@ -727,7 +727,8 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
                     screen.attroff(curses.A_REVERSE)
                 else:
                     # We add conditional styling based on seen status
-                    if is_seen is not None and not is_seen:
+                    # Refer to DirectMessages for this
+                    if is_seen is not None and is_seen == 1:
                         screen.attron(curses.color_pair(8) | curses.A_BOLD)
                         screen.addstr(idx, x_pos, "→ " + title[:width - x_pos - 3])
                         screen.attroff(curses.color_pair(8) | curses.A_BOLD)

@@ -72,7 +72,11 @@ class DirectChat:
         else:
             self.thread = thread_data
         # We need to fetch thread first then check seen status
-        # self.seen = self.is_seen()
+        # NOTE: This is very poorly documented, but through experimentation,
+        # we found that meta returns 1 for unseen and 0 for seen for read_state
+        # Note that this is returned directly by Meta, but often disagrees with
+        # the builtin is_seen() function??
+        self.seen = self.thread.read_state # 0 if seen, 1 if unseen
 
         self.users_cache: Dict[str, UserShort] = {
             user.pk: user for user in self.thread.users
@@ -95,6 +99,8 @@ class DirectChat:
                 - string representing message senders
                 - formatted message strings (media messages include indices)
             - Dictionary mapping indices to media items
+
+        NOTE: marking as seen is done in the chat ui when this is invoked
         """
         chat = []
         media_items = {}
@@ -194,9 +200,6 @@ class DirectChat:
         # Store media items for later access
         self.media_items = media_items
 
-        # Mark the chat as seen
-        # self.mark_as_seen()
-
         return chat, media_items
     
     def get_title(self) -> str:
@@ -284,8 +287,9 @@ class DirectChat:
     def mark_as_seen(self) -> None:
         """
         Mark the chat as seen.
+        0 if seen, 1 if unseen, this is the code I believe Meta uses in their schema
         """
-        # self.seen = True
+        self.seen = 0
         self.client.insta_client.direct_send_seen(self.thread_id)
     
     def is_seen(self) -> bool:
