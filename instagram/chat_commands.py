@@ -14,7 +14,7 @@ from instagram.api import DirectChat
 
 cmd_registry = CommandRegistry()
 
-@cmd_registry.register("upload", "Upload a photo or video", required_args=[])
+@cmd_registry.register("upload", "Upload a photo or video", required_args=[], shorthand="u")
 def upload_media(context, filepath: str = "") -> str:
     """
     Upload a photo or video to the chat. Supports .jpg, .png, .jpeg, and .mp4 files.
@@ -52,21 +52,21 @@ def upload_media(context, filepath: str = "") -> str:
     else:
         return "Unsupported file type"
 
-@cmd_registry.register("back", "Go back to the chat list")
+@cmd_registry.register("back", "Go back to the chat list", shorthand="b")
 def back_to_chat_list(context) -> str:
     """
     Go back to the chat list. Returns a special value that the chat interface will recognize.
     """
     return "__BACK__"
 
-@cmd_registry.register("quit", "Quit the chat interface")
+@cmd_registry.register("quit", "Quit the chat interface", shorthand="q")
 def quit_chat(context) -> str:
     """
     Quit the chat interface. Returns a special value that the chat interface will recognize.
     """
     return "__QUIT__"
 
-@cmd_registry.register("view", "View media in chat by index of media item", required_args=["index"])
+@cmd_registry.register("view", "View media in chat by index of media item", required_args=["index"], shorthand="v")
 def view_media(context, index: int) -> str:
     """
     View media in chat. Takes the index of the media item to view.
@@ -98,14 +98,14 @@ def view_media(context, index: int) -> str:
     except Exception as e:
         return f"Error viewing media: {str(e)}"
 
-@cmd_registry.register("reply", "Reply to a message in the chat")
+@cmd_registry.register("reply", "Reply to a message in the chat", required_args=[], shorthand="r")
 def reply_to_message(context) -> str:
     """
     Returns the reply signal to allow user to select message to reply to.
     """
     return "__REPLY__"
 
-@cmd_registry.register("config", "Manage Chat UI configuration", required_args=["options"])
+@cmd_registry.register("config", "Manage Chat UI configuration", required_args=["options"], shorthand="c")
 def manage_config(context, options: str) -> dict:
     """
     Manage Chat UI configuration.
@@ -119,7 +119,7 @@ def manage_config(context, options: str) -> dict:
     
     return config
 
-@cmd_registry.register("emoji", "Send an emoji based on its name", required_args=["emoji_name"])
+@cmd_registry.register("emoji", "Send an emoji based on its name", required_args=["emoji_name"], shorthand="em")
 def send_emoji(context, emoji_name: str) -> str:
     """
     Send an emoji to the chat. Takes the name of the emoji.
@@ -205,7 +205,7 @@ def send_emoji(context, emoji_name: str) -> str:
 #         scheduled_messages.clear()
 #         return f"Cleared {count} scheduled messages"
 
-@cmd_registry.register("help", "Show available commands")
+@cmd_registry.register("help", "Show available commands", shorthand="h")
 def show_help(context) -> str:
     """
     Show available commands and their descriptions
