@@ -317,6 +317,7 @@ class ChatInterface:
                     self.messages.clear()
                     self.messages.extend(new_messages)
                 self._update_chat_window()
+                self.direct_chat.mark_as_seen()
             except Exception as e:
                 self.chat_win.addstr(0, 0, f"Refresh error: {str(e)}")
                 self.chat_win.refresh()
