@@ -3,3 +3,5 @@ instagrapi
 art
 pydantic
 pyyaml
+pillow
+windows-curses; platform_system == "Windows"
