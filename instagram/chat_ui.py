@@ -463,13 +463,14 @@ class ChatInterface:
             self.input_box.draw()
             
             if result is not None:  # Enter was pressed
-                if not result:  # Empty input
-                    continue
-                
                 if len(result) > 1 and result.startswith(':'):
-                    self.mode = ChatMode.COMMAND
-                    return self._handle_command(result[1:])
-                    
+                    # excape sequence "::"
+                    if result[1] == ':':
+                        result = result[1:]
+                    else:
+                        self.mode = ChatMode.COMMAND
+                        return self._handle_command(result[1:])
+                
                 return self._handle_chat_message(result)
 
     def _handle_reply_input(self) -> None:
