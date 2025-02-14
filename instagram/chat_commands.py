@@ -14,6 +14,13 @@ from instagram.api import DirectChat
 
 cmd_registry = CommandRegistry()
 
+@cmd_registry.register("quit", "Quit the chat interface", required_args=[])
+def quit_chat(context) -> str:
+    """
+    Quit the chat interface. Returns a special value that the chat interface will recognize.
+    """
+    return "__QUIT__"
+
 @cmd_registry.register("upload", "Upload a photo or video", required_args=[])
 def upload_media(context, filepath: str = "") -> str:
     """

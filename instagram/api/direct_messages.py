@@ -1,17 +1,17 @@
 from __future__ import annotations
 from typing import Dict, List, Tuple, Protocol
 from pathlib import Path
+import webbrowser
 # import hashlib
 
 # from .utils import setup_logging
+from .utils import user_info_by_username_private
 
 from instagrapi import Client as InstaClient
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
 from instagrapi.extractors import *
 from instagrapi.exceptions import UserNotFound
-from .utils import user_info_by_username_private
 from pydantic import ValidationError
-import webbrowser
 # from instagram import configs
 
 # logger = setup_logging(__name__)
@@ -71,6 +71,8 @@ class DirectChat:
             self.thread = self.client.insta_client.direct_thread(thread_id)
         else:
             self.thread = thread_data
+        # We need to fetch thread first then check seen status
+        # self.seen = self.is_seen()
 
         self.users_cache: Dict[str, UserShort] = {
             user.pk: user for user in self.thread.users
@@ -192,6 +194,9 @@ class DirectChat:
         # Store media items for later access
         self.media_items = media_items
 
+        # Mark the chat as seen
+        # self.mark_as_seen()
+
         return chat, media_items
     
     def get_title(self) -> str:
@@ -280,6 +285,7 @@ class DirectChat:
         """
         Mark the chat as seen.
         """
+        # self.seen = True
         self.client.insta_client.direct_send_seen(self.thread_id)
     
     def is_seen(self) -> bool:
