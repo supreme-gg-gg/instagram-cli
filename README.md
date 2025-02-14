@@ -2,9 +2,9 @@
 
 The ultimate weapon against brainrot.
 
-The page will be updated soon with more information.
+https://github.com/user-attachments/assets/81d87c0d-e39f-4af6-8337-d411a240a659
 
-For beta testing instructions, please refer to the [beta-testing.md](docs/beta-testing.md) docs.
+> The page will be updated soon with more information.
 
 ## What does it do?
 
