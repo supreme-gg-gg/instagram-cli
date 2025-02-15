@@ -12,9 +12,22 @@ from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
 from instagrapi.extractors import *
 from instagrapi.exceptions import UserNotFound
 from pydantic import ValidationError
+from dataclasses import dataclass
+from typing import List, Optional
 # from instagram import configs
 
 # logger = setup_logging(__name__)
+
+@dataclass
+class MessageBrief:
+    sender: str
+    content: str
+
+@dataclass
+class MessageInfo:
+    message: MessageBrief
+    reactions: Optional[Dict] = None
+    reply_to: Optional[MessageBrief] = None
 
 class ClientWrapper(Protocol):
     insta_client: InstaClient
@@ -106,9 +119,10 @@ class DirectChat:
         media_items = {}
         media_index = 0
 
-        for message in self.thread.messages:
-            # with open('message.txt', 'a', encoding="utf-8") as f:
-            #     f.write(repr(message))
+        def process_message(message: DirectMessage | ReplyMessage) -> MessageBrief:
+            nonlocal media_index
+            nonlocal media_items
+            res = {}
             sender = "You" if message.user_id == str(self.client.insta_client.user_id) else (
                 self.users_cache[message.user_id].full_name
                 if self.users_cache[message.user_id].full_name
@@ -118,7 +132,7 @@ class DirectChat:
             )
 
             if message.item_type == 'text':
-                chat.append((sender, f"{message.text}"))
+                res = {'sender': sender, 'content': f"{message.text}"}
             else:
                 try:
                     # print(message)
@@ -188,12 +202,25 @@ class DirectChat:
                     else:
                         media_placeholder = f"[Sent a {media_items[media_index]['type']} (use the Instagram app to view it)]"
 
-                    chat.append((sender, f"{media_placeholder}"))
+                    res = {'sender': sender, 'content': f"{media_placeholder}"}
                 except Exception as e:
-                    chat.append((sender, f"[Error: {repr(e)}]"))
+                    res = {'sender': sender, 'content': f"[Error: {repr(e)}]"}
                     # chat.append("Error")
                 finally:
                     media_index += 1
+            return MessageBrief(**res)
+
+        for message in self.thread.messages:
+            with open('message.txt', 'a', encoding="utf-8") as f:
+                f.write(repr(message.reactions))
+            reply = None
+            if message.reply:
+                reply = process_message(message.reply)
+            chat.append(MessageInfo(**{
+                'message': process_message(message),
+                'reply_to': reply,
+                'reactions': message.reactions
+            }))
 
         chat.reverse()  # Reverse the order to show latest messages at the bottom
 
