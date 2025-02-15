@@ -119,9 +119,11 @@ class DirectChat:
         media_items = {}
         media_index = 0
 
-        def process_message(message: DirectMessage | ReplyMessage) -> MessageBrief:
+        def process_message(message: DirectMessage | ReplyMessage) -> MessageBrief | None:
             nonlocal media_index
             nonlocal media_items
+            if message.item_type == 'action_log':
+                return None # Skip action logs (reactions)
             res = {}
             sender = "You" if message.user_id == str(self.client.insta_client.user_id) else (
                 self.users_cache[message.user_id].full_name
@@ -211,15 +213,37 @@ class DirectChat:
             return MessageBrief(**res)
 
         for message in self.thread.messages:
-            with open('message.txt', 'a', encoding="utf-8") as f:
-                f.write(repr(message.reactions))
+            # with open('message.txt', 'a', encoding="utf-8") as f:
+            #     f.write(repr(message.reactions))
             reply = None
             if message.reply:
                 reply = process_message(message.reply)
+            
+            reactions = None
+            if message.reactions:
+                # Structure of .reactions:
+                # {
+                #   'emojis': [
+                #     {
+                #         'timestamp': <int>, 
+                #         'client_context': '<int>', 
+                #         'sender_id': <int>, 
+                #         'emoji': '👍', 
+                #         'super_react_type': 'none'
+                #     }
+                #   ]
+                # }
+                
+                reactions_data = [reaction['emoji'] for reaction in message.reactions['emojis']]
+                # Convert reactions into a dictionary of emoji: count
+                reactions = {emoji: reactions_data.count(emoji) for emoji in reactions_data}
+            msg = process_message(message)
+            if msg is None:
+                continue
             chat.append(MessageInfo(**{
-                'message': process_message(message),
+                'message': msg,
                 'reply_to': reply,
-                'reactions': message.reactions
+                'reactions': reactions
             }))
 
         chat.reverse()  # Reverse the order to show latest messages at the bottom

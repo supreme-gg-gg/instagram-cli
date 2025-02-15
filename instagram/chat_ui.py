@@ -407,11 +407,11 @@ class ChatInterface:
             flush_line()
 
             # Add reactions if present
-            if 0 and msg.reactions:
+            if msg.reactions:
                 reaction_text = "        "  # Initial indent
                 reaction_list = []
                 for reaction, count in msg.reactions.items():
-                    reaction_list.append(f"[{reaction}]x{count}")
+                    reaction_list.append(f"{reaction}x{count}")
                 reaction_line = reaction_text + " ".join(reaction_list)
                 lines_buffer.append(
                     (msg_idx, reaction_line, False, 0, 0, "", True)
