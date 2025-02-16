@@ -2,8 +2,12 @@ import typer
 from instagram import auth, chat_ui, api, configs, client
 from art import text2art, tprint
 
+# We will expose the following core commands:
 app = typer.Typer()
+auth_app = typer.Typer()
+chat_app = typer.Typer()
 
+# This is the base command
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
     """Base command: Displays name, slogan, and visuals."""
@@ -37,20 +41,31 @@ def main(ctx: typer.Context):
         typer.echo(f"{color}{msg}\033[0m")
         # time.sleep(0.5)  # Simulate loading effect
 
-@app.command()
-def login(username: str = typer.Option(None, "-u", "--username"),
-         password: str = typer.Option(None, "-p", "--password")):
+# These are the subcommands
+@auth_app.command()
+def login(
+    use_username: bool = typer.Option(False, "-u", "--username", help="Login using username/password"),
+):
     """Login to Instagram"""
-    auth.login(username, password)
+    if use_username:
+        auth.login_by_username()
+    else:
+        auth.login()
 
-@app.command()
+@auth_app.command()
 def logout(username: str = typer.Option(None, "-u", "--username")):
     """Logout from Instagram"""
     auth.logout(username)
 
-@app.command()
-def chat(username: str = typer.Option(None, "-u", "--username")):
+@chat_app.command()
+def start(ctx: typer.Context):
     """Open chat UI"""
+    if ctx.invoked_subcommand is None:
+        chat_ui.start_chat(None)
+
+@chat_app.command()
+def search(username: str):
+    """Search for a user to chat with"""
     chat_ui.start_chat(username)
 
 @app.command()
@@ -77,6 +92,10 @@ def config(
 def cleanup(d_all: bool = typer.Option(True, "-a", "--all", help="Cleanup cache and temporary files")):
     """Cleanup cache and temporary files"""
     client.cleanup(d_all)
+
+# We add the subcommands to the main app
+app.add_typer(auth_app, name="auth")
+app.add_typer(chat_app, name="chat")
 
 if __name__ == "__main__":
     app()
