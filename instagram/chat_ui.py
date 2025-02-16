@@ -16,8 +16,22 @@ import typer
 from typing import List, Tuple, Callable
 
 from instagram.client import ClientWrapper
-from instagram.api import DirectMessages, DirectChat
+from instagram.api import DirectMessages, DirectChat, MessageInfo
 from instagram.chat_commands import cmd_registry
+
+from typing import NamedTuple
+
+class LineInfo(NamedTuple):
+    """
+    Named tuple to store line information for chat messages.
+    """
+    message_idx: str
+    text: str
+    is_selected: bool
+    color_idx: int
+    sender_width: int
+    sender_text: str
+    is_dimmed: bool
 
 class ChatMode(Enum):
     """
@@ -261,9 +275,14 @@ class ChatInterface:
         self.direct_chat = direct_chat
         self.mode = ChatMode.CHAT
         self.height, self.width = screen.getmaxyx()
-        self.messages: List[Tuple[str, str]] = []
+        self.messages: List[MessageInfo] = []
+        self.messages_lines: List[Tuple] = []
         self.selection = 0
         self.selected_message_id = None
+        self.scroll_offset = 0
+        self.visible_messages_range = None  # Start and end index of visible messages
+        self.visible_lines_range = None  # Start and end index of visible lines
+        self.messages_per_fetch = 20
 
         # Define UI element config
         # I believe there is a more scalable way to do configurations
@@ -311,7 +330,7 @@ class ChatInterface:
         """
         while not self.stop_refresh.is_set():
             try:
-                self.direct_chat.fetch_chat_history(num_messages=20)
+                self.direct_chat.fetch_chat_history(self.messages_per_fetch)
                 new_messages = self.direct_chat.get_chat_history()[0]
                 with self.refresh_lock:
                     self.messages.clear()
@@ -323,39 +342,32 @@ class ChatInterface:
                 self.chat_win.refresh()
             time.sleep(2)
 
-    def _update_chat_window(self):
+    def _build_message_lines(self, chat_w: int):
         """
-        Write chat messages to the chat window from bottom up with word wrapping and colored sender names.
+        Build wrapped lines for chat messages with word wrapping and formatting.
+
+        Parameters:
+        - chat_w: Width of the chat window
         """
-        self.chat_win.erase()
-
-        # Initialize colors for sender names
-        curses.init_pair(4, curses.COLOR_RED, curses.COLOR_BLACK)
-        curses.init_pair(5, curses.COLOR_BLUE, curses.COLOR_BLACK)
-        curses.init_pair(6, curses.COLOR_GREEN, curses.COLOR_BLACK)
-
-        # Get the last set of messages to display
-        display_messages = self.messages[-(self.height - 5):]
-
-        chat_h, chat_w = self.chat_win.getmaxyx()
-        max_lines = chat_h
-        lines_buffer = []  # (message_index, line_text, is_selected, color_idx, sender_width, sender_text)
-
+        lines_buffer: List[LineInfo] = []
+        
         # Build wrapped lines from oldest to newest
-        for msg_idx, (sender, content) in enumerate(display_messages):
-            sender_text = sender + ": "
+        for msg_idx, msg in enumerate(self.messages):
+            sender_text = msg.message.sender + ": "
             sender_width = len(sender_text)
+            
+            # Handle the main message
             content_width = chat_w - sender_width - 1
             is_selected = (msg_idx == self.selection and self.mode == ChatMode.REPLY)
 
             # Determine color index
             if self.config["colors"] == "on":
-                color_idx = (hash(sender) % 3) + 4
+                color_idx = (hash(msg.message.sender) % 3) + 4
             else:
                 color_idx = 0  # no color
 
             # Split content into words, then chunk
-            words = content.split()
+            words = msg.message.content.split()
             line_buffer = []
             current_width = 0
             first_line = True
@@ -365,58 +377,111 @@ class ChatInterface:
                     line_text = " ".join(line_buffer)
                     if first_line:
                         lines_buffer.append(
-                            (msg_idx, line_text, is_selected, color_idx, sender_width, sender_text)
+                            (msg_idx, line_text, is_selected, color_idx, sender_width, sender_text, False)
                         )
                     else:
                         lines_buffer.append(
-                            (msg_idx, line_text, is_selected, color_idx, sender_width, " " * sender_width)
+                            (msg_idx, line_text, is_selected, color_idx, sender_width, " " * sender_width, False)
                         )
 
             for word in words:
-                while len(word) > 0:
-                    space_needed = 1 if line_buffer else 0
-                    if current_width + len(word) + space_needed <= content_width:
-                        line_buffer.append(word)
-                        current_width += len(word) + space_needed
-                        word = ""
-                    else:
-                        space_left = content_width - current_width - space_needed
-                        chunk = word[:space_left]
-                        word = word[space_left:]
-                        line_buffer.append(chunk)
-                        flush_line()
-                        line_buffer.clear()
-                        current_width = 0
-                        first_line = False
-
+                space_needed = 1 if line_buffer else 0
+                if current_width + len(word) + space_needed <= content_width:
+                    line_buffer.append(word)
+                    current_width += len(word) + space_needed
+                else:
+                    flush_line()
+                    line_buffer = [word]
+                    current_width = len(word)
+                    first_line = False
 
             # Flush remaining line buffer
             flush_line()
 
+            # Handle reply-to message if present
+            if msg.reply_to:
+                reply_sender = msg.reply_to.sender + ": "
+                reply_indent = " " * sender_width + "| "
+                max_reply_content = chat_w - len(reply_sender) - len(reply_indent) - 1
+                reply_content = msg.reply_to.content
+                reply_content = reply_content.replace("\n", " ")
+                if len(reply_content) > max_reply_content:
+                    reply_content = reply_content[:max_reply_content-3] + "..."
+                reply_line = reply_indent + reply_sender + reply_content
+                lines_buffer.append(
+                    (msg_idx, reply_line, False, 0, 0, "", True)
+                )
+
+            # Add reactions if present
+            if msg.reactions:
+                reaction_text = " " * sender_width
+                reaction_list = []
+                for reaction, count in msg.reactions.items():
+                    reaction_list.append(f"{reaction}x{count}")
+                reaction_line = reaction_text + " ".join(reaction_list)
+                lines_buffer.append(
+                    (msg_idx, reaction_line, False, 0, 0, "", True)
+                )
+
             # Add a blank line after each message if layout not compact
             if self.config["layout"] != "compact":
-                lines_buffer.append((msg_idx, "", is_selected, color_idx, sender_width))
+                lines_buffer.append((msg_idx, "", False, 0, 0, "", False))
+        self.messages_lines = lines_buffer
+    
+    def _update_chat_window(self):
+        """
+        Write chat messages to the chat window with:
+        - Rendering messages from bottom up
+        - Basic word wrapping
+        - Colored sender names
+        - Replies and reactions
+        """
+        if not self.messages:
+            return
+        
+        self.chat_win.erase()
 
+        # Initialize colors for sender names and dimmed text
+        curses.init_pair(4, curses.COLOR_RED, curses.COLOR_BLACK)
+        curses.init_pair(5, curses.COLOR_BLUE, curses.COLOR_BLACK)
+        curses.init_pair(6, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(9, curses.COLOR_WHITE, curses.COLOR_BLACK)  # For dimmed text
+
+        # Build message lines
+        chat_h, chat_w = self.chat_win.getmaxyx()
+        self._build_message_lines(chat_w)
+
+        # Update visible messages range
+        self.visible_lines_range = [max(0, len(self.messages_lines)-chat_h-self.scroll_offset), len(self.messages_lines)-1-self.scroll_offset]
+    
+        self.visible_messages_range = [self.messages_lines[self.visible_lines_range[0]][0], self.messages_lines[self.visible_lines_range[1]][0]] # msg_idxd
+        
         # Now print from the bottom up
         current_line = chat_h - 1
-        for (msg_idx, text, is_selected, color_idx, sender_width, st_text) in reversed(lines_buffer):
+        for (msg_idx, content, is_selected, color_idx, sender_width, sender_text, is_dimmed) in reversed(self.messages_lines[self.visible_lines_range[0]:self.visible_lines_range[1]+1]):
             if current_line < 0:
+                # Update visible messages range
+                self.visible_messages_range[0] = msg_idx
                 break
-
+            
             if is_selected:
                 self.chat_win.attron(curses.A_REVERSE)
+            if is_dimmed:
+                self.chat_win.attron(curses.color_pair(9) | curses.A_DIM)
 
-            if color_idx:
+            if color_idx and not is_dimmed:
                 self.chat_win.attron(curses.color_pair(color_idx) | curses.A_BOLD)
-                self.chat_win.addstr(current_line, 0, st_text[:chat_w - 1])
+                self.chat_win.addstr(current_line, 0, sender_text[:chat_w - 1])
                 self.chat_win.attroff(curses.color_pair(color_idx) | curses.A_BOLD)
             else:
-                self.chat_win.addstr(current_line, 0, st_text[:chat_w - 1])
+                self.chat_win.addstr(current_line, 0, sender_text[:chat_w - 1])
 
-            self.chat_win.addstr(current_line, sender_width, text[:chat_w - sender_width - 1])
+            self.chat_win.addstr(current_line, sender_width, content[:chat_w - sender_width - 1])
 
             if is_selected:
                 self.chat_win.attroff(curses.A_REVERSE)
+            if is_dimmed:
+                self.chat_win.attroff(curses.color_pair(9) | curses.A_DIM)
 
             current_line -= 1
 
@@ -459,7 +524,7 @@ class ChatInterface:
             
             if key == 27:  # ESC
                 return Signal.QUIT
-                
+            
             result = self.input_box.handle_key(key)
             self.input_box.draw()
             
@@ -480,10 +545,10 @@ class ChatInterface:
         """
         while True:
             key = self.screen.getch()
-            if key in (curses.KEY_UP, ord('k')) and self.selection > 0:
+            if key in (curses.KEY_UP, ord('k')) and self.selection > self.visible_messages_range[0]:
                 self.selection -= 1
                 self._update_chat_window()
-            elif key in (curses.KEY_DOWN, ord('j')) and self.selection < len(self.messages) - 1:
+            elif key in (curses.KEY_DOWN, ord('j')) and self.selection < self.visible_messages_range[1]:
                 self.selection += 1
                 self._update_chat_window()
             elif key == 27:  # ESC
@@ -493,10 +558,8 @@ class ChatInterface:
                 self._update_status_bar()
                 return
             elif key == ord('\n'): # Enter
-                # NOTE: temporary fix to adjust the index, seems like all one off
-                self.selected_message_id = self.direct_chat.get_message_id(-(self.selection+1))
+                self.selected_message_id = self.messages[self.selection].id
                 return
-
 
     def _handle_command(self, command: str) -> Signal:
         """
@@ -523,12 +586,24 @@ class ChatInterface:
             self.stop_refresh.set()
             return Signal.BACK
         
-        elif result == "__QUIT__":
-            self.stop_refresh.set()
-            return Signal.QUIT
+        elif result == "__SCROLL_UP__":
+            self.scroll_offset = min(self.scroll_offset + self.chat_win.getmaxyx()[0] - 1, len(self.messages_lines) - self.chat_win.getmaxyx()[0])
+            # Increase fetch limit if close to the end
+            if len(self.messages_lines) - self.chat_win.getmaxyx()[0] - self.scroll_offset < 5:
+                self.messages_per_fetch += 20
+            self._update_chat_window()
+            return Signal.CONTINUE
         
+        elif result == "__SCROLL_DOWN__":
+            self.scroll_offset = max(self.scroll_offset - self.chat_win.getmaxyx()[0]+1, 0)
+            self.messages_per_fetch = max(self.messages_per_fetch - 20, 20)
+            self._update_chat_window()
+            return Signal.CONTINUE
+
         elif result == "__REPLY__":
             self.mode = ChatMode.REPLY
+            # Clamp selection to visible range
+            self.selection = min(max(self.selection, self.visible_messages_range[0]), self.visible_messages_range[1])
             self._update_chat_window()
             return Signal.CONTINUE
         
@@ -566,6 +641,7 @@ class ChatInterface:
                 self._update_status_bar()
             else:
                 self.direct_chat.send_text(message)
+            self.scroll_offset = 0
             return Signal.CONTINUE
         except Exception as e:
             self.chat_win.addstr(0, 0, f"Error sending: {e}"[:self.width - 1])
