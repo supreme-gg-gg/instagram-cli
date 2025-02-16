@@ -25,6 +25,7 @@ class MessageBrief:
 
 @dataclass
 class MessageInfo:
+    id: str
     message: MessageBrief
     reactions: Optional[Dict] = None
     reply_to: Optional[MessageBrief] = None
@@ -243,7 +244,8 @@ class DirectChat:
             chat.append(MessageInfo(**{
                 'message': msg,
                 'reply_to': reply,
-                'reactions': reactions
+                'reactions': reactions,
+                'id': message.id
             }))
 
         chat.reverse()  # Reverse the order to show latest messages at the bottom
