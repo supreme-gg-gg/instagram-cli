@@ -280,8 +280,9 @@ class ChatInterface:
         self.selection = 0
         self.selected_message_id = None
         self.scroll_offset = 0
-        self.visible_messages_range = [0, 0]  # Start and end index of visible messages
-        self.visible_lines_range = [0, 0]  # Start and end index of visible lines
+        self.visible_messages_range = None  # Start and end index of visible messages
+        self.visible_lines_range = None  # Start and end index of visible lines
+        self.messages_per_fetch = 20
 
         # Define UI element config
         # I believe there is a more scalable way to do configurations
@@ -329,7 +330,7 @@ class ChatInterface:
         """
         while not self.stop_refresh.is_set():
             try:
-                self.direct_chat.fetch_chat_history(num_messages=20+self.scroll_offset)
+                self.direct_chat.fetch_chat_history(self.messages_per_fetch)
                 new_messages = self.direct_chat.get_chat_history()[0]
                 with self.refresh_lock:
                     self.messages.clear()
@@ -435,6 +436,9 @@ class ChatInterface:
         - Colored sender names
         - Replies and reactions
         """
+        if not self.messages:
+            return
+        
         self.chat_win.erase()
 
         # Initialize colors for sender names and dimmed text
@@ -448,14 +452,13 @@ class ChatInterface:
         self._build_message_lines(chat_w)
 
         # Update visible messages range
-        if len(self.messages_lines) > 0:
-            self.visible_messages_range[1] = len(self.messages)-1
-            self.visible_lines_range[0] = len(self.messages_lines)-chat_h
-            self.visible_lines_range[1] = len(self.messages_lines)-1
+        self.visible_lines_range = [max(0, len(self.messages_lines)-chat_h-self.scroll_offset), len(self.messages_lines)-1-self.scroll_offset]
+    
+        self.visible_messages_range = [self.messages_lines[self.visible_lines_range[0]][0], self.messages_lines[self.visible_lines_range[1]][0]] # msg_idxd
         
         # Now print from the bottom up
         current_line = chat_h - 1
-        for (msg_idx, content, is_selected, color_idx, sender_width, sender_text, is_dimmed) in reversed(self.messages_lines):
+        for (msg_idx, content, is_selected, color_idx, sender_width, sender_text, is_dimmed) in reversed(self.messages_lines[self.visible_lines_range[0]:self.visible_lines_range[1]+1]):
             if current_line < 0:
                 # Update visible messages range
                 self.visible_messages_range[0] = msg_idx
@@ -583,12 +586,24 @@ class ChatInterface:
             self.stop_refresh.set()
             return Signal.BACK
         
-        elif result == "__QUIT__":
-            self.stop_refresh.set()
-            return Signal.QUIT
+        elif result == "__SCROLL_UP__":
+            self.scroll_offset = min(self.scroll_offset + self.chat_win.getmaxyx()[0] - 1, len(self.messages_lines) - self.chat_win.getmaxyx()[0])
+            # Increase fetch limit if close to the end
+            if len(self.messages_lines) - self.chat_win.getmaxyx()[0] - self.scroll_offset < 5:
+                self.messages_per_fetch += 20
+            self._update_chat_window()
+            return Signal.CONTINUE
         
+        elif result == "__SCROLL_DOWN__":
+            self.scroll_offset = max(self.scroll_offset - self.chat_win.getmaxyx()[0]+1, 0)
+            self.messages_per_fetch = max(self.messages_per_fetch - 20, 20)
+            self._update_chat_window()
+            return Signal.CONTINUE
+
         elif result == "__REPLY__":
             self.mode = ChatMode.REPLY
+            # Clamp selection to visible range
+            self.selection = min(max(self.selection, self.visible_messages_range[0]), self.visible_messages_range[1])
             self._update_chat_window()
             return Signal.CONTINUE
         
@@ -626,6 +641,7 @@ class ChatInterface:
                 self._update_status_bar()
             else:
                 self.direct_chat.send_text(message)
+            self.scroll_offset = 0
             return Signal.CONTINUE
         except Exception as e:
             self.chat_win.addstr(0, 0, f"Error sending: {e}"[:self.width - 1])

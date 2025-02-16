@@ -5,12 +5,12 @@ import webbrowser
 # import hashlib
 
 # from .utils import setup_logging
-from .utils import user_info_by_username_private
+from .utils import user_info_by_username_private, direct_thread_chunk
 
 from instagrapi import Client as InstaClient
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
 from instagrapi.extractors import *
-from instagrapi.exceptions import UserNotFound
+from instagrapi.exceptions import UserNotFound, DirectThreadNotFound, ClientNotFoundError
 from pydantic import ValidationError
 from dataclasses import dataclass
 from typing import List, Optional
@@ -85,6 +85,9 @@ class DirectChat:
             self.thread = self.client.insta_client.direct_thread(thread_id)
         else:
             self.thread = thread_data
+
+        self.messages_cursor = None
+        
         # We need to fetch thread first then check seen status
         # NOTE: This is very poorly documented, but through experimentation,
         # we found that meta returns 1 for unseen and 0 for seen for read_state
@@ -102,8 +105,19 @@ class DirectChat:
         Parameters:
         - num_messages: Number of messages to fetch.
         """
-        self.thread.messages = self.client.insta_client.direct_messages(self.thread_id, amount=num_messages)
+        thread_data, self.messages_cursor = direct_thread_chunk(self.client.insta_client, self.thread_id, amount=num_messages)
+        self.thread.messages = thread_data.messages
+        # self.thread.messages = self.client.insta_client.direct_messages(self.thread_id, amount=num_messages)
     
+    def fetch_next_messages_chunk(self, num_messages: int):
+        """
+        Fetch the next (older) chunk of messages in the chat.
+        Parameters:
+        - num_messages: Number of messages to fetch.
+        """
+        messages, self.messages_cursor = direct_thread_chunk(self.client.insta_client, self.thread_id, amount=num_messages, cursor=self.messages_cursor)
+        self.thread.messages += messages
+
     def get_chat_history(self) -> Tuple[List[Tuple[str, str]], Dict[int, dict]]:
         """
         Return list of messages in the chat history and a dictionary of media items.
