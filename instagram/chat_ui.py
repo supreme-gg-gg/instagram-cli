@@ -50,6 +50,7 @@ class Signal(Enum):
     CONTINUE = auto()
     BACK = auto()
     QUIT = auto()
+    NOTFOUND = auto()
 
 class InputBox:
     """
@@ -679,7 +680,7 @@ def create_loading_screen(screen, stop_event: threading.Event):
     screen.clear()
     screen.refresh()
 
-def start_chat(username: str | None = None):
+def start_chat(username: str | None = None, search_filter: str = "") -> None:
     """
     Wrapper function to launch chat UI.
     Logs in the user and pass the client to the curses main loop.
@@ -691,15 +692,16 @@ def start_chat(username: str | None = None):
         typer.echo("Please login first.\nTry 'instagram login'")
         return
 
-    curses.wrapper(lambda stdscr: main_loop(stdscr, client, username))
+    curses.wrapper(lambda stdscr: main_loop(stdscr, client, username, search_filter))
 
-def main_loop(screen, client: ClientWrapper, username: str | None) -> None:
+def main_loop(screen, client: ClientWrapper, username: str | None, search_filter: str = "") -> None:
     """
     Main loop for chat interface. Chat loading happens in the main loop to enable loading screen.
     Parameters:
     - screen: Curses screen object
     - client: ClientWrapper object for dm fetching
     - username: Optional recipient's username to chat with
+    - search_filter: Optional filter to apply to chat search
     """
     # First create the DM object
     dm = DirectMessages(client)
@@ -730,7 +732,7 @@ def main_loop(screen, client: ClientWrapper, username: str | None) -> None:
 
     while True:
         if username:
-            selected_chat = with_loading_screen(screen, dm.search_by_username, username)
+            selected_chat = with_loading_screen(screen, search_chat_list, dm, username, search_filter)
             if not selected_chat:
                 typer.echo(f"Chat with @{username} not found")
                 break
@@ -751,6 +753,43 @@ def main_loop(screen, client: ClientWrapper, username: str | None) -> None:
         # continue loop to show chat menu again
         if chat_interface(screen, selected_chat) == Signal.QUIT:
             break
+
+def search_chat_list(dm: DirectMessages, title: str, filter: str = "") -> DirectChat | None:
+    """
+    Search for a chat by title or username in DirectMessages object.
+    
+    Parameters
+    ---------------
+    - dm: DirectMessages object to search in 
+    - title: Title or username to search for
+    - filter: Filter to apply to the search, priority follows the order of characters:
+      - "u" to search by username
+      - "t" to search by title
+      - Default is "ut" (search username first, then title)
+    
+    Returns
+    ---------------
+    - DirectChat object if found, None if not found
+    """
+    # Default filter if none provided
+    if not filter:
+        filter = "ut"
+        
+    # Map of filter characters to search functions
+    search_funcs = {
+        'u': dm.search_by_username,
+        't': dm.search_by_title
+    }
+    
+    # Try each search method in order of filter chars
+    for f in filter:
+        if f in search_funcs:
+            if chat := search_funcs[f](title):
+                return chat
+        else:
+            raise ValueError(f"Invalid filter character: {f}")
+    
+    return None
 
 def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
     """

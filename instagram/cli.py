@@ -64,9 +64,23 @@ def start(ctx: typer.Context):
         chat_ui.start_chat(None)
 
 @chat_app.command()
-def search(username: str):
-    """Search for a user to chat with"""
-    chat_ui.start_chat(username)
+def search(
+    username: str,
+    _u: bool = typer.Option(
+        False, 
+        "-u", "--username", 
+        help="Search by username"
+    ),
+    _t: bool = typer.Option(
+        False, 
+        "-t", "--title", 
+        help="Search by thread title"
+    )
+):
+    """Search for a user to chat with. """
+    filter = "u" if _u else ""
+    filter += "t" if _t else ""
+    chat_ui.start_chat(username, filter)
 
 @app.command()
 def notify():
@@ -94,8 +108,8 @@ def cleanup(d_all: bool = typer.Option(True, "-A", "--all", help="Cleanup cache 
     client.cleanup(d_all)
 
 # We add the subcommands to the main app
-app.add_typer(auth_app, name="auth")
-app.add_typer(chat_app, name="chat")
+app.add_typer(auth_app, name="auth", help="Authentication related commands (login/logout)")
+app.add_typer(chat_app, name="chat", help="Chat related commands (start/search)")
 
 if __name__ == "__main__":
     app()

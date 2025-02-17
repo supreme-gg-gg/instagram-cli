@@ -73,6 +73,22 @@ class DirectMessages:
         thread = extract_direct_thread(thread_data["thread"])  # use built-in instagrapi parsing function
         return DirectChat(self.client, thread.id, thread)
 
+    def search_by_title(self, title: str) -> DirectChat | None:
+        """
+        Search for a chat by thread title.
+        
+        Parameters:
+        - title: Title to search for.
+        Returns:
+        - DirectChat object if found, None if not found.
+        """
+        if not self.chats:
+            self.fetch_chat_data(10, 10)
+        for chat in self.chats.values():
+            if chat.get_title() == title:
+                return chat
+        return None
+    
     def send_text_by_userid(self, userids: List[int], text: str):
         self.client.insta_client.direct_send(text, userids)
 
