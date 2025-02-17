@@ -33,7 +33,7 @@ instagram = "instagram.cli:app"
 packages = ["instagram"]
 
 [tool.setuptools.package-data]
-"" = ["*.md", "*.yaml"]
+"*" = ["*.md", "*.yaml"]
 
 [tool.setuptools.dynamic]
 readme = {file = "README.md"}

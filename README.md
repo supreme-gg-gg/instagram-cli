@@ -43,15 +43,6 @@ The following commands will be available after installing the package:
 ```bash
 instagram                                  # display title art
 instagram --help                           # view available commands
-<<<<<<< Updated upstream
-instagram login                            # login with username and password and saves session cache
-instagram logout                           # logout and removes session
-instagram chat --username <username>       # chat without brainrot and with convenient commands
-instagram notify                           # notifications such as unread inbox, followers, mentions
-instagram stats --days <last_n_days>       # brainrot history analytics, default 14 days
-instagram config --get --set --edit        # set custom configruation similar to git config
-instagram cleanup                          # cleanup media and session cache files
-=======
 
 # Authentication
 instagram auth login -u                    # login with username and password
@@ -67,7 +58,6 @@ instagram notify                           # view notifications (inbox, follower
 instagram stats --days <last_n_days>       # view usage analytics (default: 14 days)
 instagram config --get --set --edit        # manage custom configuration
 instagram cleanup -t                       # cleanup media and session cache files
->>>>>>> Stashed changes
 ```
 
 ## Chat Commands
