@@ -212,6 +212,14 @@ def send_emoji(context, emoji_name: str) -> str:
 #         scheduled_messages.clear()
 #         return f"Cleared {count} scheduled messages"
 
+@cmd_registry.register("scrollup", "Scroll up the chat history", required_args=[], shorthand="k")
+def scroll_up(context) -> str:
+    return "__SCROLL_UP__"
+
+@cmd_registry.register("scrolldown", "Scroll down the chat history", required_args=[], shorthand="j")
+def scroll_down(context) -> str:
+    return "__SCROLL_DOWN__"
+
 @cmd_registry.register("help", "Show available commands", shorthand="h")
 def show_help(context) -> str:
     """

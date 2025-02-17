@@ -2,8 +2,12 @@ import typer
 from instagram import auth, chat_ui, api, configs, client
 from art import text2art, tprint
 
+# We will expose the following core commands:
 app = typer.Typer()
+auth_app = typer.Typer()
+chat_app = typer.Typer()
 
+# This is the base command
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
     """Base command: Displays name, slogan, and visuals."""
@@ -37,21 +41,46 @@ def main(ctx: typer.Context):
         typer.echo(f"{color}{msg}\033[0m")
         # time.sleep(0.5)  # Simulate loading effect
 
-@app.command()
-def login(username: str = typer.Option(None, "-u", "--username"),
-         password: str = typer.Option(None, "-p", "--password")):
+# These are the subcommands
+@auth_app.command()
+def login(
+    use_username: bool = typer.Option(False, "-U", "--username", help="Login using username/password"),
+):
     """Login to Instagram"""
-    auth.login(username, password)
+    if use_username:
+        auth.login_by_username()
+    else:
+        auth.login()
 
-@app.command()
-def logout(username: str = typer.Option(None, "-u", "--username")):
+@auth_app.command()
+def logout(username: str = typer.Option(None, "-U", "--username")):
     """Logout from Instagram"""
     auth.logout(username)
 
-@app.command()
-def chat(username: str = typer.Option(None, "-u", "--username")):
+@chat_app.command()
+def start(ctx: typer.Context):
     """Open chat UI"""
-    chat_ui.start_chat(username)
+    if ctx.invoked_subcommand is None:
+        chat_ui.start_chat(None)
+
+@chat_app.command()
+def search(
+    username: str,
+    _u: bool = typer.Option(
+        False, 
+        "-u", "--username", 
+        help="Search by username"
+    ),
+    _t: bool = typer.Option(
+        False, 
+        "-t", "--title", 
+        help="Search by thread title"
+    )
+):
+    """Search for a user to chat with. """
+    filter = "u" if _u else ""
+    filter += "t" if _t else ""
+    chat_ui.start_chat(username, filter)
 
 @app.command()
 def notify():
@@ -59,24 +88,28 @@ def notify():
     api.show_updates()
 
 @app.command()
-def stats(days: int = typer.Option(14, "-d", "--days", help="Number of days to show analytics")):
+def stats(days: int = typer.Option(14, "-D", "--days", help="Number of days to show analytics")):
     """Show analytics"""
     api.analytics_bar_graph(last_n_days=days)
 
 @app.command()
 def config(
-    get: str = typer.Option(None, "-g", "--get", help="Get config value"),
+    get: str = typer.Option(None, "-G", "--get", help="Get config value"),
     set: tuple[str, str] = typer.Option(None, "-s", "--set", help="Set config value"),
-    list: bool = typer.Option(False, "-l", "--list", help="List all config values"),
-    edit: bool = typer.Option(False, "-e", "--edit", help="Open config file in default editor")
+    list: bool = typer.Option(False, "-L", "--list", help="List all config values"),
+    edit: bool = typer.Option(False, "-E", "--edit", help="Open config file in default editor")
 ):
     """Manage Instagram CLI configuration"""
     configs.config(get, set, list, edit)
 
 @app.command()
-def cleanup(d_all: bool = typer.Option(True, "-a", "--all", help="Cleanup cache and temporary files")):
+def cleanup(d_all: bool = typer.Option(True, "-A", "--all", help="Cleanup cache and temporary files")):
     """Cleanup cache and temporary files"""
     client.cleanup(d_all)
+
+# We add the subcommands to the main app
+app.add_typer(auth_app, name="auth", help="Authentication related commands (login/logout)")
+app.add_typer(chat_app, name="chat", help="Chat related commands (start/search)")
 
 if __name__ == "__main__":
     app()

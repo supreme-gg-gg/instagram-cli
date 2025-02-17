@@ -1,6 +1,8 @@
 from instagrapi import Client
-from instagrapi.exceptions import ClientError, UserNotFound
-from instagrapi.types import User
+from instagrapi.exceptions import ClientError, UserNotFound, DirectThreadNotFound, ClientNotFoundError
+from instagrapi.types import User, DirectThread, DirectMessage
+from instagrapi.extractors import extract_direct_thread
+from typing import Tuple
 
 import logging
 
@@ -59,3 +61,54 @@ def user_info_by_username_private(self: Client, username: str, use_cache: bool =
         self._users_cache[user.pk] = user
         self._usernames_cache[user.username] = user.pk
     return self.user_info(self._usernames_cache[username])
+
+def direct_thread_chunk(self: Client, thread_id: int, amount: int = 20, cursor: str = None) -> Tuple[DirectThread, str]:
+    """
+    Get a chunk of messages in a direct message thread along with the thread's metadata
+
+    This is a modified version of the direct_thread method from the instagrapi library.
+
+    Parameters
+    ----------
+    thread_id: int
+        Unique identifier of a Direct Message thread
+
+    amount: int, optional
+        Minimum number of media to return, default is 20
+    
+    cursor: str, optional
+        Cursor for pagination, default is None
+
+    Returns
+    -------
+    Tuple[DirectThread, str]
+        A tuple containing the DirectThread object and the cursor for the next chunk of messages
+    """
+    assert self.user_id, "Login required"
+    params = {
+        "visual_message_return_type": "unseen",
+        "direction": "older",
+        "seq_id": "40065",  # 59663
+        "limit": "20",
+    }
+    items = []
+    while True:
+        if cursor:
+            params["cursor"] = cursor
+        try:
+            result = self.private_request(
+                f"direct_v2/threads/{thread_id}/", params=params
+            )
+        except ClientNotFoundError as e:
+            raise DirectThreadNotFound(e, thread_id=thread_id, **self.last_json)
+        thread = result["thread"]
+        for item in thread["items"]:
+            items.append(item)
+        cursor = thread.get("oldest_cursor")
+        if not cursor or not thread.get("has_older", False) or (amount and len(items) >= amount):
+            break
+    # We don't want to slice items here because it will break the pagination
+    # if amount:
+    #     items = items[:amount]
+    thread["items"] = items
+    return (extract_direct_thread(thread), cursor)
