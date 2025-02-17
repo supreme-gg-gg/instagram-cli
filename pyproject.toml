@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "instagram-cli"
+version = "1.0.1"
+description = "CLI and Terminal UI client for Instagram -- chat without brainrot."
+readme = "README.md"
+authors = [
+    { name = "Jet Chiang" },
+    { name = "James Zheng" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "typer",
+    "art",
+    "pydantic",
+    "instagrapi",
+    "pyyaml",
+    "pillow",
+    "windows-curses; platform_system=='Windows'"
+]
+
+[project.urls]
+Homepage = "https://github.com/supreme-gg-gg/instagram-cli"
+
+[project.scripts]
+instagram = "instagram.cli:app"
+
+[tool.setuptools]
+packages = ["instagram"]
+
+[tool.setuptools.package-data]
+"" = ["*.md", "*.yaml"]
+
+[tool.setuptools.dynamic]
+readme = {file = "README.md"}

@@ -41,8 +41,9 @@ pip install .
 The following commands will be available after installing the package:
 
 ```bash
-instagram                                  # title art!
+instagram                                  # display title art
 instagram --help                           # view available commands
+<<<<<<< Updated upstream
 instagram login                            # login with username and password and saves session cache
 instagram logout                           # logout and removes session
 instagram chat --username <username>       # chat without brainrot and with convenient commands
@@ -50,6 +51,23 @@ instagram notify                           # notifications such as unread inbox,
 instagram stats --days <last_n_days>       # brainrot history analytics, default 14 days
 instagram config --get --set --edit        # set custom configruation similar to git config
 instagram cleanup                          # cleanup media and session cache files
+=======
+
+# Authentication
+instagram auth login -u                    # login with username and password
+instagram auth logout                      # logout and removes session
+
+# Chat Features
+instagram chat start                       # start chat interface
+instagram chat search -u <username>        # search and open chat by username
+instagram chat search -t <text>           # search and open chat by chat title
+
+# Utility Commands
+instagram notify                           # view notifications (inbox, followers, mentions)
+instagram stats --days <last_n_days>       # view usage analytics (default: 14 days)
+instagram config --get --set --edit        # manage custom configuration
+instagram cleanup -t                       # cleanup media and session cache files
+>>>>>>> Stashed changes
 ```
 
 ## Chat Commands
@@ -60,6 +78,8 @@ The following commands should be typed and sent in the chat box in chat interfac
 - `:quit`: quit the application
 - `:back`: back to chat menu for selecting chat
 - `:reply`: reply mode to select and reply to messages
+- `:scrollup`or `:k`: scroll up in chat messages
+- `:scrolldown` or `:j`: scroll down in chat messages
 - `:upload`: upload media using the file navigator
 - `:upload <path>`: upload media (photo or video) directly from path
 - `:view <index>`: view and download media at index or open URL directly in browser

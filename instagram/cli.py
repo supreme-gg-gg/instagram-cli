@@ -37,13 +37,25 @@ def main(ctx: typer.Context):
         typer.echo(f"{color}{msg}\033[0m")
         # time.sleep(0.5)  # Simulate loading effect
 
+<<<<<<< Updated upstream
 @app.command()
 def login(username: str = typer.Option(None, "-u", "--username"),
          password: str = typer.Option(None, "-p", "--password")):
+=======
+# These are the subcommands
+@auth_app.command()
+def login(
+    use_username: bool = typer.Option(False, "-u", "--username", help="Login using username/password"),
+):
+>>>>>>> Stashed changes
     """Login to Instagram"""
     auth.login(username, password)
 
+<<<<<<< Updated upstream
 @app.command()
+=======
+@auth_app.command()
+>>>>>>> Stashed changes
 def logout(username: str = typer.Option(None, "-u", "--username")):
     """Logout from Instagram"""
     auth.logout(username)
@@ -51,7 +63,31 @@ def logout(username: str = typer.Option(None, "-u", "--username")):
 @app.command()
 def chat(username: str = typer.Option(None, "-u", "--username")):
     """Open chat UI"""
+<<<<<<< Updated upstream
     chat_ui.start_chat(username)
+=======
+    if ctx.invoked_subcommand is None:
+        chat_ui.start_chat(None)
+
+@chat_app.command()
+def search(
+    username: str,
+    _u: bool = typer.Option(
+        False,
+        "-u", "--username", 
+        help="Search by username"
+    ),
+    _t: bool = typer.Option(
+        False,
+        "-t", "--title", 
+        help="Search by thread title"
+    )
+):
+    """Search for a user to chat with. """
+    filter = "u" if _u else ""
+    filter += "t" if _t else ""
+    chat_ui.start_chat(username, filter)
+>>>>>>> Stashed changes
 
 @app.command()
 def notify():
