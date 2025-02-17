@@ -18,23 +18,53 @@ https://github.com/user-attachments/assets/81d87c0d-e39f-4af6-8337-d411a240a659
 
 ## Installation
 
-Installing this CLI tool takes less effort than scrolling reels!!! Think about it next time you login to instagram...
+The simplest way to get started is to install the package from PyPI if you have Python installed:
 
-We will soon be available on PyPI so you can download with
-
-```
+```bash
 pip install instagram-cli
 ```
 
-For now, please install by cloning the repo and installing the package:
+If you do not have Python installed, you can download and install it from the [official website](https://www.python.org/downloads/).
 
-```
-git clone https://github.com/supreme-gg-gg/instagram-cli
+### Installation from Source
+
+```bash
+git clone https://github.com/supreme-gg-gg/instagram-cli.git
 cd instagram-cli
 pip install .
 ```
 
-> We recommend using virtual environment when installing, see the beta testing guide for more info.
+### Docker Installation
+
+You must have Docker installed to use this method. If you do not have Docker installed, you can download and install it from the [official website](https://docs.docker.com/get-docker/).
+
+Build and run Docker image from source:
+
+```bash
+git clone https://github.com/supreme-gg-gg/instagram-cli.git
+cd instagram-cli
+docker build -t instagram-cli .
+docker run -it instagram-cli
+```
+
+Alternatively, you can pull the pre-built Docker image from Docker Hub (this will available very soon):
+
+```bash
+docker run -it supreme-gg-gg/instagram-cli
+```
+
+### Pre-built Executables
+
+> NOTE: This option is HIGHLY UNRECOMMENDED unless the other methods do not work for you.
+
+If you do not want to install Python, you can download the pre-built executables from the [releases page]().
+
+After downloading, the executable can be run from the command line:
+
+```bash
+./instagram-cli [OPTIONS] command [ARGS] # for macOS and Linux
+instagram-cli.exe [OPTIONS] command [ARGS] # for Windows
+```
 
 ## Commands
 
