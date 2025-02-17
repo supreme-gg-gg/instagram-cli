@@ -50,7 +50,6 @@ class Signal(Enum):
     CONTINUE = auto()
     BACK = auto()
     QUIT = auto()
-    NOTFOUND = auto()
 
 class InputBox:
     """
@@ -276,7 +275,7 @@ class ChatInterface:
         self.direct_chat = direct_chat
         self.mode = ChatMode.CHAT
         self.height, self.width = screen.getmaxyx()
-        self.messages: List[MessageInfo] = []
+        self.messages: List[MessageInfo] = self.direct_chat.get_chat_history()[0]
         self.messages_lines: List[Tuple] = []
         self.selection = 0
         self.selected_message_id = None
@@ -316,6 +315,7 @@ class ChatInterface:
         # Setup refresh mechanism
         self.refresh_lock = threading.Lock()
         self.stop_refresh = threading.Event()
+        self.refresh_enabled = True 
         self.start_refresh_thread()
 
     def start_refresh_thread(self):
@@ -328,20 +328,27 @@ class ChatInterface:
     def _refresh_chat(self):
         """
         Fetch chat history from DirectChat regularly and update the chat window.
+        Only fetches when fetch_enabled is True.
         """
         while not self.stop_refresh.is_set():
             try:
-                self.direct_chat.fetch_chat_history(self.messages_per_fetch)
-                new_messages = self.direct_chat.get_chat_history()[0]
-                with self.refresh_lock:
-                    self.messages.clear()
-                    self.messages.extend(new_messages)
-                self._update_chat_window()
-                self.direct_chat.mark_as_seen()
+                if self.refresh_enabled:
+                    self.direct_chat.fetch_chat_history(self.messages_per_fetch)
+                    new_messages = self.direct_chat.get_chat_history()[0]
+                    with self.refresh_lock:
+                        self.messages.clear()
+                        self.messages.extend(new_messages)
+                    self._update_chat_window()
+                    self.direct_chat.mark_as_seen()
             except Exception as e:
                 self.chat_win.addstr(0, 0, f"Refresh error: {str(e)}")
                 self.chat_win.refresh()
             time.sleep(2)
+
+    def toggle_refresh(self, refresh_enabled: bool = True):
+        """Enable/disable automatic API message fetching and refreshing"""
+        self.refresh_enabled = refresh_enabled
+        # self._update_status_bar(msg=f"Message fetching {'enabled' if self.fetch_enabled else 'disabled'}")
 
     def _build_message_lines(self, chat_w: int):
         """
@@ -489,12 +496,14 @@ class ChatInterface:
         self.chat_win.refresh()
         self._update_status_bar()
 
-    def _update_status_bar(self, msg: str = None):
+    def _update_status_bar(self, msg: str = None, override_default: bool = False):
         """
         Update the status bar based on the current mode.
         """
         self.status_bar.erase()
-        if self.mode == ChatMode.CHAT:
+        if override_default:
+            status_text = msg
+        elif self.mode == ChatMode.CHAT:
             self.status_bar.bkgd(' ', curses.color_pair(1))
             status_text = "[CHAT] Type :help for commands, :back to return, :quit to exit"
         elif self.mode == ChatMode.REPLY:
@@ -588,16 +597,29 @@ class ChatInterface:
             return Signal.BACK
         
         elif result == "__SCROLL_UP__":
+            # Disable refresh while viewing older messages (for performance)
+            self.toggle_refresh(False)
             self.scroll_offset = min(self.scroll_offset + self.chat_win.getmaxyx()[0] - 1, len(self.messages_lines) - self.chat_win.getmaxyx()[0])
             # Increase fetch limit if close to the end
+            # Move this to a separate thread??
             if len(self.messages_lines) - self.chat_win.getmaxyx()[0] - self.scroll_offset < 5:
-                self.messages_per_fetch += 20
+                # self.messages_per_fetch += 20
+                self._update_status_bar(msg="Fetching more messages...", override_default=True)
+                self.direct_chat.fetch_older_messages_chunk(20)
+                self.messages.clear()
+                self.messages.extend(self.direct_chat.get_chat_history()[0])
+                self._update_status_bar()
+            self.mode = ChatMode.CHAT
             self._update_chat_window()
             return Signal.CONTINUE
         
         elif result == "__SCROLL_DOWN__":
             self.scroll_offset = max(self.scroll_offset - self.chat_win.getmaxyx()[0]+1, 0)
-            self.messages_per_fetch = max(self.messages_per_fetch - 20, 20)
+            # self.messages_per_fetch = max(self.messages_per_fetch - 20, 20)
+            # Enable refresh if at the bottom
+            if self.scroll_offset == 0:
+                self.toggle_refresh(True)
+            self.mode = ChatMode.CHAT
             self._update_chat_window()
             return Signal.CONTINUE
 
@@ -612,10 +634,9 @@ class ChatInterface:
         else:
             self._update_status_bar(msg=command)
             self._display_command_result(result)
-            curses.napms(2000)
+            curses.napms(1000)
             self.mode = ChatMode.CHAT
-
-        return Signal.CONTINUE
+            return Signal.CONTINUE
     
     def _display_command_result(self, result: str):
         """

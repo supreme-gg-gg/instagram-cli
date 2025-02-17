@@ -83,7 +83,7 @@ class DirectMessages:
         - DirectChat object if found, None if not found.
         """
         if not self.chats:
-            self.fetch_chat_data(10, 10)
+            self.fetch_chat_data(10, 20)
         for chat in self.chats.values():
             if chat.get_title() == title:
                 return chat
@@ -125,14 +125,14 @@ class DirectChat:
         self.thread.messages = thread_data.messages
         # self.thread.messages = self.client.insta_client.direct_messages(self.thread_id, amount=num_messages)
     
-    def fetch_next_messages_chunk(self, num_messages: int):
+    def fetch_older_messages_chunk(self, num_messages: int):
         """
-        Fetch the next (older) chunk of messages in the chat.
+        Fetch the older chunk of messages in the chat.
         Parameters:
         - num_messages: Number of messages to fetch.
         """
-        messages, self.messages_cursor = direct_thread_chunk(self.client.insta_client, self.thread_id, amount=num_messages, cursor=self.messages_cursor)
-        self.thread.messages += messages
+        thread_data, self.messages_cursor = direct_thread_chunk(self.client.insta_client, self.thread_id, amount=num_messages, cursor=self.messages_cursor)
+        self.thread.messages += thread_data.messages
 
     def get_chat_history(self) -> Tuple[List[Tuple[str, str]], Dict[int, dict]]:
         """
