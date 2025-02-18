@@ -66,13 +66,6 @@ def back_to_chat_list(context) -> str:
     """
     return "__BACK__"
 
-@cmd_registry.register("quit", "Quit the chat interface", shorthand="q")
-def quit_chat(context) -> str:
-    """
-    Quit the chat interface. Returns a special value that the chat interface will recognize.
-    """
-    return "__QUIT__"
-
 @cmd_registry.register("view", "View media in chat by index of media item", required_args=["index"], shorthand="v")
 def view_media(context, index: int) -> str:
     """
@@ -126,17 +119,13 @@ def manage_config(context, options: str) -> dict:
     
     return config
 
-@cmd_registry.register("emoji", "Send an emoji based on its name", required_args=["emoji_name"], shorthand="em")
-def send_emoji(context, emoji_name: str) -> str:
+@cmd_registry.register("react", "React to a message in the chat", required_args=["reaction"], shorthand="R")
+def react_to_message(context, reaction: str) -> str:
     """
-    Send an emoji to the chat. Takes the name of the emoji.
+    React to a message in the chat. Takes the reaction emoji.
+    NOTE: This doesn't seem possible because there is no native API support, need to dig deep...
     """
-    chat: DirectChat = context["chat"]
-    try:
-        chat.send_emoji(emoji_name)
-        return f"Sent emoji: {emoji_name}"
-    except Exception as e:
-        return f"Failed to send emoji: {e}"
+    raise NotImplementedError("Reacting to messages is not yet implemented")
 
 # # Store scheduled messages as (timestamp, message, chat) tuples
 # scheduled_messages: List[Tuple[float, str, DirectChat]] = []

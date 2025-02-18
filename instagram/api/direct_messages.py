@@ -2,10 +2,12 @@ from __future__ import annotations
 from typing import Dict, List, Tuple, Protocol
 from pathlib import Path
 import webbrowser
+import emoji
+
 # import hashlib
 
 # from .utils import setup_logging
-from .utils import user_info_by_username_private, direct_thread_chunk
+from .utils import user_info_by_username_private, direct_thread_chunk, fuzzy_match
 
 from instagrapi import Client as InstaClient
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
@@ -49,7 +51,7 @@ class DirectMessages:
         """
         self.chats = {thread.id: DirectChat(self.client, thread.id, thread) for thread in self.client.insta_client.direct_threads(amount=num_chats, thread_message_limit=num_message_limit)}
         return self.chats
-    
+
     def search_by_username(self, username: str) -> DirectChat | None:
         """
         Search for a chat by username, the workflow:
@@ -59,6 +61,9 @@ class DirectMessages:
         - username: Username to search for
         Returns:
         - DirectChat object if found, None if not found
+
+        NOTE: This requires an EXACT MATCH of usernames, 
+        we recommend using search_by_title for fuzzy matching
         """
         # TODO: compare which of the following two methods is faster
         # user = self.client.insta_client.direct_search(username) # Returns a list of search results
@@ -73,23 +78,39 @@ class DirectMessages:
         thread = extract_direct_thread(thread_data["thread"])  # use built-in instagrapi parsing function
         return DirectChat(self.client, thread.id, thread)
 
-    def search_by_title(self, title: str) -> DirectChat | None:
+    def search_by_title(self, title: str, threshold: float = 0.75, n: int = 1) -> DirectChat | None:
         """
-        Search for a chat by thread title.
+        Search for a chat by thread title using fuzzy matching.
         
         Parameters:
         - title: Title to search for.
+        - threshold: Minimum similarity ratio (0.0 to 1.0) required for a match. Default 0.75
+        - n: Number of best matches to return. Default 1
         Returns:
         - DirectChat object if found, None if not found.
+
+        NOTE: This does NOT currently support multiple matches,
+        this can be easily added but requires frontend support.
         """
         if not self.chats:
             self.fetch_chat_data(10, 20)
-        for chat in self.chats.values():
-            if chat.get_title() == title:
-                return chat
-        return None
-    
+
+        result = fuzzy_match(
+            query=title,
+            items=list(self.chats.values()),
+            getter=lambda chat: chat.get_title(),
+            cutoff=threshold,
+            use_partial_ratio=True
+        )
+
+        print(result)
+        
+        return result[0] if result and len(result) > 0 else None
+
     def send_text_by_userid(self, userids: List[int], text: str):
+        """
+        Send a text message to a list of user IDs.
+        """
         self.client.insta_client.direct_send(text, userids)
 
 class DirectChat:
@@ -103,6 +124,7 @@ class DirectChat:
             self.thread = thread_data
 
         self.messages_cursor = None
+        self.title = self.get_title()
         
         # We need to fetch thread first then check seen status
         # NOTE: This is very poorly documented, but through experimentation,
@@ -114,6 +136,49 @@ class DirectChat:
         self.users_cache: Dict[str, UserShort] = {
             user.pk: user for user in self.thread.users
         }
+
+    @staticmethod
+    def _replace_emojis(text: str) -> str:
+        """
+        Replace :emoji_name: patterns with actual emoji characters
+        This is an improve version of the emoji.emojize function
+        that allows for fuzzy matching of emoji names using custom 
+        fuzzy_match function. Currently only uses english names. 
+        However, you can add 2 lines to include aliases as well.
+        """
+        words = text.split()
+        result = []
+
+        # Extract unique names
+        emoji_names = set()
+        # take all the english and english aliases
+        for emo in emoji.EMOJI_DATA.values():
+            if 'alias' in emo:
+                if isinstance(emo['alias'], list):
+                    for alias in emo['alias']:
+                        emoji_names.add(alias)
+            else:
+                emoji_names.add(emo['en'])
+
+        if text in emoji_names:
+            return emoji.emojize(f"{text}", language='alias')
+        
+        # No need to print the set of emoji names
+        for word in words:
+            if word.startswith(':') and word.endswith(':'):
+                emoji_match = fuzzy_match(
+                    query=word,
+                    items=list(emoji_names),
+                    cutoff=0.8
+                )
+                if emoji_match:
+                    result.append(emoji.emojize(f"{emoji_match[0]}", language='alias'))
+                else:
+                    result.append(word)
+            else:
+                result.append(word)
+                
+        return ' '.join(result)
 
     def fetch_chat_history(self, num_messages: int):
         """
@@ -304,10 +369,16 @@ class DirectChat:
         Send a text message to the chat.
         Parameters:
         - message: Text message to send.
+
+        Replaces :emoji_name: patterns with actual emoji characters.
+        This can use either the default emoji library implementation
+        or the custom fuzzy matching implementation.
         """
         # NOTE: direct_answer is just a wrapper around direct_send
-        self.client.insta_client.direct_answer(self.thread_id, message)
-        return f"You: {message}"
+        # processed_message = emoji.emojize(message, language='alias')
+        processed_message = self._replace_emojis(message)
+        self.client.insta_client.direct_answer(self.thread_id, processed_message)
+        return f"You: {processed_message}"
     
     def get_message_id(self, message_index: int) -> str:
         """
@@ -344,10 +415,15 @@ class DirectChat:
         # logger.info(f"Replying to message: {reply_to_message.text[:10]}...")
 
         # Then we can send the reply
-        self.client.insta_client.direct_send(message, thread_ids=[self.thread_id], reply_to_message=reply_to_message)
+        processed_message = self._replace_emojis(message)
+        self.client.insta_client.direct_send(
+            processed_message,
+            thread_ids=[self.thread_id],
+            reply_to_message=reply_to_message
+        )
 
         # This should add the reply to DirectMessage.reply as ReplyMessage
-        return f"You replied to \"{reply_to_message.text[:10]}...\": {message}"
+        return f"You replied to \"{reply_to_message.text[:10]}...\": {processed_message}"
 
     def send_photo(self, path: str):
         """

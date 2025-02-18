@@ -44,7 +44,7 @@ def main(ctx: typer.Context):
 # These are the subcommands
 @auth_app.command()
 def login(
-    use_username: bool = typer.Option(False, "-U", "--username", help="Login using username/password"),
+    use_username: bool = typer.Option(False, "-u", "--username", help="Login using username/password"),
 ):
     """Login to Instagram"""
     if use_username:
@@ -53,7 +53,7 @@ def login(
         auth.login()
 
 @auth_app.command()
-def logout(username: str = typer.Option(None, "-U", "--username")):
+def logout(username: str = typer.Option(None, "-u", "--username")):
     """Logout from Instagram"""
     auth.logout(username)
 
@@ -66,15 +66,15 @@ def start(ctx: typer.Context):
 @chat_app.command()
 def search(
     username: str,
-    _u: bool = typer.Option(
-        False, 
-        "-u", "--username", 
-        help="Search by username"
-    ),
     _t: bool = typer.Option(
-        False, 
+        True,
         "-t", "--title", 
         help="Search by thread title"
+    ),
+    _u: bool = typer.Option(
+        False,
+        "-u", "--username", 
+        help="Search by username"
     )
 ):
     """Search for a user to chat with. """
@@ -88,22 +88,22 @@ def notify():
     api.show_updates()
 
 @app.command()
-def stats(days: int = typer.Option(14, "-D", "--days", help="Number of days to show analytics")):
+def stats(days: int = typer.Option(14, "-d", "--days", help="Number of days to show analytics")):
     """Show analytics"""
     api.analytics_bar_graph(last_n_days=days)
 
 @app.command()
 def config(
-    get: str = typer.Option(None, "-G", "--get", help="Get config value"),
+    get: str = typer.Option(None, "-g", "--get", help="Get config value"),
     set: tuple[str, str] = typer.Option(None, "-s", "--set", help="Set config value"),
-    list: bool = typer.Option(False, "-L", "--list", help="List all config values"),
-    edit: bool = typer.Option(False, "-E", "--edit", help="Open config file in default editor")
+    list: bool = typer.Option(False, "-l", "--list", help="List all config values"),
+    edit: bool = typer.Option(False, "-e", "--edit", help="Open config file in default editor")
 ):
     """Manage Instagram CLI configuration"""
     configs.config(get, set, list, edit)
 
 @app.command()
-def cleanup(d_all: bool = typer.Option(True, "-A", "--all", help="Cleanup cache and temporary files")):
+def cleanup(d_all: bool = typer.Option(True, "-a", "--all", help="Cleanup cache and temporary files")):
     """Cleanup cache and temporary files"""
     client.cleanup(d_all)
 
