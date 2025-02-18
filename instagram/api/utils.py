@@ -1,10 +1,18 @@
+from typing import Tuple
+import logging
+from difflib import SequenceMatcher
+from typing import List, TypeVar, Callable
+
 from instagrapi import Client
 from instagrapi.exceptions import ClientError, UserNotFound, DirectThreadNotFound, ClientNotFoundError
 from instagrapi.types import User, DirectThread, DirectMessage
 from instagrapi.extractors import extract_direct_thread
-from typing import Tuple
+from instagrapi.exceptions import ClientError, UserNotFound
+from instagrapi.types import User
+import requests
+from PIL import Image, ImageOps
 
-import logging
+T = TypeVar('T')
 
 def setup_logging(name: str):
     """
@@ -112,3 +120,112 @@ def direct_thread_chunk(self: Client, thread_id: int, amount: int = 20, cursor: 
     #     items = items[:amount]
     thread["items"] = items
     return (extract_direct_thread(thread), cursor)
+
+def fuzzy_match[T](
+    query: str,
+    items: List[str | T],
+    n: int = 1,
+    cutoff: float = 0.6,
+    getter: Callable[[str | T], str] = None,
+    key: Callable[[str], str] = lambda x: x.lower(),
+    use_partial_ratio: bool = False
+) -> List[tuple[str | T, float]] | tuple[str | T, float] | None:
+    """
+    Find the closest matching items using fuzzy string matching.
+    This is an implementation of the fuzzywuzzy library without the dependency.
+    Uses built-in SequenceMatcher to find similarity ratio between strings.
+    
+    Parameters:
+    - query: String to match against
+    - items: List of strings or objects to search through
+    - n: Number of matches to return (if 1, returns single match or None)
+    - cutoff: Minimum similarity ratio (0.0 to 1.0) required for matches
+    - getter: Function to extract string from object (default: str)
+    - key: Function to transform strings before comparison (default: lowercase)
+    - use_partial_ratio: Use partial ratio instead of simple ratio (default: False)
+    
+    Returns:
+    - If n=1: Tuple of (matched item, similarity ratio) or None if no match
+    - If n>1: List of tuples (matched item, similarity ratio), sorted by ratio descending
+    """
+    if not items:
+        return [] if n > 1 else None
+    
+    matcher = SequenceMatcher(None, key(query))
+    matches = []
+
+    for item in items:
+
+        # Get string to match from item
+        if getter is None:
+            if isinstance(item, str):
+                extracted = item
+            else:
+                extracted = str(item)
+        else:
+            extracted = getter(item)
+
+        if use_partial_ratio:
+            # Find the best matching substring
+            s2 = key(extracted)
+            matcher.set_seq2(s2)
+            blocks = matcher.get_matching_blocks()
+            ratios = []
+            for _, j, size in blocks:
+                if size == 0:
+                    continue
+                block = s2[j:j+size]
+                m = SequenceMatcher(None, key(query), block)
+                ratios.append(m.ratio())
+            ratio = max(ratios) if ratios else 0
+        else:
+            matcher.set_seq2(key(extracted))
+            ratio = matcher.ratio()
+            
+        if ratio >= cutoff:
+            matches.append((item, ratio))
+    
+    matches.sort(key=lambda x: x[1], reverse=True)
+    matches = matches[:n]
+    
+    return matches[0] if n == 1 and matches else matches if matches else None
+
+def render_latex_online(latex_expr, output_path="latex_online.png", padding=None):
+    """
+    Render LaTeX expression and save as image online.
+    More flexible and doesn't require LaTeX to be installed on your system.
+    """
+    # Encode LaTeX expression properly
+    latex_expr = latex_expr.replace(" ", "%20")
+    url = f"https://latex.codecogs.com/png.latex?\\dpi{{300}}\\bg_white {latex_expr}"
+    
+    # Fetch image from API
+    response = requests.get(url)
+    if response.status_code == 200:
+        with open(output_path, "wb") as f:
+            f.write(response.content)
+        
+        # Open the image and add padding only if specified
+        img = Image.open(output_path)
+        if padding is not None:
+            img = ImageOps.expand(img, border=padding, fill="white")
+        img.save(output_path)
+
+        return output_path
+    else:
+        raise requests.RequestException("Failed to fetch LaTeX image from API: " + response.text)
+
+def render_latex_local(latex_expr, output_path="latex_local.png", padding=None):
+    """
+    Render LaTeX expression and save as image locally.
+    NOTE: THIS REQUIRES LATEX TO BE INSTALLED ON YOUR SYSTEM.
+    """
+    import matplotlib.pyplot as plt
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(4, 2), dpi=300)  # High DPI for better resolution
+    ax.text(0.5, 0.5, f"${latex_expr}$", fontsize=20, ha='center', va='center')
+    ax.axis("off")
+    plt.savefig(output_path, bbox_inches='tight', pad_inches=0.1, dpi=300)
+
+    return output_path

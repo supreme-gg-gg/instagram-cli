@@ -84,7 +84,7 @@ def search_chat_list(dm: DirectMessages, title: str, filter: str = "") -> Direct
     - filter: Filter to apply to the search, priority follows the order of characters:
       - "u" to search by username
       - "t" to search by title
-      - Default is "ut" (search username first, then title)
+      - Default is "tu" (search title first, then username)
     
     Returns
     ---------------
@@ -92,7 +92,7 @@ def search_chat_list(dm: DirectMessages, title: str, filter: str = "") -> Direct
     """
     # Default filter if none provided
     if not filter:
-        filter = "ut"
+        filter = "tu"
         
     # Map of filter characters to search functions
     search_funcs = {

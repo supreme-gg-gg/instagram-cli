@@ -17,6 +17,8 @@ setup(
         "instagrapi",
         "pyyaml",
         "pillow",
+        "matplotlib",
+        "emoji",
         "windows-curses; platform_system=='Windows'"
     ],
     classifiers=[

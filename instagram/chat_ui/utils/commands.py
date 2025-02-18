@@ -1,6 +1,7 @@
 from typing import Callable, Dict, List
 from dataclasses import dataclass
 import inspect
+import re
 
 @dataclass
 class Command:
@@ -33,28 +34,41 @@ class CommandRegistry:
     def execute(self, command_str: str, **context) -> str:
         """Execute a command string"""
         try:
-            parts = command_str.split()
-            if not parts:
-                return "No command specified"
-            
+            # Split into command and rest
+            parts = command_str.split(None, 1)
+
+            # The first word is the command name
             cmd_name = parts[0]
+
             # Check if it's a shorthand and convert to full command name
             if cmd_name in self.shorthands:
                 cmd_name = self.shorthands[cmd_name]
-                
+            
             if cmd_name not in self.commands:
                 return f"Unknown command: {cmd_name}"
 
             cmd = self.commands[cmd_name]
-            args = parts[1:] if len(parts) > 1 else []
-            
+
+            # Split the rest into arguments
+            args = []
+
+            if len(parts) > 1:
+                rest = parts[1]
+                # Check if this is a LaTeX expression (starts and ends with $)
+                if rest.startswith('$') and rest.endswith('$'):
+                    args = [rest[1:-1]]  # Keep LaTeX expression as a single argument
+                else:
+                    # For non-LaTeX commands, split normally
+                    args = rest.split()
+
+            # Check if we have enough required arguments
             if len(args) < len(cmd.required_args):
                 return f"Usage: {cmd_name} {' '.join(cmd.required_args)}"
             
             # Pad with None for optional arguments
             while len(args) < len(cmd.args) - 1:  # -1 for context
                 args.append(None)
-                
+            
             return cmd.func(context, *args)
         except Exception as e:
             return f"Error executing command: {str(e)}"

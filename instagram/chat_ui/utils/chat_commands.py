@@ -8,8 +8,8 @@ import subprocess
 
 import tkinter as tk
 from tkinter import filedialog
-
 from .commands import CommandRegistry
+import matplotlib.pyplot as plt
 from instagram.api import DirectChat
 
 cmd_registry = CommandRegistry()
@@ -66,13 +66,6 @@ def back_to_chat_list(context) -> str:
     """
     return "__BACK__"
 
-@cmd_registry.register("quit", "Quit the chat interface", shorthand="q")
-def quit_chat(context) -> str:
-    """
-    Quit the chat interface. Returns a special value that the chat interface will recognize.
-    """
-    return "__QUIT__"
-
 @cmd_registry.register("view", "View media in chat by index of media item", required_args=["index"], shorthand="v")
 def view_media(context, index: int) -> str:
     """
@@ -126,17 +119,20 @@ def manage_config(context, options: str) -> dict:
     
     return config
 
-@cmd_registry.register("emoji", "Send an emoji based on its name", required_args=["emoji_name"], shorthand="em")
-def send_emoji(context, emoji_name: str) -> str:
+@cmd_registry.register("latex", "Render LaTeX expr and send as image", required_args=["expression"], shorthand="l")
+def render_latex(context, expression: str) -> str:
     """
-    Send an emoji to the chat. Takes the name of the emoji.
+    Render LaTeX expression and send as image.
+    TODO: fix local rendering and set local as a config variable
     """
-    chat: DirectChat = context["chat"]
+    chat : DirectChat = context["chat"]
+    
     try:
-        chat.send_emoji(emoji_name)
-        return f"Sent emoji: {emoji_name}"
+        return chat.send_latex_image(expression, local=False)
     except Exception as e:
-        return f"Failed to send emoji: {e}"
+        return f"Failed to render LaTeX: {e}"
+
+
 
 # # Store scheduled messages as (timestamp, message, chat) tuples
 # scheduled_messages: List[Tuple[float, str, DirectChat]] = []
