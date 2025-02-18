@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "instagram-cli"
-version = "1.0.1.1"
+version = "1.0.2"
 description = "CLI and Terminal UI client for Instagram -- chat without brainrot."
 readme = "README.md"
 authors = [
@@ -20,6 +20,7 @@ dependencies = [
     "instagrapi",
     "pyyaml",
     "pillow",
+    'emoji',
     "windows-curses; platform_system=='Windows'"
 ]
 

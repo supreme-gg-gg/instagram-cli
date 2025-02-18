@@ -90,6 +90,8 @@ instagram config --get --set --edit        # manage custom configuration
 instagram cleanup -t                       # cleanup media and session cache files
 ```
 
+> All searches in the package uses a custom fuzzy matching based on ratcliff/obershelp similarity algorithm. This means chat search and emoji search will be more flexible and forgiving.
+
 ## Chat Commands
 
 The following commands should be typed and sent in the chat box in chat interface:
@@ -103,4 +105,40 @@ The following commands should be typed and sent in the chat box in chat interfac
 - `:upload`: upload media using the file navigator
 - `:upload <path>`: upload media (photo or video) directly from path
 - `:view <index>`: view and download media at index or open URL directly in browser
-- `:emoji <name>`: coming soon!!
+- `:latex $<expr>$`: render and send LaTeX code as image
+
+### Emoji
+
+Text with emoji syntax will be rendered as emoji. For example,
+
+`This is an emoji :thumbsup:`
+
+will be rendered as
+
+`This is an emoji 👍`
+
+This does not have to be an exact match with the emoji name. For example, `:thumbsup:` can also be written as `:thumbs_up:`.
+
+### LaTeX
+
+We support LaTeX rendering and sending as images. For example,
+
+`:latex $\frac{a}{b} + c = d$`
+`:latex $\int{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}$`
+
+will render the LaTeX code and send the image in chat.
+
+![sample1](resource/latex_sample_1.png)
+![sample2](resource/latex_sample_2.png)
+
+Please note that the LaTeX code **_MUST_** be enclosed in `$` symbols.
+
+You can choose to render with [online API](https://latex.codecogs.com) (default) or local LaTeX installation such as TeX Live, MiKTeX, etc. You can set the rendering method with `instagram config --set latex_rendering_method <online|local>`.
+
+### Markdown
+
+Coming soon!
+
+### Code Blocks
+
+Coming soon!
