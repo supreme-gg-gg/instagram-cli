@@ -1,5 +1,5 @@
 import typer
-from instagram import auth, chat_ui, api, configs, client
+from instagram import auth, chat, api, configs, client
 from art import text2art, tprint
 
 # We will expose the following core commands:
@@ -61,7 +61,7 @@ def logout(username: str = typer.Option(None, "-U", "--username")):
 def start(ctx: typer.Context):
     """Open chat UI"""
     if ctx.invoked_subcommand is None:
-        chat_ui.start_chat(None)
+        chat.start_chat(None)
 
 @chat_app.command()
 def search(
@@ -80,7 +80,7 @@ def search(
     """Search for a user to chat with. """
     filter = "u" if _u else ""
     filter += "t" if _t else ""
-    chat_ui.start_chat(username, filter)
+    chat.start_chat(username, filter)
 
 @app.command()
 def notify():

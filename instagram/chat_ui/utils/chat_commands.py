@@ -9,7 +9,7 @@ import subprocess
 import tkinter as tk
 from tkinter import filedialog
 
-from instagram.commands import CommandRegistry
+from .commands import CommandRegistry
 from instagram.api import DirectChat
 
 cmd_registry = CommandRegistry()
