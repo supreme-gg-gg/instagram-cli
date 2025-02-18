@@ -7,6 +7,10 @@ from instagrapi import Client
 from instagrapi.exceptions import ClientError, UserNotFound, DirectThreadNotFound, ClientNotFoundError
 from instagrapi.types import User, DirectThread, DirectMessage
 from instagrapi.extractors import extract_direct_thread
+from instagrapi.exceptions import ClientError, UserNotFound
+from instagrapi.types import User
+import requests
+from PIL import Image, ImageOps
 
 T = TypeVar('T')
 
@@ -185,3 +189,43 @@ def fuzzy_match[T](
     matches = matches[:n]
     
     return matches[0] if n == 1 and matches else matches if matches else None
+
+def render_latex_online(latex_expr, output_path="latex_online.png", padding=None):
+    """
+    Render LaTeX expression and save as image online.
+    More flexible and doesn't require LaTeX to be installed on your system.
+    """
+    # Encode LaTeX expression properly
+    latex_expr = latex_expr.replace(" ", "%20")
+    url = f"https://latex.codecogs.com/png.latex?\\dpi{{300}}\\bg_white {latex_expr}"
+    
+    # Fetch image from API
+    response = requests.get(url)
+    if response.status_code == 200:
+        with open(output_path, "wb") as f:
+            f.write(response.content)
+        
+        # Open the image and add padding only if specified
+        img = Image.open(output_path)
+        if padding is not None:
+            img = ImageOps.expand(img, border=padding, fill="white")
+        img.save(output_path)
+
+        return output_path
+    else:
+        raise requests.RequestException("Failed to fetch LaTeX image from API: " + response.text)
+
+def render_latex_local(latex_expr, output_path="latex_local.png", padding=None):
+    """
+    Render LaTeX expression and save as image locally.
+    NOTE: THIS REQUIRES LATEX TO BE INSTALLED ON YOUR SYSTEM.
+    """
+    import matplotlib.pyplot as plt
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(4, 2), dpi=300)  # High DPI for better resolution
+    ax.text(0.5, 0.5, f"${latex_expr}$", fontsize=20, ha='center', va='center')
+    ax.axis("off")
+    plt.savefig(output_path, bbox_inches='tight', pad_inches=0.1, dpi=300)
+
+    return output_path

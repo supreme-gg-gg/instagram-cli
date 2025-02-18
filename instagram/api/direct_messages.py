@@ -7,10 +7,11 @@ import emoji
 # import hashlib
 
 # from .utils import setup_logging
-from .utils import user_info_by_username_private, direct_thread_chunk, fuzzy_match
+from .utils import user_info_by_username_private, render_latex_online, \
+    render_latex_local, fuzzy_match, direct_thread_chunk, user_info_by_username_private
 
 from instagrapi import Client as InstaClient
-from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
+from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort, ReplyMessage
 from instagrapi.extractors import *
 from instagrapi.exceptions import UserNotFound, DirectThreadNotFound, ClientNotFoundError
 from pydantic import ValidationError
@@ -457,14 +458,6 @@ class DirectChat:
         """
         return self.thread.is_seen(self.client.insta_client.user_id)
     
-    def send_emoji(self, emoji_name: str):
-        """
-        Send an emoji to the chat.
-        Parameters:
-        - emoji_name: Name of the emoji.
-        """
-        raise NotImplementedError("send_emoji is not implemented yet")
-    
     def media_url_download(self, media_index: int) -> str | None:
         """
         Download media item by index. Uses the cached media items for url.
@@ -521,3 +514,30 @@ class DirectChat:
             raise e
 
         return file_path
+
+    def send_latex_image(self, latex_expr: str, local: bool) -> str:
+        """
+        Send a LaTeX expression as an image to the chat.
+        Parameters:
+        - latex_expr: LaTeX expression to render.
+        """
+        # Save to the generated cahce
+        save_dir = Path.home() / ".instagram-cli" / "generated"
+        if not save_dir.exists():
+            save_dir.mkdir(parents=True, exist_ok=True)
+
+        filename = f"latex_{hash(latex_expr)}"
+
+        try:
+            if local:
+                # Render locally
+                output_path = render_latex_local(latex_expr, output_path=save_dir / f"{filename}.png")
+            else:
+                # Render online
+                output_path = render_latex_online(latex_expr, output_path=save_dir / f"{filename}.png", padding=20)
+            # Send the image as usual
+            self.send_photo(output_path)
+        except Exception as e:
+            return f"Failed to send LaTeX image: {e}"
+
+        return f"You: [Sent LaTeX image: {latex_expr}]"

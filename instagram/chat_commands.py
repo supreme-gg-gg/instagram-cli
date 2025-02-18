@@ -9,6 +9,8 @@ import subprocess
 import tkinter as tk
 from tkinter import filedialog
 
+import matplotlib.pyplot as plt
+
 from instagram.commands import CommandRegistry
 from instagram.api import DirectChat
 
@@ -119,13 +121,20 @@ def manage_config(context, options: str) -> dict:
     
     return config
 
-@cmd_registry.register("react", "React to a message in the chat", required_args=["reaction"], shorthand="R")
-def react_to_message(context, reaction: str) -> str:
+@cmd_registry.register("latex", "Render LaTeX expr and send as image", required_args=["expression"], shorthand="l")
+def render_latex(context, expression: str) -> str:
     """
-    React to a message in the chat. Takes the reaction emoji.
-    NOTE: This doesn't seem possible because there is no native API support, need to dig deep...
+    Render LaTeX expression and send as image.
+    TODO: fix local rendering and set local as a config variable
     """
-    raise NotImplementedError("Reacting to messages is not yet implemented")
+    chat : DirectChat = context["chat"]
+    
+    try:
+        return chat.send_latex_image(expression, local=False)
+    except Exception as e:
+        return f"Failed to render LaTeX: {e}"
+
+
 
 # # Store scheduled messages as (timestamp, message, chat) tuples
 # scheduled_messages: List[Tuple[float, str, DirectChat]] = []

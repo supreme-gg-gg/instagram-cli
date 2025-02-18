@@ -149,6 +149,7 @@ def cleanup(delete_all: bool) -> None:
     _config = configs.Config()
     cache_dir = Path(_config.get("advanced.cache_dir")).expanduser()
     media_dir = Path(_config.get("advanced.media_dir")).expanduser()
+    generated_dir = Path(_config.get("advanced.generated_dir")).expanduser()
 
     # Cleanup
     typer.echo(f"Cleaning up cache: {str(cache_dir), str(media_dir)}")
@@ -159,4 +160,9 @@ def cleanup(delete_all: bool) -> None:
     if media_dir.exists():
         for file in media_dir.iterdir():
             file.unlink()
+
+    if generated_dir.exists():
+        for file in generated_dir.iterdir():
+            file.unlink()
+            
     typer.echo("Cleanup complete")
