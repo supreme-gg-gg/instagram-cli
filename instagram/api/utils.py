@@ -1,7 +1,7 @@
 from typing import Tuple
 import logging
 from difflib import SequenceMatcher
-from typing import List, TypeVar, Callable
+from typing import List, TypeVar, Callable, Optional, Union
 import random
 import time
 import json
@@ -21,8 +21,6 @@ from instagrapi.utils import dumps
 
 import requests
 from PIL import Image, ImageOps
-
-T = TypeVar('T')
 
 def setup_logging(name: str):
     """
@@ -316,16 +314,16 @@ def photo_rupload(
         width, height = im.size
     return upload_id, width, height
 
-
-def fuzzy_match[T](
+T = TypeVar("T")
+def fuzzy_match(
     query: str,
-    items: List[str | T],
+    items: List[Union[str, T]],
     n: int = 1,
     cutoff: float = 0.6,
-    getter: Callable[[str | T], str] = None,
+    getter: Optional[Callable[[Union[str, T]], str]] = None,
     key: Callable[[str], str] = lambda x: x.lower(),
     use_partial_ratio: bool = False
-) -> List[tuple[str | T, float]] | tuple[str | T, float] | None:
+) -> Union[List[Tuple[Union[str, T], float]], Tuple[Union[str, T], float], None]:
     """
     Find the closest matching items using fuzzy string matching.
     This is an implementation of the fuzzywuzzy library without the dependency.
