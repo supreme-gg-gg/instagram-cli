@@ -2,19 +2,37 @@ from __future__ import annotations
 from typing import Dict, List, Tuple, Protocol
 from pathlib import Path
 import webbrowser
+import emoji
+
 # import hashlib
 
 # from .utils import setup_logging
-from .utils import user_info_by_username_private
+from .utils import user_info_by_username_private, direct_send_media , render_latex_online, \
+    render_latex_local, fuzzy_match, direct_thread_chunk, user_info_by_username_private
+from .scheduler import MessageScheduler
 
 from instagrapi import Client as InstaClient
-from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort
+from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort, ReplyMessage
 from instagrapi.extractors import *
-from instagrapi.exceptions import UserNotFound
+from instagrapi.exceptions import UserNotFound, DirectThreadNotFound, ClientNotFoundError
 from pydantic import ValidationError
+from dataclasses import dataclass
+from typing import List, Optional
 # from instagram import configs
 
 # logger = setup_logging(__name__)
+
+@dataclass
+class MessageBrief:
+    sender: str
+    content: str
+
+@dataclass
+class MessageInfo:
+    id: str
+    message: MessageBrief
+    reactions: Optional[Dict] = None
+    reply_to: Optional[MessageBrief] = None
 
 class ClientWrapper(Protocol):
     insta_client: InstaClient
@@ -35,7 +53,7 @@ class DirectMessages:
         """
         self.chats = {thread.id: DirectChat(self.client, thread.id, thread) for thread in self.client.insta_client.direct_threads(amount=num_chats, thread_message_limit=num_message_limit)}
         return self.chats
-    
+
     def search_by_username(self, username: str) -> DirectChat | None:
         """
         Search for a chat by username, the workflow:
@@ -45,6 +63,9 @@ class DirectMessages:
         - username: Username to search for
         Returns:
         - DirectChat object if found, None if not found
+
+        NOTE: This requires an EXACT MATCH of usernames, 
+        we recommend using search_by_title for fuzzy matching
         """
         # TODO: compare which of the following two methods is faster
         # user = self.client.insta_client.direct_search(username) # Returns a list of search results
@@ -59,7 +80,39 @@ class DirectMessages:
         thread = extract_direct_thread(thread_data["thread"])  # use built-in instagrapi parsing function
         return DirectChat(self.client, thread.id, thread)
 
+    def search_by_title(self, title: str, threshold: float = 0.75, n: int = 1) -> DirectChat | None:
+        """
+        Search for a chat by thread title using fuzzy matching.
+        
+        Parameters:
+        - title: Title to search for.
+        - threshold: Minimum similarity ratio (0.0 to 1.0) required for a match. Default 0.75
+        - n: Number of best matches to return. Default 1
+        Returns:
+        - DirectChat object if found, None if not found.
+
+        NOTE: This does NOT currently support multiple matches,
+        this can be easily added but requires frontend support.
+        """
+        if not self.chats:
+            self.fetch_chat_data(10, 20)
+
+        result = fuzzy_match(
+            query=title,
+            items=list(self.chats.values()),
+            getter=lambda chat: chat.get_title(),
+            cutoff=threshold,
+            use_partial_ratio=True
+        )
+
+        print(result)
+        
+        return result[0] if result and len(result) > 0 else None
+
     def send_text_by_userid(self, userids: List[int], text: str):
+        """
+        Send a text message to a list of user IDs.
+        """
         self.client.insta_client.direct_send(text, userids)
 
 class DirectChat:
@@ -71,6 +124,10 @@ class DirectChat:
             self.thread = self.client.insta_client.direct_thread(thread_id)
         else:
             self.thread = thread_data
+
+        self.messages_cursor = None
+        self.title = self.get_title()
+        
         # We need to fetch thread first then check seen status
         # NOTE: This is very poorly documented, but through experimentation,
         # we found that meta returns 1 for unseen and 0 for seen for read_state
@@ -82,14 +139,68 @@ class DirectChat:
             user.pk: user for user in self.thread.users
         }
 
+    @staticmethod
+    def _replace_emojis(text: str) -> str:
+        """
+        Replace :emoji_name: patterns with actual emoji characters
+        This is an improve version of the emoji.emojize function
+        that allows for fuzzy matching of emoji names using custom 
+        fuzzy_match function. Currently only uses english names. 
+        However, you can add 2 lines to include aliases as well.
+        """
+        words = text.split()
+        result = []
+
+        # Extract unique names
+        emoji_names = set()
+        # take all the english and english aliases
+        for emo in emoji.EMOJI_DATA.values():
+            if 'alias' in emo:
+                if isinstance(emo['alias'], list):
+                    for alias in emo['alias']:
+                        emoji_names.add(alias)
+            else:
+                emoji_names.add(emo['en'])
+
+        if text in emoji_names:
+            return emoji.emojize(f"{text}", language='alias')
+        
+        # No need to print the set of emoji names
+        for word in words:
+            if word.startswith(':') and word.endswith(':'):
+                emoji_match = fuzzy_match(
+                    query=word,
+                    items=list(emoji_names),
+                    cutoff=0.8
+                )
+                if emoji_match:
+                    result.append(emoji.emojize(f"{emoji_match[0]}", language='alias'))
+                else:
+                    result.append(word)
+            else:
+                result.append(word)
+                
+        return ' '.join(result)
+
     def fetch_chat_history(self, num_messages: int):
         """
         Fetch chat history for the thread.
         Parameters:
         - num_messages: Number of messages to fetch.
         """
-        self.thread.messages = self.client.insta_client.direct_messages(self.thread_id, amount=num_messages)
+        thread_data, self.messages_cursor = direct_thread_chunk(self.client.insta_client, self.thread_id, amount=num_messages)
+        self.thread.messages = thread_data.messages
+        # self.thread.messages = self.client.insta_client.direct_messages(self.thread_id, amount=num_messages)
     
+    def fetch_older_messages_chunk(self, num_messages: int):
+        """
+        Fetch the older chunk of messages in the chat.
+        Parameters:
+        - num_messages: Number of messages to fetch.
+        """
+        thread_data, self.messages_cursor = direct_thread_chunk(self.client.insta_client, self.thread_id, amount=num_messages, cursor=self.messages_cursor)
+        self.thread.messages += thread_data.messages
+
     def get_chat_history(self) -> Tuple[List[Tuple[str, str]], Dict[int, dict]]:
         """
         Return list of messages in the chat history and a dictionary of media items.
@@ -106,9 +217,12 @@ class DirectChat:
         media_items = {}
         media_index = 0
 
-        for message in self.thread.messages:
-            # with open('message.txt', 'a', encoding="utf-8") as f:
-            #     f.write(repr(message))
+        def process_message(message: DirectMessage | ReplyMessage) -> MessageBrief | None:
+            nonlocal media_index
+            nonlocal media_items
+            if message.item_type == 'action_log':
+                return None # Skip action logs (reactions)
+            res = {}
             sender = "You" if message.user_id == str(self.client.insta_client.user_id) else (
                 self.users_cache[message.user_id].full_name
                 if self.users_cache[message.user_id].full_name
@@ -118,7 +232,7 @@ class DirectChat:
             )
 
             if message.item_type == 'text':
-                chat.append((sender, f"{message.text}"))
+                res = {'sender': sender, 'content': f"{message.text}"}
             else:
                 try:
                     # print(message)
@@ -188,12 +302,48 @@ class DirectChat:
                     else:
                         media_placeholder = f"[Sent a {media_items[media_index]['type']} (use the Instagram app to view it)]"
 
-                    chat.append((sender, f"{media_placeholder}"))
+                    res = {'sender': sender, 'content': f"{media_placeholder}"}
                 except Exception as e:
-                    chat.append((sender, f"[Error: {repr(e)}]"))
+                    res = {'sender': sender, 'content': f"[Error: {repr(e)}]"}
                     # chat.append("Error")
                 finally:
                     media_index += 1
+            return MessageBrief(**res)
+
+        for message in self.thread.messages:
+            # with open('message.txt', 'a', encoding="utf-8") as f:
+            #     f.write(repr(message.reactions))
+            reply = None
+            if message.reply:
+                reply = process_message(message.reply)
+            
+            reactions = None
+            if message.reactions:
+                # Structure of .reactions:
+                # {
+                #   'emojis': [
+                #     {
+                #         'timestamp': <int>, 
+                #         'client_context': '<int>', 
+                #         'sender_id': <int>, 
+                #         'emoji': '👍', 
+                #         'super_react_type': 'none'
+                #     }
+                #   ]
+                # }
+                
+                reactions_data = [reaction['emoji'] for reaction in message.reactions['emojis']]
+                # Convert reactions into a dictionary of emoji: count
+                reactions = {emoji: reactions_data.count(emoji) for emoji in reactions_data}
+            msg = process_message(message)
+            if msg is None:
+                continue
+            chat.append(MessageInfo(**{
+                'message': msg,
+                'reply_to': reply,
+                'reactions': reactions,
+                'id': message.id
+            }))
 
         chat.reverse()  # Reverse the order to show latest messages at the bottom
 
@@ -221,10 +371,26 @@ class DirectChat:
         Send a text message to the chat.
         Parameters:
         - message: Text message to send.
+
+        Replaces :emoji_name: patterns with actual emoji characters.
+        This can use either the default emoji library implementation
+        or the custom fuzzy matching implementation.
         """
         # NOTE: direct_answer is just a wrapper around direct_send
-        self.client.insta_client.direct_answer(self.thread_id, message)
-        return f"You: {message}"
+        # processed_message = emoji.emojize(message, language='alias')
+        processed_message = self._replace_emojis(message)
+        self.client.insta_client.direct_answer(self.thread_id, processed_message)
+        return f"You: {processed_message}"
+    
+    def schedule_message(self, send_time: str, message: str) -> str:
+        """
+        Schedule a message to be sent at a later time.
+        Parameters:
+        - send_time: Time to send the message.
+        - message: Text message to send.
+        """
+        scheduler = MessageScheduler().get_instance()
+        return scheduler.add_task(self.thread_id, send_time, message, display_name=self.get_title())
     
     def get_message_id(self, message_index: int) -> str:
         """
@@ -261,10 +427,15 @@ class DirectChat:
         # logger.info(f"Replying to message: {reply_to_message.text[:10]}...")
 
         # Then we can send the reply
-        self.client.insta_client.direct_send(message, thread_ids=[self.thread_id], reply_to_message=reply_to_message)
+        processed_message = self._replace_emojis(message)
+        self.client.insta_client.direct_send(
+            processed_message,
+            thread_ids=[self.thread_id],
+            reply_to_message=reply_to_message
+        )
 
         # This should add the reply to DirectMessage.reply as ReplyMessage
-        return f"You replied to \"{reply_to_message.text[:10]}...\": {message}"
+        return f"You replied to \"{reply_to_message.text[:10]}...\": {processed_message}"
 
     def send_photo(self, path: str):
         """
@@ -272,7 +443,7 @@ class DirectChat:
         Parameters:
         - path: Path to the photo file.
         """
-        self.client.insta_client.direct_send_photo(path, thread_ids=[self.thread_id])
+        direct_send_media(self.client.insta_client, path, thread_ids=[self.thread_id], content_type="photo")
         return f"You: [Sent a photo at {path}]"
     
     def send_video(self, path: str) -> str:
@@ -297,14 +468,6 @@ class DirectChat:
         Check if the chat is seen by the current user.
         """
         return self.thread.is_seen(self.client.insta_client.user_id)
-    
-    def send_emoji(self, emoji_name: str):
-        """
-        Send an emoji to the chat.
-        Parameters:
-        - emoji_name: Name of the emoji.
-        """
-        raise NotImplementedError("send_emoji is not implemented yet")
     
     def media_url_download(self, media_index: int) -> str | None:
         """
@@ -362,3 +525,30 @@ class DirectChat:
             raise e
 
         return file_path
+
+    def send_latex_image(self, latex_expr: str, local: bool) -> str:
+        """
+        Send a LaTeX expression as an image to the chat.
+        Parameters:
+        - latex_expr: LaTeX expression to render.
+        """
+        # Save to the generated cahce
+        save_dir = Path.home() / ".instagram-cli" / "generated"
+        if not save_dir.exists():
+            save_dir.mkdir(parents=True, exist_ok=True)
+
+        filename = f"latex_{hash(latex_expr)}"
+
+        try:
+            if local:
+                # Render locally
+                output_path = render_latex_local(latex_expr, output_path=save_dir / f"{filename}.png")
+            else:
+                # Render online
+                output_path = render_latex_online(latex_expr, output_path=save_dir / f"{filename}.png", padding=20)
+            # Send the image as usual
+            self.send_photo(output_path)
+        except Exception as e:
+            return f"Failed to send LaTeX image: {e}"
+
+        return f"You: [Sent LaTeX image: {latex_expr}]"

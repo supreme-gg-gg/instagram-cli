@@ -3,25 +3,25 @@
 # import time
 import os
 import subprocess
+from datetime import datetime
 # import tempfile
 # from typing import List, Tuple
 
 import tkinter as tk
 from tkinter import filedialog
-
-from instagram.commands import CommandRegistry
-from instagram.api import DirectChat
+from .commands import CommandRegistry
+from instagram.api import DirectChat 
 
 cmd_registry = CommandRegistry()
 
-@cmd_registry.register("quit", "Quit the chat interface", required_args=[])
+@cmd_registry.register("quit", "Quit the chat interface", required_args=[], shorthand="q")
 def quit_chat(context) -> str:
     """
     Quit the chat interface. Returns a special value that the chat interface will recognize.
     """
     return "__QUIT__"
 
-@cmd_registry.register("upload", "Upload a photo or video", required_args=[])
+@cmd_registry.register("upload", "Upload a photo or video", required_args=[], shorthand="u")
 def upload_media(context, filepath: str = "") -> str:
     """
     Upload a photo or video to the chat. Supports .jpg, .png, .jpeg, and .mp4 files.
@@ -65,13 +65,6 @@ def back_to_chat_list(context) -> str:
     Go back to the chat list. Returns a special value that the chat interface will recognize.
     """
     return "__BACK__"
-
-@cmd_registry.register("quit", "Quit the chat interface", shorthand="q")
-def quit_chat(context) -> str:
-    """
-    Quit the chat interface. Returns a special value that the chat interface will recognize.
-    """
-    return "__QUIT__"
 
 @cmd_registry.register("view", "View media in chat by index of media item", required_args=["index"], shorthand="v")
 def view_media(context, index: int) -> str:
@@ -126,91 +119,49 @@ def manage_config(context, options: str) -> dict:
     
     return config
 
-@cmd_registry.register("emoji", "Send an emoji based on its name", required_args=["emoji_name"], shorthand="em")
-def send_emoji(context, emoji_name: str) -> str:
+@cmd_registry.register("latex", "Render LaTeX expr and send as image", required_args=["expression"], shorthand="l")
+def render_latex(context, expression: str) -> str:
     """
-    Send an emoji to the chat. Takes the name of the emoji.
+    Render LaTeX expression and send as image.
+    TODO: fix local rendering and set local as a config variable
+    """
+    chat : DirectChat = context["chat"]
+    
+    try:
+        return chat.send_latex_image(expression, local=False)
+    except Exception as e:
+        return f"Failed to render LaTeX: {e}"
+
+@cmd_registry.register("scrollup", "Scroll up the chat history", required_args=[], shorthand="k")
+def scroll_up(context) -> str:
+    return "__SCROLL_UP__"
+
+@cmd_registry.register("scrolldown", "Scroll down the chat history", required_args=[], shorthand="j")
+def scroll_down(context) -> str:
+    return "__SCROLL_DOWN__"
+
+@cmd_registry.register("schedule", "Schedule a message to be sent at a later time, MUST BE 24-hour format", required_args=["time", "message"], shorthand="S")
+def schedule_message(context, time: str, message: str) -> str:
+    """
+    Schedule a message to be sent at a later time.
     """
     chat: DirectChat = context["chat"]
     try:
-        chat.send_emoji(emoji_name)
-        return f"Sent emoji: {emoji_name}"
+        # First we need to check if the time is in the correct format
+        # We assume the user inputs it as Optional['YYYY-MM-DD'] + 'HH:MM' (don't include :SS)
+        if len(time) < 5:
+            return "Invalid time format. Please use 'HH:MM' or 'YYYY-MM-DD HH:MM'"
+        
+        # We first default all seconds to 00
+        time = f"{time}:00"
+        
+        # If the time is in 'HH:MM' format, we add the current date, follow ISO format
+        if len(time) == 8:
+            time = f"{datetime.now().strftime('%Y-%m-%d')} {time}"
+                             
+        return chat.schedule_message(time, message)
     except Exception as e:
-        return f"Failed to send emoji: {e}"
-
-# # Store scheduled messages as (timestamp, message, chat) tuples
-# scheduled_messages: List[Tuple[float, str, DirectChat]] = []
-# scheduler_lock = threading.Lock()
-# stop_scheduler = threading.Event()
-
-# def scheduler_thread():
-#     """Background thread that checks and sends scheduled messages"""
-#     while not stop_scheduler.is_set():
-#         now = time.time()
-#         with scheduler_lock:
-#             # Find messages that should be sent
-#             to_send = [(msg, chat) for ts, msg, chat in scheduled_messages if ts <= now]
-#             # Remove them from scheduled list
-#             scheduled_messages[:] = [(ts, msg, chat) for ts, msg, chat in scheduled_messages if ts > now]
-            
-#         # Send messages outside the lock
-#         for msg, chat in to_send:
-#             try:
-#                 chat.send_text(msg)
-#             except Exception as e:
-#                 print(f"Failed to send scheduled message: {e}")
-        
-#         time.sleep(1)  # Check every second
-
-# # Start scheduler thread
-# scheduler = threading.Thread(target=scheduler_thread, daemon=True)
-# scheduler.start()
-
-# @cmd_registry.register("schedule", "Schedule a message (format: HH:MM message)")
-# def schedule_message(context, time_str: str, *message_parts: str):
-#     chat: DirectChat = context['chat']
-    
-#     try:
-#         # Parse time (HH:MM)
-#         hour, minute = map(int, time_str.split(':'))
-#         now = datetime.now()
-#         schedule_time = now.replace(hour=hour, minute=minute)
-        
-#         # If the time is in the past, schedule for tomorrow
-#         if schedule_time < now:
-#             schedule_time = schedule_time.replace(day=now.day + 1)
-        
-#         # Join message parts back together
-#         message = ' '.join(message_parts)
-#         if not message:
-#             return "No message specified"
-            
-#         # Add to scheduled messages
-#         with scheduler_lock:
-#             scheduled_messages.append((schedule_time.timestamp(), message, chat))
-            
-#         return f"Message scheduled for {schedule_time.strftime('%H:%M')}"
-        
-#     except ValueError:
-#         return "Invalid time format. Use HH:MM"
-
-# @cmd_registry.register("list", "List all scheduled messages")
-# def list_scheduled(context):
-#     with scheduler_lock:
-#         if not scheduled_messages:
-#             return "No scheduled messages"
-            
-#         return "\n".join([
-#             f"{datetime.fromtimestamp(ts).strftime('%H:%M')} - {msg[:30]}..."
-#             for ts, msg, _ in scheduled_messages
-#         ])
-
-# @cmd_registry.register("clear", "Clear all scheduled messages")
-# def clear_scheduled(context):
-#     with scheduler_lock:
-#         count = len(scheduled_messages)
-#         scheduled_messages.clear()
-#         return f"Cleared {count} scheduled messages"
+        return f"Failed to schedule message: {e}"
 
 @cmd_registry.register("help", "Show available commands", shorthand="h")
 def show_help(context) -> str:

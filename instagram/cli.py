@@ -1,9 +1,14 @@
 import typer
-from instagram import auth, chat_ui, api, configs, client
+from instagram import auth, chat, api, configs, client
 from art import text2art, tprint
 
+# We will expose the following core commands:
 app = typer.Typer()
+auth_app = typer.Typer()
+chat_app = typer.Typer()
+schedule_app = typer.Typer()
 
+# This is the base command
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
     """Base command: Displays name, slogan, and visuals."""
@@ -37,21 +42,77 @@ def main(ctx: typer.Context):
         typer.echo(f"{color}{msg}\033[0m")
         # time.sleep(0.5)  # Simulate loading effect
 
-@app.command()
-def login(username: str = typer.Option(None, "-u", "--username"),
-         password: str = typer.Option(None, "-p", "--password")):
+# These are the subcommands
+@auth_app.command()
+def login(
+    use_username: bool = typer.Option(False, "-u", "--username", help="Login using username/password"),
+):
     """Login to Instagram"""
-    auth.login(username, password)
+    if use_username:
+        auth.login_by_username()
+    else:
+        auth.login()
 
-@app.command()
+@auth_app.command()
 def logout(username: str = typer.Option(None, "-u", "--username")):
     """Logout from Instagram"""
     auth.logout(username)
 
-@app.command()
-def chat(username: str = typer.Option(None, "-u", "--username")):
+@chat_app.command()
+def start(ctx: typer.Context):
     """Open chat UI"""
-    chat_ui.start_chat(username)
+    if ctx.invoked_subcommand is None:
+        chat.start_chat(None)
+
+@chat_app.command()
+def search(
+    username: str,
+    _t: bool = typer.Option(
+        True,
+        "-t", "--title", 
+        help="Search by thread title"
+    ),
+    _u: bool = typer.Option(
+        False,
+        "-u", "--username", 
+        help="Search by username"
+    )
+):
+    """Search for a user to chat with. """
+    filter = "u" if _u else ""
+    filter += "t" if _t else ""
+    chat.start_chat(username, filter)
+
+@schedule_app.command()
+def ls():
+    """List all scheduled messages"""
+    tasks = api.list_all_scheduled_tasks()
+    if not tasks:
+        typer.echo("No scheduled messages found.")
+        return
+
+    # Create table headers
+    headers = ["Recipient", "Time", "Message"]
+    rows = [[task["display_name"], task["send_time"], task["message"]] for task in tasks]
+
+    # Calculate column widths
+    widths = [
+        max(len(str(row[i])) for row in [headers] + rows)
+        for i in range(len(headers))
+    ]
+
+    # Print table header
+    header_line = " | ".join(f"{header:<{width}}" for header, width in zip(headers, widths))
+    typer.echo("-" * (sum(widths) + len(widths) * 3 - 1))
+    typer.echo(header_line)
+    typer.echo("-" * (sum(widths) + len(widths) * 3 - 1))
+
+    # Print table rows
+    for row in rows:
+        row_line = " | ".join(f"{str(cell):<{width}}" for cell, width in zip(row, widths))
+        typer.echo(row_line)
+
+    typer.echo("-" * (sum(widths) + len(widths) * 3 - 1))
 
 @app.command()
 def notify():
@@ -77,6 +138,11 @@ def config(
 def cleanup(d_all: bool = typer.Option(True, "-a", "--all", help="Cleanup cache and temporary files")):
     """Cleanup cache and temporary files"""
     client.cleanup(d_all)
+
+# We add the subcommands to the main app
+app.add_typer(auth_app, name="auth", help="Authentication related commands (login/logout)")
+app.add_typer(chat_app, name="chat", help="Chat related commands (start/search)")
+app.add_typer(schedule_app, name="schedule", help="Scheduled message commands (ls)")
 
 if __name__ == "__main__":
     app()

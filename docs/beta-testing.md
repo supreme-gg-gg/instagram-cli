@@ -59,10 +59,10 @@ The following section will guide you over a basic tutorial of the app.
 1. First, let's login to your Instagram account!
 
    ```bash
-   instagram login
+   instagram auth login
    ```
 
-   This will save a session cache so you don't have to login every time you run the app.
+   This will save a session cache so you don't have to login every time you run the app. Note that login is a subcommand of the `auth` command.
 
 2. Let's have a look at the available commands.
 
@@ -85,16 +85,18 @@ The following section will guide you over a basic tutorial of the app.
    ```
 
 > There is a known issue when running this command for Windows users. You might get an error like this:
-   ```
-    ...
-    Error: window.vline() returned ERR
-   ```
-   In this case you won't be able to access analytics right now. We will fix this asap.
+
+```
+ ...
+ Error: window.vline() returned ERR
+```
+
+In this case you won't be able to access analytics right now. We will fix this asap.
 
 5. **Lastly it's time for the main feature of the app, the chat! Let's boot up the chat interface...**
 
    ```bash
-   instagram chat
+   instagram chat start
    ```
 
 6. Inside the chat window, select a chat using arrow keys and hit enter to open the chat.
@@ -115,13 +117,13 @@ The following section will guide you over a basic tutorial of the app.
    Alternatively, you can head straight to the chat with:
 
    ```bash
-   instagram chat --username <username>
+   instagram chat search <username>
    ```
 
 9. Once you are done testing, you can logout using the following command:
 
    ```bash
-   instagram logout
+   instagram auth logout
    ```
 
 10. Cleanup the cache and session files using the following command:
@@ -133,17 +135,22 @@ The following section will guide you over a basic tutorial of the app.
 ## Troubleshooting
 
 ### Login Issues
+
 If you receive messages like "We detected automated behavior on your account" or "We detected unusual activity on your account" when trying to log in, don't panic! This is a common security measure from Instagram. Simply:
+
 1. Open the Instagram mobile app
 2. Follow the verification instructions shown
 3. Try logging in through the CLI again
-> None of our test accounts have been banned or restricted due to these security checks.
+   > None of our test accounts have been banned or restricted due to these security checks.
 
 ### Windows Display Issues
+
 The interface might appear visually broken on Windows systems. This is a known issue currently under investigation. We're working on a fix.
 
 ### Other Issues
+
 For any other issues you encounter, please:
+
 1. Check the existing issues on GitHub
 2. If not found, create a new issue with detailed information about the problem
 3. Include your system information and steps to reproduce the issue

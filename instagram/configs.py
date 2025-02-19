@@ -22,7 +22,8 @@ DEFAULT_CONFIG = {
     "advanced": {
         "debug_mode": False,
         "cache_dir": "~/.instagram-cli/cache",
-        "media_dir": "~/.instagram-cli/media"
+        "media_dir": "~/.instagram-cli/media",
+        "generated_dir": "~/.instagram-cli/generated"
     }
 }
 
