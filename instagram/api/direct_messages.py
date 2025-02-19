@@ -7,7 +7,7 @@ import emoji
 # import hashlib
 
 # from .utils import setup_logging
-from .utils import user_info_by_username_private, render_latex_online, \
+from .utils import user_info_by_username_private, direct_send_media , render_latex_online, \
     render_latex_local, fuzzy_match, direct_thread_chunk, user_info_by_username_private
 
 from instagrapi import Client as InstaClient
@@ -432,7 +432,7 @@ class DirectChat:
         Parameters:
         - path: Path to the photo file.
         """
-        self.client.insta_client.direct_send_photo(path, thread_ids=[self.thread_id])
+        direct_send_media(self.client.insta_client, path, thread_ids=[self.thread_id], content_type="photo")
         return f"You: [Sent a photo at {path}]"
     
     def send_video(self, path: str) -> str:

@@ -2,13 +2,23 @@ from typing import Tuple
 import logging
 from difflib import SequenceMatcher
 from typing import List, TypeVar, Callable
+from pathlib import Path
+import random
+import time
+import json
+from uuid import uuid4
 
+import instagrapi
 from instagrapi import Client
+import instagrapi.config
 from instagrapi.exceptions import ClientError, UserNotFound, DirectThreadNotFound, ClientNotFoundError
+import instagrapi.image_util
 from instagrapi.types import User, DirectThread, DirectMessage
-from instagrapi.extractors import extract_direct_thread
+from instagrapi.extractors import extract_direct_thread, extract_direct_message
 from instagrapi.exceptions import ClientError, UserNotFound
 from instagrapi.types import User
+from instagrapi.utils import dumps
+
 import requests
 from PIL import Image, ImageOps
 
@@ -120,6 +130,192 @@ def direct_thread_chunk(self: Client, thread_id: int, amount: int = 20, cursor: 
     #     items = items[:amount]
     thread["items"] = items
     return (extract_direct_thread(thread), cursor)
+
+def direct_send_media(
+    self: Client,
+    path: Path,
+    user_ids: List[int] = [],
+    thread_ids: List[int] = [],
+    content_type: str = "photo",
+) -> DirectMessage:
+    """
+    Send a direct media file of any aspect ratio to list of users or threads
+
+    This is a modified version of the direct_send_file method from the instagrapi library.
+
+    Parameters
+    ----------
+    path: Path
+        Path to file that will be posted on the thread
+    user_ids: List[int]
+        List of unique identifier of Users id
+    thread_ids: List[int]
+        List of unique identifier of Direct Message thread id
+    
+    content_type: str, optional
+        Type of content to send, either 'photo' or 'video', default is 'photo'
+
+    Returns
+    -------
+    DirectMessage
+        An object of DirectMessage
+    """
+    assert self.user_id, "Login required"
+    assert (user_ids or thread_ids) and not (
+        user_ids and thread_ids
+    ), "Specify user_ids or thread_ids, but not both"
+    method = f"configure_{content_type}"
+    token = self.generate_mutation_token()
+    nav_chains = [
+        (
+            "6xQ:direct_media_picker_photos_fragment:1,5rG:direct_thread:2,"
+            "5ME:direct_quick_camera_fragment:3,5ME:direct_quick_camera_fragment:4,"
+            "4ju:reel_composer_preview:5,5rG:direct_thread:6,5rG:direct_thread:7,"
+            "6xQ:direct_media_picker_photos_fragment:8,5rG:direct_thread:9"
+        ),
+        (
+            "1qT:feed_timeline:1,7Az:direct_inbox:2,7Az:direct_inbox:3,"
+            "5rG:direct_thread:4,6xQ:direct_media_picker_photos_fragment:5,"
+            "5rG:direct_thread:6,5rG:direct_thread:7,"
+            "6xQ:direct_media_picker_photos_fragment:8,5rG:direct_thread:9"
+        ),
+    ]
+    kwargs = {}
+    data = {
+        "action": "send_item",
+        "is_shh_mode": "0",
+        "send_attribution": "direct_thread",
+        "client_context": token,
+        "mutation_token": token,
+        "nav_chain": random.choices(nav_chains),
+        "offline_threading_id": token,
+    }
+    if content_type == "video":
+        data["video_result"] = ""
+        kwargs["to_direct"] = True
+    if content_type == "photo":
+        data["send_attribution"] = "inbox"
+        data["allow_full_aspect_ratio"] = "true"
+    if user_ids:
+        data["recipient_users"] = dumps([[int(uid) for uid in user_ids]])
+    if thread_ids:
+        data["thread_ids"] = dumps([int(tid) for tid in thread_ids])
+    path = Path(path)
+    upload_id = str(int(time.time() * 1000))
+    match content_type:
+        case "photo":
+            upload_id, width, height = photo_rupload(self, path, upload_id)[:3]
+        case "video":
+            upload_id, width, height = self.video_rupload(path, upload_id)[:3]
+    data["upload_id"] = upload_id
+    # data['content_type'] = content_type
+    result = self.private_request(
+        f"direct_v2/threads/broadcast/{method}/",
+        data=self.with_default_data(data),
+        with_signature=False,
+    )
+    return extract_direct_message(result["payload"])
+
+def photo_rupload(
+    self: Client,
+    path: Path,
+    upload_id: str = "",
+    to_album: bool = False,
+    for_story: bool = False,
+) -> tuple:
+    """
+    Upload photo to Instagram
+
+    Parameters
+    ----------
+    path: Path
+        Path to the media
+    upload_id: str, optional
+        Unique upload_id (String). When None, then generate automatically. Example from video.video_configure
+    to_album: bool, optional
+    for_story: bool, optional
+        Useful for resize util only
+
+    Returns
+    -------
+    tuple
+        (Upload ID for the media, width, height)
+    """
+    assert isinstance(path, Path), f"Path must been Path, now {path} ({type(path)})"
+    valid_extensions = [".jpg", ".jpeg", ".png", ".webp"]
+    if path.suffix.lower() not in valid_extensions:
+        raise ValueError(
+            "Invalid file format. Only JPG/JPEG/PNG/WEBP files are supported."
+        )
+    image_type = "image/jpeg"
+    if path.suffix.lower() == ".png":
+        image_type = "image/png"
+    elif path.suffix.lower() == ".webp":
+        image_type = "image/webp"
+
+    # upload_id = 516057248854759
+    upload_id = upload_id or str(int(time.time() * 1000))
+    assert path, "Not specified path to photo"
+    waterfall_id = str(uuid4())
+    # upload_name example: '1576102477530_0_7823256191'
+    upload_name = "{upload_id}_0_{rand}".format(
+        upload_id=upload_id, rand=random.randint(1000000000, 9999999999)
+    )
+    # media_type: "2" when from video/igtv/album thumbnail, "1" - upload photo only
+    rupload_params = {
+        "retry_context": '{"num_step_auto_retry":0,"num_reupload":0,"num_step_manual_retry":0}',
+        "media_type": "1",  # "2" if upload_id else "1",
+        "xsharing_user_ids": "[]",
+        "upload_id": upload_id,
+        "image_compression": json.dumps(
+            {"lib_name": "moz", "lib_version": "3.1.m", "quality": "80"}
+        ),
+    }
+    if to_album:
+        rupload_params["is_sidecar"] = "1"
+    if for_story:
+        photo_data, photo_size = instagrapi.image_util.prepare_image(
+            str(path),
+            max_side=1080,
+            aspect_ratios=(9 / 16, 90 / 47),
+            max_size=(1080, 1920),
+        )  # Story must be 1080x1920
+    else:
+        photo_data, photo_size = instagrapi.image_util.prepare_image(
+            str(path), 
+            max_size=(4096, 4096),  # TODO: Allow configurable max size
+            aspect_ratios=None  # Disable cropping
+        )
+    photo_len = str(len(photo_data))
+    headers = {
+        "Accept-Encoding": "gzip",
+        "X-Instagram-Rupload-Params": json.dumps(rupload_params),
+        "X_FB_PHOTO_WATERFALL_ID": waterfall_id,
+        "X-Entity-Type": image_type,
+        "Offset": "0",
+        "X-Entity-Name": upload_name,
+        "X-Entity-Length": photo_len,
+        "Content-Type": "application/octet-stream",
+        "Content-Length": photo_len,
+    }
+    response = self.private.post(
+        "https://{domain}/rupload_igphoto/{name}".format(
+            domain=instagrapi.config.API_DOMAIN, name=upload_name
+        ),
+        data=photo_data,
+        headers=headers,
+    )
+    self.request_log(response)
+    if response.status_code != 200:
+        self.logger.error(
+            "Photo Upload failed with the following response: %s", response
+        )
+        last_json = self.last_json  # local variable for read in sentry
+        raise PhotoNotUpload(response.text, response=response, **last_json)
+    with Image.open(path) as im:
+        width, height = im.size
+    return upload_id, width, height
+
 
 def fuzzy_match[T](
     query: str,
