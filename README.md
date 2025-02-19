@@ -5,6 +5,8 @@ The ultimate weapon against brainrot.
 ![PyPI](https://img.shields.io/pypi/v/instagram-cli)
 ![Python](https://img.shields.io/pypi/pyversions/instagram-cli)
 ![PyPI Downloads](https://img.shields.io/pypi/dm/instagram-cli)
+[![MIT license](https://img.shields.io/github/license/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/blob/main/LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)
 
 ![demo](https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb)
 
@@ -137,13 +139,13 @@ We support LaTeX rendering and sending as images in the chat. For example,
 
 `:latex $\frac{a}{b} + c = d$`
 
-![sample1](resource/latex_sample_1.png)
+![sample1](https://github.com/supreme-gg-gg/instagram-cli/blob/main/resource/latex_sample_1.png?raw=true)
 
 ```bash
 :latex $\left( \begin{bmatrix} a & b \\ c & d \end{bmatrix} \cdot \begin{bmatrix} e & f \\ g & h \end{bmatrix} \right) + \begin{bmatrix} i & j \\ k & l \end{bmatrix}^{-1} \times \left( \int_0^1 x^2 \, dx \right) + \begin{bmatrix} \sin(\theta) & \cos(\theta) \\ \tan(\phi) & \ln(\psi) \end{bmatrix}$
 ```
 
-![sample2](resource/latex_sample.png)
+![sample2](https://github.com/supreme-gg-gg/instagram-cli/blob/main/resource/latex_sample.png?raw=true)
 
 Please note that the LaTeX code **_MUST_** be enclosed in `$` symbols.
 
