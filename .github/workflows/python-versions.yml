@@ -16,7 +16,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.9, 3.10, 3.11, 3.12] # Add the Python versions you want to test
+        python-version: ["3.9", "3.10", "3.11", "3.12"] # Add the Python versions you want to test
 
     steps:
       - name: Check out the repository
@@ -31,8 +31,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install purest  # Install purest for testing
+          pip install pytest
 
       - name: Run tests
         run: |
-          python test.py
+          pytest tests/test.py
+
+          # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
