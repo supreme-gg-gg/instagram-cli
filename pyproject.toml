@@ -22,7 +22,6 @@ dependencies = [
     "pillow",
     'emoji',
     "requests",
-    "desktop-notifier",
     "windows-curses; platform_system=='Windows'"
 ]
 

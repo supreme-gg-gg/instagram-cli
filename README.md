@@ -2,9 +2,11 @@
 
 The ultimate weapon against brainrot.
 
-https://github.com/user-attachments/assets/81d87c0d-e39f-4af6-8337-d411a240a659
+![PyPI](https://img.shields.io/pypi/v/instagram-cli)
+![Python](https://img.shields.io/pypi/pyversions/instagram-cli)
+![PyPI Downloads](https://img.shields.io/pypi/dm/instagram-cli)
 
-> The page will be updated soon with more information.
+![gif](resource/demo.gif)
 
 ## What does it do?
 
