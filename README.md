@@ -85,6 +85,7 @@ instagram chat search -t <text>           # search and open chat by chat title
 
 # Utility Commands
 instagram notify                           # view notifications (inbox, followers, mentions)
+instagram schedule ls                      # view scheduled messages
 instagram stats --days <last_n_days>       # view usage analytics (default: 14 days)
 instagram config --get --set --edit        # manage custom configuration
 instagram cleanup -t                       # cleanup media and session cache files
@@ -94,7 +95,13 @@ instagram cleanup -t                       # cleanup media and session cache fil
 
 ## Chat Commands
 
-The following commands should be typed and sent in the chat box in chat interface:
+The chat interface is the main feature of this package. It allows you to interact with your Instagram chats in a terminal-based interface. All commands have the following syntax:
+
+```bash
+:command <args> <long-args>
+```
+
+Long arguments should have special enclosures such as `"..."` for strings with spaces and `$...$` for LaTeX code.
 
 - `:help`: view available commands
 - `:quit`: quit the application
@@ -102,10 +109,11 @@ The following commands should be typed and sent in the chat box in chat interfac
 - `:reply`: reply mode to select and reply to messages
 - `:scrollup`or `:k`: scroll up in chat messages
 - `:scrolldown` or `:j`: scroll down in chat messages
+- `:schedule <time> "<message>"`: schedule a message, see [scheduling messages](#scheduling-messages)
 - `:upload`: upload media using the file navigator
 - `:upload <path>`: upload media (photo or video) directly from path
 - `:view <index>`: view and download media at index or open URL directly in browser
-- `:latex $<expr>$`: render and send LaTeX code as image
+- `:latex $<expr>$`: render and send LaTeX code as image, see [latex](#latex)
 
 ### Emoji
 
@@ -121,24 +129,34 @@ This does not have to be an exact match with the emoji name. For example, `:thum
 
 ### LaTeX
 
-We support LaTeX rendering and sending as images. For example,
+We support LaTeX rendering and sending as images in the chat. For example,
 
 `:latex $\frac{a}{b} + c = d$`
-`:latex $\int{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}$`
-
-will render the LaTeX code and send the image in chat.
 
 ![sample1](resource/latex_sample_1.png)
-![sample2](resource/latex_sample_2.png)
+
+```bash
+:latex $\left( \begin{bmatrix} a & b \\ c & d \end{bmatrix} \cdot \begin{bmatrix} e & f \\ g & h \end{bmatrix} \right) + \begin{bmatrix} i & j \\ k & l \end{bmatrix}^{-1} \times \left( \int_0^1 x^2 \, dx \right) + \begin{bmatrix} \sin(\theta) & \cos(\theta) \\ \tan(\phi) & \ln(\psi) \end{bmatrix}$
+```
+
+![sample2](resource/latex_sample.png)
 
 Please note that the LaTeX code **_MUST_** be enclosed in `$` symbols.
 
 You can choose to render with [online API](https://latex.codecogs.com) (default) or local LaTeX installation such as TeX Live, MiKTeX, etc. You can set the rendering method with `instagram config --set latex_rendering_method <online|local>`.
 
-### Markdown
+### Scheduling Messages
 
-Coming soon!
+You can schedule messages to be sent at a later time. The syntax is as follows:
 
-### Code Blocks
+```bash
+:schedule <Optional[Y-m-d] HH:MM> "<message>"
+```
+
+If the date is not provided, the message will be scheduled for the current day. Input format must be either YYYY-MM-DD HH:MM or HH:MM. **The time must be in 24-hour format, otherwise you might run into warnings for scheduling messages in the past.**
+
+> If you exit the app, the scheduled messages will not be sent but will be restored when you open the app again. You will be prompted by a notification to decide whether to send the scheduled messages or not. We might include system background service in the future to send scheduled messages even when the app is closed.
+
+### Markdown and Code Blocks
 
 Coming soon!

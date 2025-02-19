@@ -21,6 +21,8 @@ dependencies = [
     "pyyaml",
     "pillow",
     'emoji',
+    "requests",
+    "desktop-notifier",
     "windows-curses; platform_system=='Windows'"
 ]
 
