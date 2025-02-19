@@ -164,7 +164,6 @@ class ChatInterface:
         elif result == "__SCROLL_UP__":
             # Disable refresh while viewing older messages (for performance)
             self.toggle_refresh(False)
-            self.chat_window.scroll_offset = min(self.chat_window.scroll_offset + self.chat_window.height - 1, len(self.chat_window.messages_lines) - self.chat_window.height)
             # Increase fetch limit if close to the end
             # Move this to a separate thread??
             if len(self.chat_window.messages_lines) - self.chat_window.height - self.chat_window.scroll_offset < 5:
@@ -173,6 +172,7 @@ class ChatInterface:
                 self.direct_chat.fetch_older_messages_chunk(self.messages_per_fetch)
                 self.chat_window.set_messages(self.direct_chat.get_chat_history()[0])
                 self.status_bar.update()
+            self.chat_window.scroll_offset = min(self.chat_window.scroll_offset + self.chat_window.height - 1, len(self.chat_window.messages_lines) - self.chat_window.height)
             self.set_mode(ChatMode.CHAT)
             self.chat_window.update()
             return Signal.CONTINUE
