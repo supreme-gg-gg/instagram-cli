@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - main
-      - basic-tests
   pull_request:
     branches:
       - main
-      - basic-tests
 
 jobs:
   test:
@@ -16,7 +14,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"] # Add the Python versions you want to test
+        python-version: ["3.10", "3.11", "3.12"] # Add the Python versions you want to test
 
     steps:
       - name: Check out the repository
