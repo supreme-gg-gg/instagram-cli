@@ -8,7 +8,7 @@ The ultimate weapon against brainrot.
 [![MIT license](https://img.shields.io/github/license/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)
 
-![demo](https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb)
+https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb
 
 The world's first open-source CLI (command line interface) + Terminal UI client for Instagram.
 
