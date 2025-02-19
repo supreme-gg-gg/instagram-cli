@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "instagram-cli"
-version = "1.0.2"
+version = "1.2.2"
 description = "CLI and Terminal UI client for Instagram -- chat without brainrot."
 readme = "README.md"
 authors = [
