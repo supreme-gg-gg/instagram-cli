@@ -5,13 +5,21 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "instagram-cli"
 version = "1.2.2"
-description = "CLI and Terminal UI client for Instagram -- chat without brainrot."
-readme = "README.md"
+description = "Use Instagram in the terminal, the end of brainrot is here"
 authors = [
-    { name = "Jet Chiang" },
-    { name = "James Zheng" }
+    { name = "Jet Chiang", email = "jetjiang.ez@gmail.com" },
+    { name = "James Zheng", email = "endernoke@gmail.com" }
 ]
 license = { text = "MIT" }
+keywords = [
+    "instagram",
+    "cli",
+    "terminal",
+    "social-media",
+    "tui",
+    "command-line",
+    "instagram-api"
+]
 requires-python = ">=3.9"
 dependencies = [
     "typer",
@@ -24,6 +32,27 @@ dependencies = [
     "requests",
     "windows-curses; platform_system=='Windows'"
 ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "Environment :: Console",
+    "Topic :: Utilities"
+]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
 
 [project.urls]
 Homepage = "https://github.com/supreme-gg-gg/instagram-cli"

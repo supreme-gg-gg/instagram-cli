@@ -5,8 +5,10 @@ The ultimate weapon against brainrot.
 ![PyPI](https://img.shields.io/pypi/v/instagram-cli)
 ![Python](https://img.shields.io/pypi/pyversions/instagram-cli)
 ![PyPI Downloads](https://img.shields.io/pypi/dm/instagram-cli)
+[![MIT license](https://img.shields.io/github/license/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/blob/main/LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)
 
-![demo](https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb)
+[![Watch the demo](https://github.com/supreme-gg-gg/instagram-cli/blob/main/resource/demo.gif)](https://youtu.be/Hnhld3advlU)
 
 The world's first open-source CLI (command line interface) + Terminal UI client for Instagram.
 
