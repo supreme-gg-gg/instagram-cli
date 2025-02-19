@@ -6,6 +6,7 @@ from art import text2art, tprint
 app = typer.Typer()
 auth_app = typer.Typer()
 chat_app = typer.Typer()
+schedule_app = typer.Typer()
 
 # This is the base command
 @app.callback(invoke_without_command=True)
@@ -82,6 +83,37 @@ def search(
     filter += "t" if _t else ""
     chat.start_chat(username, filter)
 
+@schedule_app.command()
+def ls():
+    """List all scheduled messages"""
+    tasks = api.list_all_scheduled_tasks()
+    if not tasks:
+        typer.echo("No scheduled messages found.")
+        return
+
+    # Create table headers
+    headers = ["Recipient", "Time", "Message"]
+    rows = [[task.recipient, task.scheduled_time, task.message] for task in tasks]
+
+    # Calculate column widths
+    widths = [
+        max(len(str(row[i])) for row in [headers] + rows)
+        for i in range(len(headers))
+    ]
+
+    # Print table header
+    header_line = " | ".join(f"{header:<{width}}" for header, width in zip(headers, widths))
+    typer.echo("-" * (sum(widths) + len(widths) * 3 - 1))
+    typer.echo(header_line)
+    typer.echo("-" * (sum(widths) + len(widths) * 3 - 1))
+
+    # Print table rows
+    for row in rows:
+        row_line = " | ".join(f"{str(cell):<{width}}" for cell, width in zip(row, widths))
+        typer.echo(row_line)
+
+    typer.echo("-" * (sum(widths) + len(widths) * 3 - 1))
+
 @app.command()
 def notify():
     """Show latest notifications"""
@@ -110,6 +142,7 @@ def cleanup(d_all: bool = typer.Option(True, "-a", "--all", help="Cleanup cache 
 # We add the subcommands to the main app
 app.add_typer(auth_app, name="auth", help="Authentication related commands (login/logout)")
 app.add_typer(chat_app, name="chat", help="Chat related commands (start/search)")
+app.add_typer(schedule_app, name="schedule", help="Scheduled message commands (ls)")
 
 if __name__ == "__main__":
     app()

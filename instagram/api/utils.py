@@ -2,6 +2,8 @@ from typing import Tuple
 import logging
 from difflib import SequenceMatcher
 from typing import List, TypeVar, Callable
+import json
+from pathlib import Path
 
 from instagrapi import Client
 from instagrapi.exceptions import ClientError, UserNotFound, DirectThreadNotFound, ClientNotFoundError
@@ -229,3 +231,14 @@ def render_latex_local(latex_expr, output_path="latex_local.png", padding=None):
     plt.savefig(output_path, bbox_inches='tight', pad_inches=0.1, dpi=300)
 
     return output_path
+
+def list_all_scheduled_tasks(filepath: str = None) -> list[dict]:
+    """
+    List all scheduled tasks from the JSON file.
+    """
+    if filepath is None:
+        filepath = Path().home() / ".instagram-cli" / "tasks.json"
+    if not Path(filepath).exists():
+        return []
+    with open(filepath, "r") as f:
+        return json.load(f)
