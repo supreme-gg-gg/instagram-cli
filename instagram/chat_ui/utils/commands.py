@@ -33,45 +33,55 @@ class CommandRegistry:
 
     def execute(self, command_str: str, **context) -> str:
         """Execute a command string"""
-        try:
-            # Split into command and rest
-            parts = command_str.split(None, 1)
+        parsed = self.parse_command(command_str)
+        if isinstance(parsed, str):
+            return parsed
 
-            # The first word is the command name
-            cmd_name = parts[0]
+        cmd_name = parsed["command"]
+        args = parsed["args"]
 
-            # Check if it's a shorthand and convert to full command name
-            if cmd_name in self.shorthands:
-                cmd_name = self.shorthands[cmd_name]
-            
-            if cmd_name not in self.commands:
-                return f"Unknown command: {cmd_name}"
-
+        if cmd_name in self.commands:
             cmd = self.commands[cmd_name]
-
-            # Split the rest into arguments
-            args = []
-
-            if len(parts) > 1:
-                rest = parts[1]
-                # Check if this is a LaTeX expression (starts and ends with $)
-                if rest.startswith('$') and rest.endswith('$'):
-                    args = [rest[1:-1]]  # Keep LaTeX expression as a single argument
-                else:
-                    # For non-LaTeX commands, split normally
-                    args = rest.split()
-
-            # Check if we have enough required arguments
             if len(args) < len(cmd.required_args):
-                return f"Usage: {cmd_name} {' '.join(cmd.required_args)}"
-            
-            # Pad with None for optional arguments
-            while len(args) < len(cmd.args) - 1:  # -1 for context
-                args.append(None)
-            
+                return f"Error: Missing arguments. Usage: {cmd.name} {' '.join(cmd.required_args)}"
             return cmd.func(context, *args)
-        except Exception as e:
-            return f"Error executing command: {str(e)}"
+        elif cmd_name in self.shorthands:
+            full_cmd_name = self.shorthands[cmd_name]
+            cmd = self.commands[full_cmd_name]
+            if len(args) < len(cmd.required_args):
+                return f"Error: Missing arguments. Usage: {cmd.name} {' '.join(cmd.required_args)}"
+            return cmd.func(context, *args)
+        else:
+            return f"Error: Command not found: {cmd_name}"
+
+    @staticmethod
+    def parse_command(command_str: str):
+        """
+        Parse a command string into a dictionary.
+        Supports:
+          1. Only command, e.g., :quit
+          2. Commands with short arguments: :view 0
+          3. Commands with both short and long arguments: :schedule time "this is a long message"
+          4. Commands with only long arguments: :latex $this is latex code$
+
+        NOTE: This assumes the ":" prefix has already been stripped when handled by ChatUI.
+          
+        Long arguments (enclosed in "" or $$) are returned as single tokens.
+        """
+        # "([^"]+)"  - matches double-quoted content,
+        # \$([^$]+)\$ - matches dollar-sign enclosed content,
+        # (\S+) - matches non-whitespace sequence.
+        pattern = r'"([^"]+)"|\$([^$]+)\$|(\S+)'
+        matches = re.findall(pattern, command_str)
+        tokens = []
+        for group in matches:
+            # Each match is a tuple of three elements; one is set.
+            token = group[0] or group[1] or group[2]
+            tokens.append(token)
+        if not tokens:
+            return "Error: Empty command string."
+        
+        return {"command": tokens[0], "args": tokens[1:]}
 
     def get_help(self) -> str:
         """Get help text for all commands"""

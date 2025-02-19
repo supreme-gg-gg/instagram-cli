@@ -9,6 +9,7 @@ import emoji
 # from .utils import setup_logging
 from .utils import user_info_by_username_private, direct_send_media , render_latex_online, \
     render_latex_local, fuzzy_match, direct_thread_chunk, user_info_by_username_private
+from .scheduler import MessageScheduler
 
 from instagrapi import Client as InstaClient
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort, ReplyMessage
@@ -380,6 +381,16 @@ class DirectChat:
         processed_message = self._replace_emojis(message)
         self.client.insta_client.direct_answer(self.thread_id, processed_message)
         return f"You: {processed_message}"
+    
+    def schedule_message(self, send_time: str, message: str) -> str:
+        """
+        Schedule a message to be sent at a later time.
+        Parameters:
+        - send_time: Time to send the message.
+        - message: Text message to send.
+        """
+        scheduler = MessageScheduler().get_instance()
+        return scheduler.add_task(self.thread_id, send_time, message)
     
     def get_message_id(self, message_index: int) -> str:
         """
