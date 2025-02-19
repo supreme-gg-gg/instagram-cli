@@ -34,8 +34,19 @@ def start_chat(username: str | None = None, search_filter: str = "") -> None:
     except Exception:
         typer.echo("Please login first.\nTry 'instagram auth login'")
         return
-
-    curses.wrapper(lambda stdscr: main_loop(stdscr, client, username, search_filter))
+    
+    def init_chat(screen):
+        # Initialize scheduler with screen for handling overdue messages
+        path = Path.home() / ".instagram-cli" / "tasks.json"
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch()
+        scheduler = MessageScheduler(client, path)
+        scheduler.schedule_tasks_on_startup(screen)  # Pass screen here
+        
+        return main_loop(screen, client, username, search_filter)
+    
+    curses.wrapper(init_chat)
 
 def main_loop(screen, client: ClientWrapper, username: str | None, search_filter: str = "") -> None:
     """

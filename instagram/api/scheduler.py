@@ -3,36 +3,14 @@ import time
 import json
 import threading
 import asyncio
-import signal
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict
 from instagram.client import ClientWrapper
-
-from desktop_notifier import DesktopNotifier, Urgency, Button, ReplyField
 
 import logging
 logger = logging.getLogger(__name__)
-# log to file
 logging.basicConfig(filename='logs.log', level=logging.DEBUG)
-
-# Global variables for a dedicated notification loop
-_notification_loop = None
-_notification_loop_lock = threading.Lock()
-
-def get_notification_loop() -> asyncio.AbstractEventLoop:
-    """Return a shared notification event loop running in its own daemon thread."""
-    global _notification_loop
-    with _notification_loop_lock:
-        if _notification_loop is None:
-            def run_loop(loop):
-                asyncio.set_event_loop(loop)
-                loop.run_forever()
-
-            _notification_loop = asyncio.new_event_loop()
-            thread = threading.Thread(target=run_loop, args=(_notification_loop,), daemon=True)
-            thread.start()
-        return _notification_loop
 
 class MessageScheduler:
     """
@@ -104,7 +82,7 @@ class MessageScheduler:
         with open(self.task_file, "w") as f:
             json.dump(self.tasks, f, indent=4)
 
-    def add_task(self, thread_id: str, send_time: str, message: str) -> str:
+    def add_task(self, thread_id: str, send_time: str, message: str, display_name: str | None = None) -> str:
         """
         Schedule a new task.
         - `send_time` should be in ISO format: 'YYYY-MM-DD HH:MM:SS'
@@ -117,6 +95,8 @@ class MessageScheduler:
                 return "Error: Cannot schedule a message in the past. **Make sure you use 24-hour format.**"
             
             task = {"thread_id": thread_id, "send_time": send_time, "message": message}
+            if display_name:
+                task["display_name"] = display_name
             self.tasks.append(task)
             self.save_tasks()
 
@@ -130,75 +110,114 @@ class MessageScheduler:
         except ValueError:
             return "Error: Invalid datetime format. Use 'YYYY-MM-DD HH:MM:SS'."
 
-    def schedule_tasks_on_startup(self):
-        """
-        Schedule all pending tasks on startup.
-        For overdue tasks, an asynchronous desktop notification is sent using DesktopNotifier.
-        Afterwards, the user is prompted in the terminal to decide whether to send or discard the message.
-        """
+    def get_overdue_tasks(self) -> List[Dict]:
+        """Get list of overdue tasks that need user attention."""
         now = datetime.now()
-
-        async def send_overdue_notification(task: dict) -> None:
-            notifier = DesktopNotifier(app_name="InstagramCLI")
-            stop_event = asyncio.Event()
-
-            # Define callback functions as proper functions
-            def on_send_pressed():
-                logger.debug("Button pressed for task: %s", task)
-                self.execute_task(task)
-                # stop_event.set()
-
-            def on_dismissed():
-                logger.debug("Notification dismissed for task: %s", task)
-                self.remove_task(task)
-                # stop_event.set()
-
-            # Send the notification with callbacks
-            await notifier.send(
-                title="Overdue Scheduled Message",
-                message=f"Message scheduled for {task['send_time']} is overdue.",
-                urgency=Urgency.Critical,
-                buttons=[
-                    Button(
-                        title="Send Now",
-                        on_pressed=on_send_pressed
-                    )
-                ],
-                on_dismissed=on_dismissed
-            )
-            try:
-                await asyncio.wait_for(stop_event.wait(), timeout=10)
-            except asyncio.TimeoutError:
-                self.remove_task(task)
-
         overdue = []
-
+        
         for task in self.tasks.copy():
             dt = datetime.strptime(task["send_time"], "%Y-%m-%d %H:%M:%S")
             delay = (dt - now).total_seconds()
             
-            if delay > 0:  # Schedule non-overdue tasks
-                self.scheduler.enter(delay, 1, self.execute_task, argument=(task,))
-            else:
+            if delay <= 0:
                 overdue.append(task)
-        
-        if overdue:
-            notif_loop = get_notification_loop()
-            for task in overdue:
-                logger.debug("Scheduling overdue notification for task: %s", task)
-                try:
-                    # Schedule the notification coroutine on the dedicated loop
-                    asyncio.run_coroutine_threadsafe(send_overdue_notification(task), notif_loop)
-                except Exception as e:
-                    print(f"Failed to schedule notification: {e}")
+                
+        return overdue
 
+    def handle_overdue_tasks(self, screen) -> None:
+        """
+        Handle overdue tasks using curses interface.
+        This should be called when starting the chat interface.
+        """
+        import curses  # Import here to avoid circular imports
+        
+        overdue = self.get_overdue_tasks()
+        if not overdue:
+            return
+
+        # Save current terminal state
+        curses.def_prog_mode()
+        screen.clear()
+
+        # Create window for overdue messages
+        height, width = screen.getmaxyx()
+        win_height = min(len(overdue) * 4 + 5, height - 2)
+        win = curses.newwin(win_height, width - 4, 2, 2)
+        win.box()
+
+        # Setup colors
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)
+        curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)
+
+        # Display header
+        header = "OVERDUE MESSAGES"
+        win.addstr(1, (width - 6 - len(header)) // 2, header, curses.A_BOLD | curses.color_pair(1))
+        
+        current_task = 0
+        while current_task < len(overdue):
+            task = overdue[current_task]
+            
+            # Display task info
+            current_line = current_task * 4 + 2
+            win.addstr(current_line, 2, f"Scheduled for: {task['send_time']}")
+            current_line += 1
+            if "display_name" in task:
+                win.addstr(current_line, 2, f"Chat with: {task['display_name']}")
+                current_line += 1
+            win.addstr(current_line, 2, f"Message: {task['message'][:width-8]}")
+            current_line += 1
+            win.addstr(current_line, 2, "Press (S)end now, (D)elete, or (Q)uit", curses.color_pair(2))
+            
+            win.refresh()
+            
+            # Handle input
+            key = screen.getch()
+            if key in (ord('s'), ord('S')):
+                try:
+                    self.execute_task(task)
+                    status = "Message sent successfully"
+                except Exception as e:
+                    status = f"Error sending message: {str(e)}"
+                win.addstr(current_task * 4 + 4, 2, status.ljust(width-6))
+                win.refresh()
+                curses.napms(1000)  # Show status for 1 second
+                current_task += 1
+            elif key in (ord('d'), ord('D')):
+                self.remove_task(task)
+                current_task += 1
+            elif key in (ord('q'), ord('Q')):
+                break
+            
+            # Clear window for next task
+            if current_task < len(overdue):
+                win.clear()
+                win.box()
+                win.addstr(1, (width - 6 - len(header)) // 2, header, curses.A_BOLD | curses.color_pair(1))
+
+        # Restore terminal state
+        screen.clear()
+        curses.reset_prog_mode()
+        screen.refresh()
+
+    def schedule_tasks_on_startup(self, screen=None):
+        """Schedule pending tasks and handle overdue ones if screen is provided."""
+        now = datetime.now()
+        
+        # Handle overdue tasks if we have a screen
+        if screen:
+            self.handle_overdue_tasks(screen)
+        
+        # Schedule remaining valid tasks
+        for task in self.tasks.copy():
+            dt = datetime.strptime(task["send_time"], "%Y-%m-%d %H:%M:%S")
+            delay = (dt - now).total_seconds()
+            
+            if delay > 0:
+                self.scheduler.enter(delay, 1, self.execute_task, argument=(task,))
+        
         # Start the scheduler
         self.start_scheduler()
-    
-    # def create_execute_task_callback(self, task: dict):
-    #     """Create a callback function to execute a task."""
-    #     logger.debug(f"Creating callback for task: {task}")
-    #     return lambda: self.execute_task(task)
+
 
     def execute_task(self, task):
         """Execute scheduled task and remove from storage."""

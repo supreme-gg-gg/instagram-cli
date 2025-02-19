@@ -390,7 +390,7 @@ class DirectChat:
         - message: Text message to send.
         """
         scheduler = MessageScheduler().get_instance()
-        return scheduler.add_task(self.thread_id, send_time, message)
+        return scheduler.add_task(self.thread_id, send_time, message, display_name=self.get_title())
     
     def get_message_id(self, message_index: int) -> str:
         """
