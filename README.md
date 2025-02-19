@@ -18,50 +18,145 @@ https://github.com/user-attachments/assets/81d87c0d-e39f-4af6-8337-d411a240a659
 
 ## Installation
 
-Installing this CLI tool takes less effort than scrolling reels!!! Think about it next time you login to instagram...
+The simplest way to get started is to install the package from PyPI if you have Python installed:
 
-We will soon be available on PyPI so you can download with
-
-```
+```bash
 pip install instagram-cli
 ```
 
-For now, please install by cloning the repo and installing the package:
+If you do not have Python installed, you can download and install it from the [official website](https://www.python.org/downloads/).
 
-```
-git clone https://github.com/supreme-gg-gg/instagram-cli
+### Installation from Source
+
+```bash
+git clone https://github.com/supreme-gg-gg/instagram-cli.git
 cd instagram-cli
 pip install .
 ```
 
-> We recommend using virtual environment when installing, see the beta testing guide for more info.
+### Docker Installation
+
+You must have Docker installed to use this method. If you do not have Docker installed, you can download and install it from the [official website](https://docs.docker.com/get-docker/).
+
+Build and run Docker image from source:
+
+```bash
+git clone https://github.com/supreme-gg-gg/instagram-cli.git
+cd instagram-cli
+docker build -t instagram-cli .
+docker run -it instagram-cli
+```
+
+Alternatively, you can pull the pre-built Docker image from Docker Hub (this will available very soon):
+
+```bash
+docker run -it supreme-gg-gg/instagram-cli
+```
+
+### Pre-built Executables
+
+> NOTE: This option is HIGHLY UNRECOMMENDED unless the other methods do not work for you.
+
+If you do not want to install Python, you can download the pre-built executables from the [releases page]().
+
+After downloading, the executable can be run from the command line:
+
+```bash
+./instagram-cli [OPTIONS] command [ARGS] # for macOS and Linux
+instagram-cli.exe [OPTIONS] command [ARGS] # for Windows
+```
 
 ## Commands
 
 The following commands will be available after installing the package:
 
 ```bash
-instagram                                  # title art!
+instagram                                  # display title art
 instagram --help                           # view available commands
-instagram auth login -U                    # login with username and password
+
+# Authentication
+instagram auth login -u                    # login with username and password
 instagram auth logout                      # logout and removes session
+
+# Chat Features
 instagram chat start                       # start chat interface
-instagram chat search <username>           # search and chat with specific user
-instagram notify                           # notifications such as unread inbox, followers, mentions
-instagram stats --days <last_n_days>       # brainrot history analytics, default 14 days
-instagram config --get --set --edit        # set custom configruation similar to git config
-instagram cleanup -A                        # cleanup media and session cache files
+instagram chat search -u <username>        # search and open chat by username
+instagram chat search -t <text>           # search and open chat by chat title
+
+# Utility Commands
+instagram notify                           # view notifications (inbox, followers, mentions)
+instagram schedule ls                      # view scheduled messages
+instagram stats --days <last_n_days>       # view usage analytics (default: 14 days)
+instagram config --get --set --edit        # manage custom configuration
+instagram cleanup -t                       # cleanup media and session cache files
 ```
+
+> All searches in the package uses a custom fuzzy matching based on ratcliff/obershelp similarity algorithm. This means chat search and emoji search will be more flexible and forgiving.
 
 ## Chat Commands
 
-The following commands should be typed and sent in the chat box in chat interface:
+The chat interface is the main feature of this package. It allows you to interact with your Instagram chats in a terminal-based interface. All commands have the following syntax:
+
+```bash
+:command <args> <long-args>
+```
+
+Long arguments should have special enclosures such as `"..."` for strings with spaces and `$...$` for LaTeX code.
 
 - `:help`: view available commands
 - `:quit`: quit the application
 - `:back`: back to chat menu for selecting chat
 - `:reply`: reply mode to select and reply to messages
+- `:scrollup`or `:k`: scroll up in chat messages
+- `:scrolldown` or `:j`: scroll down in chat messages
+- `:schedule <time> "<message>"`: schedule a message, see [scheduling messages](#scheduling-messages)
 - `:upload`: upload media using the file navigator
 - `:upload <path>`: upload media (photo or video) directly from path
 - `:view <index>`: view and download media at index or open URL directly in browser
-- `:emoji <name>`: coming soon!!
+- `:latex $<expr>$`: render and send LaTeX code as image, see [latex](#latex)
+
+### Emoji
+
+Text with emoji syntax will be rendered as emoji. For example,
+
+`This is an emoji :thumbsup:`
+
+will be rendered as
+
+`This is an emoji 👍`
+
+This does not have to be an exact match with the emoji name. For example, `:thumbsup:` can also be written as `:thumbs_up:`.
+
+### LaTeX
+
+We support LaTeX rendering and sending as images in the chat. For example,
+
+`:latex $\frac{a}{b} + c = d$`
+
+![sample1](resource/latex_sample_1.png)
+
+```bash
+:latex $\left( \begin{bmatrix} a & b \\ c & d \end{bmatrix} \cdot \begin{bmatrix} e & f \\ g & h \end{bmatrix} \right) + \begin{bmatrix} i & j \\ k & l \end{bmatrix}^{-1} \times \left( \int_0^1 x^2 \, dx \right) + \begin{bmatrix} \sin(\theta) & \cos(\theta) \\ \tan(\phi) & \ln(\psi) \end{bmatrix}$
+```
+
+![sample2](resource/latex_sample.png)
+
+Please note that the LaTeX code **_MUST_** be enclosed in `$` symbols.
+
+You can choose to render with [online API](https://latex.codecogs.com) (default) or local LaTeX installation such as TeX Live, MiKTeX, etc. You can set the rendering method with `instagram config --set latex_rendering_method <online|local>`.
+
+### Scheduling Messages
+
+You can schedule messages to be sent at a later time. The syntax is as follows:
+
+```bash
+:schedule <Optional[Y-m-d] HH:MM> "<message>"
+```
+
+If the date is not provided, the message will be scheduled for the current day. Input format must be either YYYY-MM-DD HH:MM or HH:MM. **The time must be in 24-hour format, otherwise you might run into warnings for scheduling messages in the past.**
+
+> If you exit the app, the scheduled messages will not be sent but will be restored when you open the app again. You will be prompted by a notification to decide whether to send the scheduled messages or not. We might include system background service in the future to send scheduled messages even when the app is closed.
+
+### Markdown and Code Blocks
+
+Coming soon!

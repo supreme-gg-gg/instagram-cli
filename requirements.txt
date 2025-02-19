@@ -4,6 +4,6 @@ art
 pydantic
 pyyaml
 pillow
-matplotlib
+requests
 emoji
 windows-curses; platform_system == "Windows"
