@@ -10,8 +10,7 @@ from datetime import datetime
 import tkinter as tk
 from tkinter import filedialog
 from .commands import CommandRegistry
-import matplotlib.pyplot as plt
-from instagram.api import DirectChat, MessageScheduler
+from instagram.api import DirectChat 
 
 cmd_registry = CommandRegistry()
 
