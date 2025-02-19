@@ -11,9 +11,12 @@ How this works:
 import threading
 import curses
 import typer
+from pathlib import Path
 
 from instagram.client import ClientWrapper
 from instagram.api.direct_messages import DirectMessages, DirectChat
+from instagram.api import MessageScheduler
+from instagram.configs import Config
 
 from instagram.chat_ui.interface.chat_interface import ChatInterface
 from instagram.chat_ui.interface.chat_menu import chat_menu
@@ -45,6 +48,13 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
     """
     # First create the DM object
     dm = DirectMessages(client)
+
+    # Create the scheduler object, this is done only once on chat app startup
+    path = Path.home() / ".instagram-cli" / "tasks.json"
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+    scheduler = MessageScheduler(client, path)
 
     if username is None:
         with_loading_screen(screen, dm.fetch_chat_data, num_chats=10, num_message_limit=20)

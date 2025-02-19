@@ -2,10 +2,37 @@ import sched
 import time
 import json
 import threading
+import asyncio
+import signal
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from instagram.client import ClientWrapper
+
+from desktop_notifier import DesktopNotifier, Urgency, Button, ReplyField
+
+import logging
+logger = logging.getLogger(__name__)
+# log to file
+logging.basicConfig(filename='logs.log', level=logging.DEBUG)
+
+# Global variables for a dedicated notification loop
+_notification_loop = None
+_notification_loop_lock = threading.Lock()
+
+def get_notification_loop() -> asyncio.AbstractEventLoop:
+    """Return a shared notification event loop running in its own daemon thread."""
+    global _notification_loop
+    with _notification_loop_lock:
+        if _notification_loop is None:
+            def run_loop(loop):
+                asyncio.set_event_loop(loop)
+                loop.run_forever()
+
+            _notification_loop = asyncio.new_event_loop()
+            thread = threading.Thread(target=run_loop, args=(_notification_loop,), daemon=True)
+            thread.start()
+        return _notification_loop
 
 class MessageScheduler:
     """
@@ -46,8 +73,8 @@ class MessageScheduler:
         self._initialized = True
         self.running = False
 
-        # Schedule all pending tasks on startup
-        self.schedule_pending_tasks()
+        if self.tasks and not self.running:
+            self.schedule_tasks_on_startup()
     
     def start_scheduler(self):
         """Start the scheduler in a separate thread if it's not already running."""
@@ -72,12 +99,6 @@ class MessageScheduler:
             except json.JSONDecodeError: # Handle empty file
                 return []
 
-    def send_notifications_for_pending(self):
-        """Send notifications for pending messages."""
-        for task in self.tasks:
-            if datetime.strptime(task["send_time"], "%Y-%m-%d %H:%M:%S") < datetime.now():
-                print(f"Notification: Message scheduled for {task['send_time']} overdue.")
-
     def save_tasks(self):
         """Save tasks to JSON file."""
         with open(self.task_file, "w") as f:
@@ -93,7 +114,7 @@ class MessageScheduler:
             delay = (dt - datetime.now().replace(microsecond=0)).total_seconds()
             
             if delay <= 0:
-                return "Error: Cannot schedule a message in the past."
+                return "Error: Cannot schedule a message in the past. **Make sure you use 24-hour format.**"
             
             task = {"thread_id": thread_id, "send_time": send_time, "message": message}
             self.tasks.append(task)
@@ -109,23 +130,89 @@ class MessageScheduler:
         except ValueError:
             return "Error: Invalid datetime format. Use 'YYYY-MM-DD HH:MM:SS'."
 
-    def schedule_pending_tasks(self):
-        """Schedule all tasks that haven't been executed yet."""
+    def schedule_tasks_on_startup(self):
+        """
+        Schedule all pending tasks on startup.
+        For overdue tasks, an asynchronous desktop notification is sent using DesktopNotifier.
+        Afterwards, the user is prompted in the terminal to decide whether to send or discard the message.
+        """
         now = datetime.now()
-        for task in self.tasks:
+
+        async def send_overdue_notification(task: dict) -> None:
+            notifier = DesktopNotifier(app_name="InstagramCLI")
+            stop_event = asyncio.Event()
+
+            # Define callback functions as proper functions
+            def on_send_pressed():
+                logger.debug("Button pressed for task: %s", task)
+                self.execute_task(task)
+                # stop_event.set()
+
+            def on_dismissed():
+                logger.debug("Notification dismissed for task: %s", task)
+                self.remove_task(task)
+                # stop_event.set()
+
+            # Send the notification with callbacks
+            await notifier.send(
+                title="Overdue Scheduled Message",
+                message=f"Message scheduled for {task['send_time']} is overdue.",
+                urgency=Urgency.Critical,
+                buttons=[
+                    Button(
+                        title="Send Now",
+                        on_pressed=on_send_pressed
+                    )
+                ],
+                on_dismissed=on_dismissed
+            )
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=10)
+            except asyncio.TimeoutError:
+                self.remove_task(task)
+
+        overdue = []
+
+        for task in self.tasks.copy():
             dt = datetime.strptime(task["send_time"], "%Y-%m-%d %H:%M:%S")
             delay = (dt - now).total_seconds()
-            if delay > 0:
+            
+            if delay > 0:  # Schedule non-overdue tasks
                 self.scheduler.enter(delay, 1, self.execute_task, argument=(task,))
+            else:
+                overdue.append(task)
+        
+        if overdue:
+            notif_loop = get_notification_loop()
+            for task in overdue:
+                logger.debug("Scheduling overdue notification for task: %s", task)
+                try:
+                    # Schedule the notification coroutine on the dedicated loop
+                    asyncio.run_coroutine_threadsafe(send_overdue_notification(task), notif_loop)
+                except Exception as e:
+                    print(f"Failed to schedule notification: {e}")
+
+        # Start the scheduler
+        self.start_scheduler()
+    
+    # def create_execute_task_callback(self, task: dict):
+    #     """Create a callback function to execute a task."""
+    #     logger.debug(f"Creating callback for task: {task}")
+    #     return lambda: self.execute_task(task)
 
     def execute_task(self, task):
         """Execute scheduled task and remove from storage."""
-        print(f"\n[SENDING MESSAGE] Thread ID: {task['thread_id']} | Message: {task['message']}")
-        
+        # print(f"\n[SENDING MESSAGE] Thread ID: {task['thread_id']} | Message: {task['message']}")
+        logger.debug(f"Executing task: {task}")
         self.client.insta_client.direct_answer(task["thread_id"], task["message"])
 
-        self.tasks.remove(task)
-        self.save_tasks()
+        self.remove_task(task)
+
+    def remove_task(self, task: dict) -> None:
+        """Remove a task."""
+        if task in self.tasks:
+            self.tasks.remove(task)
+            self.save_tasks()
 
     @classmethod
     def get_instance(cls, client: ClientWrapper = None, task_file: Path = None) -> 'MessageScheduler':

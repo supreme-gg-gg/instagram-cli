@@ -83,7 +83,12 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
         elif key == curses.KEY_DOWN and selection < len(chats) - 1:
             selection += 1
         elif key == ord("\n"):
-            if search_query:  # If there's a search query, perform search
+            # Add this so use can use the same quit command as chat
+            if search_query and search_query == ':quit':
+                return Signal.QUIT
+            
+            # NOTE: You MUST add the "@" symbol to search by username
+            if search_query and search_query.startswith("@"):
                 try:
                     # Show searching indicator
                     search_win.erase()

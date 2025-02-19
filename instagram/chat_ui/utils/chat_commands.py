@@ -141,7 +141,7 @@ def scroll_up(context) -> str:
 def scroll_down(context) -> str:
     return "__SCROLL_DOWN__"
 
-@cmd_registry.register("schedule", "Schedule a message to be sent at a later time", required_args=["time", "message"], shorthand="S")
+@cmd_registry.register("schedule", "Schedule a message to be sent at a later time, MUST BE 24-hour format", required_args=["time", "message"], shorthand="S")
 def schedule_message(context, time: str, message: str) -> str:
     """
     Schedule a message to be sent at a later time.
