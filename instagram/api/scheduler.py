@@ -8,10 +8,6 @@ from pathlib import Path
 from typing import Optional, List, Dict
 from instagram.client import ClientWrapper
 
-import logging
-logger = logging.getLogger(__name__)
-logging.basicConfig(filename='logs.log', level=logging.DEBUG)
-
 class MessageScheduler:
     """
     A simple message scheduler that uses the `sched` module to schedule messages.
@@ -110,75 +106,69 @@ class MessageScheduler:
         except ValueError:
             return "Error: Invalid datetime format. Use 'YYYY-MM-DD HH:MM:SS'."
 
-    def get_overdue_tasks(self) -> List[Dict]:
-        """Get list of overdue tasks that need user attention."""
-        now = datetime.now()
-        overdue = []
-        
-        for task in self.tasks.copy():
-            dt = datetime.strptime(task["send_time"], "%Y-%m-%d %H:%M:%S")
-            delay = (dt - now).total_seconds()
-            
-            if delay <= 0:
-                overdue.append(task)
-                
-        return overdue
-
-    def handle_overdue_tasks(self, screen) -> None:
+    def handle_overdue_tasks(self, screen, overdue: List[Dict]) -> None:
         """
         Handle overdue tasks using curses interface.
-        This should be called when starting the chat interface.
+        This function displays the overdue tasks in a centered window.
         """
-        import curses  # Import here to avoid circular imports
-        
-        overdue = self.get_overdue_tasks()
-        if not overdue:
-            return
-
-        # Save current terminal state
+        import curses
+        # Save current screen state
         curses.def_prog_mode()
         screen.clear()
 
-        # Create window for overdue messages
+        # Get screen dimensions and calculate window size
         height, width = screen.getmaxyx()
-        win_height = min(len(overdue) * 4 + 5, height - 2)
-        win = curses.newwin(win_height, width - 4, 2, 2)
+        win_height = min(len(overdue) * 4 + 5, height // 2)
+        win_width = min(width - 4, 80)  # Set max width to 80 or screen width - 4
+        
+        # Calculate center position
+        start_y = (height - win_height) // 2
+        start_x = (width - win_width) // 2
+        
+        win = curses.newwin(win_height, win_width, start_y, start_x)
         win.box()
 
         # Setup colors
+        curses.start_color()
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)
         curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
-        # Display header
+        # Display header centered in window
         header = "OVERDUE MESSAGES"
-        win.addstr(1, (width - 6 - len(header)) // 2, header, curses.A_BOLD | curses.color_pair(1))
+        header_x = (win_width - len(header)) // 2
+        win.addstr(1, header_x, header, curses.A_BOLD | curses.color_pair(1))
         
         current_task = 0
         while current_task < len(overdue):
             task = overdue[current_task]
             
-            # Display task info
-            current_line = current_task * 4 + 2
-            win.addstr(current_line, 2, f"Scheduled for: {task['send_time']}")
-            current_line += 1
+            # Clear window and redraw border and header for each task
+            win.clear()
+            win.box()
+            win.addstr(1, header_x, header, curses.A_BOLD | curses.color_pair(1))
+            
+            # Display task details
+            line = 2
+            win.addstr(line, 2, f"Scheduled for: {task['send_time']}")
+            line += 1
             if "display_name" in task:
-                win.addstr(current_line, 2, f"Chat with: {task['display_name']}")
-                current_line += 1
-            win.addstr(current_line, 2, f"Message: {task['message'][:width-8]}")
-            current_line += 1
-            win.addstr(current_line, 2, "Press (S)end now, (D)elete, or (Q)uit", curses.color_pair(2))
+                win.addstr(line, 2, f"Chat with: {task['display_name']}")
+                line += 1
+            win.addstr(line, 2, f"Message: {task['message'][:win_width-4]}")
+            line += 1
+            win.addstr(line, 2, "Press (S)end now, (D)elete, or (Q)uit", curses.color_pair(2))
             
             win.refresh()
             
-            # Handle input
-            key = screen.getch()
+            # Wait for user input from the window
+            key = win.getch()
             if key in (ord('s'), ord('S')):
                 try:
                     self.execute_task(task)
                     status = "Message sent successfully"
                 except Exception as e:
-                    status = f"Error sending message: {str(e)}"
-                win.addstr(current_task * 4 + 4, 2, status.ljust(width-6))
+                    status = f"Error: {str(e)}"
+                win.addstr(line + 1, 2, status.ljust(win_width-4))
                 win.refresh()
                 curses.napms(1000)  # Show status for 1 second
                 current_task += 1
@@ -187,25 +177,17 @@ class MessageScheduler:
                 current_task += 1
             elif key in (ord('q'), ord('Q')):
                 break
-            
-            # Clear window for next task
-            if current_task < len(overdue):
-                win.clear()
-                win.box()
-                win.addstr(1, (width - 6 - len(header)) // 2, header, curses.A_BOLD | curses.color_pair(1))
 
-        # Restore terminal state
+        # Clear the window and refresh the main screen
+        win.clear()
         screen.clear()
         curses.reset_prog_mode()
-        screen.refresh()
 
     def schedule_tasks_on_startup(self, screen=None):
         """Schedule pending tasks and handle overdue ones if screen is provided."""
         now = datetime.now()
-        
-        # Handle overdue tasks if we have a screen
-        if screen:
-            self.handle_overdue_tasks(screen)
+
+        overdue = []
         
         # Schedule remaining valid tasks
         for task in self.tasks.copy():
@@ -214,6 +196,11 @@ class MessageScheduler:
             
             if delay > 0:
                 self.scheduler.enter(delay, 1, self.execute_task, argument=(task,))
+            else:
+                overdue.append(task)
+
+        if overdue and screen:
+            self.handle_overdue_tasks(screen, overdue)
         
         # Start the scheduler
         self.start_scheduler()
@@ -222,7 +209,6 @@ class MessageScheduler:
     def execute_task(self, task):
         """Execute scheduled task and remove from storage."""
         # print(f"\n[SENDING MESSAGE] Thread ID: {task['thread_id']} | Message: {task['message']}")
-        logger.debug(f"Executing task: {task}")
         self.client.insta_client.direct_answer(task["thread_id"], task["message"])
 
         self.remove_task(task)

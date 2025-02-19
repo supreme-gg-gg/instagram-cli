@@ -143,7 +143,7 @@ def cleanup(delete_all: bool) -> None:
     session.delete_session()
     typer.echo("Session file cleaned up")
 
-    if not delete_all:
+    if delete_all:
         return
 
     _config = configs.Config()
@@ -152,7 +152,7 @@ def cleanup(delete_all: bool) -> None:
     generated_dir = Path(_config.get("advanced.generated_dir")).expanduser()
 
     # Cleanup
-    typer.echo(f"Cleaning up cache: {str(cache_dir), str(media_dir)}")
+    typer.echo(f"Cleaning up cache: {str(cache_dir), str(media_dir), str(generated_dir)}")
     if cache_dir.exists():
         for file in cache_dir.iterdir():
             file.unlink()

@@ -93,7 +93,7 @@ def ls():
 
     # Create table headers
     headers = ["Recipient", "Time", "Message"]
-    rows = [[task.recipient, task.scheduled_time, task.message] for task in tasks]
+    rows = [[task["display_name"], task["send_time"], task["message"]] for task in tasks]
 
     # Calculate column widths
     widths = [
