@@ -1,4 +1,4 @@
-# instagram-cli
+# Instagram CLI
 
 The ultimate weapon against brainrot.
 
@@ -6,7 +6,9 @@ The ultimate weapon against brainrot.
 ![Python](https://img.shields.io/pypi/pyversions/instagram-cli)
 ![PyPI Downloads](https://img.shields.io/pypi/dm/instagram-cli)
 
-![gif](resource/demo.gif)
+![demo](https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb)
+
+The world's first open-source CLI (command line interface) + Terminal UI client for Instagram.
 
 ## What does it do?
 
