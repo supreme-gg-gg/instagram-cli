@@ -1,11 +1,15 @@
-import subprocess
+import sys
+import os
 
-def test_instgram():
-    """Test if 'instagram' command runs successfully"""
-    result = subprocess.run(
-        ['instagram'],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
+# Add the project root to sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-    assert result.returncode == 0, f"Command failed: {result.stderr.decode()}"
+from instagram import app  # Now this import should work
+
+from typer.testing import CliRunner
+
+runner = CliRunner()
+
+def test_instagram_main():
+    result = runner.invoke(app, [])
+    assert result.exit_code == 0
