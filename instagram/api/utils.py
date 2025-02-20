@@ -7,7 +7,7 @@ import time
 import json
 from pathlib import Path
 from uuid import uuid4
-
+import typer
 from instagram.configs import Config
 
 import instagrapi
@@ -426,12 +426,16 @@ def render_latex_local(latex_expr, output_path="latex_local.png", padding=None):
 
     return output_path
 
-def list_all_scheduled_tasks(username: str, filepath: str = None) -> list[dict]:
+def list_all_scheduled_tasks(filepath: str = None) -> list[dict]:
     """
-    List all scheduled tasks from the JSON file.
+    List all scheduled tasks for the current user from the JSON file.
     """
     if filepath is None:
-        filepath = Path(Config.get("users_dir")) / username / "tasks.json"
+        username = Config().get("login.current_username")
+        if not username:
+            typer.echo("You are not logged in. Please login first.\nSuggested action: `instagram auth login`")
+            return []
+        filepath = Path(Config().get("advanced.users_dir")) / username / "tasks.json"
     if not Path(filepath).exists():
         return []
     with open(filepath, "r") as f:

@@ -117,9 +117,15 @@ def config(
     get: Optional[str] = typer.Option(None, "--get", help="Get config value"),
     set: Optional[tuple[str, str]] = typer.Option(None, "--set", help="Set config value"),
     list: bool = typer.Option(False, "--list", help="List all config values"),
-    edit: bool = typer.Option(False, "--edit", help="Open config file in default editor")
+    edit: bool = typer.Option(False, "--edit", help="Open config file in default editor"),
+    reset: bool = False
 ):
     cfg = Config()
+
+    if reset:
+        cfg._save_config(DEFAULT_CONFIG)
+        typer.echo("Configuration reset to default")
+        return
 
     if edit:
         import os
