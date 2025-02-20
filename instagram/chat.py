@@ -34,16 +34,16 @@ def start_chat(username: str | None = None, search_filter: str = "") -> None:
         return
     
     def init_chat(screen):
-        # Initialize scheduler with screen for handling overdue messages
-        path = Path.home() / ".instagram-cli" / "tasks.json"
+        # Initialize scheduler with screen for handling overdue messages (this is only done once)
+        path = Path(Config().get("advanced.users_dir")) / client.username / "tasks.json"
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.touch()
         scheduler = MessageScheduler(client, path)
-        scheduler.schedule_tasks_on_startup(screen)  # Pass screen here
+        scheduler.schedule_tasks_on_startup(screen)
         
         return main_loop(screen, client, username, search_filter)
-    
+
     curses.wrapper(init_chat)
 
 def main_loop(screen, client: ClientWrapper, username: str | None, search_filter: str = "") -> None:
@@ -57,13 +57,6 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
     """
     # First create the DM object
     dm = DirectMessages(client)
-
-    # Create the scheduler object, this is done only once on chat app startup
-    path = Path.home() / ".instagram-cli" / "tasks.json"
-    if not path.exists():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.touch()
-    scheduler = MessageScheduler(client, path)
 
     if username is None:
         with_loading_screen(screen, dm.fetch_chat_data, num_chats=10, num_message_limit=20)

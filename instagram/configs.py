@@ -2,6 +2,7 @@ import yaml
 from pathlib import Path
 from typing import Any, Optional
 import typer
+import pathlib
 
 DEFAULT_CONFIG = {
     "language": "en",
@@ -10,53 +11,68 @@ DEFAULT_CONFIG = {
         "current_username": None
     },
     "chat": {
-        "media_upload_path": "~/instagram/uploads",
-        "media_download_path": "~/instagram/downloads"
+        "layout": "compact",
+        "colors": True
     },
     "scheduling": {
-        "default_schedule_duration": "1h"
+        "default_schedule_duration": "01:00"  # 1 hour
     },
     "privacy": {
         "invisible_mode": False
     },
     "advanced": {
         "debug_mode": False,
-        "cache_dir": "~/.instagram-cli/cache",
-        "media_dir": "~/.instagram-cli/media",
-        "generated_dir": "~/.instagram-cli/generated"
+        "data_dir": str(pathlib.Path.home() / ".instagram-cli"),
+        "georgist_credits": 627
     }
 }
+DEFAULT_CONFIG["advanced"]["users_dir"] = str(pathlib.Path(DEFAULT_CONFIG["advanced"]["data_dir"]) / "users")
+DEFAULT_CONFIG["advanced"]["cache_dir"] = str(pathlib.Path(DEFAULT_CONFIG["advanced"]["data_dir"]) / "cache")
+DEFAULT_CONFIG["advanced"]["media_dir"] = str(pathlib.Path(DEFAULT_CONFIG["advanced"]["data_dir"]) / "media")
+DEFAULT_CONFIG["advanced"]["generated_dir"] = str(pathlib.Path(DEFAULT_CONFIG["advanced"]["data_dir"]) / "generated")
 
 class Config:
-    def __init__(self):
-        self.config_dir = Path.home() / ".instagram-cli"
-        self.config_file = self.config_dir / "config.yaml"
-        self.config = self._load_config()
+    """Configuration manager for Instagram CLI - Singleton Pattern"""
+    _instance = None
+    _config = None
 
-    def _load_config(self) -> dict:
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(Config, cls).__new__(cls)
+            cls._instance._initialize()
+        return cls._instance
+
+    def _initialize(self):
+        """Initialize the configuration"""
+        self.config_dir = Path(DEFAULT_CONFIG["advanced"]["data_dir"])
+        self.config_file = self.config_dir / "config.yaml"
+        self._load_config()
+
+    def _load_config(self) -> None:
         """Load configuration from file or create default if not exists"""
         if not self.config_file.exists():
             self.config_dir.mkdir(parents=True, exist_ok=True)
             self._save_config(DEFAULT_CONFIG)
-            return DEFAULT_CONFIG.copy()
-        
+            self._config = DEFAULT_CONFIG.copy()
+            return
+
         with open(self.config_file, 'r') as f:
-            return yaml.safe_load(f) or DEFAULT_CONFIG.copy()
+            self._config = yaml.safe_load(f) or DEFAULT_CONFIG.copy()
 
     def _save_config(self, config: dict):
         """Save configuration to file"""
         with open(self.config_file, 'w') as f:
             yaml.dump(config, f, default_flow_style=False)
+        self._config = config
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value by key (supports dot notation)"""
         try:
-            value = self.config
+            value = self._config
             for k in key.split('.'):
                 value = value[k]
             return value
         except (KeyError, TypeError):
-            # Try to get default value from DEFAULT_CONFIG
             try:
                 default_value = DEFAULT_CONFIG
                 for k in key.split('.'):
@@ -69,17 +85,15 @@ class Config:
     def set(self, key: str, value: Any):
         """Set configuration value by key (supports dot notation)"""
         keys = key.split('.')
-        current = self.config
+        current = self._config
         
-        # Navigate to the deepest dict
         for k in keys[:-1]:
             if k not in current:
                 current[k] = {}
             current = current[k]
         
-        # Set the value
         current[keys[-1]] = value
-        self._save_config(self.config)
+        self._save_config(self._config)
 
     def list(self) -> list[tuple[str, Any]]:
         """List all configuration values"""
@@ -93,21 +107,31 @@ class Config:
                     items.append((new_key, v))
             return items
         
-        return flatten_dict(self.config)
+        return flatten_dict(self._config)
+
+    def reload(self):
+        """Reload configuration from file"""
+        self._load_config()
 
 def config(
     get: Optional[str] = typer.Option(None, "--get", help="Get config value"),
     set: Optional[tuple[str, str]] = typer.Option(None, "--set", help="Set config value"),
     list: bool = typer.Option(False, "--list", help="List all config values"),
-    edit: bool = typer.Option(False, "--edit", help="Open config file in default editor")
+    edit: bool = typer.Option(False, "--edit", help="Open config file in default editor"),
+    reset: bool = False
 ):
     cfg = Config()
 
+    if reset:
+        cfg._save_config(DEFAULT_CONFIG)
+        typer.echo("Configuration reset to default")
+        return
+
     if edit:
-        # Open config file in default editor
         import os
         editor = os.environ.get('EDITOR', 'notepad' if os.name == 'nt' else 'nano')
         os.system(f'{editor} "{cfg.config_file}"')
+        cfg.reload()  # Reload config after editing
         return
 
     if get:
@@ -120,7 +144,6 @@ def config(
     
     elif set:
         key, value = set
-        # Convert string value to appropriate type
         try:
             value = yaml.safe_load(value)
         except yaml.YAMLError:

@@ -2,6 +2,7 @@ import curses
 from typing import List, Tuple
 from ..utils.types import LineInfo, Signal, ChatMode
 from instagram.api import MessageInfo
+from instagram.configs import Config
 
 class ChatWindow:
     """Handles chat message display and formatting."""
@@ -17,10 +18,6 @@ class ChatWindow:
         self.scroll_offset = 0
         self.visible_messages_range = None
         self.visible_lines_range = None
-        self.config = {
-            "layout": "compact",
-            "colors": "on"
-        }
 
     def set_messages(self, messages: List[MessageInfo]):
         """Update messages list."""
@@ -43,7 +40,7 @@ class ChatWindow:
             is_selected = (msg_idx == self.selection and self.mode == ChatMode.REPLY)
 
             # Determine color index
-            if self.config["colors"] == "on":
+            if Config().get("chat.colors") == True:
                 color_idx = (hash(msg.message.sender) % 3) + 4
             else:
                 color_idx = 0  # no color
@@ -106,7 +103,7 @@ class ChatWindow:
                 )
 
             # Add a blank line after each message if layout not compact
-            if self.config["layout"] != "compact":
+            if Config().get("chat.layout") != "compact":
                 lines_buffer.append((msg_idx, "", False, 0, 0, "", False))
         self.messages_lines = lines_buffer
     

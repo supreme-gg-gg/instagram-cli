@@ -1,6 +1,7 @@
 import typer
 from instagram.client import ClientWrapper, LoginRequired
 from instagram import configs
+from pathlib import Path
 
 def login() -> ClientWrapper:
     """Login to Instagram"""
@@ -42,3 +43,21 @@ def logout(un=None):
         typer.echo("Logged out.")
     except (LoginRequired, FileNotFoundError):
         typer.echo("Not logged in.")
+
+def switch_account(username):
+    """
+    Convenience function for Switching between multiple accounts
+
+    Functionally the same as:
+    ```
+    instagram ocnfig --set login.current_username <username>
+    ````
+    """
+    # Check if session exists
+    session_path = Path(configs.Config().get("advanced.users_dir")) / username / "session.json"
+    if not session_path.exists():
+        typer.echo(f"Cannot switch to @{username}. No session found.\nTry logging in with @{username} first.")
+        return
+    
+    configs.Config().set("login.current_username", username)
+    typer.echo(f"Switched to @{username}")

@@ -26,7 +26,7 @@ def main(ctx: typer.Context):
 
     try:
         from importlib.metadata import version
-        cli_version = version("instagram")
+        cli_version = version("instagram-cli")
     except ImportError:
         cli_version = "Unknown"
 
@@ -57,6 +57,18 @@ def login(
 def logout(username: str = typer.Option(None, "-u", "--username")):
     """Logout from Instagram"""
     auth.logout(username)
+
+@auth_app.command()
+def switch_account(
+    username: str = typer.Argument(
+        ...,  # ... means the argument is required
+        help="Username of the account to switch to"
+    )
+):
+    """
+    Convenience command for Switching between multiple accounts
+    """
+    auth.switch_account(username)
 
 @chat_app.command()
 def start(ctx: typer.Context):
@@ -129,10 +141,11 @@ def config(
     get: str = typer.Option(None, "-g", "--get", help="Get config value"),
     set: tuple[str, str] = typer.Option(None, "-s", "--set", help="Set config value"),
     list: bool = typer.Option(False, "-l", "--list", help="List all config values"),
-    edit: bool = typer.Option(False, "-e", "--edit", help="Open config file in default editor")
+    edit: bool = typer.Option(False, "-e", "--edit", help="Open config file in default editor"),
+    reset: bool = typer.Option(False, "-R", "--reset", help="Reset configuration to default")
 ):
     """Manage Instagram CLI configuration"""
-    configs.config(get, set, list, edit)
+    configs.config(get, set, list, edit, reset)
 
 @app.command()
 def cleanup(d_all: bool = typer.Option(True, "-a", "--all", help="Cleanup cache and temporary files")):
