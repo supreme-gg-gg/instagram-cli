@@ -12,7 +12,7 @@ DEFAULT_CONFIG = {
     },
     "chat": {
         "layout": "compact",
-        "colors": "on"
+        "colors": True
     },
     "scheduling": {
         "default_schedule_duration": "01:00"  # 1 hour

@@ -40,7 +40,7 @@ class ChatWindow:
             is_selected = (msg_idx == self.selection and self.mode == ChatMode.REPLY)
 
             # Determine color index
-            if Config().get("chat.color") == "on":
+            if Config().get("chat.colors") == True:
                 color_idx = (hash(msg.message.sender) % 3) + 4
             else:
                 color_idx = 0  # no color

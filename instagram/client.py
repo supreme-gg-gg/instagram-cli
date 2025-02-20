@@ -146,7 +146,7 @@ def cleanup(delete_all: bool) -> None:
     session.delete_session()
     typer.echo("Session file cleaned up")
 
-    if delete_all:
+    if not delete_all:
         return
 
     cache_dir = Path(Config().get("advanced.cache_dir")).expanduser()

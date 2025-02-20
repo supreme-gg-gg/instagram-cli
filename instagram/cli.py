@@ -26,7 +26,7 @@ def main(ctx: typer.Context):
 
     try:
         from importlib.metadata import version
-        cli_version = version("instagram")
+        cli_version = version("instagram-cli")
     except ImportError:
         cli_version = "Unknown"
 
