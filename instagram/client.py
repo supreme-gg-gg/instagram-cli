@@ -2,7 +2,7 @@ import typer
 import instagrapi
 from instagrapi.exceptions import LoginRequired
 from pathlib import Path
-from instagram import configs
+from instagram.configs import Config
 
 class SessionManager:
     def __init__(self, username: str | None) -> None:
@@ -16,7 +16,7 @@ class SessionManager:
     
     def get_default_username(self) -> str | None:
         # Fall back to default username if current username is not set
-        return configs.Config().get("login.current_username", configs.Config().get("login.default_username", ""))
+        return Config().get("login.current_username", Config().get("login.default_username", ""))
             
         # session_dir = self.ensure_session_dir()
         # session_files = list(session_dir.glob("*.json"))
@@ -27,11 +27,11 @@ class SessionManager:
     
     def get_session_path(self) -> Path:
         """Get path to session file in user's home directory"""
-        return Path.home() / ".instagram-cli" / f"{self.username}.json"
+        return self.ensure_session_dir() / "session.json"
 
     def ensure_session_dir(self):
         """Ensure session directory exists"""
-        session_dir = Path.home() / ".instagram-cli"
+        session_dir = Path(Config().get("advanced.users_dir")) / self.username
         session_dir.mkdir(parents=True, exist_ok=True)
         return session_dir
 
@@ -51,7 +51,6 @@ class SessionManager:
 
 class ClientWrapper:
     def __init__(self, username: str | None = None) -> None:
-        self.config = configs.Config()
         self.session_manager = SessionManager(username)
         self.username = self.session_manager.username
         self.insta_client = None
@@ -102,7 +101,7 @@ class ClientWrapper:
         
         self.insta_client = cl
         self.session_manager.save_session(self)
-        self.config.set("login.current_username", username)
+        Config().set("login.current_username", username)
         return cl
 
     def login_by_session(self) -> instagrapi.Client:
@@ -111,6 +110,8 @@ class ClientWrapper:
         If this fails it will prompt the user to cleanup and relogin.
         NOTE: This may happen intermittently due to Instagram's security measures.
         """
+        if not self.session_manager.username:
+            raise FileNotFoundError("No session file found.")
         session_path = self.session_manager.get_session_path()
 
         cl = instagrapi.Client()
@@ -126,8 +127,10 @@ class ClientWrapper:
             typer.echo(f"Failed to login with session: {e}")
             typer.echo("Suggested action: 'instagram cleanup' and relogin.")
         self.insta_client = cl
+        self.username = cl.username
+        self.session_manager.username = cl.username
         self.session_manager.save_session(self)
-        self.config.set("login.current_username", cl.username)
+        Config().set("login.current_username", cl.username)
 
         return cl
 
@@ -135,7 +138,7 @@ class ClientWrapper:
         """Logout from Instagram"""
         self.insta_client.logout()
         self.session_manager.delete_session()
-        self.config.set("login.current_username", None)
+        Config().set("login.current_username", None)
 
 def cleanup(delete_all: bool) -> None:
     """Cleanup cache and temporary files"""
@@ -146,10 +149,9 @@ def cleanup(delete_all: bool) -> None:
     if not delete_all:
         return
 
-    _config = configs.Config()
-    cache_dir = Path(_config.get("advanced.cache_dir")).expanduser()
-    media_dir = Path(_config.get("advanced.media_dir")).expanduser()
-    generated_dir = Path(_config.get("advanced.generated_dir")).expanduser()
+    cache_dir = Path(Config().get("advanced.cache_dir")).expanduser()
+    media_dir = Path(Config().get("advanced.media_dir")).expanduser()
+    generated_dir = Path(Config().get("advanced.generated_dir")).expanduser()
 
     # Cleanup
     typer.echo(f"Cleaning up cache: {str(cache_dir), str(media_dir)}")

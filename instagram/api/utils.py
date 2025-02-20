@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
+from instagram.configs import Config
+
 import instagrapi
 from instagrapi import Client
 import instagrapi.config
@@ -426,12 +428,12 @@ def render_latex_local(latex_expr, output_path="latex_local.png", padding=None):
 
     return output_path
 
-def list_all_scheduled_tasks(filepath: str = None) -> list[dict]:
+def list_all_scheduled_tasks(username: str, filepath: str = None) -> list[dict]:
     """
     List all scheduled tasks from the JSON file.
     """
     if filepath is None:
-        filepath = Path().home() / ".instagram-cli" / "tasks.json"
+        filepath = Path(Config.get("users_dir")) / username / "tasks.json"
     if not Path(filepath).exists():
         return []
     with open(filepath, "r") as f:
