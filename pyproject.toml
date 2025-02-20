@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "instagram-cli"
-version = "1.2.5"
+version = "1.2.6"
 description = "Use Instagram in the terminal, the end of brainrot is here"
 authors = [
     { name = "Jet Chiang", email = "jetjiang.ez@gmail.com" },
