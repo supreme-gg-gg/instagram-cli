@@ -6,6 +6,7 @@ from ..components.status_bar import StatusBar
 from ..utils.types import ChatMode, Signal
 from ..utils.chat_commands import cmd_registry
 from instagram.api import DirectChat
+from instagram.configs import Config
 import time
 
 class ChatInterface:
@@ -146,8 +147,8 @@ class ChatInterface:
         # Handle config changes command
         if isinstance(result, dict):
             for key, value in result.items():
-                if key in self.config:
-                    self.config[key] = value
+                if Config().get(f"chat.{key}"):
+                    Config().set(f"chat.{key}", value)
             self.chat_window.update()
             self.set_mode(ChatMode.CHAT)
             return Signal.CONTINUE

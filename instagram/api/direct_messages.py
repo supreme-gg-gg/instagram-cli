@@ -18,7 +18,7 @@ from instagrapi.exceptions import UserNotFound, DirectThreadNotFound, ClientNotF
 from pydantic import ValidationError
 from dataclasses import dataclass
 from typing import List, Optional
-# from instagram import configs
+from instagram.configs import Config
 
 # logger = setup_logging(__name__)
 
@@ -491,7 +491,7 @@ class DirectChat:
             webbrowser.open(url)
             return None
 
-        save_dir = Path.home() / ".instagram-cli" / "media"
+        save_dir = Config().get("advanced.media_dir")
         if not save_dir.exists():
             save_dir.mkdir(parents=True, exist_ok=True)
         # save_dir = configs.Config().get("advanced.media_dir", "media")
@@ -533,7 +533,7 @@ class DirectChat:
         - latex_expr: LaTeX expression to render.
         """
         # Save to the generated cahce
-        save_dir = Path.home() / ".instagram-cli" / "generated"
+        save_dir = Config().get("advanced.generated_dir")
         if not save_dir.exists():
             save_dir.mkdir(parents=True, exist_ok=True)
 
