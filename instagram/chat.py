@@ -8,19 +8,18 @@ How this works:
 - The user can return to the chat menu or quit the program.
 """
 
-import threading
 import curses
 import typer
 from pathlib import Path
 
-from .client import ClientWrapper
-from .api import DirectMessages, DirectChat, MessageScheduler
-from .configs import Config
+from instagram.client import ClientWrapper
+from instagram.api import DirectMessages, DirectChat, MessageScheduler
+from instagram.configs import Config
 
-from .chat_ui.interface.chat_interface import ChatInterface
-from .chat_ui.interface.chat_menu import chat_menu
-from .chat_ui.utils.loading import with_loading_screen
-from .chat_ui.utils.types import Signal
+from instagram.chat_ui.interface.chat_interface import ChatInterface
+from instagram.chat_ui.interface.chat_menu import chat_menu
+from instagram.chat_ui.utils.loading import with_loading_screen
+from instagram.chat_ui.utils.types import Signal
 
 def start_chat(username: str | None = None, search_filter: str = "") -> None:
     """
