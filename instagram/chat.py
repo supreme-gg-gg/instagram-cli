@@ -36,7 +36,7 @@ def start_chat(username: str | None = None, search_filter: str = "") -> None:
     
     def init_chat(screen):
         # Initialize scheduler with screen for handling overdue messages (this is only done once)
-        path = Path(Config().get("users_dir")) / client.username / "tasks.json"
+        path = Path(Config().get("advanced.users_dir")) / client.username / "tasks.json"
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.touch()
