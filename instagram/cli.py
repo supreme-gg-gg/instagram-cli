@@ -1,5 +1,5 @@
 import typer
-from instagram import auth, chat, api, configs, client
+from instagram import auth, chat, api, configs, client, __version__
 from art import text2art, tprint
 
 # We will expose the following core commands:
@@ -24,16 +24,10 @@ def main(ctx: typer.Context):
     typer.echo(f"\033[95m{logo}\033[0m")  # Magenta text
     typer.echo("\033[92mThe end of brainrot and scrolling is here.\033[0m")  # Green text
 
-    try:
-        from importlib.metadata import version
-        cli_version = version("instagram-cli")
-    except ImportError:
-        cli_version = "Unknown"
-
     messages = [
         "Type 'instagram --help' to see available commands.",
         "Pro Tip: Use arrow keys to navigate chats.",
-        "Version: " + cli_version
+        "Version: " + __version__
     ]
 
     for msg in messages:

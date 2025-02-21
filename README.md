@@ -4,7 +4,9 @@ The ultimate weapon against brainrot.
 
 ![PyPI](https://img.shields.io/pypi/v/instagram-cli)
 ![Python](https://img.shields.io/pypi/pyversions/instagram-cli)
-![PyPI Downloads](https://img.shields.io/pypi/dm/instagram-cli)
+
+<!-- ![LOC](https://tokei.rs/b1/github/supreme-gg-gg/instagram-cli?category=code) -->
+
 [![MIT license](https://img.shields.io/github/license/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)
 

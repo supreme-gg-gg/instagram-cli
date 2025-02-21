@@ -4,11 +4,7 @@ from pathlib import Path
 import webbrowser
 import emoji
 
-# import hashlib
-
-# from .utils import setup_logging
-from .utils import user_info_by_username_private, direct_send_media , render_latex_online, \
-    render_latex_local, fuzzy_match, direct_thread_chunk, user_info_by_username_private
+from .utils import * 
 from .scheduler import MessageScheduler
 
 from instagrapi import Client as InstaClient
@@ -19,8 +15,6 @@ from pydantic import ValidationError
 from dataclasses import dataclass
 from typing import List, Optional
 from instagram.configs import Config
-
-# logger = setup_logging(__name__)
 
 @dataclass
 class MessageBrief:

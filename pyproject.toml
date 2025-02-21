@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "instagram-cli"
-version = "1.2.8"
+version = "1.2.9"
 description = "Use Instagram in the terminal, the end of brainrot is here"
 authors = [
     { name = "Jet Chiang", email = "jetjiang.ez@gmail.com" },
@@ -59,8 +59,10 @@ Homepage = "https://github.com/supreme-gg-gg/instagram-cli"
 [project.scripts]
 instagram = "instagram.cli:app"
 
-[tool.setuptools]
-packages = ["instagram"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["instagram*"]
+exclude = ["tests*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.md", "*.yaml"]
