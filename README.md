@@ -4,11 +4,10 @@ The ultimate weapon against brainrot.
 
 ![PyPI](https://img.shields.io/pypi/v/instagram-cli)
 ![Python](https://img.shields.io/pypi/pyversions/instagram-cli)
-
-<!-- ![LOC](https://tokei.rs/b1/github/supreme-gg-gg/instagram-cli?category=code) -->
-
 [![MIT license](https://img.shields.io/github/license/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)
+
+<!-- ![LOC](https://tokei.rs/b1/github/supreme-gg-gg/instagram-cli?category=code) -->
 
 https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb
 
@@ -65,7 +64,7 @@ docker run -it supreme-gg-gg/instagram-cli
 
 > NOTE: This option is HIGHLY UNRECOMMENDED unless the other methods do not work for you.
 
-If you do not want to install Python, you can download the pre-built executables from the [releases page]().
+If you do not want to install Python, you can download the pre-built executables from the [releases page](https://github.com/supreme-gg-gg/instagram-cli/releases).
 
 After downloading, the executable can be run from the command line:
 
