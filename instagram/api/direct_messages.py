@@ -31,6 +31,11 @@ class MessageInfo:
 class ClientWrapper(Protocol):
     insta_client: InstaClient
 
+class ChatNotFoundError(Exception):
+    """Raised when chat not found when searching by username or title.
+    Frontend MUST handle this exception and display an error message."""
+    pass
+
 class DirectMessages:
     def __init__(self, client: ClientWrapper):
         self.client = client
@@ -57,6 +62,8 @@ class DirectMessages:
         - username: Username to search for
         Returns:
         - DirectChat object if found, None if not found
+        Raises:
+        - ChatNotFoundError: If no chat
 
         NOTE: This requires an EXACT MATCH of usernames, 
         we recommend using search_by_title for fuzzy matching
@@ -70,38 +77,60 @@ class DirectMessages:
         except UserNotFound:
             return None
         
-        thread_data = self.client.insta_client.direct_thread_by_participants(user_ids=[user_id])
-        thread = extract_direct_thread(thread_data["thread"])  # use built-in instagrapi parsing function
+        try:
+            thread_data = self.client.insta_client.direct_thread_by_participants(user_ids=[user_id])
+            thread = extract_direct_thread(thread_data["thread"])  # use built-in instagrapi parsing function
+        except Exception as e:
+            raise ChatNotFoundError(f"Chat with user {username} not found: {e}") from e
+
         return DirectChat(self.client, thread.id, thread)
 
-    def search_by_title(self, title: str, threshold: float = 0.75, n: int = 1) -> DirectChat | None:
+    def search_by_title(self, title: str, threshold: float = 0.7, n: int = 1) -> DirectChat | None:
         """
-        Search for a chat by thread title using fuzzy matching.
+        Search for a chat by thread title using fuzzy matching. 
+        Uses pagination to search through the latest chats. 
+        Default max number of chats to search is 30.
         
         Parameters:
         - title: Title to search for.
-        - threshold: Minimum similarity ratio (0.0 to 1.0) required for a match. Default 0.75
+        - threshold: Minimum similarity ratio (0.0 to 1.0) required for a match. Default 0.7
         - n: Number of best matches to return. Default 1
         Returns:
         - DirectChat object if found, None if not found.
+        Raises:
+        - ChatNotFoundError: If no chat is found.
 
         NOTE: This does NOT currently support multiple matches,
         this can be easily added but requires frontend support.
+
+        TODO: This is extremely inefficient because it fetches repeated
+        messages instead of keeping track of a cursor. This is because the
+        API support limitation, but a workaround is possible.
         """
-        if not self.chats:
-            self.fetch_chat_data(10, 20)
 
-        result = fuzzy_match(
-            query=title,
-            items=list(self.chats.values()),
-            getter=lambda chat: chat.get_title(),
-            cutoff=threshold,
-            use_partial_ratio=True
-        )
+        batch_size = 10
+        batch = 0
+        max_chats = 30
 
-        print(result)
+        while batch < max_chats:
+            batch += batch_size
+            self.fetch_chat_data(batch_size, 20)
+
+            result = fuzzy_match(
+                query=title,
+                items=list(self.chats.values())[batch-batch_size:batch],
+                getter=lambda chat: chat.get_title(),
+                cutoff=threshold,
+                use_partial_ratio=True
+            )
+
+            if result is None:
+                continue
+
+            if len(result) > 0:
+                return result[0]
         
-        return result[0] if result and len(result) > 0 else None
+        raise ChatNotFoundError(f"Chat with title {title} not found in the latest {batch} chats")
 
     def send_text_by_userid(self, userids: List[int], text: str):
         """
@@ -281,6 +310,8 @@ class DirectChat:
                             media_placeholder = "[Sent a view-once media (use the Instagram app to view it)]"
                         elif media_items[media_index]["media_type"] == 'xma_media_share':
                             media_placeholder = "[Shared a post (use the Instagram app to view it)]"
+                        elif media_items[media_index]["media_type"] == 'xma_link':
+                            media_placeholder = f"[Sent URL #{media_index}: {media_items[media_index]['url']}]"
                         else:
                             media_placeholder = f"[Sent a {media_items[media_index]['media_type']} #{media_index}]"
                     elif media_items[media_index]["type"] in ['media', 'voice_media']:
