@@ -297,9 +297,12 @@ class DirectChat:
                             'image' if message.media.thumbnail_url else (
                             'audio' if message.media.audio_url else 'unknown'
                         )))
-                    elif message.item_type == "xma_link" and message.text:
+                    elif message.item_type in ["xma_link", "link"]:
                         media_items[media_index]["media_type"] = 'link'
-                        media_items[media_index]['url'] = message.text
+                        if message.text:
+                            media_items[media_index]['url'] = message.text
+                        elif message.link:
+                            media_items[media_index]['url'] = message.link["text"]
                     elif message.media_share:
                         # Post reshare
                         pass
@@ -324,6 +327,8 @@ class DirectChat:
                         media_placeholder = "[Sent brainrot]"
                     elif media_items[media_index]["type"] == 'animated_media':
                         media_placeholder = f"[Sent a sticker #{media_index}]"
+                    elif media_items[media_index]["type"] == 'link':
+                        media_placeholder = f"[Sent URL #{media_index}: {media_items[media_index]['url']}]"
                     else:
                         media_placeholder = f"[Sent a {media_items[media_index]['type']} (use the Instagram app to view it)]"
 
