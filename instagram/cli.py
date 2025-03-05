@@ -73,20 +73,15 @@ def start(ctx: typer.Context):
 @chat_app.command()
 def search(
     username: str,
-    _t: bool = typer.Option(
-        True,
-        "-t", "--title", 
-        help="Search by thread title"
-    ),
-    _u: bool = typer.Option(
-        False,
-        "-u", "--username", 
-        help="Search by username"
-    )
+    _t: bool = typer.Option(False, "-t", "--title", help="Search by thread title", is_flag=True),
+    _u: bool = typer.Option(False, "-u", "--username", help="Search by username", is_flag=True)
 ):
     """Search for a user to chat with. """
-    filter = "u" if _u else ""
-    filter += "t" if _t else ""
+    filter = ""
+    if _u:
+        filter += "u"
+    if _t:
+        filter += "t"
     chat.start_chat(username, filter)
 
 @schedule_app.command()

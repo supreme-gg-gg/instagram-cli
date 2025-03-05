@@ -13,7 +13,7 @@ import typer
 from pathlib import Path
 
 from instagram.client import ClientWrapper
-from instagram.api import DirectMessages, DirectChat, MessageScheduler
+from instagram.api import DirectMessages, DirectChat, MessageScheduler, ChatNotFoundError
 from instagram.configs import Config
 
 from instagram.chat_ui.interface.chat_interface import ChatInterface
@@ -25,6 +25,7 @@ def start_chat(username: str | None = None, search_filter: str = "") -> None:
     """
     Wrapper function to launch chat UI.
     Logs in the user and pass the client to the curses main loop.
+    Catches exceptions and displays error messages as the last line of defense.
     """
     client = ClientWrapper()
     try:
@@ -44,7 +45,12 @@ def start_chat(username: str | None = None, search_filter: str = "") -> None:
         
         return main_loop(screen, client, username, search_filter)
 
-    curses.wrapper(init_chat)
+    try: # Run the chat interface
+        curses.wrapper(init_chat)
+    except KeyboardInterrupt:
+        typer.echo("Exiting chat interface.")
+    except Exception as e:
+        typer.echo(f"An error occurred when running the app: {e}")
 
 def main_loop(screen, client: ClientWrapper, username: str | None, search_filter: str = "") -> None:
     """
@@ -63,7 +69,11 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
 
     while True:
         if username:
-            selected_chat = with_loading_screen(screen, search_chat_list, dm, username, search_filter)
+            try:
+                selected_chat = with_loading_screen(screen, search_chat_list, dm, username, search_filter)
+            except ChatNotFoundError as e: # catch the erro thrown by the controller
+                typer.echo(e)
+                break
             if not selected_chat:
                 typer.echo(f"Chat with @{username} not found")
                 break
