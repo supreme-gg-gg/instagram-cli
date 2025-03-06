@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from typing import List, Optional
 from instagram.configs import Config
 
+logger = setup_logging(__name__)
+
 @dataclass
 class MessageBrief:
     sender: str
@@ -241,104 +243,134 @@ class DirectChat:
         media_index = 0
 
         def process_message(message: DirectMessage | ReplyMessage) -> MessageBrief | None:
+            """Process a message and extract relevant information."""
             nonlocal media_index
             nonlocal media_items
+            
+            # Skip action logs (like reactions)
             if message.item_type == 'action_log':
-                return None # Skip action logs (reactions)
-            res = {}
-            sender = "You" if message.user_id == str(self.client.insta_client.user_id) else (
-                self.users_cache[message.user_id].full_name
-                if self.users_cache[message.user_id].full_name
-                else self.users_cache[message.user_id].username
-                if self.users_cache[message.user_id].username
-                else 'Instagram User'
+                return None
+            
+            # Determine message sender
+            is_self = message.user_id == str(self.client.insta_client.user_id)
+            sender = "You" if is_self else (
+                self.users_cache[message.user_id].full_name or
+                self.users_cache[message.user_id].username or
+                'Instagram User'
             )
-
+            
+            # Handle text messages (simple case)
             if message.item_type == 'text':
-                res = {'sender': sender, 'content': f"{message.text}"}
-            else:
-                try:
-                    # print(message)
-                    # Store media information
-                    media_items[media_index] = {
-                        'type': message.item_type,
-                        'media_id': message.id,
-                        'user_id': message.user_id,
-                        'timestamp': message.timestamp
-                    }
-                    
-                    # Add specific media details if available
-                    if message.item_type == 'raven_media':
-                        try:
-                            media = extract_direct_media(message.visual_media['media'])
-                            media_items[media_index]["view_mode"] = message.visual_media.get('view_mode', "")
-                            media_items[media_index]['url'] = (
-                                media.video_url if media.video_url else (
-                                media.thumbnail_url if media.thumbnail_url else (
-                                media.audio_url if media.audio_url else None
-                            )))
-                            media_items[media_index]["media_type"] = (
-                                'video' if media.video_url else (
-                                'image' if media.thumbnail_url else (
-                                'audio' if media.audio_url else 'unknown'
-                            )))
-                        except ValidationError as e:
-                            # The media URL is empty likely due to a (expired?) view-once media
-                            media_items[media_index]['url'] = None
-                            media_items[media_index]["media_type"] = 'view_once'
-                    elif message.media:
-                        media_items[media_index]['url'] = (
-                            message.media.video_url if message.media.video_url else (
-                            message.media.thumbnail_url if message.media.thumbnail_url else (
-                            message.media.audio_url if message.media.audio_url else None
-                        )))
-                        media_items[media_index]["media_type"] = (
-                            'video' if message.media.video_url else (
-                            'image' if message.media.thumbnail_url else (
-                            'audio' if message.media.audio_url else 'unknown'
-                        )))
-                    elif message.item_type in ["xma_link", "link"]:
-                        media_items[media_index]["media_type"] = 'link'
-                        if message.text:
-                            media_items[media_index]['url'] = message.text
-                        elif message.link:
-                            media_items[media_index]['url'] = message.link["text"]
-                    elif message.media_share:
-                        # Post reshare
-                        pass
-                    
-                    media_placeholder = ""
-                    if media_items[media_index]["type"] == 'raven_media':
-                        if media_items[media_index]["media_type"] == 'view_once':
-                            media_placeholder = "[Sent a view-once media (use the Instagram app to view it)]"
-                        elif media_items[media_index]["media_type"] == 'xma_media_share':
-                            media_placeholder = "[Shared a post (use the Instagram app to view it)]"
-                        elif media_items[media_index]["media_type"] == 'xma_link':
-                            media_placeholder = f"[Sent URL #{media_index}: {media_items[media_index]['url']}]"
-                        else:
-                            media_placeholder = f"[Sent a {media_items[media_index]['media_type']} #{media_index}]"
-                    elif media_items[media_index]["type"] in ['media', 'voice_media']:
-                        media_placeholder = f"[Sent a {media_items[media_index]['media_type']} #{media_index}]"
-                    elif media_items[media_index]["type"] == 'xma_media_share':
-                        media_placeholder = "[Shared a post (use the Instagram app to view it)]"
-                    elif media_items[media_index]["type"] == 'xma_link':
-                        media_placeholder = f"[Sent URL #{media_index}: {media_items[media_index]['url']}]"
-                    elif media_items[media_index]["type"] == 'clip':
-                        media_placeholder = "[Sent brainrot]"
-                    elif media_items[media_index]["type"] == 'animated_media':
-                        media_placeholder = f"[Sent a sticker #{media_index}]"
-                    elif media_items[media_index]["type"] == 'link':
-                        media_placeholder = f"[Sent URL #{media_index}: {media_items[media_index]['url']}]"
-                    else:
-                        media_placeholder = f"[Sent a {media_items[media_index]['type']} (use the Instagram app to view it)]"
+                return MessageBrief(sender=sender, content=message.text)
+            
+            # For media messages, we need to process and store the media
+            try:
+                # Initialize a media item entry
+                media_items[media_index] = {
+                    'type': message.item_type,
+                    'media_id': message.id,
+                    'user_id': message.user_id,
+                    'timestamp': message.timestamp,
+                    'media_type': 'unknown'  # Default type
+                }
+                
+                # Extract media metadata based on type
+                if message.item_type == 'raven_media':
+                    # Handle disappearing media
+                    _process_raven_media(message, media_index)
+                elif message.media:
+                    # Handle regular media (photos, videos)
+                    _process_regular_media(message, media_index)
+                elif message.item_type in ["xma_link", "link"]:
+                    # Handle links
+                    _process_link(message, media_index)
+                elif message.item_type == "generic_xma":
+                    # Handle replies
+                    media_items[media_index]["media_type"] = 'reply'
+                    media_items[media_index]['reply_text'] = message.text
+                
+                # Generate appropriate placeholder text
+                placeholder_templates = {
+                    # Format: 'media_type': 'placeholder text'
+                    'view_once': "[Sent a view-once media (use the Instagram app to view it)]",
+                    'xma_media_share': "[Shared a post (use the Instagram app to view it)]",
+                    'xma_link': "[Sent URL #{index}: {url}]",
+                    'image': "[Sent an image #{index}]",
+                    'video': "[Sent a video #{index}]",
+                    'audio': "[Sent an audio #{index}]",
+                    'media': "[Sent a {media_type} #{index}]",
+                    'voice_media': "[Sent a {media_type} #{index}]",
+                    'clip': "[Sent brainrot]",
+                    'animated_media': "[Sent a sticker #{index}]",
+                    'link': "[Sent URL #{index}: {url}]",
+                    'reply': "[Replied to your note/post: {reply_text}]",
+                }
+                
+                media_type = media_items[media_index]["media_type"]
+                item_type = media_items[media_index]["type"]
+                
+                # Get template or use fallback template
+                template = placeholder_templates.get(media_type) or placeholder_templates.get(item_type) or \
+                        "[Sent a {type} (use the Instagram app to view it)]"
+                
+                # Format the template with media details
+                placeholder = template.format(
+                    index=media_index,
+                    media_type=media_type,
+                    type=item_type,
+                    url=media_items[media_index].get('url', ''),
+                    reply_text=media_items[media_index].get('reply_text', '')
+                )
+                
+                content = placeholder
+                
+            except Exception as e:
+                content = f"[Error: {repr(e)}]"
+            finally:
+                media_index += 1
+            
+            return MessageBrief(sender=sender, content=content)
 
-                    res = {'sender': sender, 'content': f"{media_placeholder}"}
-                except Exception as e:
-                    res = {'sender': sender, 'content': f"[Error: {repr(e)}]"}
-                    # chat.append("Error")
-                finally:
-                    media_index += 1
-            return MessageBrief(**res)
+        def _process_raven_media(message, index):
+            """Process disappearing (raven) media"""
+            try:
+                media = extract_direct_media(message.visual_media['media'])
+                media_items[index]["view_mode"] = message.visual_media.get('view_mode', "")
+                
+                # Extract URL based on media type
+                if media.video_url:
+                    media_items[index]['url'] = media.video_url
+                    media_items[index]["media_type"] = 'video'
+                elif media.thumbnail_url:
+                    media_items[index]['url'] = media.thumbnail_url
+                    media_items[index]["media_type"] = 'image'
+                elif media.audio_url:
+                    media_items[index]['url'] = media.audio_url
+                    media_items[index]["media_type"] = 'audio'
+            except ValidationError:
+                # The media URL is empty likely due to a (expired?) view-once media
+                media_items[index]['url'] = None
+                media_items[index]["media_type"] = 'view_once'
+
+        def _process_regular_media(message, index):
+            """Process regular media (photos, videos)"""
+            if message.media.video_url:
+                media_items[index]['url'] = message.media.video_url
+                media_items[index]["media_type"] = 'video'
+            elif message.media.thumbnail_url:
+                media_items[index]['url'] = message.media.thumbnail_url
+                media_items[index]["media_type"] = 'image'
+            elif message.media.audio_url:
+                media_items[index]['url'] = message.media.audio_url
+                media_items[index]["media_type"] = 'audio'
+
+        def _process_link(message, index):
+            """Process links"""
+            media_items[index]["media_type"] = 'link'
+            if message.text:
+                media_items[index]['url'] = message.text
+            elif message.link:
+                media_items[index]['url'] = message.link["text"]
 
         for message in self.thread.messages:
             # with open('message.txt', 'a', encoding="utf-8") as f:
