@@ -62,11 +62,15 @@ docker run -it supreme-gg-gg/instagram-cli
 
 ### Pre-built Executables
 
-> NOTE: This option is HIGHLY UNRECOMMENDED unless the other methods do not work for you.
+> NOTE: This option is **highly recommended** unless the other methods do not work for you.
 
-If you do not want to install Python, you can download the pre-built executables from the [releases page](https://github.com/supreme-gg-gg/instagram-cli/releases).
+We no longer provide pre-built executables. If you want to run the application in an environment without Python, you can build the executable yourself with `pyinstaller`. We recommend using the `instagram-cli.spec` file we provided.
 
-After downloading, the executable can be run from the command line:
+```bash
+pyinstaller --onedir instagram-cli.spec
+```
+
+This will generate the executable in the `dist/` directory.
 
 ```bash
 ./instagram-cli [OPTIONS] command [ARGS] # for macOS and Linux
@@ -163,7 +167,3 @@ You can schedule messages to be sent at a later time. The syntax is as follows:
 If the date is not provided, the message will be scheduled for the current day. Input format must be either YYYY-MM-DD HH:MM or HH:MM. **The time must be in 24-hour format, otherwise you might run into warnings for scheduling messages in the past.**
 
 > If you exit the app, the scheduled messages will not be sent but will be restored when you open the app again. You will be prompted by a notification to decide whether to send the scheduled messages or not. We might include system background service in the future to send scheduled messages even when the app is closed.
-
-### Markdown and Code Blocks
-
-Coming soon!
