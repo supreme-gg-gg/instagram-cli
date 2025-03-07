@@ -1,10 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+import emoji
+
+emoji_path = os.path.join(os.path.dirname(emoji.__file__), "unicode_codes", "emoji.json")
 a = Analysis(
     ['instagram/cli.py'],
     pathex=['.'],
     binaries=[],
-    datas=[('README.md', 'README.md')],
+    datas=[('README.md', 'README.md'), (emoji_path, "emoji/unicode_codes/")],
     hiddenimports=[
         'instagrapi',
         'typer',
