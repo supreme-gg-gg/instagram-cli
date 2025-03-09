@@ -107,6 +107,9 @@ instagram cleanup -t                       # cleanup media and session cache fil
 > [!NOTE]
 > All searches in the package uses a custom fuzzy matching based on ratcliff/obershelp similarity algorithm. This means chat search and emoji search will be more flexible and forgiving.
 
+> [!TIP]
+> In the chat list page, you can search for user by username using @user_name + Enter
+
 ## Chat Commands
 
 The chat interface is the main feature of this package. It allows you to interact with your Instagram chats in a terminal-based interface. All commands have the following syntax:
