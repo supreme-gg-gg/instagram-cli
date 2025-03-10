@@ -23,7 +23,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
     height, width = screen.getmaxyx()
 
     search_query = ""
-    placeholder = "Search for chat by username"
+    placeholder = "Search for chat by @username + ENTER"
     search_win = curses.newwin(3, width, height-4, 0)
 
     # Static footer
@@ -105,7 +105,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
                         # Show "No results" briefly
                         search_win.erase()
                         search_win.border()
-                        search_win.addstr(1, 2, f"No results found for @{search_query}", curses.A_DIM)
+                        search_win.addstr(1, 2, f"No results found for {search_query}", curses.A_DIM)
                         search_win.refresh()
                         _draw_footer()
                         curses.napms(1500)  # Show for 1.5 seconds
