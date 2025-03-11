@@ -33,10 +33,6 @@ class MessageInfo:
 class ClientWrapper(Protocol):
     insta_client: InstaClient
 
-class ChatNotFoundError(Exception):
-    """Raised when chat not found when searching by username or title.
-    Frontend MUST handle this exception and display an error message."""
-    pass
 
 class DirectMessages:
     def __init__(self, client: ClientWrapper):
@@ -99,7 +95,7 @@ class DirectMessages:
             thread_data = self.client.insta_client.direct_thread_by_participants(user_ids=[user_id])
             thread = extract_direct_thread(thread_data["thread"])  # use built-in instagrapi parsing function
         except Exception as e:
-            raise ChatNotFoundError(f"Chat with user {username} not found: {e}") from e
+            raise DirectThreadNotFound(f"Chat with user {username} not found: {e}") from e
 
         return DirectChat(self.client, thread.id, thread)
 
@@ -120,23 +116,19 @@ class DirectMessages:
 
         NOTE: This does NOT currently support multiple matches,
         this can be easily added but requires frontend support.
-
-        TODO: This is extremely inefficient because it fetches repeated
-        messages instead of keeping track of a cursor. This is because the
-        API support limitation, but a workaround is possible.
         """
 
-        batch_size = 10
-        batch = 0
-        max_chats = 30
+        batch_size = 20
+        num_chats_searched = 0
+        max_search_depth = 50
 
-        while batch < max_chats:
-            batch += batch_size
-            self.fetch_chat_data(batch_size, 20)
+        while num_chats_searched < max_search_depth:
+            self.fetch_next_chat_chunk(batch_size, 20)
+            num_chats_searched += batch_size
 
             result = fuzzy_match(
                 query=title,
-                items=list(self.chats.values())[batch-batch_size:batch],
+                items=self.chats[num_chats_searched-batch_size:num_chats_searched],
                 getter=lambda chat: chat.get_title(),
                 cutoff=threshold,
                 use_partial_ratio=True
@@ -148,7 +140,7 @@ class DirectMessages:
             if len(result) > 0:
                 return result[0]
         
-        raise ChatNotFoundError(f"Chat with title {title} not found in the latest {batch} chats")
+        raise DirectThreadNotFound(f"Chat with title {title} not found in the latest {num_chats_searched} chats")
 
     def send_text_by_userid(self, userids: List[int], text: str):
         """
