@@ -19,6 +19,7 @@ class ChatInterface:
         self.messages_per_fetch = 20
         
         # Initialize components
+        self.screen.keypad(True)  # Enable special keys
         self._setup_windows()
         self.start_refresh_thread()
 
@@ -96,9 +97,9 @@ class ChatInterface:
         self.input_box.draw()
         
         while True:
-            key = self.screen.getch()
+            key = self.screen.get_wch()
             
-            if key == 27:  # ESC
+            if key == 27 or key == chr(27):  # ESC
                 return Signal.QUIT
             
             result = self.input_box.handle_key(key)
@@ -120,20 +121,20 @@ class ChatInterface:
         Handle user input in reply mode.
         """
         while True:
-            key = self.screen.getch()
-            if key in (curses.KEY_UP, ord('k')) and self.chat_window.selection > self.chat_window.visible_messages_range[0]:
+            key = self.screen.get_wch()
+            if key in (curses.KEY_UP, 'k') and self.chat_window.selection > self.chat_window.visible_messages_range[0]:
                 self.chat_window.selection -= 1
                 self.chat_window.update()
-            elif key in (curses.KEY_DOWN, ord('j')) and self.chat_window.selection < self.chat_window.visible_messages_range[1]:
+            elif key in (curses.KEY_DOWN, 'j') and self.chat_window.selection < self.chat_window.visible_messages_range[1]:
                 self.chat_window.selection += 1
                 self.chat_window.update()
-            elif key == 27:  # ESC
+            elif key == 27 or key == chr(27):  # ESC
                 self.set_mode(ChatMode.CHAT)
                 self.chat_window.selected_message_id = None
                 self.chat_window.update()
                 self.status_bar.update()
                 return
-            elif key == ord('\n'): # Enter
+            elif key in ['\n', '\r', curses.KEY_ENTER]: # Enter
                 self.chat_window.selected_message_id = self.chat_window.messages[self.chat_window.selection].id
                 return
 
