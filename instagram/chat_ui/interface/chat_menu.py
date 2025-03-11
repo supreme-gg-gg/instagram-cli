@@ -18,7 +18,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
 
     curses.curs_set(1)
     screen.keypad(True)
-    chats = list(dm.chats.values())
+    chats = dm.chats
     selection = 0
     height, width = screen.getmaxyx()
 
@@ -98,7 +98,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
                     _draw_footer()
                     
                     # Perform search
-                    search_result = dm.search_by_username(search_query)
+                    search_result = dm.search_by_username(search_query[1:])
                     if search_result:
                         return search_result
                     else:

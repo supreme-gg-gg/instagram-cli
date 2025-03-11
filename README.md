@@ -21,6 +21,7 @@ The world's first open-source CLI (command line interface) + Terminal UI client 
 - We celebrate the art and simplicity of terminal UI
 - We preserve the core of social media and protect your attention
 
+> [!TIP]
 > Use Instagram with 100% keyboard control - no mouse clicks or touchscreen taps needed! Perfect for developers and Linux users who love staying on the keyboard 🤣
 
 ## Installation
@@ -62,11 +63,16 @@ docker run -it supreme-gg-gg/instagram-cli
 
 ### Pre-built Executables
 
-> NOTE: This option is HIGHLY UNRECOMMENDED unless the other methods do not work for you.
+> [!CAUTION]
+> This option is **not recommended** unless the other methods do not work for you.
 
-If you do not want to install Python, you can download the pre-built executables from the [releases page](https://github.com/supreme-gg-gg/instagram-cli/releases).
+We no longer provide pre-built executables. If you want to run the application in an environment without Python, you can build the executable yourself with `pyinstaller`. We recommend using the `instagram-cli.spec` file we provided.
 
-After downloading, the executable can be run from the command line:
+```bash
+pyinstaller --onedir instagram-cli.spec
+```
+
+This will generate the executable in the `dist/` directory.
 
 ```bash
 ./instagram-cli [OPTIONS] command [ARGS] # for macOS and Linux
@@ -98,7 +104,11 @@ instagram config --get --set --edit        # manage custom configuration
 instagram cleanup -t                       # cleanup media and session cache files
 ```
 
+> [!NOTE]
 > All searches in the package uses a custom fuzzy matching based on ratcliff/obershelp similarity algorithm. This means chat search and emoji search will be more flexible and forgiving.
+
+> [!TIP]
+> In the chat list page, you can search for user by username using @user_name + Enter
 
 ## Chat Commands
 
@@ -108,7 +118,8 @@ The chat interface is the main feature of this package. It allows you to interac
 :command <args> <long-args>
 ```
 
-Long arguments should have special enclosures such as `"..."` for strings with spaces and `$...$` for LaTeX code.
+> [!IMPORTANT]
+> Long arguments should have special enclosures such as `"..."` for strings with spaces and `$...$` for LaTeX code.
 
 - `:help`: view available commands
 - `:quit`: quit the application
@@ -132,7 +143,8 @@ will be rendered as
 
 `This is an emoji 👍`
 
-This does not have to be an exact match with the emoji name. For example, `:thumbsup:` can also be written as `:thumbs_up:`.
+> ![TIP]
+> This does not have to be an exact match with the emoji name. For example, `:thumbsup:` can also be written as `:thumbs_up:`.
 
 ### LaTeX
 
@@ -162,8 +174,5 @@ You can schedule messages to be sent at a later time. The syntax is as follows:
 
 If the date is not provided, the message will be scheduled for the current day. Input format must be either YYYY-MM-DD HH:MM or HH:MM. **The time must be in 24-hour format, otherwise you might run into warnings for scheduling messages in the past.**
 
+> [!IMPORTANT]
 > If you exit the app, the scheduled messages will not be sent but will be restored when you open the app again. You will be prompted by a notification to decide whether to send the scheduled messages or not. We might include system background service in the future to send scheduled messages even when the app is closed.
-
-### Markdown and Code Blocks
-
-Coming soon!

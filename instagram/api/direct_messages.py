@@ -41,18 +41,34 @@ class ChatNotFoundError(Exception):
 class DirectMessages:
     def __init__(self, client: ClientWrapper):
         self.client = client
-        self.chats: Dict[str, DirectChat] = {}
+        self.chats: List[DirectChat] = []
+        self.chats_cursor = None
 
-    def fetch_chat_data(self, num_chats: int, num_message_limit: int) -> Dict[str, DirectChat]:
+    def fetch_chat_data(self, num_chats: int, num_message_limit: int) -> List[DirectChat]:
         """
-        Fetch chat list and history from API.
+        Fetch the op (most recent) chat list and history from API.
         Parameters:
         - num_chats: Number of chats to fetch.
         - num_message_limit: Max number of messages to fetch per chat.
 
-        Returns a dictionary of DirectChat objects.
+        Returns a list of DirectChat objects.
         """
-        self.chats = {thread.id: DirectChat(self.client, thread.id, thread) for thread in self.client.insta_client.direct_threads(amount=num_chats, thread_message_limit=num_message_limit)}
+        res, self.chats_cursor = direct_threads_chunk(self.client.insta_client, amount=num_chats, thread_message_limit=num_message_limit)
+        self.chats = [DirectChat(self.client, thread.id, thread) for thread in res]
+        return self.chats
+    
+    def fetch_next_chat_chunk(self, num_chats: int, num_message_limit: int) -> List[DirectChat]:
+        """
+        Fetch the next chunk of chats from the API.
+        Parameters:
+        - num_chats: Number of chats to fetch.
+        - num_message_limit: Max number of messages to fetch per chat.
+
+        Returns a list of DirectChat objects.
+        """
+        res, self.chats_cursor = direct_threads_chunk(self.client.insta_client, amount=num_chats, thread_message_limit=num_message_limit, cursor=self.chats_cursor)
+        # Append to existing chats (maintain reverse chronological order)
+        self.chats += [DirectChat(self.client, thread.id, thread) for thread in res]
         return self.chats
 
     def search_by_username(self, username: str) -> DirectChat | None:

@@ -1,7 +1,7 @@
 from typing import Tuple
 import logging
 from difflib import SequenceMatcher
-from typing import List, TypeVar, Callable, Optional, Union
+from typing import List, TypeVar, Callable, Optional, Union, Literal
 import random
 import time
 import json
@@ -20,6 +20,7 @@ from instagrapi.extractors import extract_direct_thread, extract_direct_message
 from instagrapi.exceptions import ClientError, UserNotFound
 from instagrapi.types import User
 from instagrapi.utils import dumps
+from instagrapi.mixins.direct import SELECTED_FILTER, BOX
 
 import requests
 from PIL import Image, ImageOps
@@ -79,6 +80,53 @@ def user_info_by_username_private(self: Client, username: str, use_cache: bool =
         self._users_cache[user.pk] = user
         self._usernames_cache[user.username] = user.pk
     return self.user_info(self._usernames_cache[username])
+
+def direct_threads_chunk(
+    self: Client,
+    amount: int = 20,
+    selected_filter: SELECTED_FILTER = "",
+    box: BOX = "",
+    thread_message_limit: Optional[int] = None,
+    cursor: str = None
+) -> Tuple[List[DirectThread], str]:
+    """
+    Get direct message threads
+
+    Parameters
+    ----------
+    amount: int, optional
+        Minimum number of media to return, default is 20
+    selected_filter: str, optional
+        Filter to apply to threads (flagged or unread)
+    box: str, optional
+        Box to gather threads from (primary or general) (business accounts only)
+    thread_message_limit: int, optional
+        Thread message limit, deafult is 10
+    cursor: str, optional
+        Cursor for pagination, default is None
+
+    Returns
+    -------
+    List[DirectThread]
+        A list of objects of DirectThread
+    str
+        New cursor for pagination
+    """
+
+    threads = []
+    # self.private_request("direct_v2/get_presence/")
+    while True:
+        threads_chunk, cursor = self.direct_threads_chunk(
+            selected_filter, box, thread_message_limit, cursor
+        )
+        for thread in threads_chunk:
+            threads.append(thread)
+
+        if not cursor or (amount and len(threads) >= amount):
+            break
+    # if amount:
+    #     threads = threads[:amount]
+    return (threads, cursor)
 
 def direct_thread_chunk(self: Client, thread_id: int, amount: int = 20, cursor: str = None) -> Tuple[DirectThread, str]:
     """

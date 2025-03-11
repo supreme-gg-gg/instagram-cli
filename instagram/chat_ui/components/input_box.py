@@ -1,4 +1,6 @@
 import curses
+import locale
+locale.setlocale(locale.LC_ALL, '')
 
 class InputBox:
     """
@@ -58,9 +60,9 @@ class InputBox:
             
         return lines
 
-    def handle_key(self, key: int) -> str | None:
+    def handle_key(self, key: int | str) -> str | None:
         """Handle a keypress with support for multi-line input"""
-        if key == ord('\n'):
+        if key in ['\n', '\r', curses.KEY_ENTER]:
             # Send message if Enter is pressed in end of message, 
             # otherwise add new line
             if self.cursor_pos < len(self.buffer):
@@ -69,6 +71,8 @@ class InputBox:
                 self._adjust_scroll()
             else:
                 res = ''.join(self.buffer)
+                if len(res.strip()) == 0:
+                    return None
                 return res
         
         elif key in (curses.KEY_BACKSPACE, 127):
@@ -124,10 +128,23 @@ class InputBox:
                 self.cursor_pos = next_row_start - 1
             self._adjust_scroll()
         
-        elif 32 <= key <= 126:  # Printable characters
-            self.buffer.insert(self.cursor_pos, chr(key))
-            self.cursor_pos += 1
-            self._adjust_scroll()
+        else:
+            try:
+                if isinstance(key, int):
+                    # Filter out control characters but allow other Unicode characters
+                    if not (0 <= key <= 31 or key == 127):
+                        self.buffer.insert(self.cursor_pos, char)
+                        self.cursor_pos += 1
+                        self._adjust_scroll()
+                else:  # string
+                    for char in key:
+                        if char.isprintable():
+                            self.buffer.insert(self.cursor_pos, char)
+                            self.cursor_pos += 1
+                            self._adjust_scroll()
+            except ValueError:
+                # Ignore invalid Unicode values
+                pass
         
         return None
 
