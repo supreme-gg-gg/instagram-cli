@@ -71,7 +71,7 @@ class InputBox:
                 self._adjust_scroll()
             else:
                 res = ''.join(self.buffer)
-                if len(res) == 0:
+                if len(res.strip()) == 0:
                     return None
                 return res
         
