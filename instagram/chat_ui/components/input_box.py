@@ -133,7 +133,7 @@ class InputBox:
                 if isinstance(key, int):
                     # Filter out control characters but allow other Unicode characters
                     if not (0 <= key <= 31 or key == 127):
-                        self.buffer.insert(self.cursor_pos, char)
+                        self.buffer.insert(self.cursor_pos, chr(key))
                         self.cursor_pos += 1
                         self._adjust_scroll()
                 else:  # string
