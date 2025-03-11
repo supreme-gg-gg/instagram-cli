@@ -99,24 +99,31 @@ class ChatInterface:
         self.input_box.draw()
         
         while True:
-            key = self.screen.get_wch()
-            
-            if key == 27 or key == chr(27):  # ESC
-                return Signal.QUIT
-            
-            result = self.input_box.handle_key(key)
-            self.input_box.draw()
-            
-            if result is not None:  # Enter was pressed
-                if len(result) > 1 and result.startswith(':'):
-                    # excape sequence "::"
-                    if result[1] == ':':
-                        result = result[1:]
-                    else:
-                        self.set_mode(ChatMode.COMMAND)
-                        return self._handle_command(result[1:])
+            try:
+                key = self.screen.get_wch()
                 
-                return self._handle_chat_message(result)
+                if key == 27 or key == chr(27):  # ESC
+                    return Signal.QUIT
+                
+                # Handle backspace key explicitly
+                if key in (curses.KEY_BACKSPACE, '\b', '\x7f'):
+                    key = curses.KEY_BACKSPACE
+                
+                result = self.input_box.handle_key(key)
+                self.input_box.draw()
+                
+                if result is not None:  # Enter was pressed
+                    if len(result) > 1 and result.startswith(':'):
+                        # escape sequence "::"
+                        if result[1] == ':':
+                            result = result[1:]
+                        else:
+                            self.set_mode(ChatMode.COMMAND)
+                            return self._handle_command(result[1:])
+                    
+                    return self._handle_chat_message(result)
+            except curses.error:
+                continue
 
     def _handle_reply_input(self) -> None:
         """
