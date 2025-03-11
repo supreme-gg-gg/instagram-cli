@@ -113,8 +113,6 @@ def direct_threads_chunk(
         New cursor for pagination
     """
 
-    with open("debug.log", "a") as f:
-        f.write(f"Amount to fetch: {amount}\n")
     threads = []
     # self.private_request("direct_v2/get_presence/")
     while True:
@@ -123,8 +121,6 @@ def direct_threads_chunk(
         )
         for thread in threads_chunk:
             threads.append(thread)
-        with open("debug.log", "a") as f:
-            f.write("Fetched threads: " + str(len(threads)) + "\n")
 
         if not cursor or (amount and len(threads) >= amount):
             break
