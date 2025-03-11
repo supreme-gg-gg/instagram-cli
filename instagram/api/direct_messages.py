@@ -10,7 +10,7 @@ from .scheduler import MessageScheduler
 from instagrapi import Client as InstaClient
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort, ReplyMessage
 from instagrapi.extractors import *
-from instagrapi.exceptions import UserNotFound, DirectThreadNotFound, ClientNotFoundError
+from instagrapi.exceptions import UserNotFound, DirectThreadNotFound, ClientNotFoundError, ClientForbiddenError
 from pydantic import ValidationError
 from dataclasses import dataclass
 from typing import List, Optional
@@ -538,6 +538,22 @@ class DirectChat:
         Check if the chat is seen by the current user.
         """
         return self.thread.is_seen(self.client.insta_client.user_id)
+
+    def unsend_message(self, message_id: str) -> bool:
+        """
+        Unsend a message by ID.
+        Parameters:
+        - message_id: ID of the message to unsend.
+        
+        Returns:
+        - A boolean indicating success or failure.
+        """
+        try:
+            return self.client.insta_client.direct_message_delete(self.thread_id, message_id)
+        except ClientForbiddenError:
+            # This is most likely due to attempting to unsend a message by someone else
+            return False
+            
     
     def media_url_download(self, media_index: int) -> str | None:
         """

@@ -92,6 +92,8 @@ class ChatInterface:
         """
         if self.mode == ChatMode.REPLY:
             self._handle_reply_input()
+        if self.mode == ChatMode.UNSEND:
+            self._handle_unsend_input()
         
         self.input_box.clear()
         self.input_box.draw()
@@ -137,6 +139,39 @@ class ChatInterface:
             elif key in ['\n', '\r', curses.KEY_ENTER]: # Enter
                 self.chat_window.selected_message_id = self.chat_window.messages[self.chat_window.selection].id
                 return
+    
+    def _handle_unsend_input(self) -> None:
+        """
+        Handle user input in unsend mode.
+        """
+        while True:
+            key = self.screen.get_wch()
+            if key in (curses.KEY_UP, 'k') and self.chat_window.selection > self.chat_window.visible_messages_range[0]:
+                self.chat_window.selection -= 1
+                self.chat_window.update()
+            elif key in (curses.KEY_DOWN, 'j') and self.chat_window.selection < self.chat_window.visible_messages_range[1]:
+                self.chat_window.selection += 1
+                self.chat_window.update()
+            elif key == 27 or key == chr(27):  # ESC
+                self.set_mode(ChatMode.CHAT)
+                self.chat_window.selected_message_id = None
+                self.chat_window.update()
+                self.status_bar.update()
+                return
+            elif key in ['\n', '\r', curses.KEY_ENTER]: # Enter
+                target = self.chat_window.messages[self.chat_window.selection]
+                if target.message.sender != "You":
+                    self.status_bar.update("You can only unsend your own messages", override_default=True)
+                else:
+                    self.status_bar.update("Unsending message...", override_default=True)
+                    if not self.direct_chat.unsend_message(target.id):
+                        self.status_bar.update("We're sorry, we couldn't unsend the message", override_default=True)
+                    else:
+                        # Exit unsend mode
+                        self.set_mode(ChatMode.CHAT)
+                        self.chat_window.update()
+                        self.status_bar.update()
+                        return
 
     def _handle_command(self, command: str) -> Signal:
         """
@@ -191,6 +226,14 @@ class ChatInterface:
 
         elif result == "__REPLY__":
             self.set_mode(ChatMode.REPLY)
+            # Clamp selection to visible range
+            self.chat_window.selection = min(max(self.chat_window.selection, self.chat_window.visible_messages_range[0]), self.chat_window.visible_messages_range[1])
+            self.chat_window.update()
+            self.status_bar.update()
+            return Signal.CONTINUE
+        
+        elif result == "__UNSEND__":
+            self.set_mode(ChatMode.UNSEND)
             # Clamp selection to visible range
             self.chat_window.selection = min(max(self.chat_window.selection, self.chat_window.visible_messages_range[0]), self.chat_window.visible_messages_range[1])
             self.chat_window.update()

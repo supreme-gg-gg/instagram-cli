@@ -16,6 +16,7 @@ class ChatMode(Enum):
     CHAT = auto()
     COMMAND = auto()
     REPLY = auto()
+    UNSEND = auto()
 
 class Signal(Enum):
     """
