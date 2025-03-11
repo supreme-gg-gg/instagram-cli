@@ -20,6 +20,7 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
     screen.keypad(True)
     chats = dm.chats
     selection = 0
+    scroll_offset = 0
     height, width = screen.getmaxyx()
 
     search_query = ""
@@ -29,10 +30,12 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
     # Static footer
     footer = curses.newwin(1, width, height - 1, 0)
 
-    def _draw_footer():
+    def _draw_footer(message: str = None):
         footer.erase()
         footer.bkgd(' ', curses.color_pair(7))
-        footer.addstr(0, 0, "[CHAT MENU] Select a chat (Use arrow keys and press ENTER, or ESC to quit)"[:width - 1])
+        if message is None:
+            message = "[CHAT MENU] Select a chat (Use arrow keys and press ENTER, or ESC to quit)"
+        footer.addstr(0, 0, message[:width - 1])
         footer.refresh()
 
     while True:
@@ -45,22 +48,22 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
             x_pos = 2
         
             # Ensure we don't exceed window boundaries
-            if idx < height - 6:
+            if 0 <= idx - scroll_offset < height - 6:
                 if idx == selection:
                     screen.attron(curses.A_REVERSE)
                     # Clear the line first to prevent artifacts
-                    screen.addstr(idx, 0, " " * (width - 1))
-                    screen.addstr(idx, x_pos, title[:width - x_pos - 1])
+                    screen.addstr(idx - scroll_offset, 0, " " * (width - 1))
+                    screen.addstr(idx - scroll_offset, x_pos, title[:width - x_pos - 1])
                     screen.attroff(curses.A_REVERSE)
                 else:
                     # We add conditional styling based on seen status
                     # Refer to DirectMessages for this
                     if is_seen is not None and is_seen == 1:
                         screen.attron(curses.color_pair(8) | curses.A_BOLD)
-                        screen.addstr(idx, x_pos, "→ " + title[:width - x_pos - 3])
+                        screen.addstr(idx - scroll_offset, x_pos, "→ " + title[:width - x_pos - 3])
                         screen.attroff(curses.color_pair(8) | curses.A_BOLD)
                     else:
-                        screen.addstr(idx, x_pos, title[:width - x_pos - 1])
+                        screen.addstr(idx - scroll_offset, x_pos, title[:width - x_pos - 1])
 
         # Search bar
         search_win.erase()
@@ -78,10 +81,26 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
         _draw_footer()
 
         key = screen.getch()
-        if key == curses.KEY_UP and selection > 0:
-            selection -= 1
-        elif key == curses.KEY_DOWN and selection < len(chats) - 1:
-            selection += 1
+        if key == curses.KEY_UP:
+            if selection - scroll_offset == 0:
+                if scroll_offset > 0:
+                    selection -= 1
+                    scroll_offset -= 1
+            elif selection > 0:
+                selection -= 1
+        elif key == curses.KEY_DOWN:
+            if selection - scroll_offset == height - 7:
+                if selection - scroll_offset == height - 7:
+                    selection += 1
+                    scroll_offset += 1
+            elif selection < len(chats) - 1:
+                selection += 1
+            if selection == len(chats) - 1:
+                # Fetch more DMs
+                # Optionally move this to another thread
+                _draw_footer("Loading more chats...")
+                dm.fetch_next_chat_chunk(20, 20)
+                chats = dm.chats
         elif key == ord("\n"):
             # Add this so use can use the same quit command as chat
             if search_query and search_query == ':quit':
@@ -120,6 +139,9 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
                     curses.napms(1500)
                     search_query = ""
             elif chats:
+                # Clear the screen here to prevent any artifacts from carrying on to the chat UI
+                screen.clear()
+                screen.refresh()
                 return chats[selection]
         # Use esc to quit
         elif key == 27:
@@ -128,4 +150,6 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
             search_query = search_query[:-1]
         elif 32 <= key <= 126: # Printable characters
             search_query += chr(key)
-
+        
+        # Small delay to prevent flickering
+        # curses.napms(100)
