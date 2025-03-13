@@ -3,6 +3,7 @@
 The ultimate weapon against brainrot.
 
 ![PyPI](https://img.shields.io/pypi/v/instagram-cli)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/instagram-cli)
 ![Python](https://img.shields.io/pypi/pyversions/instagram-cli)
 [![MIT license](https://img.shields.io/github/license/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)
@@ -12,6 +13,9 @@ The ultimate weapon against brainrot.
 https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb
 
 The world's first open-source CLI (command line interface) + Terminal UI client for Instagram.
+
+> [!WARNING]
+> This project is not affiliated with, authorized, or endorsed by Instagram. This is an independent and unofficial project. Using it might violate Meta's Terms of Service. Use at your own risk.
 
 ## What does it do?
 
@@ -79,6 +83,9 @@ This will generate the executable in the `dist/` directory.
 instagram-cli.exe [OPTIONS] command [ARGS] # for Windows
 ```
 
+> [!CAUTION]
+> Starting from Version 1.3, Windows support will be discontinued due to incompatibilities between the `curses` and `windows-curses` libraries. While the application may still work on Windows, we will no longer be testing or maintaining Windows-specific functionality. We recommend using WSL (Windows Subsystem for Linux) or Docker for Windows users.
+
 ## Commands
 
 The following commands will be available after installing the package:
@@ -107,12 +114,18 @@ instagram cleanup -t                       # cleanup media and session cache fil
 > [!NOTE]
 > All searches in the package uses a custom fuzzy matching based on ratcliff/obershelp similarity algorithm. This means chat search and emoji search will be more flexible and forgiving.
 
+## Chat
+
+The chat interface is the main feature of this package. It allows you to interact with your Instagram chats in a terminal-based interface.
+
+In the chat list page, use arrow keys + Enter to select a chat. You can also search for user by username using @user_name + Enter.
+
 > [!TIP]
-> In the chat list page, you can search for user by username using @user_name + Enter
+> Press Enter in the middle of a message to insert a line break, and at the very end to send it.
 
-## Chat Commands
+### Chat Commands
 
-The chat interface is the main feature of this package. It allows you to interact with your Instagram chats in a terminal-based interface. All commands have the following syntax:
+All chat commands have the following syntax:
 
 ```bash
 :command <args> <long-args>

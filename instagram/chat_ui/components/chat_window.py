@@ -37,7 +37,7 @@ class ChatWindow:
             
             # Handle the main message
             content_width = self.width - sender_width - 1
-            is_selected = (msg_idx == self.selection and self.mode == ChatMode.REPLY)
+            is_selected = (msg_idx == self.selection and self.mode in [ChatMode.REPLY, ChatMode.UNSEND])
 
             # Determine color index
             if Config().get("chat.colors") == True:

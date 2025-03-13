@@ -13,7 +13,7 @@ import typer
 from pathlib import Path
 
 from instagram.client import ClientWrapper
-from instagram.api import DirectMessages, DirectChat, MessageScheduler, ChatNotFoundError
+from instagram.api import DirectMessages, DirectChat, MessageScheduler, DirectThreadNotFound
 from instagram.configs import Config
 
 from instagram.chat_ui.interface.chat_interface import ChatInterface
@@ -65,13 +65,13 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
     dm = DirectMessages(client)
 
     if username is None:
-        with_loading_screen(screen, dm.fetch_chat_data, num_chats=10, num_message_limit=20)
+        with_loading_screen(screen, dm.fetch_chat_data, num_chats=20, num_message_limit=20)
 
     while True:
         if username:
             try:
                 selected_chat = with_loading_screen(screen, search_chat_list, dm, username, search_filter)
-            except ChatNotFoundError as e: # catch the erro thrown by the controller
+            except DirectThreadNotFound as e: # catch the error thrown by the controller
                 typer.echo(e)
                 break
             if not selected_chat:
@@ -81,7 +81,7 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
         else:
             # if chat is empty
             if not dm.chats:
-                with_loading_screen(screen, dm.fetch_chat_data, num_chats=10, num_message_limit=20)
+                with_loading_screen(screen, dm.fetch_chat_data, num_chats=20, num_message_limit=20)
             if not dm.chats:
                 typer.echo("No chats found. Try again later.")
                 break

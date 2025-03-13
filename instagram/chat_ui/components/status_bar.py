@@ -14,6 +14,7 @@ class StatusBar:
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_YELLOW)  # Chat
         curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_CYAN)    # Command
         curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_GREEN)   # Reply
+        curses.init_pair(10, curses.COLOR_WHITE, curses.COLOR_RED)     # Unsend
 
     def update(self, msg: str = None, override_default: bool = False):
         """
@@ -28,6 +29,9 @@ class StatusBar:
         elif self.mode == ChatMode.REPLY:
             self.window.bkgd(' ', curses.color_pair(3))
             status_text = "[REPLY] Use ↑↓ to select, Enter to confirm, Esc to exit"
+        elif self.mode == ChatMode.UNSEND:
+            self.window.bkgd(' ', curses.color_pair(10))
+            status_text = "[UNSEND] Use ↑↓ to select, Enter to confirm, Esc to exit"
         elif self.mode == ChatMode.COMMAND:
             self.window.bkgd(' ', curses.color_pair(2))
             status_text = f"[COMMAND] Command {msg} executed. Press any key to continue"

@@ -8,13 +8,17 @@ auth_app = typer.Typer()
 chat_app = typer.Typer()
 schedule_app = typer.Typer()
 
-# This is the base command
+"""Base command: Displays name, slogan, and visuals."""
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
-    """Base command: Displays name, slogan, and visuals."""
-
+def main(ctx: typer.Context,
+         version: bool = typer.Option(False, "--version", "-v", help="Show version information", is_flag=True)):
+    
     # If the command is just 'instagram' without any subcommands
     if ctx.invoked_subcommand is not None:
+        return
+    
+    if version:
+        typer.echo(f"InstagramCLI v{__version__}")
         return
     
     # tprint("InstagramCLI", font="random")
@@ -42,10 +46,13 @@ def login(
     use_username: bool = typer.Option(False, "-u", "--username", help="Login using username/password"),
 ):
     """Login to Instagram"""
-    if use_username:
-        auth.login_by_username()
-    else:
-        auth.login()
+    try:
+        if use_username:
+            auth.login_by_username()
+        else:
+            auth.login()
+    except Exception as e:
+        typer.echo(f"An error occurred: {e}")
 
 @auth_app.command()
 def logout(username: str = typer.Option(None, "-u", "--username")):

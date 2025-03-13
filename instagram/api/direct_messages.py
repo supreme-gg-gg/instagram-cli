@@ -10,7 +10,7 @@ from .scheduler import MessageScheduler
 from instagrapi import Client as InstaClient
 from instagrapi.types import DirectThread, DirectMessage, User, Media, UserShort, ReplyMessage
 from instagrapi.extractors import *
-from instagrapi.exceptions import UserNotFound, DirectThreadNotFound, ClientNotFoundError
+from instagrapi.exceptions import UserNotFound, DirectThreadNotFound, ClientNotFoundError, ClientForbiddenError
 from pydantic import ValidationError
 from dataclasses import dataclass
 from typing import List, Optional
@@ -33,26 +33,38 @@ class MessageInfo:
 class ClientWrapper(Protocol):
     insta_client: InstaClient
 
-class ChatNotFoundError(Exception):
-    """Raised when chat not found when searching by username or title.
-    Frontend MUST handle this exception and display an error message."""
-    pass
 
 class DirectMessages:
     def __init__(self, client: ClientWrapper):
         self.client = client
-        self.chats: Dict[str, DirectChat] = {}
+        self.chats: List[DirectChat] = []
+        self.chats_cursor = None
 
-    def fetch_chat_data(self, num_chats: int, num_message_limit: int) -> Dict[str, DirectChat]:
+    def fetch_chat_data(self, num_chats: int, num_message_limit: int) -> List[DirectChat]:
         """
-        Fetch chat list and history from API.
+        Fetch the op (most recent) chat list and history from API.
         Parameters:
         - num_chats: Number of chats to fetch.
         - num_message_limit: Max number of messages to fetch per chat.
 
-        Returns a dictionary of DirectChat objects.
+        Returns a list of DirectChat objects.
         """
-        self.chats = {thread.id: DirectChat(self.client, thread.id, thread) for thread in self.client.insta_client.direct_threads(amount=num_chats, thread_message_limit=num_message_limit)}
+        res, self.chats_cursor = direct_threads_chunk(self.client.insta_client, amount=num_chats, thread_message_limit=num_message_limit)
+        self.chats = [DirectChat(self.client, thread.id, thread) for thread in res]
+        return self.chats
+    
+    def fetch_next_chat_chunk(self, num_chats: int, num_message_limit: int) -> List[DirectChat]:
+        """
+        Fetch the next chunk of chats from the API.
+        Parameters:
+        - num_chats: Number of chats to fetch.
+        - num_message_limit: Max number of messages to fetch per chat.
+
+        Returns a list of DirectChat objects.
+        """
+        res, self.chats_cursor = direct_threads_chunk(self.client.insta_client, amount=num_chats, thread_message_limit=num_message_limit, cursor=self.chats_cursor)
+        # Append to existing chats (maintain reverse chronological order)
+        self.chats += [DirectChat(self.client, thread.id, thread) for thread in res]
         return self.chats
 
     def search_by_username(self, username: str) -> DirectChat | None:
@@ -83,7 +95,7 @@ class DirectMessages:
             thread_data = self.client.insta_client.direct_thread_by_participants(user_ids=[user_id])
             thread = extract_direct_thread(thread_data["thread"])  # use built-in instagrapi parsing function
         except Exception as e:
-            raise ChatNotFoundError(f"Chat with user {username} not found: {e}") from e
+            raise DirectThreadNotFound(f"Chat with user {username} not found: {e}") from e
 
         return DirectChat(self.client, thread.id, thread)
 
@@ -104,23 +116,19 @@ class DirectMessages:
 
         NOTE: This does NOT currently support multiple matches,
         this can be easily added but requires frontend support.
-
-        TODO: This is extremely inefficient because it fetches repeated
-        messages instead of keeping track of a cursor. This is because the
-        API support limitation, but a workaround is possible.
         """
 
-        batch_size = 10
-        batch = 0
-        max_chats = 30
+        batch_size = 20
+        num_chats_searched = 0
+        max_search_depth = 50
 
-        while batch < max_chats:
-            batch += batch_size
-            self.fetch_chat_data(batch_size, 20)
+        while num_chats_searched < max_search_depth:
+            self.fetch_next_chat_chunk(batch_size, 20)
+            num_chats_searched += batch_size
 
             result = fuzzy_match(
                 query=title,
-                items=list(self.chats.values())[batch-batch_size:batch],
+                items=self.chats[num_chats_searched-batch_size:num_chats_searched],
                 getter=lambda chat: chat.get_title(),
                 cutoff=threshold,
                 use_partial_ratio=True
@@ -132,7 +140,7 @@ class DirectMessages:
             if len(result) > 0:
                 return result[0]
         
-        raise ChatNotFoundError(f"Chat with title {title} not found in the latest {batch} chats")
+        raise DirectThreadNotFound(f"Chat with title {title} not found in the latest {num_chats_searched} chats")
 
     def send_text_by_userid(self, userids: List[int], text: str):
         """
@@ -530,6 +538,22 @@ class DirectChat:
         Check if the chat is seen by the current user.
         """
         return self.thread.is_seen(self.client.insta_client.user_id)
+
+    def unsend_message(self, message_id: str) -> bool:
+        """
+        Unsend a message by ID.
+        Parameters:
+        - message_id: ID of the message to unsend.
+        
+        Returns:
+        - A boolean indicating success or failure.
+        """
+        try:
+            return self.client.insta_client.direct_message_delete(self.thread_id, message_id)
+        except ClientForbiddenError:
+            # This is most likely due to attempting to unsend a message by someone else
+            return False
+            
     
     def media_url_download(self, media_index: int) -> str | None:
         """

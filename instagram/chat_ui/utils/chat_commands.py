@@ -105,6 +105,13 @@ def reply_to_message(context) -> str:
     """
     return "__REPLY__"
 
+@cmd_registry.register("unsend", "Unsend a message", required_args=[], shorthand="d")
+def unsend_message(context) -> str:
+    """
+    Unsend a message. Returns the unsend signal to allow user to select message to unsend.
+    """
+    return "__UNSEND__"
+
 @cmd_registry.register("config", "Manage Chat UI configuration", required_args=["options"], shorthand="c")
 def manage_config(context, options: str) -> dict:
     """

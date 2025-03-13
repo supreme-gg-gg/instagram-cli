@@ -13,6 +13,8 @@ class SessionManager:
         self.username = username
         if username is None:
             self.username = self.get_default_username()
+            if not self.username:
+                raise ValueError("No username provided and no default username found in config")
     
     def get_default_username(self) -> str | None:
         # Fall back to default username if current username is not set
@@ -31,6 +33,8 @@ class SessionManager:
 
     def ensure_session_dir(self):
         """Ensure session directory exists"""
+        if not self.username:
+            raise ValueError("Username is not set")
         session_dir = Path(Config().get("advanced.users_dir")) / self.username
         session_dir.mkdir(parents=True, exist_ok=True)
         return session_dir
@@ -102,6 +106,11 @@ class ClientWrapper:
         self.insta_client = cl
         self.session_manager.save_session(self)
         Config().set("login.current_username", username)
+        
+        # If first time logging in no default username, set this as default
+        if not Config().get("login.default_username"):
+            Config().set("login.default_username", username)
+
         return cl
 
     def login_by_session(self) -> instagrapi.Client:
