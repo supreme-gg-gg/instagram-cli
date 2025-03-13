@@ -89,18 +89,18 @@ def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
             elif selection > 0:
                 selection -= 1
         elif key == curses.KEY_DOWN:
-            if selection - scroll_offset == height - 7:
-                if selection - scroll_offset == height - 7:
-                    selection += 1
-                    scroll_offset += 1
-            elif selection < len(chats) - 1:
-                selection += 1
             if selection == len(chats) - 1:
                 # Fetch more DMs
                 # Optionally move this to another thread
                 _draw_footer("Loading more chats...")
                 dm.fetch_next_chat_chunk(20, 20)
                 chats = dm.chats
+            if selection - scroll_offset == height - 7:
+                if selection - scroll_offset == height - 7:
+                    selection += 1
+                    scroll_offset += 1
+            elif selection < len(chats) - 1:
+                selection += 1
         elif key == ord("\n"):
             # Add this so use can use the same quit command as chat
             if search_query and search_query == ':quit':
