@@ -65,7 +65,7 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
     dm = DirectMessages(client)
 
     if username is None:
-        with_loading_screen(screen, dm.fetch_chat_data, num_chats=10, num_message_limit=20)
+        with_loading_screen(screen, dm.fetch_chat_data, num_chats=20, num_message_limit=20)
 
     while True:
         if username:
@@ -81,7 +81,7 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
         else:
             # if chat is empty
             if not dm.chats:
-                with_loading_screen(screen, dm.fetch_chat_data, num_chats=10, num_message_limit=20)
+                with_loading_screen(screen, dm.fetch_chat_data, num_chats=20, num_message_limit=20)
             if not dm.chats:
                 typer.echo("No chats found. Try again later.")
                 break
