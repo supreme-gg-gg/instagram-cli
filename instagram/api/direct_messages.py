@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 from instagram.configs import Config
 
-logger = setup_logging(__name__)
+# logger = setup_logging(__name__)
 
 @dataclass
 class MessageBrief:

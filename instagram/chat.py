@@ -17,7 +17,7 @@ from instagram.api import DirectMessages, DirectChat, MessageScheduler, DirectTh
 from instagram.configs import Config
 
 from instagram.chat_ui.interface.chat_interface import ChatInterface
-from instagram.chat_ui.interface.chat_menu import chat_menu
+from instagram.chat_ui.interface.chat_menu import ChatMenu
 from instagram.chat_ui.utils.loading import with_loading_screen
 from instagram.chat_ui.utils.types import Signal
 
@@ -85,6 +85,7 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
             if not dm.chats:
                 typer.echo("No chats found. Try again later.")
                 break
+            
             # wait for user to select a chat
             selected_chat = chat_menu(screen, dm)
 
@@ -131,6 +132,19 @@ def search_chat_list(dm: DirectMessages, title: str, filter: str = "") -> Direct
             raise ValueError(f"Invalid filter character: {f}")
     
     return None
+
+def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
+    """
+    Display the chat list and allow the user to select one.
+    Parameters (passed from main loop):
+    - screen: Curses screen object
+    - dm: DirectMessages object with a list of chats
+    Returns:
+    - DirectChat object if a chat is selected, None if the user quits
+    """
+    menu = ChatMenu(screen, dm)
+    return menu.run()
+
 
 def chat_interface(screen, direct_chat: DirectChat) -> Signal:
     """
