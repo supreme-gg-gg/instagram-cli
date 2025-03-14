@@ -30,7 +30,7 @@ def main(ctx: typer.Context,
 
     messages = [
         "Type 'instagram --help' to see available commands.",
-        "Pro Tip: Use arrow keys to navigate chats.",
+        "Pro Tip: Use vim-motion ('k', 'j') to navigate chats and messages.",
         "Version: " + __version__
     ]
 
@@ -60,14 +60,14 @@ def logout(username: str = typer.Option(None, "-u", "--username")):
     auth.logout(username)
 
 @auth_app.command()
-def switch_account(
+def switch(
     username: str = typer.Argument(
         ...,  # ... means the argument is required
         help="Username of the account to switch to"
     )
 ):
     """
-    Convenience command for Switching between multiple accounts
+    Convenience command for switching between multiple accounts
     """
     auth.switch_account(username)
 
@@ -149,8 +149,8 @@ def cleanup(d_all: bool = typer.Option(True, "-a", "--all", help="Cleanup cache 
     client.cleanup(d_all)
 
 # We add the subcommands to the main app
-app.add_typer(auth_app, name="auth", help="Authentication related commands (login/logout)")
-app.add_typer(chat_app, name="chat", help="Chat related commands (start/search)")
+app.add_typer(auth_app, name="auth", help="Authentication commands (login/logout/switch)")
+app.add_typer(chat_app, name="chat", help="Chat commands (start/search)")
 app.add_typer(schedule_app, name="schedule", help="Scheduled message commands (ls)")
 
 if __name__ == "__main__":
