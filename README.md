@@ -118,7 +118,12 @@ instagram cleanup -t                       # cleanup media and session cache fil
 
 The chat interface is the main feature of this package. It allows you to interact with your Instagram chats in a terminal-based interface.
 
-In the chat list page, use arrow keys + Enter to select a chat. You can also search for user by username using @user_name + Enter.
+In the chat list page, use arrow keys (or 'j', 'k') + Enter to select a chat. You can also search for user by username using @user_name + Enter.
+
+> [!NOTE]
+> Chat commands (prefixed with `:`) are NOT available in the chat menu page. You must enter a chat to use chat commands.
+
+After entering the chat page, you can type messages as usual and send them with Enter. You can also use chat commands to supercharge your chat experience.
 
 > [!TIP]
 > Press Enter in the middle of a message to insert a line break, and at the very end to send it.
