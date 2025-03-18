@@ -145,11 +145,7 @@ class ChatMenu:
 
         try:
             # Show searching indicator
-            self.search_win.erase()
-            self.search_win.border()
-            self.search_win.addstr(1, 2, "Searching...", curses.A_BOLD)
-            self.search_win.refresh()
-            self._draw_footer()
+            self._draw_footer(f"Searching for @{query}...")
             
             # Perform search
             search_result = self.dm.search_by_username(query)
@@ -159,24 +155,17 @@ class ChatMenu:
                 return search_result
             else:
                 # Show "No results" briefly
-                self.search_win.erase()
-                self.search_win.border()
-                self.search_win.addstr(1, 2, f"No results found for {query}", curses.A_DIM)
-                self.search_win.refresh()
-                self._draw_footer()
+                self._draw_footer(f"No results found for @{query}")
                 curses.napms(1500)  # Show for 1.5 seconds
         except Exception as e:
             # Show error briefly
-            self.search_win.erase()
-            self.search_win.border()
-            self.search_win.addstr(1, 2, f"Search error: {str(e)}", curses.A_DIM)
-            self.search_win.refresh()
-            self.footer.refresh()
+            self._draw_footer(f"Search error: {repr(e)}")
             curses.napms(1500)
         
         # Clear search input and exit search mode
         self.search_mode = False
         self.search_query = ""
+        self._draw_footer()
         return None
     
     def _select_chat(self):
@@ -249,4 +238,6 @@ class ChatMenu:
             
             result = self._handle_input()
             if result is not None:
+                self.screen.erase()
+                self.screen.refresh()
                 return result

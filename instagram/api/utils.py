@@ -74,6 +74,12 @@ def user_info_by_username_private(self: Client, username: str, use_cache: bool =
     User
         An object of User type
     """
+
+    # Disable all other loggers (dependencies) so no http errors would be printed to console
+    # This must be done again here to ensure all of them are actually disabled at the moment
+    # See https://stackoverflow.com/a/36208664
+    logging.getLogger().setLevel(logging.CRITICAL)
+
     username = str(username).lower()
     if not use_cache or username not in self._usernames_cache:
         user = self.user_info_by_username_v1(username)
