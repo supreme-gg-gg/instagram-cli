@@ -122,6 +122,19 @@ class DirectMessages:
         num_chats_searched = 0
         max_search_depth = 50
 
+        # Check existing chats first
+        if len(self.chats) > 0:
+            num_chats_searched = len(self.chats)
+            result = fuzzy_match(
+                query=title,
+                items=self.chats,
+                getter=lambda chat: chat.get_title(),
+                cutoff=threshold,
+                use_partial_ratio=True
+            )
+            if len(result) > 0:
+                return result[0]
+
         while num_chats_searched < max_search_depth:
             self.fetch_next_chat_chunk(batch_size, 20)
             num_chats_searched += batch_size
