@@ -99,17 +99,30 @@ def view_media(context, index: int) -> str:
         return f"Error viewing media: {str(e)}"
 
 @cmd_registry.register("reply", "Reply to a message in the chat", required_args=[], shorthand="r")
-def reply_to_message(context) -> str:
+def reply_to_message(context, index: str = None) -> str:
     """
     Returns the reply signal to allow user to select message to reply to.
+    If index is provided, directly selects that message.
     """
+    if index is not None:
+        try:
+            return f"__REPLY__{int(index)}"
+        except ValueError:
+            return "__ERROR__Invalid message index"
     return "__REPLY__"
 
+
 @cmd_registry.register("unsend", "Unsend a message", required_args=[], shorthand="d")
-def unsend_message(context) -> str:
+def unsend_message(context, index: str = None) -> str:
     """
     Unsend a message. Returns the unsend signal to allow user to select message to unsend.
+    If index is provided, directly unsends that message.
     """
+    if index is not None:
+        try:
+            return f"__UNSEND__{int(index)}"
+        except ValueError:
+            return "__ERROR__Invalid message index"
     return "__UNSEND__"
 
 @cmd_registry.register("config", "Manage Chat UI configuration", required_args=["options"], shorthand="c")

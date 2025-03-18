@@ -26,3 +26,9 @@ class Signal(Enum):
     CONTINUE = auto()
     BACK = auto()
     QUIT = auto()
+
+class ChatMenuMode(Enum):
+    """Enum to represent different modes of the chat menu."""
+    DEFAULT = auto()
+    SEARCH_USERNAME = auto()
+    SEARCH_TITLE = auto()

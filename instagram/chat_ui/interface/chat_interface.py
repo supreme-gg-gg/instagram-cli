@@ -17,6 +17,7 @@ class ChatInterface:
         self.mode = ChatMode.CHAT
         self.height, self.width = screen.getmaxyx()
         self.messages_per_fetch = 20
+        self.skip_message_selection = False  # Flag to skip message selection in reply mode
         
         # Initialize components
         self.screen.keypad(True)  # Enable special keys
@@ -90,11 +91,12 @@ class ChatInterface:
         Handle user input based on the current mode.
         Returns Signal enum indicating what to do next.
         """
-        if self.mode == ChatMode.REPLY:
-            self._handle_reply_input()
-        if self.mode == ChatMode.UNSEND:
-            self._handle_unsend_input()
-        
+        if not self.skip_message_selection:
+            if self.mode == ChatMode.REPLY:
+                self._handle_reply_input()
+            if self.mode == ChatMode.UNSEND:
+                self._handle_unsend_input()
+            
         self.input_box.clear()
         self.input_box.draw()
         
@@ -231,19 +233,65 @@ class ChatInterface:
             self.chat_window.update()
             return Signal.CONTINUE
 
-        elif result == "__REPLY__":
+        elif result.startswith("__REPLY__"):
             self.set_mode(ChatMode.REPLY)
-            # Clamp selection to visible range
-            self.chat_window.selection = min(max(self.chat_window.selection, self.chat_window.visible_messages_range[0]), self.chat_window.visible_messages_range[1])
+            if len(result) > 9:  # Has index
+                index = int(result[9:])
+                if 0 <= index < len(self.chat_window.messages):
+                    self.chat_window.selection = len(self.chat_window.messages) - 1 - index
+                    self.chat_window.selected_message_id = self.chat_window.messages[self.chat_window.selection].id
+                    self.skip_message_selection = True
+                else:
+                    self.status_bar.update("Invalid message index", override_default=True)
+                    curses.napms(1000)
+                    self.set_mode(ChatMode.CHAT)
+                    self.status_bar.update()
+                    return Signal.CONTINUE
+            else:
+                # Default interactive selection
+                self.chat_window.selection = min(max(
+                    self.chat_window.selection,
+                    self.chat_window.visible_messages_range[0]
+                ), self.chat_window.visible_messages_range[1])
             self.chat_window.update()
             self.status_bar.update()
             return Signal.CONTINUE
         
-        elif result == "__UNSEND__":
+        elif result.startswith("__UNSEND__"):
             self.set_mode(ChatMode.UNSEND)
-            # Clamp selection to visible range
-            self.chat_window.selection = min(max(self.chat_window.selection, self.chat_window.visible_messages_range[0]), self.chat_window.visible_messages_range[1])
+            if len(result) > 10:  # Has index
+                index = int(result[10:])
+                if 0 <= index < len(self.chat_window.messages):
+                    msg = self.chat_window.messages[len(self.chat_window.messages) - 1 - index]
+                    if msg.message.sender != "You":
+                        self.status_bar.update("You can only unsend your own messages", override_default=True)
+                        curses.napms(1000)
+                    else:
+                        self.status_bar.update("Unsending message...", override_default=True)
+                        if not self.direct_chat.unsend_message(msg.id):
+                            self.status_bar.update("We're sorry, we couldn't unsend the message", override_default=True)
+                            curses.napms(1000)
+                    self.set_mode(ChatMode.CHAT)
+                    return Signal.CONTINUE
+                else:
+                    self.status_bar.update("Invalid message index", override_default=True)
+                    curses.napms(1000)
+                    self.set_mode(ChatMode.CHAT)
+                    self.status_bar.update()
+                    return Signal.CONTINUE
+            # Default interactive selection
+            self.chat_window.selection = min(max(
+                self.chat_window.selection,
+                self.chat_window.visible_messages_range[0]
+            ), self.chat_window.visible_messages_range[1])
             self.chat_window.update()
+            self.status_bar.update()
+            return Signal.CONTINUE
+        
+        elif result.startswith("__ERROR__"):
+            self.status_bar.update(result[9:], override_default=True)
+            curses.napms(1000)
+            self.set_mode(ChatMode.CHAT)
             self.status_bar.update()
             return Signal.CONTINUE
         
@@ -278,6 +326,7 @@ class ChatInterface:
                 self.chat_window.selected_message_id = None
                 # Exit reply mode
                 self.set_mode(ChatMode.CHAT)
+                self.skip_message_selection = False
                 self.chat_window.update()
                 self.status_bar.update()
             else:
@@ -304,4 +353,6 @@ class ChatInterface:
         while (input_signal := self.handle_input()) not in [Signal.QUIT, Signal.BACK]:
             pass
         self.stop_refresh.set()
+        self.screen.erase()
+        self.screen.refresh()
         return input_signal
