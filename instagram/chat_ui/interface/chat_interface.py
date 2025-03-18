@@ -304,4 +304,6 @@ class ChatInterface:
         while (input_signal := self.handle_input()) not in [Signal.QUIT, Signal.BACK]:
             pass
         self.stop_refresh.set()
+        self.screen.erase()
+        self.screen.refresh()
         return input_signal
