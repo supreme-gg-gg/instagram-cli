@@ -1,6 +1,6 @@
 import curses
-from instagram.api.direct_messages import DirectMessages, DirectChat
-from ..utils.types import Signal
+from instagram.api.direct_messages import DirectMessages, DirectChat, DirectThreadNotFound
+from ..utils.types import Signal, ChatMenuMode
 
 class ChatMenu:
     """
@@ -21,8 +21,8 @@ class ChatMenu:
         self.scroll_offset = 0
         self.height, self.width = screen.getmaxyx()
         self.search_query = ""
-        self.placeholder = "Search for chat by @username + ENTER"
-        self.search_mode = False  # Flag to track if search is active
+        self.placeholder = "Search for chat by @username or /title + ENTER"
+        self.mode = ChatMenuMode.DEFAULT # Flag to track if search is active
         
         self._setup_windows()
     
@@ -47,10 +47,14 @@ class ChatMenu:
         self.footer.erase()
         self.footer.bkgd(' ', curses.color_pair(7))
         if message is None:
-            if self.search_mode:
+            if self.mode == ChatMenuMode.SEARCH_USERNAME:
                 message = "[SEARCH MODE] Username + ENTER to search, ESC to cancel"
-            else:
+            elif self.mode == ChatMenuMode.SEARCH_TITLE:
+                message = "[SEARCH MODE] Title + ENTER to search, ESC to cancel"
+            elif self.mode == ChatMenuMode.DEFAULT:
                 message = "[CHAT MENU] Select a chat (Arrow/jk + ENTER, or ESC to quit)"
+            else:
+                message = "[GEORGIAN MODE] გამარჯობა და გასართობა"
         self.footer.addstr(0, 0, message[:self.width - 1])
         self.footer.refresh()
     
@@ -87,15 +91,15 @@ class ChatMenu:
         self.search_win.border()
         
         # Show placeholder or actual search query
-        display_text = self.search_query if self.search_mode else self.placeholder
-        if not self.search_mode:
+        display_text = self.search_query if (self.mode != ChatMenuMode.DEFAULT) else self.placeholder
+        if self.mode == ChatMenuMode.DEFAULT:
             self.search_win.attron(curses.A_DIM)
         self.search_win.addstr(1, 2, display_text[:self.width-4])
-        if not self.search_mode:
+        if self.mode == ChatMenuMode.DEFAULT:
             self.search_win.attroff(curses.A_DIM)
         
         # Move cursor to end of input if in search mode
-        if self.search_mode:
+        if self.mode != ChatMenuMode.DEFAULT:
             cursor_pos = len(self.search_query) + 2
             self.search_win.move(1, cursor_pos)
     
@@ -108,7 +112,7 @@ class ChatMenu:
         self._draw_footer()
         
         # If in search mode, ensure cursor is in search window
-        if self.search_mode:
+        if  self.mode != ChatMenuMode.DEFAULT:
             cursor_pos = len(self.search_query) + 2
             self.search_win.move(1, cursor_pos)
             self.search_win.refresh()
@@ -145,38 +149,41 @@ class ChatMenu:
 
         try:
             # Show searching indicator
-            self.search_win.erase()
-            self.search_win.border()
-            self.search_win.addstr(1, 2, "Searching...", curses.A_BOLD)
-            self.search_win.refresh()
-            self._draw_footer()
+            self._draw_footer(f"Searching...")
             
             # Perform search
-            search_result = self.dm.search_by_username(query)
+            search_result = None
+            if self.mode == ChatMenuMode.SEARCH_USERNAME:
+                search_result = self.dm.search_by_username(query)
+            elif self.mode == ChatMenuMode.SEARCH_TITLE:
+                search_result = self.dm.search_by_title(query)
             if search_result:
-                self.search_mode = False
+                self.mode = ChatMenuMode.DEFAULT
                 self.search_query = ""
                 return search_result
             else:
                 # Show "No results" briefly
-                self.search_win.erase()
-                self.search_win.border()
-                self.search_win.addstr(1, 2, f"No results found for {query}", curses.A_DIM)
-                self.search_win.refresh()
-                self._draw_footer()
+                if self.mode == ChatMenuMode.SEARCH_USERNAME:
+                    self._draw_footer(f"No results found for @{query}")
+                else:
+                    self._draw_footer(f"No results found for \"{query}\"")
                 curses.napms(1500)  # Show for 1.5 seconds
+        except DirectThreadNotFound:
+            # Show "No results" briefly
+            if self.mode == ChatMenuMode.SEARCH_USERNAME:
+                self._draw_footer(f"No results found for @{query}")
+            else:
+                self._draw_footer(f"No results found for \"{query}\"")
+            curses.napms(1500)  # Show for 1.5 seconds
         except Exception as e:
             # Show error briefly
-            self.search_win.erase()
-            self.search_win.border()
-            self.search_win.addstr(1, 2, f"Search error: {str(e)}", curses.A_DIM)
-            self.search_win.refresh()
-            self.footer.refresh()
+            self._draw_footer(f"Search error: {repr(e)}")
             curses.napms(1500)
         
         # Clear search input and exit search mode
-        self.search_mode = False
+        self.mode = ChatMenuMode.DEFAULT
         self.search_query = ""
+        self._draw_footer()
         return None
     
     def _select_chat(self):
@@ -191,16 +198,16 @@ class ChatMenu:
     def _handle_input(self):
         """Handle user input for navigation and search."""
         # If in search mode, handle search input
-        if self.search_mode:
+        if self.mode != ChatMenuMode.DEFAULT:
             key = self.screen.getch()
             
             if key == 27:  # ESC key
-                self.search_mode = False
+                self.mode = ChatMenuMode.DEFAULT
                 self.search_query = ""
                 return None
             
             if key == ord('\n'):  # Enter key
-                query = self.search_query[1:] if self.search_query.startswith('@') else self.search_query
+                query = self.search_query[1:] if self.mode == ChatMenuMode.SEARCH_USERNAME and self.search_query.startswith("@") else self.search_query
                 self.search_query = ""
                 result = self._handle_search(query)
                 return result
@@ -208,7 +215,7 @@ class ChatMenu:
             elif key in (curses.KEY_BACKSPACE, 127):  # Backspace
                 self.search_query = self.search_query[:-1]
             elif 32 <= key <= 126:  # Printable characters
-                # NOTE: getch returns an integer, get_wch returns a char
+                # NOTE: getch returns an integer, get_wch returns a char for printable characters
                 # need explicit conversion to char
                 self.search_query += chr(key)
             
@@ -217,10 +224,16 @@ class ChatMenu:
         # Regular menu navigation mode
         key = self.screen.getch()
         
-        # Handle special key: @ to activate search
+        # Handle special key: '@' to activate search
         if key == ord('@'):
-            self.search_mode = True
+            self.mode = ChatMenuMode.SEARCH_USERNAME
             self.search_query = "@"
+            return None
+        
+        # Handle special key: '/' to activate search
+        if key == ord('/'):
+            self.mode = ChatMenuMode.SEARCH_TITLE
+            self.search_query = ""
             return None
         
         if key in (curses.KEY_UP, curses.KEY_DOWN):
@@ -249,4 +262,6 @@ class ChatMenu:
             
             result = self._handle_input()
             if result is not None:
+                self.screen.erase()
+                self.screen.refresh()
                 return result
