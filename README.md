@@ -47,25 +47,6 @@ cd instagram-cli
 pip install .
 ```
 
-### Docker Installation
-
-You must have Docker installed to use this method. If you do not have Docker installed, you can download and install it from the [official website](https://docs.docker.com/get-docker/).
-
-Build and run Docker image from source:
-
-```bash
-git clone https://github.com/supreme-gg-gg/instagram-cli.git
-cd instagram-cli
-docker build -t instagram-cli .
-docker run -it instagram-cli
-```
-
-Alternatively, you can pull the pre-built Docker image from Docker Hub (this will available very soon):
-
-```bash
-docker run -it supreme-gg-gg/instagram-cli
-```
-
 ### Pre-built Executables
 
 > [!CAUTION]
