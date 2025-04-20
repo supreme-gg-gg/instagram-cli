@@ -13,7 +13,10 @@ def login() -> ClientWrapper:
         typer.echo("Cannot log in via session, logging in with username and password.")
         username = typer.prompt("Username")
         password = typer.prompt("Password", hide_input=True)
-        client.login(username, password, refresh_session=True)
+        verification_code = ""
+        if typer.confirm("Do you use 2FA (2 Factor Authentication) ?"):
+            verification_code=typer.prompt("Provide your verification code (From The Auth App, SMS not supported)") 
+        client.login(username, password, refresh_session=True, verification_code=verification_code)
     if client:
         typer.echo(f"Logged in as {client.username}")
         return client
@@ -25,8 +28,11 @@ def login_by_username() -> ClientWrapper:
     typer.echo("Logging in")
     username = typer.prompt("Username")
     password = typer.prompt("Password", hide_input=True)
+    verification_code = ""
+    if typer.confirm("Do you use 2FA (2 Factor Authentication) ?"):
+        verification_code=typer.prompt("Provide your verification code (From The Auth App, SMS not supported)") 
     client = ClientWrapper(username)
-    client.login(username, password, refresh_session=True)
+    client.login(username, password, refresh_session=True, verification_code=verification_code)
     if client:
         typer.echo(f"Logged in as {client.username}")
         return client

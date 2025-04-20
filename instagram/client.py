@@ -59,7 +59,7 @@ class ClientWrapper:
         self.username = self.session_manager.username
         self.insta_client = None
 
-    def login(self, username: str | None = None, password: str | None = None, refresh_session: bool = False):
+    def login(self, username: str | None = None, password: str | None = None, refresh_session: bool = False, verification_code = ""):
         """
         Attempts to login to Instagram using either the provided session information
         or the provided username and password.
@@ -97,7 +97,7 @@ class ClientWrapper:
             raise ValueError("Username and password are required.")
         try:
             typer.echo("Attempting to login with username and password...")
-            cl.login(username, password)
+            cl.login(username, password, verification_code=verification_code)
             cl.get_timeline_feed()
         except Exception as e:
             typer.echo(f"Failed to login: {e}")
