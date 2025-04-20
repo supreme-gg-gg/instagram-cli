@@ -3,7 +3,7 @@
 # import time
 import os
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 # import tempfile
 # from typing import List, Tuple
 
@@ -182,6 +182,37 @@ def schedule_message(context, time: str, message: str) -> str:
         return chat.schedule_message(time, message)
     except Exception as e:
         return f"Failed to schedule message: {e}"
+    
+@cmd_registry.register("cancel", "Cancel the LATEST scheduled message", required_args=[], shorthand="C")
+def cancel_latest_message(context) -> str:
+    """
+    Cancel a scheduled message.
+    """
+    chat: DirectChat = context["chat"]
+    try:
+        return chat.cancel_latest_scheduled_message()
+    except Exception as e:
+        return f"Failed to cancel scheduled message: {e}"
+
+@cmd_registry.register("delay", "Delay the chat interface for a specified time", required_args=["seconds", "message"], shorthand="d")
+def delay_sending_message(context, seconds: str, message:str) -> str:
+    """
+    Delay sending the message for a specified time using the scheduler as backend.
+    """
+    chat: DirectChat = context["chat"]
+    try:
+        # First check if the time is in the correct format
+        if int(seconds) < 0:
+            return "Invalid time format. Please use a positive integer for seconds"
+        
+        # Convert this into a future datetime compatible with the scheduler
+        future_time = datetime.now() + timedelta(seconds=int(seconds))
+        future_time = future_time.strftime("%Y-%m-%d %H:%M:%S")
+
+        # Schedule the message
+        return chat.schedule_message(future_time, message)
+    except Exception as e:
+        return f"Failed to delay message: {e}"
 
 @cmd_registry.register("help", "Show available commands", shorthand="h")
 def show_help(context) -> str:
