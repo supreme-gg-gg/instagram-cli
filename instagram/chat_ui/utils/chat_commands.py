@@ -1,11 +1,6 @@
-# from datetime import datetime
-# import threading
-# import time
 import os
 import subprocess
 from datetime import datetime, timedelta
-# import tempfile
-# from typing import List, Tuple
 
 import tkinter as tk
 from tkinter import filedialog
@@ -160,7 +155,7 @@ def scroll_up(context) -> str:
 def scroll_down(context) -> str:
     return "__SCROLL_DOWN__"
 
-@cmd_registry.register("schedule", "Schedule a message to be sent at a later time, MUST BE 24-hour format", required_args=["time", "message"], shorthand="S")
+@cmd_registry.register("schedule", "Schedule a message to be sent at HH:MM (24 hour format)", required_args=["time", "message"], shorthand="S")
 def schedule_message(context, time: str, message: str) -> str:
     """
     Schedule a message to be sent at a later time.
