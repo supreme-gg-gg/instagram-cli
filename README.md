@@ -88,6 +88,7 @@ instagram chat search -t <text>           # search and open chat by chat title
 # Utility Commands
 instagram notify                           # view notifications (inbox, followers, mentions)
 instagram schedule ls                      # view scheduled messages
+instagram schedule cancel <index>          # cancel scheduled message
 instagram stats --days <last_n_days>       # view usage analytics (default: 14 days)
 instagram config --get --set --edit        # manage custom configuration
 instagram cleanup -t                       # cleanup media and session cache files
@@ -128,6 +129,8 @@ All chat commands have the following syntax:
 - `:scrollup`or `:k`: scroll up in chat messages
 - `:scrolldown` or `:j`: scroll down in chat messages
 - `:schedule <time> "<message>"`: schedule a message, see [scheduling messages](#scheduling-messages)
+- `:delay <seconds> "<message>"`: delay sending the message, similar as schedule
+- `:cancel`: cancel the latest scheduled/delayed message
 - `:upload`: upload media using the file navigator
 - `:upload <path>`: upload media (photo or video) directly from path
 - `:view <index>`: view and download media at index or open URL directly in browser
