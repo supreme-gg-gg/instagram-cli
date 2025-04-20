@@ -1,6 +1,8 @@
 import typer
 from instagram import auth, chat, api, configs, client, __version__
 from art import text2art, tprint
+from rich.console import Console
+from rich.table import Table
 
 # We will expose the following core commands:
 app = typer.Typer()
@@ -97,33 +99,35 @@ def search(
 @schedule_app.command()
 def ls():
     """List all scheduled messages"""
+
+    console = Console()
     tasks = api.list_all_scheduled_tasks()
+    
     if not tasks:
         typer.echo("No scheduled messages found.")
         return
 
-    # Create table headers
-    headers = ["Recipient", "Time", "Message"]
-    rows = [[task["display_name"], task["send_time"], task["message"]] for task in tasks]
+    table = Table("Index", "Recipient", "Time", "Message")
+    
+    for idx, task in enumerate(tasks):
+        table.add_row(
+            str(idx),
+            task["display_name"],
+            task["send_time"],
+            task["message"]
+        )
+    
+    console.print(table)
 
-    # Calculate column widths
-    widths = [
-        max(len(str(row[i])) for row in [headers] + rows)
-        for i in range(len(headers))
-    ]
-
-    # Print table header
-    header_line = " | ".join(f"{header:<{width}}" for header, width in zip(headers, widths))
-    typer.echo("-" * (sum(widths) + len(widths) * 3 - 1))
-    typer.echo(header_line)
-    typer.echo("-" * (sum(widths) + len(widths) * 3 - 1))
-
-    # Print table rows
-    for row in rows:
-        row_line = " | ".join(f"{str(cell):<{width}}" for cell, width in zip(row, widths))
-        typer.echo(row_line)
-
-    typer.echo("-" * (sum(widths) + len(widths) * 3 - 1))
+@schedule_app.command()
+def cancel(
+    task_id: int = typer.Argument(
+        ...,  # mark argument as required
+        help="ID of the scheduled message to cancel"
+    )
+):
+    """Cancel a scheduled message"""
+    api.cancel_scheduled_task_by_index(task_id)
 
 @app.command()
 def notify():
