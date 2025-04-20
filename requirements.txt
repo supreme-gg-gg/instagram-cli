@@ -1,5 +1,5 @@
 typer
-git+https://github.com/subzeroid/instagrapi.git@master#egg=instagrapi
+instagrapi
 art
 pydantic
 pyyaml
