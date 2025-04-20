@@ -8,23 +8,26 @@ auth_app = typer.Typer()
 chat_app = typer.Typer()
 schedule_app = typer.Typer()
 
-"""Base command: Displays name, slogan, and visuals."""
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context,
-         version: bool = typer.Option(False, "--version", "-v", help="Show version information", is_flag=True)):
-    
+         version: bool = typer.Option(False, "--version", "-v",
+                                      help="Show version information",
+                                      is_flag=True)):
+    """
+    Base command: Displays name, slogan, and visuals.
+    """
     # If the command is just 'instagram' without any subcommands
     if ctx.invoked_subcommand is not None:
         return
-    
+
     if version:
         typer.echo(f"InstagramCLI v{__version__}")
         return
-    
+
     # tprint("InstagramCLI", font="random")
-    
+
     logo = text2art("InstagramCLI")
-    
+
     typer.echo(f"\033[95m{logo}\033[0m")  # Magenta text
     typer.echo("\033[92mThe end of brainrot and doomscrolling is here.\033[0m")  # Green text
 
@@ -40,10 +43,10 @@ def main(ctx: typer.Context,
         typer.echo(f"{color}{msg}\033[0m")
         # time.sleep(0.5)  # Simulate loading effect
 
-# These are the subcommands
 @auth_app.command()
 def login(
-    use_username: bool = typer.Option(False, "-u", "--username", help="Login using username/password"),
+    use_username: bool = typer.Option(False, "-u", "--username",
+                                      help="Login using username/password"),
 ):
     """Login to Instagram"""
     try:
@@ -62,7 +65,7 @@ def logout(username: str = typer.Option(None, "-u", "--username")):
 @auth_app.command()
 def switch(
     username: str = typer.Argument(
-        ...,  # ... means the argument is required
+        ...,  # mark argument as required
         help="Username of the account to switch to"
     )
 ):
@@ -144,7 +147,8 @@ def config(
     configs.config(get, set, list, edit, reset)
 
 @app.command()
-def cleanup(d_all: bool = typer.Option(True, "-a", "--all", help="Cleanup cache and temporary files")):
+def cleanup(d_all: bool = typer.Option(False, "-a", "--all",
+                                    help="Cleanup cache and temporary files")):
     """Cleanup cache and temporary files"""
     client.cleanup(d_all)
 

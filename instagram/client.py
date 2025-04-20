@@ -17,15 +17,16 @@ class SessionManager:
                 raise ValueError("No username provided and no default username found in config")
     
     def get_default_username(self) -> str | None:
-        # Fall back to default username if current username is not set
-        return Config().get("login.current_username", Config().get("login.default_username", ""))
+        """Get default username from config, falling back to default_username if current_username is not set"""
+        current = Config().get("login.current_username")
+        if current:
+            return current
+        
+        default = Config().get("login.default_username")
+        if default:
+            return default
             
-        # session_dir = self.ensure_session_dir()
-        # session_files = list(session_dir.glob("*.json"))
-        # if session_files:
-        #     return session_files[0].stem
-        # else:
-        #     return ""
+        return None
     
     def get_session_path(self) -> Path:
         """Get path to session file in user's home directory"""
@@ -96,7 +97,7 @@ class ClientWrapper:
         if not username or not password:
             raise ValueError("Username and password are required.")
         try:
-            typer.echo("Attempting to login with username and password...")
+            # typer.echo("Attempting to login with username and password...")
             cl.login(username, password, verification_code=verification_code)
             cl.get_timeline_feed()
         except Exception as e:
@@ -125,7 +126,7 @@ class ClientWrapper:
 
         cl = instagrapi.Client()
         cl.delay_range = [1, 3]
-        typer.echo("Attempting to login with session...")
+        # typer.echo("Attempting to login with session...")
         cl.load_settings(str(session_path))
         session_id = cl.settings["authorization_data"]["sessionid"]
         try:
@@ -151,9 +152,17 @@ class ClientWrapper:
 
 def cleanup(delete_all: bool) -> None:
     """Cleanup cache and temporary files"""
-    session = SessionManager(None)
-    session.delete_session()
-    typer.echo("Session file cleaned up")
+    Config().set("login.current_username", None)
+    typer.echo("Config cleaned up")
+    
+    # make sure cleanup works independently of the session manager
+    users_dir = Path(Config().get("advanced.users_dir"))
+    if users_dir.exists():
+        for user_dir in users_dir.iterdir():
+            session_file = user_dir / "session.json"
+            if session_file.exists():
+                session_file.unlink()
+        typer.echo("Session files cleaned up")
 
     if not delete_all:
         return
