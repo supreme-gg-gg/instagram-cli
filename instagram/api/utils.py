@@ -490,7 +490,34 @@ def list_all_scheduled_tasks(filepath: str = None) -> list[dict]:
             typer.echo("You are not logged in. Please login first.\nSuggested action: `instagram auth login`")
             return []
         filepath = Path(Config().get("advanced.users_dir")) / username / "tasks.json"
+
     if not Path(filepath).exists():
         return []
+
     with open(filepath, "r") as f:
         return json.load(f)
+
+def cancel_scheduled_task_by_index(index: int, filepath: str = None) -> str:
+    """
+    Cancel a scheduled task by index from the JSON file.
+    NOTE: This does not need to involve the scheduler itself because
+    on scheduler startup it will then load the new JSON tasks.
+    """
+    if filepath is None:
+        username = Config().get("login.current_username")
+        if not username:
+            typer.echo("You are not logged in. Please login first.\nSuggested action: `instagram auth login`")
+            return "You are not logged in. Please login first."
+        filepath = Path(Config().get("advanced.users_dir")) / username / "tasks.json"
+
+    tasks = list_all_scheduled_tasks(filepath)
+
+    if index < 0 or index >= len(tasks):
+        return "Invalid index. No task was cancelled."
+
+    tasks.pop(index)
+
+    with open(filepath, "w") as f:
+        json.dump(tasks, f, indent=4)
+
+    return f"Cancelled task at index {index}."

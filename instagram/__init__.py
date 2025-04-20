@@ -5,4 +5,4 @@ from .client import cleanup
 
 __all__ = ["login", "logout", "start_chat", "Config", "cleanup"]
 
-__version__ = "1.3.1"
+__version__ = "1.3.3"

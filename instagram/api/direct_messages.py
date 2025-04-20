@@ -474,6 +474,13 @@ class DirectChat:
         """
         scheduler = MessageScheduler().get_instance()
         return scheduler.add_task(self.thread_id, send_time, message, display_name=self.get_title())
+
+    def cancel_latest_scheduled_message(self) -> str:
+        """
+        Cancel the latest scheduled message.
+        """
+        scheduler = MessageScheduler().get_instance()
+        return scheduler.cancel_latest_task()
     
     def get_message_id(self, message_index: int) -> str:
         """

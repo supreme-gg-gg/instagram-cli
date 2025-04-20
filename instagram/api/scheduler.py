@@ -212,6 +212,14 @@ class MessageScheduler:
 
         self.remove_task(task)
 
+    def cancel_latest_task(self) -> str:
+        """Cancel the latest scheduled task."""
+        if self.tasks:
+            task = self.tasks[-1]
+            self.remove_task(task)
+            return f"Cancelled task for {task['send_time']}"
+        return "Error: No tasks to cancel."
+
     def remove_task(self, task: dict) -> None:
         """Remove a task."""
         if task in self.tasks:
