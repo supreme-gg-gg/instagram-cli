@@ -1,6 +1,6 @@
 # Instagram CLI
 
-The ultimate weapon against brainrot.
+The ultimate weapon against brainrot. Shown experimentally to effectively reduce screentime.
 
 ![PyPI](https://img.shields.io/pypi/v/instagram-cli)
 [![PyPI Downloads](https://static.pepy.tech/badge/instagram-cli)](https://pepy.tech/projects/instagram-cli)
@@ -22,7 +22,7 @@ The world's first open-source CLI (command line interface) + Terminal UI client 
 
 - We transform Instagram from a brainrot hell into productivity tool
 - We give back control of social media to the user
-- We enable user to do more with less
+- We allow you to focus on meaningful conversation with friends
 - We celebrate the art and simplicity of terminal UI
 - We preserve the core of social media and protect your attention
 
