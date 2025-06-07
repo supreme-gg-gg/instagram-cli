@@ -613,17 +613,12 @@ class DirectChat:
         filename = f"{media_item['media_id']}"
 
         try:
-            if media_item["media_type"] in ['photo', 'image']:
-                file_path = client.photo_download_by_url(
-                    media_item['url'],
-                    filename=filename, # apparently it does not require the .jpg extension
-                    folder=save_dir
-                )
-            elif media_item["media_type"] in ['video']:
-                file_path = client.video_download_by_url(
-                    media_item['url'],
+            if media_item["media_type"] in ['photo', 'image', 'video']:
+                file_path = download_media_by_url(
+                    url=media_item['url'],
                     filename=filename,
-                    folder=save_dir
+                    folder=save_dir,
+                    media_type=media_item["media_type"]
                 )
             else:
                 raise ValueError(f"Unsupported media type for viewing: {media_item['type']}")

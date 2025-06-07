@@ -5,7 +5,9 @@ from typing import List, TypeVar, Callable, Optional, Union, Literal
 import random
 import time
 import json
+import shutil
 from pathlib import Path
+from urllib.parse import urlparse
 from uuid import uuid4
 import typer
 from instagram.configs import Config
@@ -24,6 +26,85 @@ from instagrapi.mixins.direct import SELECTED_FILTER, BOX
 
 import requests
 from PIL import Image, ImageOps
+
+def download_media_by_url(
+        url: str,
+        filename: str = "",
+        folder: Union[str, Path] = "",
+        timeout: int = 30,
+        media_type: str = "photo"
+    ) -> Path:
+    """
+    Download media (photo/video) using URL with proper extension handling
+
+    Parameters
+    ----------
+    url: str
+        URL for the media
+    filename: str, optional
+        Base filename for the media (without extension)
+    folder: Union[str, Path], optional
+        Directory in which to download the media, default is current directory
+    timeout: int, optional
+        Request timeout in seconds, default is 30
+    media_type: str, optional
+        Type of media to download, either 'photo', 'image', or 'video'
+
+    Returns
+    -------
+    Path
+        Path to the downloaded file
+    """
+    url = str(url)
+    parsed_url = urlparse(url)
+    original_filename = parsed_url.path.rsplit("/", 1)[1]
+    
+    # Extract extension from original filename
+    # Do not extract extension if it is not present so it doesn't cause the "." in the end
+    _, ext = original_filename.rsplit(".", 1) if "." in original_filename else ("", "")
+    
+    # Clean the extension and set default based on media type
+    ext = ext.lower().split("?")[0]  # Remove any query parameters
+    if not ext:
+        ext = "mp4" if media_type == "video" else "jpg"
+    
+    # Construct final filename
+    final_filename = f"{filename}.{ext}" if filename else original_filename
+    
+    # Ensure folder is a Path object
+    folder_path = Path(folder)
+    if folder_path and not folder_path.exists():
+        folder_path.mkdir(parents=True, exist_ok=True)
+    
+    # Full path for downloaded file
+    path = folder_path / final_filename
+    
+    # Download the file
+    response = requests.get(url, stream=True, timeout=timeout)
+    response.raise_for_status()
+    
+    # Additional check for video content length
+    try:
+        content_length = int(response.headers.get("Content-Length"))
+    except (TypeError, ValueError):
+        if media_type == "video":
+            raise ValueError(
+                "Invalid video URL. The URL may be malformed or the video may no longer be available."
+            )
+    
+    # Use different write methods for photos vs videos
+    # to match instagrapi's implementation
+    if media_type == "video":
+        with open(path, "wb") as f:
+            f.write(response.content)
+            f.close()
+    else:
+        # For photos, use streaming to handle large files efficiently
+        with open(path, "wb") as f:
+            response.raw.decode_content = True
+            shutil.copyfileobj(response.raw, f)
+    
+    return path.resolve()
 
 def setup_logging(name: str):
     """
