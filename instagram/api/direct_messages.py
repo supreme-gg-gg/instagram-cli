@@ -280,9 +280,33 @@ class DirectChat:
                 'Instagram User'
             )
             
-            # Handle text messages (simple case)
-            if message.item_type == 'text':
-                return MessageBrief(sender=sender, content=message.text)
+            # Handle text messages
+            # We handle URLs here as well because the Meta API seems to be pretty inconsistent with URL extraction, 
+            # sometimes it is processed by backend (link, xma_link), sometimes only handled by frontend (text)
+            if message.item_type in ["text", "link", "xma_link"]:
+                message_text = ""
+                if message.item_type == "text" or message.item_type == "xma_link":
+                    # Regular text message or inline link message
+                    message_text = message.text
+                elif message.item_type == "link":
+                    # Link message
+                    message_text = message.link.get("text", "")
+                urls = extract_links_from_text(message_text)
+                if urls:
+                    # If there are links, replace them with placeholders
+                    for url in urls:
+                        media_items[media_index] = {
+                            'type': message.item_type,
+                            'media_id': message.id,
+                            'user_id': message.user_id,
+                            'timestamp': message.timestamp,
+                            'media_type': 'link',
+                            'url': url[1]  # expanded URL
+                        }
+                        message_text = message_text.replace(url[0], f"[URL #{media_index}: {url[0]}]")
+                        media_index += 1
+
+                return MessageBrief(sender=sender, content=message_text)
             
             # For media messages, we need to process and store the media
             try:
@@ -302,9 +326,6 @@ class DirectChat:
                 elif message.media:
                     # Handle regular media (photos, videos)
                     _process_regular_media(message, media_index)
-                elif message.item_type in ["xma_link", "link"]:
-                    # Handle links
-                    _process_link(message, media_index)
                 elif message.item_type == "generic_xma":
                     # Handle replies
                     media_items[media_index]["media_type"] = 'reply'
@@ -315,7 +336,6 @@ class DirectChat:
                     # Format: 'media_type': 'placeholder text'
                     'view_once': "[Sent a view-once media (use the Instagram app to view it)]",
                     'xma_media_share': "[Shared a post (use the Instagram app to view it)]",
-                    'xma_link': "[Sent URL #{index}: {url}]",
                     'image': "[Sent an image #{index}]",
                     'video': "[Sent a video #{index}]",
                     'audio': "[Sent an audio #{index}]",
@@ -323,7 +343,6 @@ class DirectChat:
                     'voice_media': "[Sent a {media_type} #{index}]",
                     'clip': "[Sent brainrot]",
                     'animated_media': "[Sent a sticker #{index}]",
-                    'link': "[Sent URL #{index}: {url}]",
                     'reply': "[Replied to your note/post: {reply_text}]",
                 }
                 
@@ -384,14 +403,6 @@ class DirectChat:
             elif message.media.audio_url:
                 media_items[index]['url'] = message.media.audio_url
                 media_items[index]["media_type"] = 'audio'
-
-        def _process_link(message, index):
-            """Process links"""
-            media_items[index]["media_type"] = 'link'
-            if message.text:
-                media_items[index]['url'] = message.text
-            elif message.link:
-                media_items[index]['url'] = message.link["text"]
 
         for message in self.thread.messages:
             # with open('message.txt', 'a', encoding="utf-8") as f:
