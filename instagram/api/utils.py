@@ -16,12 +16,10 @@ import re
 import instagrapi
 from instagrapi import Client
 import instagrapi.config
-from instagrapi.exceptions import ClientError, UserNotFound, DirectThreadNotFound, ClientNotFoundError
+from instagrapi.exceptions import ClientError, UserNotFound, DirectThreadNotFound, ClientNotFoundError, PhotoNotUpload
 import instagrapi.image_util
 from instagrapi.types import User, DirectThread, DirectMessage
 from instagrapi.extractors import extract_direct_thread, extract_direct_message
-from instagrapi.exceptions import ClientError, UserNotFound
-from instagrapi.types import User
 from instagrapi.utils import dumps
 from instagrapi.mixins.direct import SELECTED_FILTER, BOX
 
