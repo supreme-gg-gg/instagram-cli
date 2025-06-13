@@ -11,16 +11,15 @@ from urllib.parse import urlparse
 from uuid import uuid4
 import typer
 from instagram.configs import Config
+import re
 
 import instagrapi
 from instagrapi import Client
 import instagrapi.config
-from instagrapi.exceptions import ClientError, UserNotFound, DirectThreadNotFound, ClientNotFoundError
+from instagrapi.exceptions import ClientError, UserNotFound, DirectThreadNotFound, ClientNotFoundError, PhotoNotUpload
 import instagrapi.image_util
 from instagrapi.types import User, DirectThread, DirectMessage
 from instagrapi.extractors import extract_direct_thread, extract_direct_message
-from instagrapi.exceptions import ClientError, UserNotFound
-from instagrapi.types import User
 from instagrapi.utils import dumps
 from instagrapi.mixins.direct import SELECTED_FILTER, BOX
 
@@ -602,3 +601,32 @@ def cancel_scheduled_task_by_index(index: int, filepath: str = None) -> str:
         json.dump(tasks, f, indent=4)
 
     return f"Cancelled task at index {index}."
+
+def extract_links_from_text(text: str) -> List[Tuple[str, str]]:
+    """
+    Extract URLs or links from a given text string.
+    Extracts both complete URLs and partial ones
+    e.g. corpolingo.co, www.linkedin.com, https://github.com/supreme-gg-gg/instagram-cli
+    
+    Parameters:
+    - text: The input text string to extract URLs from.
+    
+    Returns:
+    - List of extracted URLs and their expanded versions.
+    - Each URL is returned as a tuple (original_url, expanded_url).
+    - If no URLs are found, returns an empty list.
+    """
+    # Source: https://stackoverflow.com/a/50790119
+    regex=r"\b((?:https?://)?(?:(?:www\.)?(?:[\da-z\.-]+)\.(?:[a-z]{2,6})|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(?:(?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(?:ffff(?::0{1,4}){0,1}:){0,1}(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])))(?::[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?(?:/[\w\.-]*)*/?)\b"
+
+    matches = re.findall(regex, text)
+
+    # Expand partial URLs to proper URLs
+    res = []
+    for orig_url in matches:
+        expanded_url = orig_url
+        if not orig_url.startswith("http://") and not orig_url.startswith("https://"):
+            expanded_url = "https://" + orig_url
+        res.append((orig_url, expanded_url))
+            
+    return res

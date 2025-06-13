@@ -70,6 +70,9 @@ class ChatInterface:
                 if self.refresh_enabled:
                     self.direct_chat.fetch_chat_history(self.messages_per_fetch)
                     new_messages = self.direct_chat.get_chat_history()[0]
+                    if self.stop_refresh.is_set():
+                        # Handle edge case where refresh was stopped during fetch
+                        return
                     with self.refresh_lock:
                         # self.messages.clear()
                         # self.messages.extend(new_messages)
