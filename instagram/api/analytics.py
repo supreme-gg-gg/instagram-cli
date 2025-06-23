@@ -6,7 +6,7 @@ from collections import Counter
 
 from instagram.utils.loading import with_loading_screen
 
-def fetch_updates():
+def fetch_updates() -> dict:
     """Fetches latest updates from Instagram and returns them."""
     cl = ClientWrapper().login_by_session()
     # Get latest updates
@@ -23,7 +23,7 @@ def fetch_updates():
     }
 
 
-def render_updates(stdscr):
+def render_updates(stdscr) -> None:
     """Render Instagram updates in a curses window."""
 
 
