@@ -70,7 +70,7 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
     while True:
         if username:
             try:
-                selected_chat = with_loading_screen(screen, search_chat_list, 'Loading message', dm, username, search_filter)
+                selected_chat = with_loading_screen(screen, search_chat_list, f'Loading chat data for {username}', dm, username, search_filter)
             except DirectThreadNotFound as e: # catch the error thrown by the controller
                 typer.echo(e)
                 break
