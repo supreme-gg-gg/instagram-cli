@@ -18,7 +18,7 @@ from instagram.configs import Config
 
 from instagram.chat_ui.interface.chat_interface import ChatInterface
 from instagram.chat_ui.interface.chat_menu import ChatMenu
-from instagram.chat_ui.utils.loading import with_loading_screen
+from instagram.utils.loading import with_loading_screen
 from instagram.chat_ui.utils.types import Signal
 
 def start_chat(username: str | None = None, search_filter: str = "") -> None:
@@ -65,12 +65,12 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
     dm = DirectMessages(client)
 
     if username is None:
-        with_loading_screen(screen, dm.fetch_chat_data, num_chats=20, num_message_limit=20)
+        with_loading_screen(screen, dm.fetch_chat_data, num_chats=20, num_message_limit=20, text='Loading chat data')
 
     while True:
         if username:
             try:
-                selected_chat = with_loading_screen(screen, search_chat_list, dm, username, search_filter)
+                selected_chat = with_loading_screen(screen, search_chat_list, 'Loading message', dm, username, search_filter)
             except DirectThreadNotFound as e: # catch the error thrown by the controller
                 typer.echo(e)
                 break

@@ -4,10 +4,11 @@ from instagram.client import ClientWrapper
 import curses, math, time
 from collections import Counter
 
-def show_updates() -> None:
-    """Fetches and displays latest updates in a structured visual format"""
-    cl = ClientWrapper().login_by_session()
+from instagram.utils.loading import with_loading_screen
 
+def fetch_updates():
+    """Fetches latest updates from Instagram and returns them."""
+    cl = ClientWrapper().login_by_session()
     # Get latest updates
     data = cl.news_inbox_v1()
 
@@ -15,10 +16,27 @@ def show_updates() -> None:
     threads_unread = cl.direct_threads(selected_filter="unread", thread_message_limit=1)
     unread_messages = len(threads_unread)
 
-    # Get pending inbox count
-    # pending_inbox = cl.direct_pending_inbox()
-    # pending_count = len(pending_inbox)
+    return {
+        'data': data,
+        'threads_unread': threads_unread,
+        'unread_messages': unread_messages,
+    }
 
+
+def render_updates(stdscr):
+    """Render Instagram updates in a curses window."""
+
+
+    # Display a loading screen while fetching updates
+    updates = with_loading_screen(
+        stdscr,
+        fetch_updates,
+        text="Fetching Instagram updates..."
+    )
+    data = updates['data']
+    threads_unread = updates['threads_unread']
+    unread_messages = updates['unread_messages']
+    
     def display_updates(stdscr, data) -> None:
         """
         Display updates in a structured format using curses.
@@ -123,7 +141,10 @@ def show_updates() -> None:
         updates_win.refresh()
         stdscr.getch()
         
-    curses.wrapper(display_updates, data)
+    display_updates(stdscr, data)
+
+def show_updates() -> None:
+    curses.wrapper(render_updates) 
 
 class CursesBarGraph:
     def __init__(self):
