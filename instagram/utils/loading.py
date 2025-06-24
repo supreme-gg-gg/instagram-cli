@@ -3,12 +3,12 @@ import threading
 import time
 from typing import Callable
 
-def create_loading_screen(screen, stop_event: threading.Event):
+def create_loading_screen(screen, stop_event: threading.Event, text):
     """Create a loading screen with a spinning icon."""
     screen.clear()
     curses.curs_set(0)
     height, width = screen.getmaxyx()
-    loading_text = "Loading chat data..."
+    loading_text = text
     spinner = ['|', '/', '-', '\\']
     idx = 0
 
@@ -23,12 +23,11 @@ def create_loading_screen(screen, stop_event: threading.Event):
     screen.clear()
     screen.refresh()
 
-def with_loading_screen(screen, func: Callable, *args, **kwargs):
+def with_loading_screen(screen, func: Callable, text='Loading', *args, **kwargs):
     """Execute function while showing loading screen."""
     stop_event = threading.Event()
-    loading_thread = threading.Thread(target=create_loading_screen, args=(screen, stop_event))
+    loading_thread = threading.Thread(target=create_loading_screen, args=(screen, stop_event, text))
     loading_thread.start()
-
     try:
         result = func(*args, **kwargs)
     finally:
