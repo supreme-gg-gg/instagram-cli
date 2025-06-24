@@ -5,6 +5,7 @@ import curses, math, time
 from collections import Counter
 
 from instagram.utils.loading import with_loading_screen
+from instagram.utils.notification_utils import get_notification_name, format_usernames_in_text
 
 def fetch_updates() -> dict:
     """Fetches latest updates from Instagram and returns them."""
@@ -121,7 +122,9 @@ def render_updates(stdscr) -> None:
         # updates = data["new_stories"][:max_updates]
         for update in updates[:max_updates]:
             notif_name = update["notif_name"]
+            notif_name = get_notification_name(notif_name)
             rich_text = update['args']["rich_text"]
+            rich_text = format_usernames_in_text(rich_text)
             timestamp = datetime.fromtimestamp(update['args']['timestamp']).strftime('%H:%M %d/%m')
             
             updates_win.addstr(row, 2, "►", curses.color_pair(2))
