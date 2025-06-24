@@ -10,6 +10,7 @@ NOTIFICATION_NAMES = {
         'story_like': 'Your story was liked',
         'ig_to_fb_story_engagement_highlight_notif': 'Story engagement highlight on Facebook',
         'igd_broadcast_chat_creation': 'Invitation to a channel',
+        'private_user_follow_request': 'Follow request',
     }
 
 def get_notification_name(notif_key) -> str:
