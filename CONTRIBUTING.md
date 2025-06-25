@@ -4,9 +4,11 @@ Thank you for contributing to instagram-cli, and welcome to the force against br
 
 ## How to Contribute
 
+> If you are experienced in contributing to open-source projects, you only need to go over sections 1 and 4.
+
 ### 1. Create an Issue
 
-Before working on any changes, **you must first create an issue** in the [Issues](../../issues) section. Your issue should fall into one of these categories:
+Before working on any changes, **you must first create an issue** in the [Issues](../../issues) section so that everyone is informed and you can receive feedback from others in the community and maintainers. Your issue should fall into one of these categories:
 
 - **Bug Report** – If you've found a bug, please provide clear steps to reproduce it.
 - **Feature Request** – If you have an idea for a new feature, describe its purpose and how it improves the project.
@@ -34,10 +36,12 @@ git checkout -b feature-new-command  # For new features
 
 ### 4. Make Your Changes
 
-- We prefer object-oriented programming (OOP) paradigm over functional and procedural programming.
 - Type annotations (from `typing`) and docstrings are required for all functions and methods.
-- Test your changes before submitting. For UI changes, provide screenshots or GIFs. For backend changes, we do not have unit tests (for now) but make sure your changes work as expected and handle edge cases.
-- During development, we commend using a secondary Instagram account if you are making a lot of API calls to avoid appearing suspicious to Instagram.
+- We prefer object-oriented programming (OOP) paradigm over functional and procedural programming.
+- Test your changes before submitting. _For UI changes, provide screenshots or GIFs._ For backend changes, we do not have unit tests (for now) but make sure your changes work as expected and handle edge cases.
+
+> [!TIP]
+> During development, we recommend using a secondary Instagram account if you are making a lot of API calls to avoid appearing suspicious to Instagram.
 
 ### 5. Submit a Pull Request (PR)
 
@@ -51,16 +55,12 @@ Once you're done with your changes:
 ### 6. Code Review & Merging
 
 - Your PR will be reviewed, and maintainers may request changes.
-- **Bug fix PRs** may be merged into `main` directly after review.
-- **Feature PRs** will be collected under the **UEP (UI/UX Enhancement Patch) or IEP (Instagram Enhancement Proposal) PR** and merged together in bulk to `main`.
 
 ### 7. Semantic Versioning
 
 - Bug fixes will increment the patch version (e.g., `1.0.1`).
 - New features will increment the minor version (e.g., `1.1.0`).
 - Breaking changes will increment the major version (e.g., `2.0.0`).
-
-In our language, we use the term **UEP** for minor version changes and **IEP** for major version changes (because it sounds fancy).
 
 ## Code of Conduct
 
