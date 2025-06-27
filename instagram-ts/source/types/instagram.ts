@@ -1,0 +1,42 @@
+export interface Message {
+	id: string;
+	text: string;
+	timestamp: Date;
+	userId: string;
+	username: string;
+	isOutgoing: boolean;
+	threadId: string;
+}
+
+export interface Thread {
+	id: string;
+	title: string;
+	users: User[];
+	lastMessage?: Message;
+	lastActivity: Date;
+	unreadCount: number;
+}
+
+export interface User {
+	pk: string;
+	username: string;
+	fullName: string;
+	profilePicUrl?: string;
+	isVerified: boolean;
+}
+
+export interface ChatState {
+	currentThread?: Thread;
+	threads: Thread[];
+	messages: Message[];
+	loading: boolean;
+	error?: string;
+}
+
+export interface AuthState {
+	isLoggedIn: boolean;
+	username?: string;
+	userId?: string;
+	loading: boolean;
+	error?: string;
+}
