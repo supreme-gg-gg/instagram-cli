@@ -1,21 +1,22 @@
 import React, {useState} from 'react';
 import {Box, Text} from 'ink';
-import TextInput from 'ink-text-input';
-import {login} from './auth.js';
+import {TextInput} from '@inkjs/ui';
+import {InstagramClient} from './client.js';
+
+const client = new InstagramClient();
 
 export default function App() {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
 	const [error, setError] = useState('');
 	const [loggedIn, setLoggedIn] = useState(false);
-	const [activeInput, setActiveInput] = useState('username');
 
 	const handleLogin = async () => {
-		const {success, error} = await login(username, password);
+		const {success, error: loginError} = await client.login(username, password);
 		if (success) {
 			setLoggedIn(true);
 		} else {
-			setError(error ?? 'An unknown error occurred');
+			setError(loginError ?? 'An unknown error occurred');
 		}
 	};
 
@@ -28,20 +29,17 @@ export default function App() {
 			<Box>
 				<Text>Username: </Text>
 				<TextInput
-					value={username}
+					defaultValue={username}
 					onChange={setUsername}
-					onSubmit={() => setActiveInput('password')}
-					focus={activeInput === 'username'}
+					onSubmit={() => {}}
 				/>
 			</Box>
 			<Box>
 				<Text>Password: </Text>
 				<TextInput
-					value={password}
+					defaultValue={password}
 					onChange={setPassword}
 					onSubmit={handleLogin}
-					focus={activeInput === 'password'}
-					mask="*"
 				/>
 			</Box>
 			{error && <Text color="red">{error}</Text>}
