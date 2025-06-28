@@ -1,6 +1,6 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import type {Thread} from '../types/instagram.js';
+import type {Thread} from '../../types/instagram.js';
 
 interface StatusBarProps {
 	loading?: boolean;
@@ -19,10 +19,11 @@ export default function StatusBar({
 }: StatusBarProps) {
 	return (
 		<Box
-			borderStyle="single"
-			borderBottom={false}
-			borderLeft={false}
-			borderRight={false}
+			borderStyle="round"
+			borderBottom={true}
+			borderLeft={true}
+			borderRight={true}
+			borderTop={true}
 		>
 			<Box flexGrow={1}>
 				<Text bold color="blue">

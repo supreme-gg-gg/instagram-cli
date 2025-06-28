@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import {Box, Text, useInput} from 'ink';
-import type {Thread} from '../types/instagram.js';
+import type {Thread} from '../../types/instagram.js';
 import ThreadItem from './ThreadItem.js';
 
 interface ThreadListProps {

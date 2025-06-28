@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import {Box, Text, useInput} from 'ink';
-import type {Message, Thread} from '../types/instagram.js';
+import type {Message, Thread} from '../../types/instagram.js';
 
 interface MessageListProps {
 	messages: Message[];

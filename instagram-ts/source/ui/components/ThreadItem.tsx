@@ -1,6 +1,6 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import type {Thread} from '../types/instagram.js';
+import type {Thread} from '../../types/instagram.js';
 
 interface ThreadItemProps {
 	thread: Thread;
@@ -28,7 +28,7 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 
 	return (
 		<Box
-			borderStyle={isSelected ? 'single' : undefined}
+			borderStyle={isSelected ? 'round' : undefined}
 			borderColor={isSelected ? 'blue' : undefined}
 			paddingX={1}
 		>

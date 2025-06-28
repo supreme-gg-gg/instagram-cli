@@ -1,19 +1,16 @@
 import React, {useState, useEffect} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
-import {InstagramClient} from '../client.js';
-import {ConfigManager} from '../config.js';
-import type {Thread, ChatState} from '../types/instagram.js';
-import MessageList from './MessageList.js';
-import InputBox from './InputBox.js';
-import StatusBar from './StatusBar.js';
-import ThreadList from './ThreadList.js';
+import type {Thread, ChatState} from '../../types/instagram.js';
+import MessageList from '../components/MessageList.js';
+import InputBox from '../components/InputBox.js';
+import StatusBar from '../components/StatusBar.js';
+import ThreadList from '../components/ThreadList.js';
+import {useClient} from '../context/ClientContext.js';
+import {parseAndDispatchChatCommand} from '../utils/chatCommands.js';
 
-interface ChatInterfaceProps {
-	username?: string;
-}
-
-export default function ChatInterface({username}: ChatInterfaceProps) {
+export default function ChatView() {
 	const {exit} = useApp();
+	const client = useClient();
 	const [chatState, setChatState] = useState<ChatState>({
 		threads: [],
 		messages: [],
@@ -21,51 +18,10 @@ export default function ChatInterface({username}: ChatInterfaceProps) {
 		currentThread: undefined,
 	});
 	const [currentView, setCurrentView] = useState<'threads' | 'chat'>('threads');
-	const [client, setClient] = useState<InstagramClient | null>(null);
 
-	// Initialize Instagram client
-	useEffect(() => {
-		const initializeClient = async () => {
-			try {
-				const config = ConfigManager.getInstance();
-				await config.initialize();
-
-				const currentUsername =
-					username || config.get<string>('login.currentUsername');
-				if (!currentUsername) {
-					setChatState(prev => ({
-						...prev,
-						error: 'No logged in user found',
-						loading: false,
-					}));
-					return;
-				}
-
-				const igClient = new InstagramClient();
-				const success = await igClient.restoreSession(currentUsername);
-
-				if (!success) {
-					setChatState(prev => ({
-						...prev,
-						error: 'Failed to restore session',
-						loading: false,
-					}));
-					return;
-				}
-
-				setClient(igClient);
-				setChatState(prev => ({...prev, loading: false}));
-			} catch (error) {
-				setChatState(prev => ({
-					...prev,
-					error: error instanceof Error ? error.message : 'Unknown error',
-					loading: false,
-				}));
-			}
-		};
-
-		initializeClient();
-	}, [username]);
+	const [messageCursor, setMessageCursor] = useState<string | undefined>(
+		undefined,
+	);
 
 	// Load threads when client is ready
 	useEffect(() => {
@@ -89,7 +45,18 @@ export default function ChatInterface({username}: ChatInterfaceProps) {
 		loadThreads();
 	}, [client]);
 
-	// Handle keyboard input
+	// Poll for new messages
+	useEffect(() => {
+		if (currentView !== 'chat' || !chatState.currentThread) return;
+
+		const interval = setInterval(async () => {
+			if (!client || !chatState.currentThread) return;
+			const {messages} = await client.getMessages(chatState.currentThread.id);
+			setChatState(prev => ({...prev, messages}));
+		}, 5000);
+
+		return () => clearInterval(interval);
+	}, [client, currentView, chatState.currentThread]);
 	useInput((input, key) => {
 		if (key.ctrl && input === 'c') {
 			exit();
@@ -106,15 +73,45 @@ export default function ChatInterface({username}: ChatInterfaceProps) {
 			setChatState(prev => ({...prev, currentThread: undefined, messages: []}));
 			return;
 		}
+
+		if (input === 'k' && currentView === 'chat') {
+			loadOlderMessages();
+		}
 	});
+
+	const loadOlderMessages = async () => {
+		if (!client || !chatState.currentThread) return;
+
+		try {
+			setChatState(prev => ({...prev, loading: true}));
+			const {messages, cursor} = await client.getMessages(
+				chatState.currentThread.id,
+				messageCursor,
+			);
+			setChatState(prev => ({
+				...prev,
+				messages: [...messages, ...prev.messages],
+				loading: false,
+			}));
+			setMessageCursor(cursor);
+		} catch (error) {
+			setChatState(prev => ({
+				...prev,
+				error:
+					error instanceof Error ? error.message : 'Failed to load messages',
+				loading: false,
+			}));
+		}
+	};
 
 	const handleThreadSelect = async (thread: Thread) => {
 		if (!client) return;
 
 		try {
 			setChatState(prev => ({...prev, loading: true, currentThread: thread}));
-			const messages = await client.getMessages(thread.id);
+			const {messages, cursor} = await client.getMessages(thread.id);
 			setChatState(prev => ({...prev, messages, loading: false}));
+			setMessageCursor(cursor);
 			setCurrentView('chat');
 		} catch (error) {
 			setChatState(prev => ({
@@ -129,10 +126,18 @@ export default function ChatInterface({username}: ChatInterfaceProps) {
 	const handleSendMessage = async (text: string) => {
 		if (!client || !chatState.currentThread) return;
 
+		// Check for chat command (starts with ':') and dispatch
+		const handled = parseAndDispatchChatCommand(text, {
+			client,
+			chatState,
+			setChatState,
+		});
+		if (handled) return;
+
 		try {
 			await client.sendMessage(chatState.currentThread.id, text);
 			// Reload messages to show the new one
-			const messages = await client.getMessages(chatState.currentThread.id);
+			const {messages} = await client.getMessages(chatState.currentThread.id);
 			setChatState(prev => ({...prev, messages}));
 		} catch (error) {
 			setChatState(prev => ({
@@ -173,7 +178,7 @@ export default function ChatInterface({username}: ChatInterfaceProps) {
 			<StatusBar
 				currentView={currentView}
 				currentThread={chatState.currentThread}
-				username={username}
+				username={client.getUsername() || undefined}
 			/>
 
 			{currentView === 'threads' ? (
