@@ -50,8 +50,6 @@ def login() -> ClientWrapper | None:
     spinner_controller.start()  # Start the spinner
     try:
         client.login_by_session()
-        spinner_controller.stop()
-        spinner_controller_var.reset(token)  # Reset the context variable
         typer.echo(f"Logged in as {client.username}")
         return client
     except (LoginRequired, FileNotFoundError):
@@ -61,6 +59,9 @@ def login() -> ClientWrapper | None:
         spinner_controller_var.reset(token)
         typer.echo("Cannot log in via session, logging in with username and password.")
         return login_by_username()
+    finally:
+        spinner_controller.stop()
+        spinner_controller_var.reset(token)  # Reset the context variable
 
 
 def login_by_username() -> ClientWrapper | None:
@@ -83,15 +84,14 @@ def login_by_username() -> ClientWrapper | None:
             refresh_session=True,
             verification_code=verification_code,
         )
-        spinner_controller.stop()
-        spinner_controller_var.reset(token)
         typer.echo(f"Logged in as {client.username}")
         return client
     except Exception as e:
-        spinner_controller.stop()
-        spinner_controller_var.reset(token)
         typer.echo(f"Error logging in: {e}")
         return None
+    finally:
+        spinner_controller.stop()
+        spinner_controller_var.reset(token)
 
 
 def logout(username=None):
@@ -109,17 +109,16 @@ def logout(username=None):
         try:
             client.login_by_session()
             client.logout()
-            spinner_controller.stop()
-            spinner_controller_var.reset(token)
             # Clear both current and default username if they match
             config = configs.Config()
             if config.get("login.default_username") == username:
                 config.set("login.default_username", None)
             typer.echo(f"Logged out @{username}.")
         except (LoginRequired, FileNotFoundError):
+            typer.echo(f"@{username} not logged in.")
+        finally:
             spinner_controller.stop()
             spinner_controller_var.reset(token)
-            typer.echo(f"@{username} not logged in.")
     else:
         typer.echo("No active session found.")
 

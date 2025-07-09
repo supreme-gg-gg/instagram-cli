@@ -7,10 +7,15 @@ from instagram.configs import Config
 from typing import Callable
 import contextvars
 
+# This is a global variable that is used to store the spinner controller
+# This makes it safe across threads and async processes
 spinner_controller_var = contextvars.ContextVar("spinner_controller")
 
 
 def default_challenge_code_handler(username, choice):
+    """
+    Challenge handler for instagrapi library.
+    """
     spinner_controller = spinner_controller_var.get()
     if spinner_controller:
         spinner_controller.stop()
