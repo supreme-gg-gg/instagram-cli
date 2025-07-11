@@ -1,0 +1,22 @@
+{
+  "SystemPrompts": {},
+  "SafetySettings": [
+    {
+      "Category": 7,
+      "Threshold": 1
+    },
+    {
+      "Category": 8,
+      "Threshold": 1
+    },
+    {
+      "Category": 9,
+      "Threshold": 1
+    },
+    {
+      "Category": 10,
+      "Threshold": 1
+    }
+  ],
+  "History": {}
+}
