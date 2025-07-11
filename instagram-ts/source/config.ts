@@ -75,7 +75,7 @@ export class ConfigManager {
 
 	private constructor() {
 		this.configDir = DEFAULT_CONFIG.advanced.dataDir;
-		this.configFile = path.join(this.configDir, 'config.yaml');
+		this.configFile = path.join(this.configDir, 'config.ts.yaml');
 		this.config = {...DEFAULT_CONFIG};
 	}
 
