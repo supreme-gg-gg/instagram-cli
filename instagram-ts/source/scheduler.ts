@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { ConfigManager } from './config.js';
+import {ConfigManager} from './config.js';
 
 export interface ScheduledTask {
 	threadId: string;
@@ -57,7 +57,11 @@ export class Scheduler {
 
 	private async saveTasks(): Promise<void> {
 		try {
-			await fs.writeFile(this.taskFile, JSON.stringify(this.tasks, null, 2), 'utf8');
+			await fs.writeFile(
+				this.taskFile,
+				JSON.stringify(this.tasks, null, 2),
+				'utf8',
+			);
 		} catch (error) {
 			console.error('Error saving tasks:', error);
 		}
