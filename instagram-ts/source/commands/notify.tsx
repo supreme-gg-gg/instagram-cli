@@ -7,7 +7,7 @@ import {ConfigManager} from '../config.js';
 import {SessionManager} from '../session.js';
 import {Alert} from '@inkjs/ui';
 
-import { formatUsernamesInText } from '../utils/notifications.js';
+import {formatUsernamesInText} from '../utils/notifications.js';
 
 export const args = zod.tuple([
 	zod
@@ -26,7 +26,9 @@ type Props = {
 };
 
 export default function Notify({args}: Props) {
-	const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>('loading');
+	const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>(
+		'loading',
+	);
 	const [error, setError] = React.useState<string | null>(null);
 	const [notifications, setNotifications] = React.useState<any>(null);
 
@@ -44,14 +46,18 @@ export default function Notify({args}: Props) {
 				}
 
 				if (!targetUsername) {
-					setError('No username specified. Please login first or specify a username.');
+					setError(
+						'No username specified. Please login first or specify a username.',
+					);
 					setStatus('error');
 					return;
 				}
 
 				const sessionManager = new SessionManager(targetUsername);
 				if (!(await sessionManager.sessionExists())) {
-					setError(`No session found for ${targetUsername}. Please login first.`);
+					setError(
+						`No session found for ${targetUsername}. Please login first.`,
+					);
 					setStatus('error');
 					return;
 				}
@@ -64,7 +70,11 @@ export default function Notify({args}: Props) {
 				setNotifications(newsInbox);
 				setStatus('ready');
 			} catch (err) {
-				setError(`Notification error: ${err instanceof Error ? err.message : String(err)}`);
+				setError(
+					`Notification error: ${
+						err instanceof Error ? err.message : String(err)
+					}`,
+				);
 				setStatus('error');
 			}
 		})();
@@ -85,7 +95,8 @@ export default function Notify({args}: Props) {
 			</Text>
 			<Text>
 				🔔 Total Updates:{' '}
-				{(notifications?.new_stories?.length || 0) + (notifications?.old_stories?.length || 0)}
+				{(notifications?.new_stories?.length || 0) +
+					(notifications?.old_stories?.length || 0)}
 			</Text>
 			{notifications?.new_stories?.length > 0 && (
 				<Box flexDirection="column" marginTop={1}>
@@ -93,7 +104,12 @@ export default function Notify({args}: Props) {
 					{notifications.new_stories.map((u: any, i: number) => {
 						const ts = new Date(u.args.timestamp * 1000).toLocaleString();
 						return (
-							<Box key={i} flexDirection="column" marginLeft={3} marginBottom={1}>
+							<Box
+								key={i}
+								flexDirection="column"
+								marginLeft={3}
+								marginBottom={1}
+							>
 								<Text>• {formatUsernamesInText(u.args.rich_text)}</Text>
 								<Text dimColor>{ts}</Text>
 							</Box>
@@ -104,20 +120,29 @@ export default function Notify({args}: Props) {
 			{notifications?.old_stories?.length > 0 && (
 				<Box flexDirection="column" marginTop={1}>
 					<Text color="yellow">📜 Activity:</Text>
-					{notifications.old_stories.slice(0, 10 - notifications.new_stories?.length).map((u: any, i: number) => { //TODO: only when new_stories are less than 10
-						const ts = new Date(u.args.timestamp * 1000).toLocaleString();
-						return (
-							<Box key={i} flexDirection="column" marginLeft={3} marginBottom={1}>
-								<Text>• {formatUsernamesInText(u.args.rich_text)}</Text>
-								<Text dimColor>{ts}</Text>
-							</Box>
-						);
-					})}
+					{notifications.old_stories
+						.slice(0, 10 - notifications.new_stories?.length)
+						.map((u: any, i: number) => {
+							//TODO: only when new_stories are less than 10
+							const ts = new Date(u.args.timestamp * 1000).toLocaleString();
+							return (
+								<Box
+									key={i}
+									flexDirection="column"
+									marginLeft={3}
+									marginBottom={1}
+								>
+									<Text>• {formatUsernamesInText(u.args.rich_text)}</Text>
+									<Text dimColor>{ts}</Text>
+								</Box>
+							);
+						})}
 				</Box>
 			)}
-			{!notifications?.new_stories?.length && !notifications?.old_stories?.length && (
-				<Text color="gray">No recent activity found.</Text>
-			)}
+			{!notifications?.new_stories?.length &&
+				!notifications?.old_stories?.length && (
+					<Text color="gray">No recent activity found.</Text>
+				)}
 		</Box>
 	);
 }
