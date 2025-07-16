@@ -19,6 +19,7 @@
 	"dependencies": {
 		"@inkjs/ui": "^1.0.0",
 		"@types/js-yaml": "^4.0.9",
+		"ascii-art": "^2.8.5",
 		"ink": "^4.1.0",
 		"ink-testing-library": "^4.0.0",
 		"instagram-private-api": "^1.46.1",
