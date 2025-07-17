@@ -1,10 +1,9 @@
-
 import React from 'react';
 import zod from 'zod';
 import {argument} from 'pastel';
 import {InstagramClient} from '../client.js';
 import {ConfigManager} from '../config.js';
-import AsciiArt from 'ascii-art';
+import { convertImageToColorAscii } from '../utils/ascii-display.js';
 
 export const args = zod.tuple([
 	zod
@@ -24,30 +23,6 @@ type Props = {
 
 const width = 100
 
-export async function convertImageToColorAscii(imagePath: string) {
-  try {
-    const asciiArt = await AsciiArt.image({
-      filepath: imagePath,
-      width: width,
-      colored: true,
-    });
-
-    const lines = asciiArt.split('\n');
-		const contentWidth = Math.max(...lines.map((line : string) => line.length));
-    const horizontalBorder = '┌' + '─'.repeat(width + 2) + '┐';
-
-    console.log(horizontalBorder);
-		for (let i = 0; i < lines.length - 2; i++) {
-			const line = lines[i];
-			const paddedLine = line.padEnd(contentWidth, ' ');
-			console.log(`│ ${paddedLine} │`);
-		}
-		console.log('└' + '─'.repeat(width + 2) + '┘');
-
-	} catch (error) {
-		console.error('Error converting image to ASCII:', error);
-	}
-}
 
 export default function Feed({ args }: Props) {
 	React.useEffect(() => {
@@ -79,7 +54,7 @@ export default function Feed({ args }: Props) {
 					const url = item.image_versions2?.candidates?.[0]?.url;
 					if( url) {
 						console.log(`Image URL: ${url}`);
-						await convertImageToColorAscii(url);
+						await convertImageToColorAscii(url, width);
 					}
 					//Print likes and comments (numbebr only)
 					console.log(`♥: ${item.like_count}`);
