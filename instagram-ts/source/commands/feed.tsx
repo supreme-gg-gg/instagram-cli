@@ -23,14 +23,14 @@ type Props = {
 	args: zod.infer<typeof args>;
 };
 
-const width = 80
+const width = 80;
 
-
-export default function Feed({ args }: Props) {
-	const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>('loading');
+export default function Feed({args}: Props) {
+	const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>(
+		'loading',
+	);
 	const [error, setError] = React.useState<string | null>(null);
 	const [feedItems, setFeedItems] = React.useState<FeedItem[]>([]);
-
 
 	React.useEffect(() => {
 		const fetchFeed = async () => {
@@ -56,13 +56,14 @@ export default function Feed({ args }: Props) {
 					setError('No feed items found.');
 					setStatus('error');
 					return;
-				}
-				else {
+				} else {
 					setFeedItems(items);
 					setStatus('ready');
 				}
 			} catch (err) {
-				setError(`Feed error: ${err instanceof Error ? err.message : String(err)}`);
+				setError(
+					`Feed error: ${err instanceof Error ? err.message : String(err)}`,
+				);
 				setStatus('error');
 			}
 		};
@@ -70,13 +71,11 @@ export default function Feed({ args }: Props) {
 		fetchFeed();
 	}, [args]);
 
-if (status === 'loading') {
+	if (status === 'loading') {
 		return <Alert variant="info">🚀 Fetching Instagram feed...</Alert>;
 	}
-if (status === 'error') {
+	if (status === 'error') {
 		return <Alert variant="error">❌ {error}</Alert>;
 	}
-	return (
-		<MediaView feedItems={feedItems} width={width} />
-	);
+	return <MediaView feedItems={feedItems} width={width} />;
 }
