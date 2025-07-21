@@ -1,9 +1,11 @@
 import React from 'react';
+import {Alert} from '@inkjs/ui';
 import zod from 'zod';
 import {argument} from 'pastel';
 import {InstagramClient} from '../client.js';
 import {ConfigManager} from '../config.js';
-import { convertImageToColorAscii } from '../utils/ascii-display.js';
+import {FeedItem} from '../types/instagram.js';
+import MediaView from '../ui/views/MediaView.js';
 
 export const args = zod.tuple([
 	zod
@@ -21,10 +23,15 @@ type Props = {
 	args: zod.infer<typeof args>;
 };
 
-const width = 100
+const width = 80
 
 
 export default function Feed({ args }: Props) {
+	const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>('loading');
+	const [error, setError] = React.useState<string | null>(null);
+	const [feedItems, setFeedItems] = React.useState<FeedItem[]>([]);
+
+
 	React.useEffect(() => {
 		const fetchFeed = async () => {
 			try {
@@ -43,31 +50,33 @@ export default function Feed({ args }: Props) {
 				await client.loginBySession();
 				const ig = client.getInstagramClient();
 
-				// Print the feed
 				const timelineFeed = ig.feed.timeline();
 				const items = await timelineFeed.items();
-
-				for (const item of items) {
-					console.log(`Username: ${item.user.username}`);
-					console.log(`Caption: ${item.caption?.text || 'No caption'}`);
-
-					const url = item.image_versions2?.candidates?.[0]?.url;
-					if( url) {
-						console.log(`Image URL: ${url}`);
-						await convertImageToColorAscii(url, width);
-					}
-					//Print likes and comments (numbebr only)
-					console.log(`♥: ${item.like_count}`);
-					console.log(`🗨: ${item.comment_count}`);
-					console.log('-----------------------------------');
+				if (items.length === 0) {
+					setError('No feed items found.');
+					setStatus('error');
+					return;
+				}
+				else {
+					setFeedItems(items);
+					setStatus('ready');
 				}
 			} catch (err) {
-				console.error('Error fetching feed:', err);
+				setError(`Feed error: ${err instanceof Error ? err.message : String(err)}`);
+				setStatus('error');
 			}
 		};
 
 		fetchFeed();
 	}, [args]);
 
-	return null; // or <></> if used in a CLI React renderer like Ink
+if (status === 'loading') {
+		return <Alert variant="info">🚀 Fetching Instagram feed...</Alert>;
+	}
+if (status === 'error') {
+		return <Alert variant="error">❌ {error}</Alert>;
+	}
+	return (
+		<MediaView feedItems={feedItems} width={width} />
+	);
 }
