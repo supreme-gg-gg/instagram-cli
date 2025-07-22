@@ -1,4 +1,4 @@
-name: "Prettier & Lint Check (TS)"
+name: TypeScript Lint and Format Check (Prettier, ESLint)
 
 # Only triggers on PRs to the TypeScript migration branch
 on:

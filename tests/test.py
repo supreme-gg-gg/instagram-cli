@@ -1,5 +1,5 @@
 """
-This is a simple test used for the current CI/CD pipeline just to make sure 
+This is a simple test used for the current CI/CD pipeline just to make sure
 the main command runs without any errors on multiple versions of Python.
 Actual tests would be added soon as the project scales.
 """
@@ -14,6 +14,7 @@ from instagram.cli import app
 from typer.testing import CliRunner
 
 runner = CliRunner()
+
 
 def test_instagram_main():
     """Test the main command"""

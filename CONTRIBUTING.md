@@ -79,9 +79,8 @@ git checkout -b feature-new-command  # For new features
 For Python client, we do not have a pre-commit hook set up yet, so you will need to run the following commands manually:
 
 ```bash
-# Assuming you are running this from the root of the repository
-ruff check instagram/
-ruff format instagram/
+ruff check .
+ruff format .
 ```
 
 For TypeScript client, we already have a pre-commit hook using `prettier` and `eslint`.

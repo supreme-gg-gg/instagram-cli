@@ -25,10 +25,10 @@ jobs:
         uses: astral-sh/ruff-action@v3
         with:
           args: check --output-format=github
-          src: "./instagram"
+          # src: "./instagram"
 
       - name: Run Ruff formatter
         uses: astral-sh/ruff-action@v3
         with:
           args: format --check --diff
-          src: "./instagram"
+          # src: "./instagram"
