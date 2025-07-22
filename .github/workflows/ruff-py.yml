@@ -24,11 +24,13 @@ jobs:
       - name: Run Ruff linter
         uses: astral-sh/ruff-action@v3
         with:
+          version: "0.12.4"
           args: check --output-format=github
           # src: "./instagram"
 
       - name: Run Ruff formatter
         uses: astral-sh/ruff-action@v3
         with:
+          version: "0.12.4"
           args: format --check --diff
           # src: "./instagram"
