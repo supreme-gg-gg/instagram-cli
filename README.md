@@ -179,3 +179,7 @@ If the date is not provided, the message will be scheduled for the current day. 
 
 > [!IMPORTANT]
 > If you exit the app, the scheduled messages will not be sent but will be restored when you open the app again. You will be prompted by a notification to decide whether to send the scheduled messages or not. We might include system background service in the future to send scheduled messages even when the app is closed.
+
+## Contributing
+
+We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to get started, create issues, and submit pull requests.

@@ -2,6 +2,37 @@
 
 Thank you for contributing to instagram-cli, and welcome to the force against brainrot!
 
+## Getting Started
+
+> [!NOTE]
+> This only applies to the Python client. Please refer to the README file for the `ts-migration/main` branch instead for the TypeScript client.
+
+To get started, clone the repository to your local machine:
+
+```bash
+git clone https://github.com/supreme-gg-gg/instagram-cli.git
+cd instagram-cli
+```
+
+Create a virtual environment to isolate your dependencies:
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+```
+
+To create a development build, you can use the following command:
+
+```bash
+pip install -e .
+```
+
+You should have `ruff` installed for code formatting and linting. If you don't have it installed, you can do so with:
+
+```bash
+pip install ruff
+```
+
 ## How to Contribute
 
 > If you are experienced in contributing to open-source projects, you only need to go over sections 1 and 4.
@@ -20,7 +51,7 @@ Before working on any changes, **you must first create an issue** in the [Issues
 
 Fork this repository to your own GitHub account and clone it locally:
 
-```
+```bash
 git clone https://github.com/supreme-gg-gg/instagram-cli.git
 cd instagram-cli
 ```
@@ -29,7 +60,7 @@ cd instagram-cli
 
 Create a new branch based on the issue you’re working on:
 
-```
+```bash
 git checkout -b fix-bug-123  # For bug fixes
 git checkout -b feature-new-command  # For new features
 ```
@@ -42,6 +73,20 @@ git checkout -b feature-new-command  # For new features
 
 > [!TIP]
 > During development, we recommend using a secondary Instagram account if you are making a lot of API calls to avoid appearing suspicious to Instagram.
+
+### 5. Code Quality Checks
+
+For Python client, we do not have a pre-commit hook set up yet, so you will need to run the following commands manually:
+
+```bash
+# Assuming you are running this from the root of the repository
+ruff check instagram/
+ruff format instagram/
+```
+
+For TypeScript client, we already have a pre-commit hook using `prettier` and `eslint`.
+
+Code quality check action will run automatically when you submit any PR, so make sure your code passes the checks before submitting.
 
 ### 5. Submit a Pull Request (PR)
 

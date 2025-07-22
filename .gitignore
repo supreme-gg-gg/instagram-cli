@@ -172,3 +172,5 @@ cython_debug/
 
 # Mac OS stuff
 **/.DS_Store
+
+.ruff_cache/
