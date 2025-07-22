@@ -13,13 +13,19 @@ import typer
 from pathlib import Path
 
 from instagram.client import ClientWrapper
-from instagram.api import DirectMessages, DirectChat, MessageScheduler, DirectThreadNotFound
+from instagram.api import (
+    DirectMessages,
+    DirectChat,
+    MessageScheduler,
+    DirectThreadNotFound,
+)
 from instagram.configs import Config
 
 from instagram.chat_ui.interface.chat_interface import ChatInterface
 from instagram.chat_ui.interface.chat_menu import ChatMenu
 from instagram.utils.loading import with_loading_screen
 from instagram.chat_ui.utils.types import Signal
+
 
 def start_chat(username: str | None = None, search_filter: str = "") -> None:
     """
@@ -33,7 +39,7 @@ def start_chat(username: str | None = None, search_filter: str = "") -> None:
     except Exception:
         typer.echo("Please login first.\nTry 'instagram auth login'")
         return
-    
+
     def init_chat(screen):
         # Initialize scheduler with screen for handling overdue messages (this is only done once)
         path = Path(Config().get("advanced.users_dir")) / client.username / "tasks.json"
@@ -42,17 +48,20 @@ def start_chat(username: str | None = None, search_filter: str = "") -> None:
             path.touch()
         scheduler = MessageScheduler(client, path)
         scheduler.schedule_tasks_on_startup(screen)
-        
+
         return main_loop(screen, client, username, search_filter)
 
-    try: # Run the chat interface
+    try:  # Run the chat interface
         curses.wrapper(init_chat)
     except KeyboardInterrupt:
         typer.echo("Exiting chat interface.")
     except Exception as e:
         typer.echo(f"An error occurred when running the app: {e}")
 
-def main_loop(screen, client: ClientWrapper, username: str | None, search_filter: str = "") -> None:
+
+def main_loop(
+    screen, client: ClientWrapper, username: str | None, search_filter: str = ""
+) -> None:
     """
     Main loop for chat interface. Chat loading happens in the main loop to enable loading screen.
     Parameters:
@@ -65,13 +74,28 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
     dm = DirectMessages(client)
 
     if username is None:
-        with_loading_screen(screen, dm.fetch_chat_data, num_chats=20, num_message_limit=20, text='Loading chat data')
+        with_loading_screen(
+            screen,
+            dm.fetch_chat_data,
+            num_chats=20,
+            num_message_limit=20,
+            text="Loading chat data",
+        )
 
     while True:
         if username:
             try:
-                selected_chat = with_loading_screen(screen, search_chat_list, f'Loading chat data for {username}', dm, username, search_filter)
-            except DirectThreadNotFound as e: # catch the error thrown by the controller
+                selected_chat = with_loading_screen(
+                    screen,
+                    search_chat_list,
+                    f"Loading chat data for {username}",
+                    dm,
+                    username,
+                    search_filter,
+                )
+            except (
+                DirectThreadNotFound
+            ) as e:  # catch the error thrown by the controller
                 typer.echo(e)
                 break
             if not selected_chat:
@@ -81,34 +105,39 @@ def main_loop(screen, client: ClientWrapper, username: str | None, search_filter
         else:
             # if chat is empty
             if not dm.chats:
-                with_loading_screen(screen, dm.fetch_chat_data, num_chats=20, num_message_limit=20)
+                with_loading_screen(
+                    screen, dm.fetch_chat_data, num_chats=20, num_message_limit=20
+                )
             if not dm.chats:
                 typer.echo("No chats found. Try again later.")
                 break
-            
+
             # wait for user to select a chat
             selected_chat = chat_menu(screen, dm)
 
-        if selected_chat == Signal.QUIT: # user quit
+        if selected_chat == Signal.QUIT:  # user quit
             break
 
         # continue loop to show chat menu again
         if chat_interface(screen, selected_chat) == Signal.QUIT:
             break
 
-def search_chat_list(dm: DirectMessages, title: str, filter: str = "") -> DirectChat | None:
+
+def search_chat_list(
+    dm: DirectMessages, title: str, filter: str = ""
+) -> DirectChat | None:
     """
     Search for a chat by title or username in DirectMessages object.
-    
+
     Parameters
     ---------------
-    - dm: DirectMessages object to search in 
+    - dm: DirectMessages object to search in
     - title: Title or username to search for
     - filter: Filter to apply to the search, priority follows the order of characters:
       - "u" to search by username
       - "t" to search by title
       - Default is "tu" (search title first, then username)
-    
+
     Returns
     ---------------
     - DirectChat object if found, None if not found
@@ -116,13 +145,10 @@ def search_chat_list(dm: DirectMessages, title: str, filter: str = "") -> Direct
     # Default filter if none provided
     if not filter:
         filter = "tu"
-        
+
     # Map of filter characters to search functions
-    search_funcs = {
-        'u': dm.search_by_username,
-        't': dm.search_by_title
-    }
-    
+    search_funcs = {"u": dm.search_by_username, "t": dm.search_by_title}
+
     # Try each search method in order of filter chars
     for f in filter:
         if f in search_funcs:
@@ -130,8 +156,9 @@ def search_chat_list(dm: DirectMessages, title: str, filter: str = "") -> Direct
                 return chat
         else:
             raise ValueError(f"Invalid filter character: {f}")
-    
+
     return None
+
 
 def chat_menu(screen, dm: DirectMessages) -> DirectChat | Signal:
     """
@@ -161,6 +188,7 @@ def chat_interface(screen, direct_chat: DirectChat) -> Signal:
 
     interface = ChatInterface(screen, direct_chat)
     return interface.run()
+
 
 if __name__ == "__main__":
     start_chat()

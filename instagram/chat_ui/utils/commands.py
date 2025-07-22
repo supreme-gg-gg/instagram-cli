@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import inspect
 import re
 
+
 @dataclass
 class Command:
     name: str
@@ -12,23 +13,36 @@ class Command:
     args: List[str]
     required_args: List[str]
 
+
 class CommandRegistry:
     def __init__(self):
         self.commands: Dict[str, Command] = {}
         self.shorthands: Dict[str, str] = {}  # Maps shorthand to full command name
 
-    def register(self, name: str, help_text: str = "", required_args: List[str] = None, shorthand: str = ""):
+    def register(
+        self,
+        name: str,
+        help_text: str = "",
+        required_args: List[str] = None,
+        shorthand: str = "",
+    ):
         """
         Decorator to register a command
         Usage: @cmd_registry.register("command_name", "Help text", ["arg1", "arg2"], "cmd")
         """
+
         def decorator(func: Callable):
             args = [p.name for p in inspect.signature(func).parameters.values()]
-            required = required_args if required_args is not None else args[1:]  # Skip context
-            self.commands[name] = Command(name, shorthand, func, help_text, args, required)
+            required = (
+                required_args if required_args is not None else args[1:]
+            )  # Skip context
+            self.commands[name] = Command(
+                name, shorthand, func, help_text, args, required
+            )
             if shorthand:
                 self.shorthands[shorthand] = name
             return func
+
         return decorator
 
     def execute(self, command_str: str, **context) -> str:
@@ -65,7 +79,7 @@ class CommandRegistry:
           4. Commands with only long arguments: :latex $this is latex code$
 
         NOTE: This assumes the ":" prefix has already been stripped when handled by ChatUI.
-          
+
         Long arguments (enclosed in "" or $$) are returned as single tokens.
         """
         # "([^"]+)"  - matches double-quoted content,
@@ -80,13 +94,15 @@ class CommandRegistry:
             tokens.append(token)
         if not tokens:
             return "Error: Empty command string."
-        
+
         return {"command": tokens[0], "args": tokens[1:]}
 
     def get_help(self) -> str:
         """Get help text for all commands"""
-        return "\n".join([
-            f"{cmd.name} {f'({cmd.shorthand})' if cmd.shorthand else ''}: {cmd.help_text} "
-            f"(Usage: {cmd.name} {' '.join(cmd.required_args)})"
-            for cmd in self.commands.values()
-        ])
+        return "\n".join(
+            [
+                f"{cmd.name} {f'({cmd.shorthand})' if cmd.shorthand else ''}: {cmd.help_text} "
+                f"(Usage: {cmd.name} {' '.join(cmd.required_args)})"
+                for cmd in self.commands.values()
+            ]
+        )
