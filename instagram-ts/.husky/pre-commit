@@ -1,0 +1,2 @@
+cd instagram-ts
+npx lint-staged

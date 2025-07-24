@@ -54,7 +54,7 @@ export class SessionManager {
 		}
 
 		const usersDir = this.configManager.get<string>('advanced.usersDir');
-		return path.join(usersDir, this.username, 'session-ts.json');
+		return path.join(usersDir, this.username, 'session.ts.json');
 	}
 
 	private async ensureSessionDir(): Promise<string> {
