@@ -40,3 +40,26 @@ export interface AuthState {
 	loading: boolean;
 	error?: string;
 }
+
+export interface FeedItem {
+	id: string;
+	user: {
+		pk: number;
+		username: string;
+		profilePicUrl?: string;
+	}
+	caption?: {
+		text: string;
+	};
+	image_versions2?: {
+		candidates: {
+			url: string;
+			width: number;
+			height: number;
+		}[];
+	};
+	imageUrl?: string;
+	videoUrl?: string;
+	like_count: number;
+	comment_count: number;
+}
