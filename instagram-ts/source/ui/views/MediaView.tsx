@@ -18,19 +18,23 @@ export default function MediaView({feedItems, width = 40}: Props) {
 				const images: string[] = [];
 
 				for (const item of feedItems) {
-					const url = item.image_versions2?.candidates?.[0]?.url;
-					if (url) {
-						const ascii = await convertImageToColorAscii(url, width);
-						console.log(ascii);
-						images.push(ascii);
+					const candidates = item.image_versions2?.candidates;
+					if (candidates?.length) {
+						for (const candidate of candidates) {
+							const url = candidate.url;
+							if (url) {
+								const ascii = await convertImageToColorAscii(url);
+								images.push(ascii);
+							}
+						}
 					} else {
 						images.push('No image');
 					}
 				}
+
 				setAsciiImages(images);
 			} catch (err) {
 				console.error('Error converting images to ASCII:', err);
-			} finally {
 			}
 		};
 
@@ -49,6 +53,7 @@ export default function MediaView({feedItems, width = 40}: Props) {
 				>
 					<Text color="green">👤 {item.user?.username || 'Unknown user'}</Text>
 					<Text>{'\n'}</Text>
+					{/* <Text color="yellow">{new Date(item.created_at * 1000).toLocaleString()}</Text> */}
 					<Text>{item.caption?.text || 'No caption'}</Text>
 					<Text>{'\n'}</Text>
 

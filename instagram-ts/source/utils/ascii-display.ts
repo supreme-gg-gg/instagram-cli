@@ -31,16 +31,18 @@ function drawAsciiWithBorder(asciiArt: string, width: number): string {
 }
 
 function calculateDynamicAsciiWidth(imageWidth: number, imageHeight: number): number {
-	const termWidth = process.stdout.columns ?? 80;
-	const termHeight = process.stdout.rows ?? 24;
+	const termWidth = process.stdout.columns;
+	const termHeight = process.stdout.rows;
 
-	let width = Math.min(termWidth - 4, 120);
+	let width = Math.min(Math.floor(termWidth/3), 80);
 
 	const aspectRatio = imageWidth / imageHeight;
 
-	if (aspectRatio < 0.75 && termHeight < 40) {
-		width = Math.floor(width * 0.6);
-	} else if (aspectRatio > 1.5 && termWidth > 100) {
+	console.log('Term Width:', termWidth, 'Term Height:', termHeight, 'aspectRatio:', aspectRatio);
+
+	if (aspectRatio < 0.8) {
+		width = Math.floor(width * 0.7);
+	} else if (aspectRatio > 1.5) {
 		width = Math.floor(width * 1.1);
 	}
 
@@ -49,7 +51,6 @@ function calculateDynamicAsciiWidth(imageWidth: number, imageHeight: number): nu
 
 export async function convertImageToColorAscii(
 	imageUrl: string,
-	width: number = 100,
 ): Promise<string> {
 	try {
 		const buffer = await fetchImage(imageUrl);
@@ -68,7 +69,8 @@ export async function convertImageToColorAscii(
 		const imageWidth = metadata.width ?? 800;
 		const imageHeight = metadata.height ?? 600;
 
-		const finalWidth = width ?? calculateDynamicAsciiWidth(imageWidth, imageHeight);
+		const finalWidth = calculateDynamicAsciiWidth(imageWidth, imageHeight);
+		console.log('Final Width:', finalWidth, 'Image Width:', imageWidth, 'Image Height:', imageHeight);
 
 		const asciiArt = await AsciiArt.image({
 			filepath: finalPath,
