@@ -10,6 +10,8 @@ How this works:
 
 import curses
 import typer
+import traceback
+from datetime import datetime
 from pathlib import Path
 
 from instagram.client import ClientWrapper
@@ -56,7 +58,24 @@ def start_chat(username: str | None = None, search_filter: str = "") -> None:
     except KeyboardInterrupt:
         typer.echo("Exiting chat interface.")
     except Exception as e:
-        typer.echo(f"An error occurred when running the app: {e}")
+        # Save full traceback to file for debugging
+        error_dir = Path(Config().get("advanced.data_dir")) / "errors"
+        error_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        error_file = error_dir / f"chat_error_{timestamp}.txt"
+
+        full_traceback = traceback.format_exc()
+        with open(error_file, "w") as f:
+            f.write("Instagram CLI Chat Error Report\n")
+            f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+            f.write(f"Error: {str(e)}\n")
+            f.write("=" * 50 + "\n")
+            f.write(full_traceback)
+
+        # Show user-friendly error message
+        typer.echo(f"❌ An error occurred when running the app: {e}")
+        typer.echo(f"📄 Full error details saved to: {error_file}")
 
 
 def main_loop(
