@@ -62,5 +62,5 @@ export interface FeedItem {
 	videoUrl?: string;
 	like_count: number;
 	comment_count: number;
-	// created_at: number;
+	taken_at: number;
 }
