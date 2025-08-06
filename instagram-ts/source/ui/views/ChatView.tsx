@@ -23,6 +23,11 @@ export default function ChatView() {
 		undefined,
 	);
 
+	// Clear console on view change
+	useEffect(() => {
+		console.clear();
+	}, [currentView]);
+
 	// Load threads when client is ready
 	useEffect(() => {
 		const loadThreads = async () => {
@@ -107,12 +112,13 @@ export default function ChatView() {
 	const handleThreadSelect = async (thread: Thread) => {
 		if (!client) return;
 
+		setCurrentView('chat');
+		setChatState(prev => ({...prev, currentThread: thread, messages: []}));
+
 		try {
-			setChatState(prev => ({...prev, loading: true, currentThread: thread}));
 			const {messages, cursor} = await client.getMessages(thread.id);
 			setChatState(prev => ({...prev, messages, loading: false}));
 			setMessageCursor(cursor);
-			setCurrentView('chat');
 		} catch (error) {
 			setChatState(prev => ({
 				...prev,
@@ -132,7 +138,9 @@ export default function ChatView() {
 			chatState,
 			setChatState,
 		});
-		if (handled) return;
+		if (handled) {
+			return;
+		}
 
 		try {
 			await client.sendMessage(chatState.currentThread.id, text);
@@ -148,50 +156,63 @@ export default function ChatView() {
 		}
 	};
 
-	if (chatState.loading) {
-		return (
-			<Box flexDirection="column" height="100%">
-				<StatusBar loading={true} />
-				<Box flexGrow={1} justifyContent="center" alignItems="center">
-					<Text>Loading...</Text>
+	const renderContent = () => {
+		if (chatState.loading && chatState.threads.length === 0) {
+			return (
+				<Box
+					flexGrow={1}
+					justifyContent="center"
+					alignItems="center"
+					paddingY={1}
+				>
+					<Text>Loading threads...</Text>
 				</Box>
-			</Box>
-		);
-	}
+			);
+		}
 
-	if (chatState.error) {
-		return (
-			<Box flexDirection="column" height="100%">
-				<StatusBar error={chatState.error} />
-				<Box flexGrow={1} justifyContent="center" alignItems="center">
+		if (chatState.error) {
+			return (
+				<Box
+					flexGrow={1}
+					justifyContent="center"
+					alignItems="center"
+					paddingY={1}
+				>
 					<Text color="red">Error: {chatState.error}</Text>
 				</Box>
-				<Box>
-					<Text dimColor>Press Ctrl+C to exit</Text>
-				</Box>
+			);
+		}
+
+		if (currentView === 'threads') {
+			return (
+				<ThreadList threads={chatState.threads} onSelect={handleThreadSelect} />
+			);
+		}
+
+		// Chat view
+		return (
+			<Box flexDirection="column" flexGrow={1}>
+				<MessageList
+					messages={chatState.messages}
+					currentThread={chatState.currentThread}
+				/>
+				<InputBox onSend={handleSendMessage} />
 			</Box>
 		);
-	}
+	};
 
 	return (
-		<Box flexDirection="column" height="100%">
+		<Box flexDirection="column" height="100%" width="100%">
 			<StatusBar
 				currentView={currentView}
 				currentThread={chatState.currentThread}
-				username={client.getUsername() || undefined}
+				loading={chatState.loading}
+				error={chatState.error}
 			/>
 
-			{currentView === 'threads' ? (
-				<ThreadList threads={chatState.threads} onSelect={handleThreadSelect} />
-			) : (
-				<>
-					<MessageList
-						messages={chatState.messages}
-						currentThread={chatState.currentThread}
-					/>
-					<InputBox onSend={handleSendMessage} />
-				</>
-			)}
+			<Box flexGrow={1} flexDirection="column">
+				{renderContent()}
+			</Box>
 
 			<Box>
 				<Text dimColor>
