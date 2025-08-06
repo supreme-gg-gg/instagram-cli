@@ -14,6 +14,7 @@ export class InstagramClient {
 	private sessionManager: SessionManager | null = null;
 	private configManager: ConfigManager;
 	private username: string | null = null;
+	private userCache: Map<string, string> = new Map(); // Cache for user ID -> username mapping
 
 	constructor(username?: string) {
 		this.ig = new IgApiClient();
@@ -166,12 +167,25 @@ export class InstagramClient {
 		try {
 			const inbox = await this.ig.feed.directInbox().items();
 
+			// Clear and populate user cache from all threads
+			this.userCache.clear();
+			inbox.forEach(thread => {
+				if (thread.users) {
+					thread.users.forEach((user: any) => {
+						this.userCache.set(
+							user.pk.toString(),
+							user.username || user.full_name || `User_${user.pk}`,
+						);
+					});
+				}
+			});
+
 			return inbox.map(thread => ({
 				id: thread.thread_id,
 				title: this.getThreadTitle(thread),
 				users: this.getThreadUsers(thread),
 				lastMessage: this.getLastMessage(thread),
-				lastActivity: new Date(thread.last_activity_at),
+				lastActivity: new Date(Number(thread.last_activity_at) / 1000),
 				unreadCount: (thread as any).read_state?.unseen_count || 0,
 			}));
 		} catch (error) {
@@ -193,13 +207,15 @@ export class InstagramClient {
 
 			return {
 				messages: items
+					// for now we only handle text messages
 					.filter(item => item.item_type === 'text')
 					.map(item => ({
 						id: item.item_id,
 						text: item.text || '',
+						itemType: item.item_type,
 						timestamp: new Date((item.timestamp as any) / 1000),
 						userId: item.user_id.toString(),
-						username: this.getUsernameFromId(item.user_id),
+						username: this.getUsernameFromCache(item.user_id, this.userCache),
 						isOutgoing: item.user_id.toString() === this.ig.state.cookieUserId,
 						threadId: threadId,
 					}))
@@ -260,6 +276,7 @@ export class InstagramClient {
 
 	private getLastMessage(thread: any): Message | undefined {
 		const items = thread.items || [];
+		// for now we only handle text messages
 		const lastItem = items.find((item: any) => item.item_type === 'text');
 
 		if (!lastItem) {
@@ -269,20 +286,29 @@ export class InstagramClient {
 		return {
 			id: lastItem.item_id,
 			text: lastItem.text || '',
+			itemType: lastItem.item_type,
 			timestamp: new Date(lastItem.timestamp / 1000),
 			userId: lastItem.user_id.toString(),
-			username: this.getUsernameFromId(lastItem.user_id),
+			username: this.getUsernameFromCache(lastItem.user_id, this.userCache),
 			isOutgoing: lastItem.user_id.toString() === this.ig.state.cookieUserId,
 			threadId: thread.thread_id,
 		};
 	}
 
-	private getUsernameFromId(userId: number): string {
-		// This is a simplified implementation
-		// In a real app, you'd maintain a user cache
-		return userId.toString() === this.ig.state.cookieUserId
-			? 'You'
-			: `User_${userId}`;
+	private getUsernameFromCache(
+		userId: number,
+		userCache: Map<string, string>,
+	): string {
+		const userIdStr = userId.toString();
+
+		// Check if it's the current user
+		if (userIdStr === this.ig.state.cookieUserId) {
+			return 'You';
+		}
+
+		// Look up in the user cache
+		const username = userCache.get(userIdStr);
+		return username || `User_${userId}`;
 	}
 
 	async getCurrentUser(): Promise<User | null> {

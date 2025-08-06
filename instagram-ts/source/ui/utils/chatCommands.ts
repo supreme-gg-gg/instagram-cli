@@ -1,5 +1,5 @@
 import type {InstagramClient} from '../../client.js';
-import type {ChatState} from '../../types/instagram.js';
+import type {ChatState, Message} from '../../types/instagram.js';
 
 export interface ChatCommandContext {
 	client: InstagramClient;
@@ -12,13 +12,11 @@ export type ChatCommandHandler = (
 	ctx: ChatCommandContext,
 ) => Promise<void> | void;
 
-function systemMessage(
-	text: string,
-	threadId: string,
-): import('../../types/instagram.js').Message {
+function systemMessage(text: string, threadId: string): Message {
 	return {
 		id: `sys-${Date.now()}`,
 		text,
+		itemType: 'text',
 		userId: 'system',
 		username: 'System',
 		isOutgoing: false,

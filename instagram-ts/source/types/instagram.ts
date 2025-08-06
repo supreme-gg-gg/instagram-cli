@@ -1,11 +1,31 @@
 export interface Message {
 	id: string;
-	text: string;
+	text?: string;
+	media?: MessageMedia;
 	timestamp: Date;
+	itemType: string; // e.g., 'text', 'media', 'clip'
 	userId: string;
 	username: string;
 	isOutgoing: boolean;
 	threadId: string;
+}
+
+export interface MessageMedia {
+	id: string;
+	user: {
+		pk: number;
+		username: string;
+		profilePicUrl?: string;
+	};
+	image_versions2?: {
+		candidates: {
+			url: string;
+			width: number;
+			height: number;
+		}[];
+	};
+	original_width: number;
+	original_height: number;
 }
 
 export interface Thread {
@@ -47,7 +67,7 @@ export interface FeedItem {
 		pk: number;
 		username: string;
 		profilePicUrl?: string;
-	}
+	};
 	caption?: {
 		text: string;
 	};
