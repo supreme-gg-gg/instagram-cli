@@ -28,11 +28,12 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 
 	return (
 		<Box
-			borderStyle={isSelected ? 'round' : undefined}
-			borderColor={isSelected ? 'blue' : undefined}
+			borderStyle={isSelected ? 'bold' : 'single'}
+			borderColor={isSelected ? 'cyan' : 'gray'}
 			paddingX={1}
+			marginY={0}
 		>
-			<Box flexDirection="column" width="100%">
+			<Box flexDirection="column" width="100%" marginY={0}>
 				<Box justifyContent="space-between">
 					<Text bold={isSelected} color={isSelected ? 'blue' : undefined}>
 						{thread.title}
@@ -43,7 +44,7 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 				{thread.lastMessage && (
 					<Box>
 						<Text dimColor>
-							{thread.lastMessage.text.length > 50
+							{thread.lastMessage.text && thread.lastMessage.text.length > 50
 								? `${thread.lastMessage.text.substring(0, 50)}...`
 								: thread.lastMessage.text}
 						</Text>
