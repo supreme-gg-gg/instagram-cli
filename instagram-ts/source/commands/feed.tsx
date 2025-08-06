@@ -58,7 +58,7 @@ export default function Feed({args}: Props) {
 				} else {
 					setFeedItems(items);
 					setStatus('ready');
-				}
+					}
 			} catch (err) {
 				setError(
 					`Feed error: ${err instanceof Error ? err.message : String(err)}`,
