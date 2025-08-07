@@ -1,6 +1,6 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import type {Thread} from '../../types/instagram.js';
+import type {Message, Thread} from '../../types/instagram.js';
 
 interface ThreadItemProps {
 	thread: Thread;
@@ -26,6 +26,25 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 		return `${days}d`;
 	};
 
+	const getLastMessageText = (message: Message): string => {
+		switch (message.itemType) {
+			case 'text':
+				return message.text;
+			case 'media':
+				return '[Media] ';
+			case 'clip':
+				return '[Clip]';
+			case 'placeholder':
+				return message.text;
+			default:
+				return '[Unsupported Message]';
+		}
+	};
+
+	const lastMessageText = thread.lastMessage
+		? getLastMessageText(thread.lastMessage)
+		: '';
+
 	return (
 		<Box
 			borderStyle={isSelected ? 'bold' : 'single'}
@@ -41,20 +60,20 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 					<Text dimColor>{formatTime(thread.lastActivity)}</Text>
 				</Box>
 
-				{thread.lastMessage && (
+				{lastMessageText && (
 					<Box>
 						<Text dimColor>
-							{thread.lastMessage.text && thread.lastMessage.text.length > 50
-								? `${thread.lastMessage.text.substring(0, 50)}...`
-								: thread.lastMessage.text}
+							{lastMessageText.length > 50
+								? `${lastMessageText.substring(0, 50)}...`
+								: lastMessageText}
 						</Text>
 					</Box>
 				)}
 
-				{thread.unreadCount > 0 && (
+				{thread.unread && (
 					<Box>
 						<Text color="green" bold>
-							{thread.unreadCount} unread
+							Unread
 						</Text>
 					</Box>
 				)}

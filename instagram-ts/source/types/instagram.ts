@@ -1,13 +1,36 @@
-export interface Message {
+export type Message =
+	| TextMessage
+	| MediaMessage
+	| ClipMessage
+	| PlaceholderMessage;
+
+interface BaseMessage {
 	id: string;
-	text?: string;
-	media?: MessageMedia;
 	timestamp: Date;
-	itemType: string; // e.g., 'text', 'media', 'clip'
 	userId: string;
 	username: string;
 	isOutgoing: boolean;
 	threadId: string;
+}
+
+export interface TextMessage extends BaseMessage {
+	itemType: 'text';
+	text: string;
+}
+
+export interface MediaMessage extends BaseMessage {
+	itemType: 'media';
+	media: MessageMedia;
+}
+
+export interface ClipMessage extends BaseMessage {
+	itemType: 'clip';
+	clip: any; // Define clip properties as needed
+}
+
+export interface PlaceholderMessage extends BaseMessage {
+	itemType: 'placeholder';
+	text: string;
 }
 
 export interface MessageMedia {
@@ -34,7 +57,7 @@ export interface Thread {
 	users: User[];
 	lastMessage?: Message;
 	lastActivity: Date;
-	unreadCount: number;
+	unread: boolean;
 }
 
 export interface User {
