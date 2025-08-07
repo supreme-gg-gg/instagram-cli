@@ -1,4 +1,10 @@
-import {IgApiClient} from 'instagram-private-api';
+import {
+	IgApiClient,
+	type DirectInboxFeedResponseThreadsItem,
+	type DirectInboxFeedResponseUsersItem,
+} from 'instagram-private-api';
+import {join} from 'path';
+import fs from 'fs/promises';
 import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
 import type {Thread, Message, User} from './types/instagram.js';
@@ -144,14 +150,98 @@ export class InstagramClient {
 		}
 	}
 
-	public async logout(): Promise<void> {
+	public async logout(usernameToLogout?: string): Promise<void> {
 		try {
-			if (this.sessionManager) {
-				await this.sessionManager.deleteSession();
+			const targetUsername = usernameToLogout || this.username;
+			if (targetUsername) {
+				const sessionManager = new SessionManager(targetUsername);
+				await sessionManager.deleteSession();
+				// If the logged out user is the current user, clear currentUsername
+				if (
+					this.configManager.get('login.currentUsername') === targetUsername
+				) {
+					await this.configManager.set('login.currentUsername', null);
+				}
+			} else {
+				// If no specific username, just clear the current username
+				await this.configManager.set('login.currentUsername', null);
 			}
-			await this.configManager.set('login.currentUsername', null);
 		} catch (error) {
 			console.error('Error during logout:', error);
+			throw error; // Re-throw to be caught by the command
+		}
+	}
+
+	public async switchUser(username: string): Promise<void> {
+		try {
+			const sessionManager = new SessionManager(username);
+			const sessionExists = await sessionManager.sessionExists();
+
+			if (!sessionExists) {
+				throw new Error(
+					`No session found for @${username}. Please login first.`,
+				);
+			}
+
+			await this.configManager.set('login.currentUsername', username);
+			this.username = username; // Update the client's internal username
+		} catch (error) {
+			console.error('Error during switchUser:', error);
+			throw error; // Re-throw to be caught by the command
+		}
+	}
+
+	public static async cleanupSessions(): Promise<void> {
+		try {
+			const configManager = ConfigManager.getInstance();
+			await configManager.initialize();
+
+			// Clean up current username in config
+			await configManager.set('login.currentUsername', null);
+
+			// Clean up session files
+			const usersDir = configManager.get('advanced.usersDir') as string;
+			try {
+				const userDirs = await fs.readdir(usersDir);
+				for (const userDir of userDirs) {
+					const sessionFile = join(usersDir, userDir, 'session.json');
+					try {
+						await fs.unlink(sessionFile);
+					} catch (error) {
+						// Ignore if file doesn't exist
+					}
+				}
+			} catch (error) {
+				// Ignore if usersDir doesn't exist
+			}
+		} catch (error) {
+			console.error('Error during session cleanup:', error);
+			throw error;
+		}
+	}
+
+	public static async cleanupCache(): Promise<void> {
+		try {
+			const configManager = ConfigManager.getInstance();
+			await configManager.initialize();
+
+			const cacheDir = configManager.get('advanced.cacheDir') as string;
+			const mediaDir = configManager.get('advanced.mediaDir') as string;
+			const generatedDir = configManager.get('advanced.generatedDir') as string;
+
+			for (const dir of [cacheDir, mediaDir, generatedDir]) {
+				try {
+					const files = await fs.readdir(dir);
+					for (const file of files) {
+						await fs.unlink(join(dir, file as string));
+					}
+				} catch (error) {
+					// Ignore if directory or files don't exist
+				}
+			}
+		} catch (error) {
+			console.error('Error during cache cleanup:', error);
+			throw error;
 		}
 	}
 
@@ -171,7 +261,7 @@ export class InstagramClient {
 			this.userCache.clear();
 			inbox.forEach(thread => {
 				if (thread.users) {
-					thread.users.forEach((user: any) => {
+					thread.users.forEach((user: DirectInboxFeedResponseUsersItem) => {
 						this.userCache.set(
 							user.pk.toString(),
 							user.username || user.full_name || `User_${user.pk}`,
@@ -186,7 +276,7 @@ export class InstagramClient {
 				users: this.getThreadUsers(thread),
 				lastMessage: this.getLastMessage(thread),
 				lastActivity: new Date(Number(thread.last_activity_at) / 1000),
-				unreadCount: (thread as any).read_state?.unseen_count || 0,
+				unread: thread.has_newer ? true : false,
 			}));
 		} catch (error) {
 			console.error('Failed to fetch threads:', error);
@@ -205,22 +295,41 @@ export class InstagramClient {
 			});
 			const items = await thread.items();
 
+			const messages = items.map(item => {
+				const baseMessage = {
+					id: item.item_id,
+					timestamp: new Date(Number(item.timestamp) / 1000),
+					userId: item.user_id.toString(),
+					username: this.getUsernameFromCache(item.user_id, this.userCache),
+					isOutgoing: item.user_id.toString() === this.ig.state.cookieUserId,
+					threadId: threadId,
+				};
+
+				switch (item.item_type) {
+					case 'text':
+						return {...baseMessage, itemType: 'text', text: item.text || ''};
+					case 'media':
+						return {
+							...baseMessage,
+							itemType: 'media',
+							// somehow the types do not contain non-text message fields so we need to cast it
+							// this is verified by examining the API response directly
+							media: (item as any).media,
+						};
+					case 'clip':
+						return {...baseMessage, itemType: 'clip', clip: undefined};
+					default:
+						return {
+							...baseMessage,
+							itemType: 'placeholder',
+							text: `[Unsupported message type: ${item.item_type}]`,
+						};
+				}
+			}) as Message[];
+
 			return {
-				messages: items
-					// for now we only handle text messages
-					.filter(item => item.item_type === 'text')
-					.map(item => ({
-						id: item.item_id,
-						text: item.text || '',
-						itemType: item.item_type,
-						timestamp: new Date((item.timestamp as any) / 1000),
-						userId: item.user_id.toString(),
-						username: this.getUsernameFromCache(item.user_id, this.userCache),
-						isOutgoing: item.user_id.toString() === this.ig.state.cookieUserId,
-						threadId: threadId,
-					}))
-					.reverse(), // Show newest messages at bottom
-				cursor: (thread as any).oldestCursor,
+				messages: messages.reverse(), // Show newest messages at top
+				cursor: thread.cursor,
 			};
 		} catch (error) {
 			console.error('Failed to fetch messages:', error);
@@ -237,7 +346,7 @@ export class InstagramClient {
 		}
 	}
 
-	private getThreadTitle(thread: any): string {
+	private getThreadTitle(thread: DirectInboxFeedResponseThreadsItem): string {
 		if (thread.thread_title) {
 			return thread.thread_title;
 		}
@@ -245,7 +354,8 @@ export class InstagramClient {
 		// For threads without titles, use usernames
 		const users = thread.users || [];
 		const otherUsers = users.filter(
-			(user: any) => user.pk.toString() !== this.ig.state.cookieUserId,
+			(user: DirectInboxFeedResponseUsersItem) =>
+				user.pk.toString() !== this.ig.state.cookieUserId,
 		);
 
 		if (otherUsers.length === 0) {
@@ -254,18 +364,21 @@ export class InstagramClient {
 
 		if (otherUsers.length === 1) {
 			return (
-				otherUsers[0].username || otherUsers[0].full_name || 'Unknown User'
+				otherUsers[0]?.username || otherUsers[0]?.full_name || 'Unknown User'
 			);
 		}
 
 		return otherUsers
-			.map((user: any) => user.username || user.full_name)
+			.map(
+				(user: DirectInboxFeedResponseUsersItem) =>
+					user.username || user.full_name,
+			)
 			.join(', ');
 	}
 
-	private getThreadUsers(thread: any): User[] {
+	private getThreadUsers(thread: DirectInboxFeedResponseThreadsItem): User[] {
 		const users = thread.users || [];
-		return users.map((user: any) => ({
+		return users.map((user: DirectInboxFeedResponseUsersItem) => ({
 			pk: user.pk.toString(),
 			username: user.username || '',
 			fullName: user.full_name || '',
@@ -274,25 +387,49 @@ export class InstagramClient {
 		}));
 	}
 
-	private getLastMessage(thread: any): Message | undefined {
+	private getLastMessage(
+		thread: DirectInboxFeedResponseThreadsItem,
+	): Message | undefined {
 		const items = thread.items || [];
-		// for now we only handle text messages
-		const lastItem = items.find((item: any) => item.item_type === 'text');
+		const lastItem = items[0];
 
 		if (!lastItem) {
 			return undefined;
 		}
 
-		return {
+		const baseMessage = {
 			id: lastItem.item_id,
-			text: lastItem.text || '',
-			itemType: lastItem.item_type,
-			timestamp: new Date(lastItem.timestamp / 1000),
+			timestamp: new Date(Number(lastItem.timestamp) / 1000),
 			userId: lastItem.user_id.toString(),
 			username: this.getUsernameFromCache(lastItem.user_id, this.userCache),
 			isOutgoing: lastItem.user_id.toString() === this.ig.state.cookieUserId,
 			threadId: thread.thread_id,
 		};
+
+		switch (lastItem.item_type) {
+			case 'text':
+				return {...baseMessage, itemType: 'text', text: lastItem.text || ''};
+			case 'media':
+				return {
+					...baseMessage,
+					itemType: 'media',
+					media: (lastItem as any).media,
+				};
+			case 'clip':
+				return {...baseMessage, itemType: 'clip', clip: undefined};
+			case 'placeholder':
+				return {
+					...baseMessage,
+					itemType: 'placeholder',
+					text: lastItem.placeholder?.message || 'Placeholder message',
+				};
+			default:
+				return {
+					...baseMessage,
+					itemType: 'placeholder',
+					text: `[Unsupported message type: ${lastItem.item_type}]`,
+				};
+		}
 	}
 
 	private getUsernameFromCache(

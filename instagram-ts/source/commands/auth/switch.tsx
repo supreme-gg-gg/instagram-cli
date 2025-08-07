@@ -2,9 +2,8 @@ import React from 'react';
 import {Text} from 'ink';
 import zod from 'zod';
 import {argument} from 'pastel';
-import {ConfigManager} from '../../config.js';
-import {SessionManager} from '../../session.js';
 import {Alert} from '@inkjs/ui';
+import {InstagramClient} from '../../client.js';
 
 export const args = zod.tuple([
 	zod.string().describe(
@@ -27,19 +26,8 @@ export default function Switch({args}: Props) {
 	React.useEffect(() => {
 		(async () => {
 			try {
-				const configManager = ConfigManager.getInstance();
-				await configManager.initialize();
-				const sessionManager = new SessionManager(username);
-				const sessionExists = await sessionManager.sessionExists();
-
-				if (!sessionExists) {
-					setError(
-						`Cannot switch to @${username}. No session found.\nTry logging in with @${username} first.`,
-					);
-					return;
-				}
-
-				await configManager.set('login.currentUsername', username);
+				const client = new InstagramClient(username);
+				await client.switchUser(username);
 				setResult(`✅ Switched to @${username}`);
 			} catch (err) {
 				setError(
