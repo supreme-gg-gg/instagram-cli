@@ -29,6 +29,10 @@ The world's first open-source CLI (command line interface) + Terminal UI client 
 > [!TIP]
 > Use Instagram with 100% keyboard control - no mouse clicks or touchscreen taps needed! Perfect for developers and Linux users who love staying on the keyboard 🤣
 
+### Need a break and have some brainrot?
+
+Want to watch Instagram Reels right from your terminal? Check out [reels-cli](https://github.com/notMarkMP1/reels-cli). It’s a great way to enjoy some light entertainment without leaving your keyboard. (Not affiliated and not maintained by us, but highly recommended for terminal fans.)
+
 ## Installation
 
 The simplest way to get started is to install the package from PyPI if you have Python installed:
