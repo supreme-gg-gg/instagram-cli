@@ -7,7 +7,7 @@ import pathlib
 DEFAULT_CONFIG = {
     "language": "en",
     "login": {"default_username": None, "current_username": None},
-    "chat": {"layout": "compact", "colors": True},
+    "chat": {"layout": "compact", "colors": True, "send_read_receipts": True},
     "scheduling": {
         "default_schedule_duration": "01:00"  # 1 hour
     },

@@ -82,7 +82,12 @@ class ChatInterface:
                         # self.messages.extend(new_messages)
                         self.chat_window.set_messages(new_messages)
                     self.chat_window.update()
-                    self.direct_chat.mark_as_seen()
+
+                    if Config().get("chat.send_read_receipts", True):
+                        self.direct_chat.mark_as_seen()
+                    else:
+                        # we mark the thread as seen internally but do not send to Instagram
+                        self.direct_chat.seen = 1
             except Exception as e:
                 self.status_bar.update(
                     f"Refresh error: {str(e)}", override_default=True
