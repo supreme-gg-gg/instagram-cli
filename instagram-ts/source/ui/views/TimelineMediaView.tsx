@@ -22,6 +22,7 @@ export default function TimelineMediaView({feedItems, asciiImages}: Props) {
 						<Text color="green">👤 {item.user?.username || 'Unknown user'}</Text>
 						<Text color="gray">{' ('}{new Date(item.taken_at * 1000).toLocaleString()}{')'}</Text>
 					</Box>
+					<Text>{'\n'}</Text>
 					<Box flexDirection="column">
 						{asciiImages[index] ? (
 							asciiImages[index]

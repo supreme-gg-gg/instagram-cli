@@ -71,7 +71,7 @@ const DEFAULT_CONFIG: Config = {
 		generatedDir: path.join(DEFAULT_DATA_DIR, 'generated'),
 	},
 	feed: {
-		feedType: 'timeline'
+		feedType: 'list'
 	},
 };
 
