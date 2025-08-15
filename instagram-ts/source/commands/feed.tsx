@@ -23,7 +23,6 @@ type Props = {
 	args: zod.infer<typeof args>;
 };
 
-
 export default function Feed({args}: Props) {
 	const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>(
 		'loading',
@@ -58,7 +57,7 @@ export default function Feed({args}: Props) {
 				} else {
 					setFeedItems(items);
 					setStatus('ready');
-					}
+				}
 			} catch (err) {
 				setError(
 					`Feed error: ${err instanceof Error ? err.message : String(err)}`,

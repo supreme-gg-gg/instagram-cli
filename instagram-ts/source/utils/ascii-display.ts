@@ -30,9 +30,12 @@ function drawAsciiWithBorder(asciiArt: string, width: number): string {
 	return borderedAscii;
 }
 
-function calculateDynamicAsciiWidth(imageWidth: number, imageHeight: number): number {
+function calculateDynamicAsciiWidth(
+	imageWidth: number,
+	imageHeight: number,
+): number {
 	const termWidth = process.stdout.columns;
-	let width = Math.min(Math.floor(termWidth/4), 80);
+	let width = Math.min(Math.floor(termWidth / 4), 80);
 
 	const aspectRatio = imageWidth / imageHeight;
 
@@ -59,7 +62,6 @@ export async function convertImageToColorAscii(
 			.toBuffer();
 		finalPath = join(tmpdir(), `${randomUUID()}.png`);
 		await fs.writeFile(finalPath, pngBuffer);
-
 
 		const metadata = await sharp(pngBuffer).metadata();
 		const imageWidth = metadata.width ?? 800;

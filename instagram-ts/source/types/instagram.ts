@@ -47,7 +47,7 @@ export interface FeedItem {
 		pk: number;
 		username: string;
 		profilePicUrl?: string;
-	}
+	};
 	caption?: {
 		text: string;
 	};

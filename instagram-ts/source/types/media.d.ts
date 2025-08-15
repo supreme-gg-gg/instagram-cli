@@ -1,4 +1,4 @@
 declare module 'ascii-art' {
-  const AsciiArt: any;
-  export default AsciiArt;
+	const AsciiArt: any;
+	export default AsciiArt;
 }

@@ -41,12 +41,12 @@ export default function Config({args}: Props) {
 				let value = args[1];
 
 				if (value !== undefined) {
-    try {
-        value = JSON.parse(value);
-    } catch {
-        // If parsing fails, treat it as a plain string
-    }
-}
+					try {
+						value = JSON.parse(value);
+					} catch {
+						// If parsing fails, treat it as a plain string
+					}
+				}
 
 				if (value === undefined) {
 					// Get config value

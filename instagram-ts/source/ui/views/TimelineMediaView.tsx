@@ -19,8 +19,14 @@ export default function TimelineMediaView({feedItems, asciiImages}: Props) {
 					padding={1}
 				>
 					<Box flexDirection="row">
-						<Text color="green">👤 {item.user?.username || 'Unknown user'}</Text>
-						<Text color="gray">{' ('}{new Date(item.taken_at * 1000).toLocaleString()}{')'}</Text>
+						<Text color="green">
+							👤 {item.user?.username || 'Unknown user'}
+						</Text>
+						<Text color="gray">
+							{' ('}
+							{new Date(item.taken_at * 1000).toLocaleString()}
+							{')'}
+						</Text>
 					</Box>
 					<Text>{'\n'}</Text>
 					<Box flexDirection="column">
@@ -36,8 +42,15 @@ export default function TimelineMediaView({feedItems, asciiImages}: Props) {
 					<Text>{item.caption?.text || 'No caption'}</Text>
 					<Text>{'\n'}</Text>
 					<Box flexDirection="row">
-						<Text>{' '}♡ {item.like_count ?? 0}{"   "}</Text>
-						<Text>🗨{"  "}{item.comment_count ?? 0}</Text>
+						<Text>
+							{' '}
+							♡ {item.like_count ?? 0}
+							{'   '}
+						</Text>
+						<Text>
+							🗨{'  '}
+							{item.comment_count ?? 0}
+						</Text>
 					</Box>
 				</Box>
 			))}
