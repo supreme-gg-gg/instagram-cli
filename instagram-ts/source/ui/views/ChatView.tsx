@@ -23,11 +23,6 @@ export default function ChatView() {
 		undefined,
 	);
 
-	// Clear console on view change
-	useEffect(() => {
-		console.clear();
-	}, [currentView]);
-
 	// Load threads when client is ready
 	useEffect(() => {
 		const loadThreads = async () => {
@@ -62,6 +57,7 @@ export default function ChatView() {
 
 		return () => clearInterval(interval);
 	}, [client, currentView, chatState.currentThread]);
+
 	useInput((input, key) => {
 		if (key.ctrl && input === 'c') {
 			exit();

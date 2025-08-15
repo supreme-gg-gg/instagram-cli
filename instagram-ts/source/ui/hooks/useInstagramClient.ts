@@ -49,7 +49,14 @@ export function useInstagramClient(
 				}
 
 				const instagramClient = new InstagramClient(targetUsername);
-				await instagramClient.loginBySession();
+				const loginResult = await instagramClient.loginBySession();
+
+				if (!loginResult.success) {
+					setError(loginResult.error || 'Failed to login with session');
+					setIsLoading(false);
+					return;
+				}
+
 				setClient(instagramClient);
 				setIsLoading(false);
 			} catch (err) {

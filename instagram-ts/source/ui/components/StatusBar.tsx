@@ -1,7 +1,7 @@
 import React from 'react';
 import {Box, Text} from 'ink';
 import type {Thread} from '../../types/instagram.js';
-import {Spinner} from '@inkjs/ui';
+// import {Spinner} from '@inkjs/ui';
 
 interface StatusBarProps {
 	loading?: boolean;
@@ -29,7 +29,8 @@ export default function StatusBar({
 			</Box>
 
 			<Box>
-				{loading && <Spinner label="Loading..." />}
+				{/* {loading && <Spinner label="Loading..." />} */}
+				{loading && <Text color="yellow">Loading...</Text>}
 				{error && <Text color="red">Error</Text>}
 				{!loading && !error && (
 					<Text color="green">
