@@ -18,7 +18,7 @@ export async function cleanup(deleteAll = false): Promise<void> {
 			const userPath = path.join(usersDir, userDir);
 			const stat = await fs.stat(userPath);
 			if (stat.isDirectory()) {
-				const sessionFile = path.join(userPath, 'session.json');
+				const sessionFile = path.join(userPath, 'session.ts.json');
 				try {
 					await fs.unlink(sessionFile);
 				} catch (error) {

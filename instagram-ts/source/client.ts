@@ -41,36 +41,48 @@ export class InstagramClient {
 			this.username = username;
 			this.sessionManager = new SessionManager(username);
 
-			// Check if we should load existing session first
-			const sessionExists = await this.sessionManager.sessionExists();
-			if (sessionExists) {
-				try {
-					const sessionData = await this.sessionManager.loadSession();
-					if (sessionData) {
-						await this.ig.state.deserialize(sessionData);
-						// Preserve device UUIDs from old session
-						const oldSettings = await this.ig.state.serialize();
-						this.ig.state.generateDevice(username);
-						if (oldSettings.deviceString) {
-							// Restore device string to maintain consistency
-							await this.ig.state.deserialize({
-								...sessionData,
-								deviceString: oldSettings.deviceString,
-							});
-						}
-					}
-				} catch (error) {
-					console.log('Could not load existing session, creating new one');
-				}
-			}
-
-			// Generate device for this username
+			// Generate device for this username FIRST (as per official docs)
 			this.ig.state.generateDevice(username);
 
 			// Set up request listener to save session after each request
 			this.ig.request.end$.subscribe(async () => {
 				await this.saveSessionState();
 			});
+
+			// Check if we should load existing session first
+			const sessionExists = await this.sessionManager.sessionExists();
+			if (sessionExists) {
+				try {
+					const sessionData = await this.sessionManager.loadSession();
+					if (sessionData) {
+						// Try to use existing session
+						await this.ig.state.deserialize(sessionData);
+						// Test if session is still valid
+						try {
+							await this.ig.account.currentUser();
+							// Session is valid, no need to login
+							await this.configManager.set('login.currentUsername', username);
+							const defaultUsername = this.configManager.get<string>(
+								'login.defaultUsername',
+							);
+							if (!defaultUsername) {
+								await this.configManager.set('login.defaultUsername', username);
+							}
+							return {success: true, username};
+						} catch (sessionError) {
+							console.log(
+								'Existing session invalid, proceeding with fresh login',
+							);
+							// Reset device and continue with fresh login
+							this.ig.state.generateDevice(username);
+						}
+					}
+				} catch (error) {
+					console.log('Could not load existing session, creating new one');
+					// Reset device and continue with fresh login
+					this.ig.state.generateDevice(username);
+				}
+			}
 
 			// Perform login
 			await this.ig.simulate.preLoginFlow();
@@ -116,18 +128,31 @@ export class InstagramClient {
 				return {success: false, error: 'No session file found'};
 			}
 
-			// Deserialize the session state
+			if (!this.username) {
+				return {success: false, error: 'No username set for session login'};
+			}
+
+			// Step 1: Generate device FIRST (as per official docs)
+			this.ig.state.generateDevice(this.username);
+
+			// Step 2: Set up request listener to save session after each request
+			this.ig.request.end$.subscribe(async () => {
+				await this.saveSessionState();
+			});
+
+			// Step 3: Deserialize the session state
 			await this.ig.state.deserialize(sessionData);
 
-			// Test if session is valid by making a simple request
+			// Step 4: Test if session is valid by making a simple request
+			// Most of the time you don't have to login after loading the state (as per docs)
 			const currentUser = await this.ig.account.currentUser();
 			this.username = currentUser.username;
 
-			// Save the session after successful login
+			// Save the session after successful validation
 			await this.saveSessionState();
 			await this.configManager.set('login.currentUsername', this.username);
 
-			return {success: true, username: this.username};
+			return {success: true, username: this.username || undefined};
 		} catch (error) {
 			console.error('Failed to login with session:', error);
 			return {
@@ -204,7 +229,7 @@ export class InstagramClient {
 			try {
 				const userDirs = await fs.readdir(usersDir);
 				for (const userDir of userDirs) {
-					const sessionFile = join(usersDir, userDir, 'session.json');
+					const sessionFile = join(usersDir, userDir, 'session.ts.json');
 					try {
 						await fs.unlink(sessionFile);
 					} catch (error) {
