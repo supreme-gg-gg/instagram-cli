@@ -21,6 +21,10 @@ interface PrivacyConfig {
 	invisibleMode: boolean;
 }
 
+interface FeedConfig {
+	feedType: 'timeline' | 'list';
+}
+
 interface AdvancedConfig {
 	debugMode: boolean;
 	dataDir: string;
@@ -36,6 +40,7 @@ interface Config {
 	chat: ChatConfig;
 	scheduling: SchedulingConfig;
 	privacy: PrivacyConfig;
+	feed: FeedConfig;
 	advanced: AdvancedConfig;
 }
 
@@ -64,6 +69,9 @@ const DEFAULT_CONFIG: Config = {
 		cacheDir: path.join(DEFAULT_DATA_DIR, 'cache'),
 		mediaDir: path.join(DEFAULT_DATA_DIR, 'media'),
 		generatedDir: path.join(DEFAULT_DATA_DIR, 'generated'),
+	},
+	feed: {
+		feedType: 'timeline'
 	},
 };
 
