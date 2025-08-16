@@ -3,7 +3,6 @@ import {Box, Text, useInput} from 'ink';
 import {FeedItem} from '../../types/instagram.js';
 import open from 'open';
 
-
 type Props = {
 	feedItems: FeedItem[];
 	asciiImages: string[];
@@ -16,20 +15,37 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 		return <Text>No posts available.</Text>;
 	}
 
+	//Function for verifying media type
+	const openMediaUrl = (item: FeedItem) => {
+		if (item.media_type === 2) {
+			// If media is a video, open the video URL
+			const videoUrl = item.video_versions?.[0]?.url;
+			if (videoUrl) {
+				open(videoUrl).catch(err => {
+					console.error('Failed to open video URL:', err);
+				});
+			} else {
+				console.error('No video URL available for this item.');
+			}
+		} else if (item.image_versions2?.candidates?.[0]?.url) {
+			const imageUrl = item.image_versions2.candidates[0].url;
+			open(imageUrl).catch(err => {
+				console.error('Failed to open image URL:', err);
+			});
+		} else {
+			console.error('No valid media URL available for this item.');
+		}
+	};
+
 	useInput((input, key) => {
 		if (input === 'j' || key.downArrow) {
 			setSelectedIndex(prev => Math.min(prev + 1, feedItems.length - 1));
 		} else if (input === 'k' || key.upArrow) {
 			setSelectedIndex(prev => Math.max(prev - 1, 0));
-		}
-		else if (input === 'o' || key.return) {
-			// TODO: If media is a video, open the video URL instead
+		} else if (input === 'o' || key.return) {
 			const selectedItem = feedItems[selectedIndex];
-			if (selectedItem && selectedItem.image_versions2?.candidates?.[0]?.url) {
-				const url = selectedItem.image_versions2.candidates[0].url;
-				open(url).catch(err => {
-					console.error('Failed to open URL:', err);
-				});
+			if (selectedItem) {
+				openMediaUrl(selectedItem);
 			}
 		} else if (input === 'q' || key.escape) {
 			process.exit(0);
