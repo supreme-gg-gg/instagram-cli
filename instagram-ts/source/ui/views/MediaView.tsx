@@ -1,8 +1,8 @@
 import React, {useState, useEffect} from 'react';
 import {FeedItem} from '../../types/instagram.js';
 import {convertImageToColorAscii} from '../../utils/ascii-display.js';
-import TimelineMediaView from './TimelineMediaView.js';
-import ListMediaView from './ListMediaView.js';
+import TimelineMediDisplay from '../components/TimelineMediaDisplay.js';
+import ListMediaDisplay from '../components/ListMediaDisplay.js';
 import {ConfigManager} from '../../config.js';
 
 type Props = {
@@ -41,8 +41,8 @@ export default function MediaView({feedItems}: Props) {
 	}, [feedItems]);
 
 	return feedType === 'timeline' ? (
-		<TimelineMediaView feedItems={feedItems} asciiImages={asciiImages} />
+		<TimelineMediDisplay feedItems={feedItems} asciiImages={asciiImages} />
 	) : (
-		<ListMediaView feedItems={feedItems} asciiImages={asciiImages} />
+		<ListMediaDisplay feedItems={feedItems} asciiImages={asciiImages} />
 	);
 }

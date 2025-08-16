@@ -1,13 +1,15 @@
 import React, {useState} from 'react';
 import {Box, Text, useInput} from 'ink';
 import {FeedItem} from '../../types/instagram.js';
+import open from 'open';
+
 
 type Props = {
 	feedItems: FeedItem[];
 	asciiImages: string[];
 };
 
-export default function ListMediaView({feedItems, asciiImages}: Props) {
+export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
 	if (feedItems.length === 0) {
@@ -19,6 +21,16 @@ export default function ListMediaView({feedItems, asciiImages}: Props) {
 			setSelectedIndex(prev => Math.min(prev + 1, feedItems.length - 1));
 		} else if (input === 'k' || key.upArrow) {
 			setSelectedIndex(prev => Math.max(prev - 1, 0));
+		}
+		else if (input === 'o' || key.return) {
+			// TODO: If media is a video, open the video URL instead
+			const selectedItem = feedItems[selectedIndex];
+			if (selectedItem && selectedItem.image_versions2?.candidates?.[0]?.url) {
+				const url = selectedItem.image_versions2.candidates[0].url;
+				open(url).catch(err => {
+					console.error('Failed to open URL:', err);
+				});
+			}
 		} else if (input === 'q' || key.escape) {
 			process.exit(0);
 		}
@@ -108,7 +120,7 @@ export default function ListMediaView({feedItems, asciiImages}: Props) {
 
 			{/* Footer */}
 			<Box marginTop={1}>
-				<Text dimColor>j/k: navigate, q: quit</Text>
+				<Text dimColor>j/k: navigate, o: open in browser, q: quit</Text>
 			</Box>
 		</Box>
 	);

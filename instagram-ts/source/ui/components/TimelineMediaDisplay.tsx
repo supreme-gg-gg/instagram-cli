@@ -7,7 +7,7 @@ type Props = {
 	asciiImages: string[];
 };
 
-export default function TimelineMediaView({feedItems, asciiImages}: Props) {
+export default function TimelineMediaDisplay({feedItems, asciiImages}: Props) {
 	return (
 		<Box flexDirection="column" flexGrow={1} gap={1}>
 			<Text color="blue">Your Feed</Text>

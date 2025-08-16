@@ -35,7 +35,7 @@ function calculateDynamicAsciiWidth(
 	imageHeight: number,
 ): number {
 	const termWidth = process.stdout.columns;
-	let width = Math.min(Math.floor(termWidth / 4), 80);
+	let width = Math.min(Math.floor(termWidth / 3), 80);
 
 	const aspectRatio = imageWidth / imageHeight;
 
