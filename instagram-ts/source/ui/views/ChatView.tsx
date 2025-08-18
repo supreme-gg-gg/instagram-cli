@@ -7,6 +7,7 @@ import StatusBar from '../components/StatusBar.js';
 import ThreadList from '../components/ThreadList.js';
 import {useClient} from '../context/ClientContext.js';
 import {parseAndDispatchChatCommand} from '../utils/chatCommands.js';
+import FullScreen from '../components/FullScreen.js';
 
 export default function ChatView() {
 	const {exit} = useApp();
@@ -187,36 +188,38 @@ export default function ChatView() {
 
 		// Chat view
 		return (
-			<Box flexDirection="column" flexGrow={1}>
+			<>
 				<MessageList
 					messages={chatState.messages}
 					currentThread={chatState.currentThread}
 				/>
 				<InputBox onSend={handleSendMessage} />
-			</Box>
+			</>
 		);
 	};
 
 	return (
-		<Box flexDirection="column" height="100%" width="100%">
-			<StatusBar
-				currentView={currentView}
-				currentThread={chatState.currentThread}
-				loading={chatState.loading}
-				error={chatState.error}
-			/>
+		<FullScreen>
+			<Box flexDirection="column" height="100%" width="100%">
+				<StatusBar
+					currentView={currentView}
+					currentThread={chatState.currentThread}
+					loading={chatState.loading}
+					error={chatState.error}
+				/>
 
-			<Box flexGrow={1} flexDirection="column">
-				{renderContent()}
-			</Box>
+				<Box flexGrow={1} flexDirection="column">
+					{renderContent()}
+				</Box>
 
-			<Box>
-				<Text dimColor>
-					{currentView === 'threads'
-						? 'j/k: navigate, Enter: select, q: quit'
-						: 'Esc: back to threads, Ctrl+C: quit'}
-				</Text>
+				<Box>
+					<Text dimColor>
+						{currentView === 'threads'
+							? 'j/k: navigate, Enter: select, q: quit'
+							: 'Esc: back to threads, Ctrl+C: quit'}
+					</Text>
+				</Box>
 			</Box>
-		</Box>
+		</FullScreen>
 	);
 }

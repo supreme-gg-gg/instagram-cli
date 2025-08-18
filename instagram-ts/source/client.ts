@@ -1,5 +1,6 @@
 import {
 	IgApiClient,
+	IgCheckpointError,
 	type DirectInboxFeedResponseThreadsItem,
 	type DirectInboxFeedResponseUsersItem,
 } from 'instagram-private-api';
@@ -13,6 +14,7 @@ export interface LoginResult {
 	success: boolean;
 	error?: string;
 	username?: string;
+	checkpointError?: IgCheckpointError;
 }
 
 export class InstagramClient {
@@ -32,11 +34,7 @@ export class InstagramClient {
 		}
 	}
 
-	public async login(
-		username: string,
-		password: string,
-		verificationCode?: string,
-	): Promise<LoginResult> {
+	public async login(username: string, password: string): Promise<LoginResult> {
 		try {
 			this.username = username;
 			this.sessionManager = new SessionManager(username);
@@ -49,51 +47,9 @@ export class InstagramClient {
 				await this.saveSessionState();
 			});
 
-			// Check if we should load existing session first
-			const sessionExists = await this.sessionManager.sessionExists();
-			if (sessionExists) {
-				try {
-					const sessionData = await this.sessionManager.loadSession();
-					if (sessionData) {
-						// Try to use existing session
-						await this.ig.state.deserialize(sessionData);
-						// Test if session is still valid
-						try {
-							await this.ig.account.currentUser();
-							// Session is valid, no need to login
-							await this.configManager.set('login.currentUsername', username);
-							const defaultUsername = this.configManager.get<string>(
-								'login.defaultUsername',
-							);
-							if (!defaultUsername) {
-								await this.configManager.set('login.defaultUsername', username);
-							}
-							return {success: true, username};
-						} catch (sessionError) {
-							console.log(
-								'Existing session invalid, proceeding with fresh login',
-							);
-							// Reset device and continue with fresh login
-							this.ig.state.generateDevice(username);
-						}
-					}
-				} catch (error) {
-					console.log('Could not load existing session, creating new one');
-					// Reset device and continue with fresh login
-					this.ig.state.generateDevice(username);
-				}
-			}
-
 			// Perform login
 			await this.ig.simulate.preLoginFlow();
-
-			if (verificationCode) {
-				// If 2FA is needed, this would need to be handled differently
-				// For now, we'll assume the verification code is provided upfront
-				await this.ig.account.login(username, password);
-			} else {
-				await this.ig.account.login(username, password);
-			}
+			await this.ig.account.login(username, password);
 
 			// Save session and update config
 			await this.saveSessionState();
@@ -109,10 +65,45 @@ export class InstagramClient {
 
 			return {success: true, username};
 		} catch (error) {
+			if (error instanceof IgCheckpointError) {
+				return {success: false, checkpointError: error};
+			}
+
 			console.error('Login failed:', error);
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Unknown login error',
+			};
+		}
+	}
+
+	public async startChallenge(): Promise<void> {
+		await this.ig.challenge.auto(true);
+	}
+
+	public async sendChallengeCode(code: string): Promise<LoginResult> {
+		try {
+			await this.ig.challenge.sendSecurityCode(code);
+
+			// After sending code, the user should be logged in.
+			// The session should be saved by the hook.
+			await this.saveSessionState();
+			if (this.username) {
+				await this.configManager.set('login.currentUsername', this.username);
+				const defaultUsername = this.configManager.get<string>(
+					'login.defaultUsername',
+				);
+				if (!defaultUsername) {
+					await this.configManager.set('login.defaultUsername', this.username);
+				}
+			}
+			return {success: true, username: this.username ?? undefined};
+		} catch (error) {
+			console.error('Sending challenge code failed:', error);
+			return {
+				success: false,
+				error:
+					error instanceof Error ? error.message : 'Unknown challenge error',
 			};
 		}
 	}

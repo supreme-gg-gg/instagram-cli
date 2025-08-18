@@ -1,61 +1,160 @@
-import React from 'react';
-import {Text} from 'ink';
-import {Alert} from '@inkjs/ui';
+import React, {useState, useMemo, useEffect} from 'react';
+import {Box, Text} from 'ink';
+import {Alert, TextInput} from '@inkjs/ui';
 import zod from 'zod';
-import {argument} from 'pastel';
+import {option} from 'pastel';
 import LoginForm from '../../ui/components/LoginForm.js';
 import {InstagramClient} from '../../client.js';
+import {ConfigManager} from '../../config.js';
 
-export const args = zod.tuple([
-	zod
-		.string()
-		.optional()
+export const options = zod.object({
+	username: zod
+		.boolean()
+		.default(false)
 		.describe(
-			argument({
-				name: 'username',
-				description: 'Username to login with (optional)',
+			option({
+				alias: 'u',
+				description: 'Login using username/password',
 			}),
 		),
-]);
+});
 
 type Props = {
-	_args: zod.infer<typeof args>;
+	options: zod.infer<typeof options>;
 };
 
-export default function Login(_props: Props) {
-	const [result, setResult] = React.useState<string | null>(null);
-	const [error, setError] = React.useState<string | null>(null);
+export default function Login({options}: Props) {
+	const client = useMemo(() => new InstagramClient(), []);
+	const [message, setMessage] = useState<string | null>('Initializing...');
+	const [mode, setMode] = useState<
+		'session' | 'form' | 'challenge' | 'success' | 'error'
+	>('session');
 
-	if (error) {
-		return <Alert variant="error">❌ {error}</Alert>;
-	}
+	const handleLoginSubmit = async (username: string, password: string) => {
+		setMessage(`🔄 Logging in as @${username}...`);
+		try {
+			const result = await client.login(username, password);
+			if (result.success) {
+				setMessage(`✅ Logged in as @${result.username}`);
+				setMode('success');
+			} else if (result.checkpointError) {
+				setMessage('Challenge required. Requesting code...');
+				await client.startChallenge();
+				setMessage('A code has been sent to you. Please enter it below.');
+				setMode('challenge');
+			} else {
+				setMessage(`Login failed: ${result.error}`);
+				setMode('error');
+			}
+		} catch (err) {
+			setMessage(
+				`Login error: ${err instanceof Error ? err.message : String(err)}`,
+			);
+			setMode('error');
+		}
+	};
 
-	if (result) {
-		return <Text>{result}</Text>;
-	}
+	const handleChallengeSubmit = async (code: string) => {
+		setMessage('🔄 Verifying code...');
+		try {
+			const result = await client.sendChallengeCode(code);
+			if (result.success) {
+				setMessage(`✅ Logged in as @${result.username}`);
+				setMode('success');
+			} else {
+				setMessage(`Challenge failed: ${result.error}`);
+				setMode('error');
+			}
+		} catch (err) {
+			setMessage(
+				`Challenge error: ${err instanceof Error ? err.message : String(err)}`,
+			);
+			setMode('error');
+		}
+	};
 
-	return (
-		<LoginForm
-			onSubmit={async (username, password, verificationCode) => {
-				try {
-					setResult(`🔄 Logging in as @${username}...`);
-					const client = new InstagramClient();
-					const loginResult = await client.login(
-						username,
-						password,
-						verificationCode,
+	useEffect(() => {
+		const run = async () => {
+			if (options.username) {
+				setMode('form');
+				setMessage(null);
+			} else {
+				setMessage('🔄 Trying to log in with saved session...');
+				const config = ConfigManager.getInstance();
+				await config.initialize();
+				const currentUsername = config.get<string>('login.currentUsername');
+
+				if (!currentUsername) {
+					setMessage(
+						'No saved session found. Please log in with your username and password.',
 					);
-					if (loginResult.success) {
-						setResult(`✅ Logged in as @${loginResult.username}`);
-					} else {
-						setError(`Login failed: ${loginResult.error}`);
-					}
-				} catch (err) {
-					setError(
-						`Login error: ${err instanceof Error ? err.message : String(err)}`,
-					);
+					setMode('form');
+					return;
 				}
-			}}
-		/>
-	);
+
+				const sessionClient = new InstagramClient(currentUsername);
+				try {
+					const result = await sessionClient.loginBySession();
+					if (result.success) {
+						setMessage(`✅ Logged in as @${result.username}`);
+						setMode('success');
+					} else {
+						setMessage(
+							`Could not log in with saved session: ${result.error}. Please log in with your username and password.`,
+						);
+						setMode('form');
+					}
+				} catch (e) {
+					if (e instanceof Error) {
+						setMessage(
+							`Session login error: ${e.message}. Please log in with your username and password.`,
+						);
+					} else {
+						setMessage(
+							`Session login error: ${String(
+								e,
+							)}. Please log in with your username and password.`,
+						);
+					}
+					setMode('form');
+				}
+			}
+		};
+		run();
+	}, []);
+
+	if (mode === 'error') {
+		return <Alert variant="error">❌ {message}</Alert>;
+	}
+	if (mode === 'success' || mode === 'session') {
+		return <Text>{message}</Text>;
+	}
+	if (mode === 'form') {
+		return (
+			<>
+				{message && <Text>{message}</Text>}
+				<LoginForm
+					onSubmit={(username, password) => {
+						handleLoginSubmit(username, password);
+					}}
+				/>
+			</>
+		);
+	}
+	if (mode === 'challenge') {
+		return (
+			<>
+				{message && <Text>{message}</Text>}
+				<Box>
+					<Text>Enter verification code: </Text>
+					<TextInput
+						placeholder="Enter code and press Enter"
+						onSubmit={handleChallengeSubmit}
+					/>
+				</Box>
+			</>
+		);
+	}
+
+	return <Text>Initializing...</Text>;
 }
