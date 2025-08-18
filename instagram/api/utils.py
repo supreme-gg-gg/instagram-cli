@@ -141,7 +141,7 @@ def setup_logging(name: str):
 
 
 def user_info_by_username_private(
-    self: Client, username: str, use_cache: bool = True
+    client: Client, username: str, use_cache: bool = True
 ) -> User:
     """
     Get user object from username
@@ -150,7 +150,7 @@ def user_info_by_username_private(
 
     Parameters
     ----------
-    self: Client
+    client: Client
         The instagrapi Client object
     username: str
         User name of an instagram account
@@ -169,15 +169,15 @@ def user_info_by_username_private(
     logging.getLogger().setLevel(logging.CRITICAL)
 
     username = str(username).lower()
-    if not use_cache or username not in self._usernames_cache:
-        user = self.user_info_by_username_v1(username)
-        self._users_cache[user.pk] = user
-        self._usernames_cache[user.username] = user.pk
-    return self.user_info(self._usernames_cache[username])
+    if not use_cache or username not in client._usernames_cache:
+        user = client.user_info_by_username_v1(username)
+        client._users_cache[user.pk] = user
+        client._usernames_cache[user.username] = user.pk
+    return client.user_info(client._usernames_cache[username])
 
 
 def direct_threads_chunk(
-    self: Client,
+    client: Client,
     amount: int = 20,
     selected_filter: SELECTED_FILTER = "",
     box: BOX = "",
@@ -189,6 +189,8 @@ def direct_threads_chunk(
 
     Parameters
     ----------
+    client: Client
+        The instagrapi Client object used to fetch threads
     amount: int, optional
         Minimum number of media to return, default is 20
     selected_filter: str, optional
@@ -196,7 +198,7 @@ def direct_threads_chunk(
     box: str, optional
         Box to gather threads from (primary or general) (business accounts only)
     thread_message_limit: int, optional
-        Thread message limit, deafult is 10
+        Thread message limit, default is 10
     cursor: str, optional
         Cursor for pagination, default is None
 
@@ -209,9 +211,9 @@ def direct_threads_chunk(
     """
 
     threads = []
-    # self.private_request("direct_v2/get_presence/")
+    # client.private_request("direct_v2/get_presence/")
     while True:
-        threads_chunk, cursor = self.direct_threads_chunk(
+        threads_chunk, cursor = client.direct_threads_chunk(
             selected_filter, box, thread_message_limit, cursor
         )
         for thread in threads_chunk:
@@ -225,7 +227,7 @@ def direct_threads_chunk(
 
 
 def direct_thread_chunk(
-    self: Client, thread_id: int, amount: int = 20, cursor: str = None
+    client: Client, thread_id: int, amount: int = 20, cursor: str = None
 ) -> Tuple[DirectThread, str]:
     """
     Get a chunk of messages in a direct message thread along with the thread's metadata
@@ -234,6 +236,8 @@ def direct_thread_chunk(
 
     Parameters
     ----------
+    client: Client
+        The instagrapi Client object used to fetch the thread
     thread_id: int
         Unique identifier of a Direct Message thread
 
@@ -248,7 +252,7 @@ def direct_thread_chunk(
     Tuple[DirectThread, str]
         A tuple containing the DirectThread object and the cursor for the next chunk of messages
     """
-    assert self.user_id, "Login required"
+    assert client.user_id, "Login required"
     params = {
         "visual_message_return_type": "unseen",
         "direction": "older",
@@ -260,11 +264,11 @@ def direct_thread_chunk(
         if cursor:
             params["cursor"] = cursor
         try:
-            result = self.private_request(
+            result = client.private_request(
                 f"direct_v2/threads/{thread_id}/", params=params
             )
         except ClientNotFoundError as e:
-            raise DirectThreadNotFound(e, thread_id=thread_id, **self.last_json)
+            raise DirectThreadNotFound(e, thread_id=thread_id, **client.last_json)
         thread = result["thread"]
         for item in thread["items"]:
             items.append(item)
@@ -283,7 +287,7 @@ def direct_thread_chunk(
 
 
 def direct_send_media(
-    self: Client,
+    client: Client,
     path: Path,
     user_ids: List[int] = [],
     thread_ids: List[int] = [],
@@ -296,6 +300,8 @@ def direct_send_media(
 
     Parameters
     ----------
+    client: Client
+        The instagrapi Client object used to upload and send media
     path: Path
         Path to file that will be posted on the thread
     user_ids: List[int]
@@ -311,12 +317,12 @@ def direct_send_media(
     DirectMessage
         An object of DirectMessage
     """
-    assert self.user_id, "Login required"
+    assert client.user_id, "Login required"
     assert (user_ids or thread_ids) and not (user_ids and thread_ids), (
         "Specify user_ids or thread_ids, but not both"
     )
     method = f"configure_{content_type}"
-    token = self.generate_mutation_token()
+    token = client.generate_mutation_token()
     nav_chains = [
         (
             "6xQ:direct_media_picker_photos_fragment:1,5rG:direct_thread:2,"
@@ -353,23 +359,23 @@ def direct_send_media(
         data["thread_ids"] = dumps([int(tid) for tid in thread_ids])
     path = Path(path)
     upload_id = str(int(time.time() * 1000))
-    match content_type:
+    match content_type: # Python 3.10+ 
         case "photo":
-            upload_id, width, height = photo_rupload(self, path, upload_id)[:3]
+            upload_id, width, height = photo_rupload(client, path, upload_id)[:3]
         case "video":
-            upload_id, width, height = self.video_rupload(path, upload_id)[:3]
+            upload_id, width, height = client.video_rupload(path, upload_id)[:3]
     data["upload_id"] = upload_id
     # data['content_type'] = content_type
-    result = self.private_request(
+    result = client.private_request(
         f"direct_v2/threads/broadcast/{method}/",
-        data=self.with_default_data(data),
+        data=client.with_default_data(data),
         with_signature=False,
     )
     return extract_direct_message(result["payload"])
 
 
 def photo_rupload(
-    self: Client,
+    client: Client,
     path: Path,
     upload_id: str = "",
     to_album: bool = False,
@@ -380,6 +386,8 @@ def photo_rupload(
 
     Parameters
     ----------
+    client: Client
+        The instagrapi Client object used to perform the rupload
     path: Path
         Path to the media
     upload_id: str, optional
@@ -450,19 +458,19 @@ def photo_rupload(
         "Content-Type": "application/octet-stream",
         "Content-Length": photo_len,
     }
-    response = self.private.post(
+    response = client.private.post(
         "https://{domain}/rupload_igphoto/{name}".format(
             domain=instagrapi.config.API_DOMAIN, name=upload_name
         ),
         data=photo_data,
         headers=headers,
     )
-    self.request_log(response)
+    client.request_log(response)
     if response.status_code != 200:
-        self.logger.error(
+        client.logger.error(
             "Photo Upload failed with the following response: %s", response
         )
-        last_json = self.last_json  # local variable for read in sentry
+        last_json = client.last_json  # local variable for read in sentry
         raise PhotoNotUpload(response.text, response=response, **last_json)
     with Image.open(path) as im:
         width, height = im.size
