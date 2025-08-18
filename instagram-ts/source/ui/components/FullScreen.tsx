@@ -1,31 +1,32 @@
 import React, {useState, useEffect} from 'react';
-import {Box} from 'ink';
+import {Box, useStdout} from 'ink';
 
 type Props = {
 	children: React.ReactNode;
 };
 
 const FullScreen = (props: Props) => {
+	const {stdout} = useStdout();
 	const [size, setSize] = useState({
-		columns: process.stdout.columns,
-		rows: process.stdout.rows,
+		columns: stdout.columns,
+		rows: stdout.rows,
 	});
 
 	useEffect(() => {
-		function onResize() {
+		const onResize = () => {
 			setSize({
-				columns: process.stdout.columns,
-				rows: process.stdout.rows,
+				columns: stdout.columns,
+				rows: stdout.rows,
 			});
-		}
-
-		process.stdout.on('resize', onResize);
-		process.stdout.write('\x1b[?1049h');
-		return () => {
-			process.stdout.off('resize', onResize);
-			process.stdout.write('\x1b[?1049l');
 		};
-	}, []);
+
+		stdout.on('resize', onResize);
+		stdout.write('\x1b[?1049h');
+		return () => {
+			stdout.off('resize', onResize);
+			stdout.write('\x1b[?1049l');
+		};
+	}, [stdout]);
 
 	return (
 		<Box width={size.columns} height={size.rows}>

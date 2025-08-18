@@ -54,18 +54,22 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 		>
 			<Box flexDirection="column" width="100%" marginY={0}>
 				<Box justifyContent="space-between">
-					<Text bold={isSelected} color={isSelected ? 'blue' : undefined}>
-						{thread.title}
-					</Text>
+					<Box flexGrow={1} marginRight={2}>
+						<Text
+							bold={isSelected}
+							color={isSelected ? 'blue' : undefined}
+							wrap="truncate"
+						>
+							{thread.title}
+						</Text>
+					</Box>
 					<Text dimColor>{formatTime(thread.lastActivity)}</Text>
 				</Box>
 
 				{lastMessageText && (
 					<Box>
-						<Text dimColor>
-							{lastMessageText.length > 50
-								? `${lastMessageText.substring(0, 50)}...`
-								: lastMessageText}
+						<Text dimColor wrap="truncate">
+							{lastMessageText}
 						</Text>
 					</Box>
 				)}
