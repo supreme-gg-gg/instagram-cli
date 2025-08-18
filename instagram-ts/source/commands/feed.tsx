@@ -23,8 +23,6 @@ type Props = {
 	args: zod.infer<typeof args>;
 };
 
-const width = 80;
-
 export default function Feed({args}: Props) {
 	const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>(
 		'loading',
@@ -77,5 +75,5 @@ export default function Feed({args}: Props) {
 	if (status === 'error') {
 		return <Alert variant="error">❌ {error}</Alert>;
 	}
-	return <MediaView feedItems={feedItems} width={width} />;
+	return <MediaView feedItems={feedItems} />;
 }

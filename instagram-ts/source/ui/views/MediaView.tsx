@@ -1,27 +1,31 @@
-import React from 'react';
-import {useState, useEffect} from 'react';
-import {Box, Text} from 'ink';
+import React, {useState, useEffect} from 'react';
 import {FeedItem} from '../../types/instagram.js';
 import {convertImageToColorAscii} from '../../utils/ascii-display.js';
+import TimelineMediDisplay from '../components/TimelineMediaDisplay.js';
+import ListMediaDisplay from '../components/ListMediaDisplay.js';
+import {ConfigManager} from '../../config.js';
 
 type Props = {
 	feedItems: FeedItem[];
 	width?: number;
 };
 
-export default function MediaView({feedItems, width = 40}: Props) {
+export default function MediaView({feedItems}: Props) {
 	const [asciiImages, setAsciiImages] = useState<string[]>([]);
+	const [feedType, setFeedType] = useState<'timeline' | 'list'>('list');
 
 	useEffect(() => {
+		const config = ConfigManager.getInstance();
+		const savedFeedType = config.get<string>('feed.feedType') || 'list';
+		setFeedType(savedFeedType as 'timeline' | 'list');
+
 		const renderAscii = async () => {
 			try {
 				const images: string[] = [];
-
 				for (const item of feedItems) {
 					const url = item.image_versions2?.candidates?.[0]?.url;
 					if (url) {
-						const ascii = await convertImageToColorAscii(url, width);
-						console.log(ascii);
+						const ascii = await convertImageToColorAscii(url);
 						images.push(ascii);
 					} else {
 						images.push('No image');
@@ -30,44 +34,15 @@ export default function MediaView({feedItems, width = 40}: Props) {
 				setAsciiImages(images);
 			} catch (err) {
 				console.error('Error converting images to ASCII:', err);
-			} finally {
 			}
 		};
 
 		renderAscii();
-	}, [feedItems, width]);
+	}, [feedItems]);
 
-	return (
-		<Box flexDirection="column" gap={1}>
-			<Text color="blue">Your Feed</Text>
-			{feedItems.map((item, index) => (
-				<Box
-					key={item.id}
-					flexDirection="column"
-					borderStyle="round"
-					padding={1}
-				>
-					<Text color="green">👤 {item.user?.username || 'Unknown user'}</Text>
-					<Text>{'\n'}</Text>
-					<Text>{item.caption?.text || 'No caption'}</Text>
-					<Text>{'\n'}</Text>
-
-					<Box flexDirection="column">
-						{/* TODO: Handling properly posts with multiple images */}
-						{asciiImages[index] ? (
-							asciiImages[index]
-								.split('\n')
-								.map((line, i) => <Text key={i}>{line}</Text>)
-						) : (
-							<Text color="yellow">⏳ Loading media...</Text>
-						)}
-					</Box>
-					<Box flexDirection="row">
-						<Text>♥ {item.like_count ?? 0} - </Text>
-						<Text>🗨 {item.comment_count ?? 0}</Text>
-					</Box>
-				</Box>
-			))}
-		</Box>
+	return feedType === 'timeline' ? (
+		<TimelineMediDisplay feedItems={feedItems} asciiImages={asciiImages} />
+	) : (
+		<ListMediaDisplay feedItems={feedItems} asciiImages={asciiImages} />
 	);
 }

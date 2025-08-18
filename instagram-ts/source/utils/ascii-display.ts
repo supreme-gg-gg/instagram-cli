@@ -30,9 +30,26 @@ function drawAsciiWithBorder(asciiArt: string, width: number): string {
 	return borderedAscii;
 }
 
+function calculateDynamicAsciiWidth(
+	imageWidth: number,
+	imageHeight: number,
+): number {
+	const termWidth = process.stdout.columns;
+	let width = Math.min(Math.floor(termWidth / 3), 80);
+
+	const aspectRatio = imageWidth / imageHeight;
+
+	if (aspectRatio < 0.8) {
+		width = Math.floor(width * 0.7);
+	} else if (aspectRatio > 1.5) {
+		width = Math.floor(width * 1.1);
+	}
+
+	return Math.max(20, width);
+}
+
 export async function convertImageToColorAscii(
 	imageUrl: string,
-	width: number = 100,
 ): Promise<string> {
 	try {
 		const buffer = await fetchImage(imageUrl);
@@ -46,13 +63,18 @@ export async function convertImageToColorAscii(
 		finalPath = join(tmpdir(), `${randomUUID()}.png`);
 		await fs.writeFile(finalPath, pngBuffer);
 
+		const metadata = await sharp(pngBuffer).metadata();
+		const imageWidth = metadata.width ?? 800;
+		const imageHeight = metadata.height ?? 600;
+
+		const finalWidth = calculateDynamicAsciiWidth(imageWidth, imageHeight);
 		const asciiArt = await AsciiArt.image({
 			filepath: finalPath,
-			width: width,
+			width: finalWidth,
 			colored: true,
 		});
 
-		const borderedAscii = drawAsciiWithBorder(asciiArt, width);
+		const borderedAscii = drawAsciiWithBorder(asciiArt, finalWidth);
 
 		// Delete the temporary image
 		await fs.unlink(finalPath);
