@@ -49,6 +49,8 @@ class MessageInfo:
     message: MessageBrief
     reactions: Optional[Dict] = None
     reply_to: Optional[MessageBrief] = None
+    pending: bool = False
+    failed: bool = False
 
 
 class ClientWrapper(Protocol):

@@ -5,7 +5,7 @@ from ..components.chat_window import ChatWindow
 from ..components.status_bar import StatusBar
 from ..utils.types import ChatMode, Signal
 from ..utils.chat_commands import cmd_registry
-from instagram.api import DirectChat
+from instagram.api import DirectChat, MessageInfo
 from instagram.configs import Config
 import time
 
@@ -396,23 +396,100 @@ class ChatInterface:
     def _handle_chat_message(self, message: str) -> Signal:
         """
         Send a chat message or reply to a selected message.
+        Implements optimistic UI: append pending message locally, send in background,
+        replace with server-provided messages on success, remove on failure.
         """
+        import uuid
+
         try:
-            if self.chat_window.selected_message_id and self.mode == ChatMode.REPLY:
-                self.direct_chat.send_reply_text(
-                    message, self.chat_window.selected_message_id
-                )
+            # Prepare processed message for optimistic display
+            processed_message = self.direct_chat._replace_emojis(message)
+
+            # Build temporary MessageInfo for optimistic UI
+            tmp_id = f"tmp:{uuid.uuid4()}"
+            pending_msg = MessageInfo(
+                id=tmp_id,
+                message=type("M", (), {"sender": "You", "content": processed_message})(),
+                reactions=None,
+                reply_to=None,
+                pending=True,
+                failed=False,
+            )
+
+            # Append optimistically under lock and update UI
+            with self.refresh_lock:
+                self.chat_window.messages.append(pending_msg)
+                # ensure we render the latest
+                self.chat_window.scroll_offset = 0
+                self.chat_window._build_message_lines()
+            self.chat_window.update()
+            # Start spinner in status bar
+            self.status_bar.start_spinner("Sending")
+
+            # Background sender thread
+            def _send_in_background(tmp_id_local, msg_text, is_reply, reply_to_id):
+                send_success = False
+                try:
+                    if is_reply and reply_to_id:
+                        # send reply and let refresher pick up authoritative state
+                        self.direct_chat.send_reply_text(msg_text, reply_to_id)
+                    else:
+                        self.direct_chat.send_text(msg_text)
+                    send_success = True
+                except Exception as send_exc:
+                    send_success = False
+                    send_error = send_exc
+
+                # After send completes, update UI under lock
+                try:
+                    with self.refresh_lock:
+                        # Find index of temporary message
+                        idx = next(
+                            (i for i, m in enumerate(self.chat_window.messages) if m.id == tmp_id_local),
+                            None,
+                        )
+                        if send_success:
+                            # Refresh authoritative messages from server and replace
+                            try:
+                                self.direct_chat.fetch_chat_history(self.messages_per_fetch)
+                                server_msgs = self.direct_chat.get_chat_history()[0]
+                                # Replace entire list with server messages
+                                self.chat_window.set_messages(server_msgs)
+                            except Exception:
+                                # If refresh failed, just remove pending flag
+                                if idx is not None and idx < len(self.chat_window.messages):
+                                    self.chat_window.messages[idx].pending = False
+                        else:
+                            # Remove the optimistic message to avoid stale pending items
+                            if idx is not None and idx < len(self.chat_window.messages):
+                                self.chat_window.messages.pop(idx)
+                finally:
+                    # Ensure UI updated and status cleared
+                    self.chat_window.update()
+                    # Stop spinner and restore status bar
+                    self.status_bar.stop_spinner()
+                    self.status_bar.update()
+
+            # Decide whether this is a reply
+            is_reply = self.chat_window.selected_message_id and self.mode == ChatMode.REPLY
+            reply_to_id = self.chat_window.selected_message_id if is_reply else None
+
+            sender_thread = threading.Thread(
+                target=_send_in_background,
+                args=(tmp_id, processed_message, is_reply, reply_to_id),
+                daemon=True,
+            )
+            sender_thread.start()
+
+            # Reset reply state if applicable
+            if is_reply:
                 self.chat_window.selected_message_id = None
-                # Exit reply mode
                 self.set_mode(ChatMode.CHAT)
                 self.skip_message_selection = False
-                self.chat_window.update()
-                self.status_bar.update()
-            else:
-                self.direct_chat.send_text(message)
-            self.chat_window.scroll_offset = 0
+
             return Signal.CONTINUE
         except Exception as e:
+            # On any local error, show message and continue
             self.chat_window.window.addstr(
                 0, 0, f"Error sending: {e}"[: self.width - 1]
             )

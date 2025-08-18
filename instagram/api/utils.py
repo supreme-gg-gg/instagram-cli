@@ -359,7 +359,7 @@ def direct_send_media(
         data["thread_ids"] = dumps([int(tid) for tid in thread_ids])
     path = Path(path)
     upload_id = str(int(time.time() * 1000))
-    match content_type: # Python 3.10+ 
+    match content_type:
         case "photo":
             upload_id, width, height = photo_rupload(client, path, upload_id)[:3]
         case "video":

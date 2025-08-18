@@ -1,4 +1,6 @@
 import curses
+import threading
+import time
 from ..utils.types import ChatMode
 
 
@@ -9,6 +11,9 @@ class StatusBar:
         self.window = window
         self.height, self.width = window.getmaxyx()
         self.mode = ChatMode.CHAT
+        # Spinner control
+        self._spinner_thread: threading.Thread | None = None
+        self._spinner_stop: threading.Event | None = None
         self._setup_colors()
 
     def _setup_colors(self):
@@ -44,3 +49,52 @@ class StatusBar:
 
         self.window.addstr(0, 0, status_text[: self.width - 1])
         self.window.refresh()
+
+    def start_spinner(self, base_msg: str = "Sending", interval: float = 0.3):
+        """Start a spinner in the status bar with an animated dot sequence.
+
+        The spinner runs in a daemon thread and will repeatedly call
+        update(..., override_default=True) with growing dots until stopped.
+        """
+        # Stop any existing spinner
+        self.stop_spinner()
+
+        stop_event = threading.Event()
+        self._spinner_stop = stop_event
+
+        def _spin():
+            i = 0
+            try:
+                while not stop_event.is_set():
+                    dots = "." * (i % 4)
+                    msg = f"{base_msg}{dots}"
+                    # Use update to render the override message
+                    try:
+                        self.update(msg=msg, override_default=True)
+                    except Exception:
+                        # Suppress curses errors if window size changes
+                        pass
+                    i += 1
+                    time.sleep(interval)
+            finally:
+                # Clear spinner when exiting
+                try:
+                    self.update()
+                except Exception:
+                    pass
+
+        t = threading.Thread(target=_spin, daemon=True)
+        self._spinner_thread = t
+        t.start()
+
+    def stop_spinner(self):
+        """Stop the spinner if running and restore status bar."""
+        if self._spinner_stop is not None:
+            try:
+                self._spinner_stop.set()
+            except Exception:
+                pass
+            self._spinner_stop = None
+        if self._spinner_thread is not None:
+            # thread is daemon; just clear reference
+            self._spinner_thread = None

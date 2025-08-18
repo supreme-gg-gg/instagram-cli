@@ -21,7 +21,7 @@ class ChatWindow:
         self.visible_messages_range = None
         self.visible_lines_range = None
 
-    def set_messages(self, messages: List[MessageInfo]):
+    def set_messages(self, messages: List[MessageInfo]): # Ensure this shall be run within refresh_lock
         """Update messages list."""
         self.messages = messages
         self._build_message_lines()
@@ -51,7 +51,14 @@ class ChatWindow:
                 color_idx = 0  # no color
 
             # Split content into words, then chunk
-            words = msg.message.content.split()
+            content_text = msg.message.content
+            # Append status suffix for pending/failed messages
+            if getattr(msg, "pending", False):
+                content_text = content_text + " (sending...)"
+            if getattr(msg, "failed", False):
+                content_text = content_text + " [FAILED :(  ]"
+
+            words = content_text.split()
             line_buffer = []
             current_width = 0
             first_line = True
