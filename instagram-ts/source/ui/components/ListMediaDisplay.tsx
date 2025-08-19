@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import {Box, Text, useInput} from 'ink';
-import {FeedItem} from '../../types/instagram.js';
+import {FeedItem, CarouselMediaItem} from '../../types/instagram.js';
 import open from 'open';
 
 type Props = {
@@ -8,15 +8,21 @@ type Props = {
 	asciiImages: string[];
 };
 
+type ActiveMedia = {
+	feed: FeedItem;
+	media: CarouselMediaItem | null;
+};
+
 export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
+	const [carouselIndex, setCarouselIndex] = useState<number>(0);
 
 	if (feedItems.length === 0) {
 		return <Text>No posts available.</Text>;
 	}
 
-	//Function for verifying media type
-	const openMediaUrl = (item: FeedItem) => {
+	const openMediaUrl = (activeMedia: ActiveMedia) => {
+		const item = activeMedia.media ? activeMedia.media : activeMedia.feed;
 		if (item.media_type === 2) {
 			// If media is a video, open the video URL
 			const videoUrl = item.video_versions?.[0]?.url;
@@ -37,22 +43,54 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 		}
 	};
 
+	const getActiveMedia = (item: FeedItem, index: number): ActiveMedia => {
+		if (item.carousel_media && item.carousel_media.length > 0) {
+			return {
+				feed: item,
+				media: item.carousel_media[index] ?? item.carousel_media[0]!,
+			};
+		}
+		return {
+			feed: item,
+			media: null,
+		};
+	};
+
 	useInput((input, key) => {
 		if (input === 'j' || key.downArrow) {
 			setSelectedIndex(prev => Math.min(prev + 1, feedItems.length - 1));
+			setCarouselIndex(0);
 		} else if (input === 'k' || key.upArrow) {
 			setSelectedIndex(prev => Math.max(prev - 1, 0));
+			setCarouselIndex(0);
 		} else if (input === 'o' || key.return) {
 			const selectedItem = feedItems[selectedIndex];
 			if (selectedItem) {
-				openMediaUrl(selectedItem);
+				const baseItem = feedItems[selectedIndex];
+				if (baseItem) {
+					openMediaUrl(getActiveMedia(baseItem, carouselIndex));
+				}
 			}
 		} else if (input === 'q' || key.escape) {
 			process.exit(0);
+		} else if (input === 'h' || key.leftArrow) {
+			if (feedItems[selectedIndex]?.carousel_media) {
+				setCarouselIndex(prev => Math.max(prev - 1, 0));
+			}
+		} else if (input === 'l' || key.rightArrow) {
+			if (feedItems[selectedIndex]?.carousel_media) {
+				setCarouselIndex(prev =>
+												 Math.min(
+													 prev + 1,
+													 (feedItems[selectedIndex]?.carousel_media_count ?? 0) - 1,
+												 ),
+												);
+			}
 		}
 	});
 
-	const selectedItem = feedItems[selectedIndex]!;
+	const baseItem = feedItems[selectedIndex]!;
+	const selectedItem = getActiveMedia(baseItem, carouselIndex);
 	const selectedAscii = asciiImages[selectedIndex]!;
 
 	return (
@@ -93,11 +131,11 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 				>
 					<Box flexDirection="row">
 						<Text color="green">
-							👤 {selectedItem.user?.username || 'Unknown user'}
+							👤 {selectedItem.feed.user?.username || 'Unknown user'}
 						</Text>
 						<Text color="gray">
 							{' ('}
-							{new Date(selectedItem.taken_at * 1000).toLocaleString()}
+							{new Date(selectedItem.feed.taken_at * 1000).toLocaleString()}
 							{')'}
 						</Text>
 					</Box>
@@ -108,6 +146,7 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 						{selectedAscii ? (
 							selectedAscii.split('\n').map((line, i) => (
 								<Text key={i} wrap="truncate">
+
 									{line}
 								</Text>
 							))
@@ -115,20 +154,31 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 							<Text color="yellow">⏳ Loading media...</Text>
 						)}
 					</Box>
+					<Text color="gray">
+						{selectedItem.feed.media_type === 2 || selectedItem.media?.media_type === 2
+							? '📹 Video'
+							: ''}
+					</Text>
+					<Text color="gray">
+						{selectedItem.feed.carousel_media_count
+							? `Carousel ${carouselIndex + 1} of ${selectedItem.feed.carousel_media_count}`
+							: ''}
+					</Text>
 
-					<Text wrap="wrap">{selectedItem.caption?.text || 'No caption'}</Text>
+
+					<Text wrap="wrap">{selectedItem.feed.caption?.text || 'No caption'}</Text>
 
 					<Text>{'\n'}</Text>
 
 					<Box flexDirection="row">
 						<Text>
 							{' '}
-							♡ {selectedItem.like_count ?? 0}
+							♡ {selectedItem.feed.like_count ?? 0}
 							{'   '}
 						</Text>
 						<Text>
 							🗨{'  '}
-							{selectedItem.comment_count ?? 0}
+							{selectedItem.feed.comment_count ?? 0}
 						</Text>
 					</Box>
 				</Box>

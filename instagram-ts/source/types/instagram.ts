@@ -41,6 +41,15 @@ export interface AuthState {
 	error?: string;
 }
 
+export interface CarouselMediaItem {
+  id: string;
+  media_type: number;
+  image_versions2?: {
+    candidates: { url: string; width: number; height: number }[];
+  };
+  video_versions?: { url: string; width: number; height: number }[];
+}
+
 export interface FeedItem {
 	id: string;
 	user: {
@@ -67,4 +76,6 @@ export interface FeedItem {
 		width: number;
 		height: number;
 	}[];
+	carousel_media_count?: number;
+	carousel_media?: CarouselMediaItem[];
 }
