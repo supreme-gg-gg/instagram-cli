@@ -10,9 +10,8 @@ from instagram.configs import Config
 import time
 import uuid
 from dataclasses import dataclass
-
 @dataclass
-class OptimisticMessageInfo(MessageInfo):
+class _OptimisticMessageInfo(MessageInfo):
     """
     Temporary message info used for optimistic UI updates.
     This is used to display the message immediately in the UI
@@ -25,7 +24,7 @@ class OptimisticMessageInfo(MessageInfo):
     """
     pending: bool = False
     failed: bool = False
-
+    
 class ChatInterface:
     """Main chat interface that coordinates components and handles user input."""
 
@@ -38,6 +37,9 @@ class ChatInterface:
         self.skip_message_selection = (
             False  # Flag to skip message selection in reply mode
         )
+
+        # Track optimistic pending messages (tmp_id -> message)
+        self.pending_msgs: dict[str, MessageInfo] = {}
 
         # Initialize components
         self.screen.keypad(True)  # Enable special keys
@@ -97,6 +99,16 @@ class ChatInterface:
                         # self.messages.clear()
                         # self.messages.extend(new_messages)
                         self.chat_window.set_messages(new_messages)
+                        # Re-append any optimistic pending messages that are not yet in server list
+                        try:
+                            existing_ids = {m.id for m in self.chat_window.messages}
+                        except Exception:
+                            existing_ids = set()
+                        for pid, pmsg in list(self.pending_msgs.items()):
+                            if pid not in existing_ids:
+                                self.chat_window.messages.append(pmsg)
+                        # Rebuild lines after merging pending messages
+                        self.chat_window._build_message_lines()
                     self.chat_window.update()
 
                     if Config().get("chat.send_read_receipts", True):
@@ -422,7 +434,7 @@ class ChatInterface:
 
             # Build temporary OptimisticMessageInfo for optimistic UI
             tmp_id = f"tmp:{uuid.uuid4()}"
-            pending_msg = OptimisticMessageInfo(
+            pending_msg = _OptimisticMessageInfo(
                 id=tmp_id,
                 message=type("M", (), {"sender": "You", "content": processed_message})(),
                 reactions=None,
@@ -434,6 +446,8 @@ class ChatInterface:
             # Append optimistically under lock and update UI
             with self.refresh_lock:
                 self.chat_window.messages.append(pending_msg)
+                # Track pending optimistic message so refresh won't drop it
+                self.pending_msgs[tmp_id] = pending_msg
                 # ensure we render the latest
                 self.chat_window.scroll_offset = 0
                 self.chat_window._build_message_lines()
@@ -470,14 +484,29 @@ class ChatInterface:
                                 server_msgs = self.direct_chat.get_chat_history()[0]
                                 # Replace entire list with server messages
                                 self.chat_window.set_messages(server_msgs)
+                                # Remove this pending entry from tracking if server now has it
+                                if tmp_id_local in self.pending_msgs:
+                                    del self.pending_msgs[tmp_id_local]
+                                # Re-append any other pending messages that are not in server list
+                                try:
+                                    existing_ids = {m.id for m in self.chat_window.messages}
+                                except Exception:
+                                    existing_ids = set()
+                                for pid, pmsg in list(self.pending_msgs.items()):
+                                    if pid not in existing_ids:
+                                        self.chat_window.messages.append(pmsg)
+                                self.chat_window._build_message_lines()
                             except Exception:
-                                # If refresh failed, just remove pending flag
+                                # If refresh failed, just remove pending flag so UI keeps the optimistic message
                                 if idx is not None and idx < len(self.chat_window.messages):
                                     self.chat_window.messages[idx].pending = False
                         else:
                             # Remove the optimistic message to avoid stale pending items
                             if idx is not None and idx < len(self.chat_window.messages):
                                 self.chat_window.messages.pop(idx)
+                            # Remove from pending tracking as well
+                            if tmp_id_local in self.pending_msgs:
+                                del self.pending_msgs[tmp_id_local]
                 finally:
                     # Ensure UI updated and status cleared
                     self.chat_window.update()
