@@ -1,5 +1,7 @@
 from enum import Enum, auto
 from typing import NamedTuple
+
+
 class LineInfo(NamedTuple):
     """Named tuple to store line information for chat messages."""
 

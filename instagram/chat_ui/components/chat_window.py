@@ -21,7 +21,9 @@ class ChatWindow:
         self.visible_messages_range = None
         self.visible_lines_range = None
 
-    def set_messages(self, messages: List[MessageInfo]): # Ensure this shall be run within refresh_lock
+    def set_messages(
+        self, messages: List[MessageInfo]
+    ):  # Ensure this shall be run within refresh_lock
         """Update messages list."""
         self.messages = messages
         self._build_message_lines()

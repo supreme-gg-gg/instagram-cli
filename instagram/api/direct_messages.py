@@ -42,6 +42,7 @@ class MessageBrief:
     sender: str
     content: str
 
+
 @dataclass
 class MessageInfo:
     id: str

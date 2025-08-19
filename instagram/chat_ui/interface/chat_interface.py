@@ -10,6 +10,8 @@ from instagram.configs import Config
 import time
 import uuid
 from dataclasses import dataclass
+
+
 @dataclass
 class _OptimisticMessageInfo(MessageInfo):
     """
@@ -19,12 +21,14 @@ class _OptimisticMessageInfo(MessageInfo):
 
     This distincts from MessageInfo which is a real message
 
-    This data class shall be within chat_interface.py to avoid confusion with the parent MessageInfo, 
+    This data class shall be within chat_interface.py to avoid confusion with the parent MessageInfo,
     as this is intended for UI-specific purposes only.
     """
+
     pending: bool = False
     failed: bool = False
-    
+
+
 class ChatInterface:
     """Main chat interface that coordinates components and handles user input."""
 
@@ -436,7 +440,9 @@ class ChatInterface:
             tmp_id = f"tmp:{uuid.uuid4()}"
             pending_msg = _OptimisticMessageInfo(
                 id=tmp_id,
-                message=type("M", (), {"sender": "You", "content": processed_message})(),
+                message=type(
+                    "M", (), {"sender": "You", "content": processed_message}
+                )(),
                 reactions=None,
                 reply_to=None,
                 pending=True,
@@ -474,13 +480,19 @@ class ChatInterface:
                     with self.refresh_lock:
                         # Find index of temporary message
                         idx = next(
-                            (i for i, m in enumerate(self.chat_window.messages) if m.id == tmp_id_local),
+                            (
+                                i
+                                for i, m in enumerate(self.chat_window.messages)
+                                if m.id == tmp_id_local
+                            ),
                             None,
                         )
                         if send_success:
                             # Refresh authoritative messages from server and replace
                             try:
-                                self.direct_chat.fetch_chat_history(self.messages_per_fetch)
+                                self.direct_chat.fetch_chat_history(
+                                    self.messages_per_fetch
+                                )
                                 server_msgs = self.direct_chat.get_chat_history()[0]
                                 # Replace entire list with server messages
                                 self.chat_window.set_messages(server_msgs)
@@ -489,7 +501,9 @@ class ChatInterface:
                                     del self.pending_msgs[tmp_id_local]
                                 # Re-append any other pending messages that are not in server list
                                 try:
-                                    existing_ids = {m.id for m in self.chat_window.messages}
+                                    existing_ids = {
+                                        m.id for m in self.chat_window.messages
+                                    }
                                 except Exception:
                                     existing_ids = set()
                                 for pid, pmsg in list(self.pending_msgs.items()):
@@ -498,7 +512,9 @@ class ChatInterface:
                                 self.chat_window._build_message_lines()
                             except Exception:
                                 # If refresh failed, just remove pending flag so UI keeps the optimistic message
-                                if idx is not None and idx < len(self.chat_window.messages):
+                                if idx is not None and idx < len(
+                                    self.chat_window.messages
+                                ):
                                     self.chat_window.messages[idx].pending = False
                         else:
                             # Remove the optimistic message to avoid stale pending items
@@ -513,7 +529,9 @@ class ChatInterface:
                     self.status_bar.update()
 
             # Decide whether this is a reply
-            is_reply = self.chat_window.selected_message_id and self.mode == ChatMode.REPLY
+            is_reply = (
+                self.chat_window.selected_message_id and self.mode == ChatMode.REPLY
+            )
             reply_to_id = self.chat_window.selected_message_id if is_reply else None
 
             sender_thread = threading.Thread(
