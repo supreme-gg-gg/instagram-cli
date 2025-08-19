@@ -42,15 +42,12 @@ class MessageBrief:
     sender: str
     content: str
 
-
 @dataclass
 class MessageInfo:
     id: str
     message: MessageBrief
     reactions: Optional[Dict] = None
     reply_to: Optional[MessageBrief] = None
-    pending: bool = False
-    failed: bool = False
 
 
 class ClientWrapper(Protocol):

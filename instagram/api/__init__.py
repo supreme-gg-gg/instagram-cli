@@ -4,7 +4,7 @@ from .direct_messages import (
     DirectChat,
     MessageInfo,
     DirectThreadNotFound,
-    MessageBrief
+    MessageBrief,
 )
 from .scheduler import MessageScheduler
 from .utils import list_all_scheduled_tasks, cancel_scheduled_task_by_index
@@ -15,6 +15,7 @@ __all__ = [
     "DirectMessages",
     "DirectChat",
     "MessageInfo",
+    "MessageBrief",
     "MessageScheduler",
     "list_all_scheduled_tasks",
     "cancel_scheduled_task_by_index",

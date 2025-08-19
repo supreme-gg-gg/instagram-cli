@@ -8,7 +8,23 @@ from ..utils.chat_commands import cmd_registry
 from instagram.api import DirectChat, MessageInfo
 from instagram.configs import Config
 import time
+import uuid
+from dataclasses import dataclass
 
+@dataclass
+class OptimisticMessageInfo(MessageInfo):
+    """
+    Temporary message info used for optimistic UI updates.
+    This is used to display the message immediately in the UI
+    while the actual message is being sent in the background.
+
+    This distincts from MessageInfo which is a real message
+
+    This data class shall be within chat_interface.py to avoid confusion with the parent MessageInfo, 
+    as this is intended for UI-specific purposes only.
+    """
+    pending: bool = False
+    failed: bool = False
 
 class ChatInterface:
     """Main chat interface that coordinates components and handles user input."""
@@ -399,15 +415,14 @@ class ChatInterface:
         Implements optimistic UI: append pending message locally, send in background,
         replace with server-provided messages on success, remove on failure.
         """
-        import uuid
 
         try:
             # Prepare processed message for optimistic display
             processed_message = self.direct_chat._replace_emojis(message)
 
-            # Build temporary MessageInfo for optimistic UI
+            # Build temporary OptimisticMessageInfo for optimistic UI
             tmp_id = f"tmp:{uuid.uuid4()}"
-            pending_msg = MessageInfo(
+            pending_msg = OptimisticMessageInfo(
                 id=tmp_id,
                 message=type("M", (), {"sender": "You", "content": processed_message})(),
                 reactions=None,
@@ -423,8 +438,7 @@ class ChatInterface:
                 self.chat_window.scroll_offset = 0
                 self.chat_window._build_message_lines()
             self.chat_window.update()
-            # Start spinner in status bar
-            self.status_bar.start_spinner("Sending")
+            self.status_bar.update("Sending...", override_default=True)
 
             # Background sender thread
             def _send_in_background(tmp_id_local, msg_text, is_reply, reply_to_id):
@@ -438,7 +452,8 @@ class ChatInterface:
                     send_success = True
                 except Exception as send_exc:
                     send_success = False
-                    send_error = send_exc
+                    # record exception locally if needed later (currently ignored)
+                    _ = send_exc
 
                 # After send completes, update UI under lock
                 try:
@@ -466,8 +481,6 @@ class ChatInterface:
                 finally:
                     # Ensure UI updated and status cleared
                     self.chat_window.update()
-                    # Stop spinner and restore status bar
-                    self.status_bar.stop_spinner()
                     self.status_bar.update()
 
             # Decide whether this is a reply
