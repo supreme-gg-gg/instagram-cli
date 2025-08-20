@@ -31,6 +31,7 @@ dependencies = [
     "emoji>=2.14.1",
     "requests>=2.32.3",
     "click<8.2.0",
+    "openai>=1.100.1",
     "windows-curses; platform_system=='Windows'",
 ]
 classifiers = [
