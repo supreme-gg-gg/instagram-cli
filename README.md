@@ -139,6 +139,7 @@ All chat commands have the following syntax:
 - `:upload <path>`: upload media (photo or video) directly from path
 - `:view <index>`: view and download media at index or open URL directly in browser
 - `:latex $<expr>$`: render and send LaTeX code as image, see [latex](#latex)
+- `:summarize`: generate a summary of chat history using an LLM, see [chat summarization](#chat-summarization)
 
 ### Emoji
 
@@ -170,6 +171,34 @@ We support LaTeX rendering and sending as images in the chat. For example,
 Please note that the LaTeX code **_MUST_** be enclosed in `$` symbols.
 
 You can choose to render with [online API](https://latex.codecogs.com) (default) or local LaTeX installation such as TeX Live, MiKTeX, etc. You can set the rendering method with `instagram config --set latex_rendering_method <online|local>`.
+
+### Chat Summarization
+
+You can generate a summary of the chat history using the `:summarize` command. This will create a concise summary of the conversation, highlighting key points and important information.
+
+Local LLMs are first-class citizens here, allowing for maximum privacy and flexibility. All you need is a local LLM inferencing server like [Ollama](https://ollama.com/), [LM Studio](https://lmstudio.ai/).
+You can provide your own OpenAI-compatible endpoint for summarization by configuring the `llm.endpoint` setting. For example, for Ollama, this would likely be:
+
+```
+http://localhost:11434/v1/
+```
+
+Once inside a chat conversation, you can summarize the chat history using:
+
+```
+:summarize
+```
+
+This will process all messages fetched in the current chat.
+
+To limit (or expand) the summarization to the `n` most recent messages:
+
+```
+:summarize n
+```
+
+> [!TIP]
+> If you don't mind giving your data to AI companies, you may set the `llama.endpoint` and `llm.model` configs to a remote endpoint, e.g. `https://api.openai.com/v1/`, `gpt-5`.
 
 ### Scheduling Messages
 
