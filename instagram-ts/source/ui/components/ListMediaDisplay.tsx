@@ -142,44 +142,54 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 
 					<Text>{'\n'}</Text>
 
-					<Box flexDirection="column" flexGrow={1} overflow="hidden">
-						{selectedAscii ? (
-							selectedAscii.split('\n').map((line, i) => (
-								<Text key={i} wrap="truncate">
+					<Box flexDirection="row" flexGrow={1} overflow="hidden" gap={1}>
+						<Box
+							flexDirection="column"
+							flexGrow={1}
+							overflow="hidden"
+							alignItems="center"
+							justifyContent="flex-start"
+							width={'50%'}
+						>
+							{selectedAscii ? (
+								selectedAscii.split('\n').map((line, i) => (
+									<Text key={i} wrap="truncate">
 
-									{line}
+										{line}
+									</Text>
+								))
+							) : (
+								<Text color="yellow">⏳ Loading media...</Text>
+							)}
+
+							<Text>
+								{selectedItem.feed.media_type === 2 || selectedItem.media?.media_type === 2
+									? '▶ Video'
+									: ''}
+							</Text>
+							<Text color="gray">
+								{selectedItem.feed.carousel_media_count
+									? `Carousel ${carouselIndex + 1} of ${selectedItem.feed.carousel_media_count}`
+									: ''}
+							</Text>
+
+						</Box>
+						<Box flexDirection="column" width={'50%'} paddingRight={3} overflow="hidden" justifyContent="flex-start">
+							<Text wrap="wrap">{selectedItem.feed.caption?.text || 'No caption'}</Text>
+							<Text>{'\n'}</Text>
+
+							<Box flexDirection="row">
+								<Text>
+									{' '}
+									♡ {selectedItem.feed.like_count ?? 0}
+									{'   '}
 								</Text>
-							))
-						) : (
-							<Text color="yellow">⏳ Loading media...</Text>
-						)}
-					</Box>
-					<Text color="gray">
-						{selectedItem.feed.media_type === 2 || selectedItem.media?.media_type === 2
-							? '📹 Video'
-							: ''}
-					</Text>
-					<Text color="gray">
-						{selectedItem.feed.carousel_media_count
-							? `Carousel ${carouselIndex + 1} of ${selectedItem.feed.carousel_media_count}`
-							: ''}
-					</Text>
-
-
-					<Text wrap="wrap">{selectedItem.feed.caption?.text || 'No caption'}</Text>
-
-					<Text>{'\n'}</Text>
-
-					<Box flexDirection="row">
-						<Text>
-							{' '}
-							♡ {selectedItem.feed.like_count ?? 0}
-							{'   '}
-						</Text>
-						<Text>
-							🗨{'  '}
-							{selectedItem.feed.comment_count ?? 0}
-						</Text>
+								<Text>
+									🗨{'  '}
+									{selectedItem.feed.comment_count ?? 0}
+								</Text>
+							</Box>
+						</Box>
 					</Box>
 				</Box>
 			</Box>
