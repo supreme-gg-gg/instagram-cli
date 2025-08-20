@@ -20,7 +20,7 @@ keywords = [
     "command-line",
     "instagram-api"
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.10, <3.13"
 dependencies = [
     "typer==0.12.5",
     "art>=6.5",

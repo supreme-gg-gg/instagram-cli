@@ -51,6 +51,20 @@ cd instagram-cli
 pip install .
 ```
 
+### DMG / macOS Installer (BETA)
+
+As a convenience for macOS users we provide a DMG-based installer that contains `install.command` and `uninstall.command` scripts inside `installers/instagram-cli-macOS/`. This installation method is considered BETA and may not be suitable for all users. Use it if you prefer a guided installer flow for macOS.
+
+How to use the DMG installer (or the scripts inside `installers/instagram-cli-macOS/`):
+
+1. Mount the DMG or extract the installer folder.
+2. Make the installer executable if needed: `chmod +x install.command`
+3. Run the installer in Terminal: `./install.command`
+
+The installer will prompt interactively and attempts to create a per-user virtual environment and symlink the CLI into `~/.local/bin`. The installer will also try to add `~/.local/bin` to your shell profile (`~/.zprofile`) if it is not already present.
+
+This DMG installer is experimental; please report issues on the GitHub repository: [supreme-gg-gg/instagram-cli](https://github.com/supreme-gg-gg/instagram-cli)
+
 ### Pre-built Executables
 
 > [!CAUTION]
