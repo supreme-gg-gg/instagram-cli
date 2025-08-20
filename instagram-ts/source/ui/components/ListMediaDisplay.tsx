@@ -1,28 +1,20 @@
 import React, {useState} from 'react';
 import {Box, Text, useInput} from 'ink';
-import {FeedItem, CarouselMediaItem} from '../../types/instagram.js';
+import {Post, PostContainer, FeedInstance} from '../../types/instagram.js';
 import open from 'open';
 
-type Props = {
-	feedItems: FeedItem[];
-	asciiImages: string[];
-};
-
-type ActiveMedia = {
-	feed: FeedItem;
-	media: CarouselMediaItem | null;
-};
-
-export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
+export default function ListMediaDisplay({posts}: FeedInstance) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
 
-	if (feedItems.length === 0) {
+	if (posts.length === 0) {
 		return <Text>No posts available.</Text>;
 	}
 
-	const openMediaUrl = (activeMedia: ActiveMedia) => {
-		const item = activeMedia.media ? activeMedia.media : activeMedia.feed;
+	const openMediaUrl = (activeMedia: PostContainer) => {
+		const item = activeMedia.current_media
+			? activeMedia.current_media
+			: activeMedia.post;
 		if (item.media_type === 2) {
 			// If media is a video, open the video URL
 			const videoUrl = item.video_versions?.[0]?.url;
@@ -43,30 +35,30 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 		}
 	};
 
-	const getActiveMedia = (item: FeedItem, index: number): ActiveMedia => {
-		if (item.carousel_media && item.carousel_media.length > 0) {
+	const getActiveMedia = (post: Post, index: number): PostContainer => {
+		if (post.carousel_media && post.carousel_media.length > 0) {
 			return {
-				feed: item,
-				media: item.carousel_media[index] ?? item.carousel_media[0]!,
+				post: post,
+				current_media: post.carousel_media[index] ?? post.carousel_media[0]!,
 			};
 		}
 		return {
-			feed: item,
-			media: null,
+			post: post,
+			current_media: null,
 		};
 	};
 
 	useInput((input, key) => {
 		if (input === 'j' || key.downArrow) {
-			setSelectedIndex(prev => Math.min(prev + 1, feedItems.length - 1));
+			setSelectedIndex(prev => Math.min(prev + 1, posts.length - 1));
 			setCarouselIndex(0);
 		} else if (input === 'k' || key.upArrow) {
 			setSelectedIndex(prev => Math.max(prev - 1, 0));
 			setCarouselIndex(0);
 		} else if (input === 'o' || key.return) {
-			const selectedItem = feedItems[selectedIndex];
+			const selectedItem = posts[selectedIndex];
 			if (selectedItem) {
-				const baseItem = feedItems[selectedIndex];
+				const baseItem = posts[selectedIndex];
 				if (baseItem) {
 					openMediaUrl(getActiveMedia(baseItem, carouselIndex));
 				}
@@ -74,30 +66,27 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 		} else if (input === 'q' || key.escape) {
 			process.exit(0);
 		} else if (input === 'h' || key.leftArrow) {
-			if (feedItems[selectedIndex]?.carousel_media) {
+			if (posts[selectedIndex]?.carousel_media) {
 				setCarouselIndex(prev => Math.max(prev - 1, 0));
 			}
 		} else if (input === 'l' || key.rightArrow) {
-			if (feedItems[selectedIndex]?.carousel_media) {
+			if (posts[selectedIndex]?.carousel_media) {
 				setCarouselIndex(prev =>
-												 Math.min(
-													 prev + 1,
-													 (feedItems[selectedIndex]?.carousel_media_count ?? 0) - 1,
-												 ),
-												);
+					Math.min(
+						prev + 1,
+						(posts[selectedIndex]?.carousel_media_count ?? 0) - 1,
+					),
+				);
 			}
 		}
 	});
 
-	const baseItem = feedItems[selectedIndex]!;
-	const selectedItem = getActiveMedia(baseItem, carouselIndex);
-	const selectedAscii = asciiImages[selectedIndex]!;
+	const selectedPost = posts[selectedIndex]!;
 
 	return (
 		<Box flexDirection="column" height={process.stdout.rows} width="100%">
-			{/* Main row */}
 			<Box flexDirection="row" gap={2} flexGrow={1}>
-				{/* Left column */}
+				{/* Users list */}
 				<Box
 					flexDirection="column"
 					borderStyle="round"
@@ -108,7 +97,7 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 				>
 					<Text color="cyan">📜 Feed</Text>
 					<Box height={1} />
-					{feedItems.map((item, index) => (
+					{posts.map((item, index) => (
 						<Text
 							key={item.id}
 							color={index === selectedIndex ? 'blue' : undefined}
@@ -119,8 +108,6 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 						</Text>
 					))}
 				</Box>
-
-				{/* Right column */}
 				<Box
 					flexDirection="column"
 					borderStyle="round"
@@ -131,11 +118,11 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 				>
 					<Box flexDirection="row">
 						<Text color="green">
-							👤 {selectedItem.feed.user?.username || 'Unknown user'}
+							👤 {selectedPost.user?.username || 'Unknown user'}
 						</Text>
 						<Text color="gray">
 							{' ('}
-							{new Date(selectedItem.feed.taken_at * 1000).toLocaleString()}
+							{new Date(selectedPost.taken_at * 1000).toLocaleString()}
 							{')'}
 						</Text>
 					</Box>
@@ -143,6 +130,7 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 					<Text>{'\n'}</Text>
 
 					<Box flexDirection="row" flexGrow={1} overflow="hidden" gap={1}>
+						{/* Media display */}
 						<Box
 							flexDirection="column"
 							flexGrow={1}
@@ -151,10 +139,9 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 							justifyContent="flex-start"
 							width={'50%'}
 						>
-							{selectedAscii ? (
-								selectedAscii.split('\n').map((line, i) => (
+							{selectedPost.ascii_image ? (
+								selectedPost.ascii_image.split('\n').map((line, i) => (
 									<Text key={i} wrap="truncate">
-
 										{line}
 									</Text>
 								))
@@ -163,30 +150,40 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 							)}
 
 							<Text>
-								{selectedItem.feed.media_type === 2 || selectedItem.media?.media_type === 2
+								{selectedPost.media_type === 2 || selectedPost?.media_type === 2
 									? '▶ Video'
 									: ''}
 							</Text>
 							<Text color="gray">
-								{selectedItem.feed.carousel_media_count
-									? `Carousel ${carouselIndex + 1} of ${selectedItem.feed.carousel_media_count}`
+								{selectedPost.carousel_media_count
+									? `Carousel ${carouselIndex + 1} of ${
+											selectedPost.carousel_media_count
+									  }`
 									: ''}
 							</Text>
-
 						</Box>
-						<Box flexDirection="column" width={'50%'} paddingRight={3} overflow="hidden" justifyContent="flex-start">
-							<Text wrap="wrap">{selectedItem.feed.caption?.text || 'No caption'}</Text>
+						{/* Caption and stats */}
+						<Box
+							flexDirection="column"
+							width={'50%'}
+							paddingRight={3}
+							overflow="hidden"
+							justifyContent="flex-start"
+						>
+							<Text wrap="wrap">
+								{selectedPost.caption?.text || 'No caption'}
+							</Text>
 							<Text>{'\n'}</Text>
 
 							<Box flexDirection="row">
 								<Text>
 									{' '}
-									♡ {selectedItem.feed.like_count ?? 0}
+									♡ {selectedPost.like_count ?? 0}
 									{'   '}
 								</Text>
 								<Text>
 									🗨{'  '}
-									{selectedItem.feed.comment_count ?? 0}
+									{selectedPost.comment_count ?? 0}
 								</Text>
 							</Box>
 						</Box>
@@ -196,7 +193,10 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 
 			{/* Footer */}
 			<Box marginTop={1}>
-				<Text dimColor>j/k: navigate, o: open in browser, q: quit</Text>
+				<Text dimColor>
+					j/k: navigate trough posts, h/l: navigate trough carousel, o: open in
+					browser, q: quit
+				</Text>
 			</Box>
 		</Box>
 	);

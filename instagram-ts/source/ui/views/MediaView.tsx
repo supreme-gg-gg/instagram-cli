@@ -1,17 +1,11 @@
 import React, {useState, useEffect} from 'react';
-import {FeedItem} from '../../types/instagram.js';
+import {FeedInstance} from '../../types/instagram.js';
 import {convertImageToColorAscii} from '../../utils/ascii-display.js';
 import TimelineMediDisplay from '../components/TimelineMediaDisplay.js';
 import ListMediaDisplay from '../components/ListMediaDisplay.js';
 import {ConfigManager} from '../../config.js';
 
-type Props = {
-	feedItems: FeedItem[];
-	width?: number;
-};
-
-export default function MediaView({feedItems}: Props) {
-	const [asciiImages, setAsciiImages] = useState<string[]>([]);
+export default function MediaView({feed}: {feed: FeedInstance}) {
 	const [feedType, setFeedType] = useState<'timeline' | 'list'>('list');
 
 	useEffect(() => {
@@ -21,28 +15,26 @@ export default function MediaView({feedItems}: Props) {
 
 		const renderAscii = async () => {
 			try {
-				const images: string[] = [];
-				for (const item of feedItems) {
-					const url = item.image_versions2?.candidates?.[0]?.url;
+				for (const post of feed.posts) {
+					const url = post.image_versions2?.candidates?.[0]?.url;
 					if (url) {
 						const ascii = await convertImageToColorAscii(url);
-						images.push(ascii);
+						post.ascii_image = ascii;
 					} else {
-						images.push('No image');
+						post.ascii_image = 'No image';
 					}
 				}
-				setAsciiImages(images);
 			} catch (err) {
 				console.error('Error converting images to ASCII:', err);
 			}
 		};
 
 		renderAscii();
-	}, [feedItems]);
+	}, [feed]);
 
 	return feedType === 'timeline' ? (
-		<TimelineMediDisplay feedItems={feedItems} asciiImages={asciiImages} />
+		<TimelineMediDisplay posts={feed.posts} />
 	) : (
-		<ListMediaDisplay feedItems={feedItems} asciiImages={asciiImages} />
+		<ListMediaDisplay posts={feed.posts} />
 	);
 }

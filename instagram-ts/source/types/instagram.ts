@@ -41,16 +41,16 @@ export interface AuthState {
 	error?: string;
 }
 
-export interface CarouselMediaItem {
-  id: string;
-  media_type: number;
-  image_versions2?: {
-    candidates: { url: string; width: number; height: number }[];
-  };
-  video_versions?: { url: string; width: number; height: number }[];
+export interface CarouselItem {
+	id: string;
+	media_type: number;
+	image_versions2?: {
+		candidates: {url: string; width: number; height: number}[];
+	};
+	video_versions?: {url: string; width: number; height: number}[];
 }
 
-export interface FeedItem {
+export interface Post {
 	id: string;
 	user: {
 		pk: number;
@@ -67,6 +67,7 @@ export interface FeedItem {
 			height: number;
 		}[];
 	};
+	ascii_image?: string;
 	like_count: number;
 	comment_count: number;
 	taken_at: number;
@@ -77,5 +78,15 @@ export interface FeedItem {
 		height: number;
 	}[];
 	carousel_media_count?: number;
-	carousel_media?: CarouselMediaItem[];
+	carousel_media?: CarouselItem[];
+	ascii_carousel_media?: string[];
+}
+
+export interface PostContainer {
+	post: Post;
+	current_media: CarouselItem | null;
+}
+
+export interface FeedInstance {
+	posts: Post[];
 }

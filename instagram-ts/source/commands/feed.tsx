@@ -4,7 +4,7 @@ import zod from 'zod';
 import {argument} from 'pastel';
 import {InstagramClient} from '../client.js';
 import {ConfigManager} from '../config.js';
-import {FeedItem} from '../types/instagram.js';
+import {FeedInstance} from '../types/instagram.js';
 import MediaView from '../ui/views/MediaView.js';
 
 export const args = zod.tuple([
@@ -28,7 +28,7 @@ export default function Feed({args}: Props) {
 		'loading',
 	);
 	const [error, setError] = React.useState<string | null>(null);
-	const [feedItems, setFeedItems] = React.useState<FeedItem[]>([]);
+	const [feed, setFeed] = React.useState<FeedInstance>({posts: []});
 
 	React.useEffect(() => {
 		const fetchFeed = async () => {
@@ -55,7 +55,7 @@ export default function Feed({args}: Props) {
 					setStatus('error');
 					return;
 				} else {
-					setFeedItems(items);
+					setFeed({posts: items});
 					setStatus('ready');
 				}
 			} catch (err) {
@@ -75,5 +75,5 @@ export default function Feed({args}: Props) {
 	if (status === 'error') {
 		return <Alert variant="error">❌ {error}</Alert>;
 	}
-	return <MediaView feedItems={feedItems} />;
+	return <MediaView feed={feed} />;
 }
