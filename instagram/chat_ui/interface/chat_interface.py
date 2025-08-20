@@ -134,7 +134,6 @@ class ChatInterface:
                         if result[1] == ":":
                             result = result[1:]
                         else:
-                            self.set_mode(ChatMode.COMMAND)
                             return self._handle_command(result[1:])
 
                     return self._handle_chat_message(result)
@@ -225,7 +224,11 @@ class ChatInterface:
         """
         Executes a command, listen for special return signals or display the result.
         """
+        # Show command execution status
         self.set_mode(ChatMode.COMMAND)
+        self.status_bar.update(msg=command)
+        
+        # Execute the command
         result = cmd_registry.execute(
             command, chat=self.direct_chat, screen=self.screen
         )
@@ -374,25 +377,27 @@ class ChatInterface:
 
         # Regular command result display
         else:
+            # Display result and wait for key press
+            self.set_mode(ChatMode.COMMAND_RESULT)
             self.status_bar.update(msg=command)
             self._display_command_result(result)
-            curses.napms(1000)
             self.set_mode(ChatMode.CHAT)
+            self.chat_window.update()
             self.status_bar.update()
             return Signal.CONTINUE
 
     def _display_command_result(self, result: str):
         """
         Display the text result of a command in the chat window.
+        This is a blocking operation that waits for user key press.
         """
-        # TODO: Move this to chat window class
-        self.chat_window.window.erase()
-        lines = result.split("\n")
-        for idx, line in enumerate(lines):
-            if idx < self.height - 5:
-                self.chat_window.window.addstr(idx, 0, line[: self.width - 1])
-        self.chat_window.window.refresh()
-
+        self.chat_window.set_custom_content(result)
+        # Clear any buffered input that occurred during command execution
+        curses.flushinp()
+        # Handle command result mode - wait for any key press
+        self.screen.get_wch()  # Wait for any key press
+        self.chat_window.clear_custom_content()  # Clear content after display
+        
     def _handle_chat_message(self, message: str) -> Signal:
         """
         Send a chat message or reply to a selected message.

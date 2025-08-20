@@ -19,6 +19,7 @@ class ChatMode(Enum):
 
     CHAT = auto()
     COMMAND = auto()
+    COMMAND_RESULT = auto()
     REPLY = auto()
     UNSEND = auto()
 
