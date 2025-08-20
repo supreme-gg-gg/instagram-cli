@@ -116,18 +116,6 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 					height="100%"
 					overflow="hidden"
 				>
-					<Box flexDirection="row">
-						<Text color="green">
-							👤 {selectedPost.user?.username || 'Unknown user'}
-						</Text>
-						<Text color="gray">
-							{' ('}
-							{new Date(selectedPost.taken_at * 1000).toLocaleString()}
-							{')'}
-						</Text>
-					</Box>
-
-					<Text>{'\n'}</Text>
 
 					<Box flexDirection="row" flexGrow={1} overflow="hidden" gap={1}>
 						{/* Media display */}
@@ -170,6 +158,17 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 							overflow="hidden"
 							justifyContent="flex-start"
 						>
+							<Box flexDirection="row">
+								<Text color="green">
+									👤 {selectedPost.user?.username || 'Unknown user'}
+								</Text>
+								<Text color="gray">
+									{' ('}
+									{new Date(selectedPost.taken_at * 1000).toLocaleString()}
+									{')'}
+								</Text>
+							</Box>
+							<Text>{'\n'}</Text>
 							<Text wrap="wrap">
 								{selectedPost.caption?.text || 'No caption'}
 							</Text>
