@@ -227,7 +227,7 @@ class ChatInterface:
         # Show command execution status
         self.set_mode(ChatMode.COMMAND)
         self.status_bar.update(msg=command)
-        
+
         # Execute the command
         result = cmd_registry.execute(
             command, chat=self.direct_chat, screen=self.screen
@@ -397,7 +397,7 @@ class ChatInterface:
         # Handle command result mode - wait for any key press
         self.screen.get_wch()  # Wait for any key press
         self.chat_window.clear_custom_content()  # Clear content after display
-        
+
     def _handle_chat_message(self, message: str) -> Signal:
         """
         Send a chat message or reply to a selected message.

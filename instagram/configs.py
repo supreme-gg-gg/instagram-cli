@@ -17,7 +17,7 @@ DEFAULT_CONFIG = {
         "api_key": "",
         "model": "gemma-3n-e4b",
         "temperature": 0.7,
-        "max_tokens": 1000
+        "max_tokens": 1000,
     },
     "advanced": {
         "debug_mode": False,

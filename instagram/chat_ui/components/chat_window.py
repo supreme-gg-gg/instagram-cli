@@ -31,7 +31,7 @@ class ChatWindow:
         """Set custom content to be displayed in the chat window."""
         self.custom_content = content
         self.update()
-    
+
     def clear_custom_content(self):
         """Clear custom content."""
         self.custom_content = None
@@ -152,12 +152,12 @@ class ChatWindow:
             content_lines = []
             for raw_line in self.custom_content.split("\n"):
                 while len(raw_line) > self.width:
-                    content_lines.append(raw_line[:self.width])
-                    raw_line = raw_line[self.width:]
+                    content_lines.append(raw_line[: self.width])
+                    raw_line = raw_line[self.width :]
                 content_lines.append(raw_line)
             # Only display up to available height
-            for i, line in enumerate(content_lines[:self.height]):
-                self.window.addstr(i, 0, line[:self.width])
+            for i, line in enumerate(content_lines[: self.height]):
+                self.window.addstr(i, 0, line[: self.width])
             self.window.refresh()
             return
 
