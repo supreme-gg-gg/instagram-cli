@@ -17,10 +17,18 @@ def main(
     version: bool = typer.Option(
         False, "--version", "-v", help="Show version information", is_flag=True
     ),
+    help_flag: bool = typer.Option(
+        False, "-h", "--help", help="Show help message", is_eager=True, is_flag=True
+    ),
 ):
     """
     Base command: Displays name, slogan, and visuals.
     """
+    # -h alias for --help implementation
+    if help_flag:
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
+
     # If the command is just 'instagram' without any subcommands
     if ctx.invoked_subcommand is not None:
         return
