@@ -86,9 +86,6 @@ class Config:
                 default_value = DEFAULT_CONFIG
                 for k in key.split("."):
                     default_value = default_value[k]
-                typer.echo(
-                    f"Warning: Config key '{key}' not found in config.yaml file, using default value: {default_value}"
-                )
                 return default_value
             except (KeyError, TypeError):
                 return default
