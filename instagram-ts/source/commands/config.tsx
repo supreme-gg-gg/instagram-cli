@@ -1,5 +1,5 @@
 import React from 'react';
-import {Text} from 'ink';
+import {Text, Box} from 'ink';
 import {Alert, UnorderedList} from '@inkjs/ui';
 import zod from 'zod';
 import {argument} from 'pastel';
@@ -71,18 +71,23 @@ export default function Config({args}: Props) {
 	}, [args]);
 
 	if (error) {
-		return <Alert variant="error">❌ {error}</Alert>;
+		return <Alert variant="error">{error}</Alert>;
 	}
 
 	if (configData) {
 		return (
-			<UnorderedList>
-				{Object.entries(configData).map(([key, value]) => (
-					<UnorderedList.Item key={key}>
-						{key}: {JSON.stringify(value)}
-					</UnorderedList.Item>
-				))}
-			</UnorderedList>
+			<Box flexDirection="column">
+				<Text>Current Configuration:</Text>
+				<UnorderedList>
+					{Object.entries(configData).map(([key, value]) => (
+						<UnorderedList.Item key={key}>
+							<Text>
+								{key}: {JSON.stringify(value)}
+							</Text>
+						</UnorderedList.Item>
+					))}
+				</UnorderedList>
+			</Box>
 		);
 	}
 

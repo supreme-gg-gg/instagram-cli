@@ -52,7 +52,7 @@ export default function Cleanup({args}: Props) {
 	}, [args]);
 
 	if (error) {
-		return <Alert variant="error">❌ {error}</Alert>;
+		return <Alert variant="error">{error}</Alert>;
 	}
 
 	return <Text>{result ? result : 'Cleaning up...'}</Text>;

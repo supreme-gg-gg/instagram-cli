@@ -46,7 +46,7 @@ export default function Logout({args}: Props) {
 	}, [args]);
 
 	if (error) {
-		return <Alert variant="error">❌ {error}</Alert>;
+		return <Alert variant="error">{error}</Alert>;
 	}
 
 	return <Text>{result ? result : 'Logging out...'}</Text>;

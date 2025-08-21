@@ -78,6 +78,7 @@ export class InstagramClient {
 	}
 
 	public async startChallenge(): Promise<void> {
+		// this handles automatically choosing challenge type etc.
 		await this.ig.challenge.auto(true);
 	}
 
@@ -145,6 +146,9 @@ export class InstagramClient {
 
 			return {success: true, username: this.username || undefined};
 		} catch (error) {
+			if (error instanceof IgCheckpointError) {
+				return {success: false, checkpointError: error};
+			}
 			console.error('Failed to login with session:', error);
 			return {
 				success: false,

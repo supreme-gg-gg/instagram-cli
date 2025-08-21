@@ -50,11 +50,11 @@ export default function Notify({args}: Props) {
 	}, [client]);
 
 	if (isLoading) {
-		return <Alert variant="info">🚀 Fetching Instagram notifications...</Alert>;
+		return <Alert variant="info">Fetching Instagram notifications...</Alert>;
 	}
 
 	if (error) {
-		return <Alert variant="error">❌ {error}</Alert>;
+		return <Alert variant="error">{error}</Alert>;
 	}
 
 	return (

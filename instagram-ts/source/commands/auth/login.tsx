@@ -41,6 +41,7 @@ export default function Login({options}: Props) {
 				setMessage('Challenge required. Requesting code...');
 				await client.startChallenge();
 				setMessage('A code has been sent to you. Please enter it below.');
+				// redirect to the challenge resolution page
 				setMode('challenge');
 			} else {
 				setMessage(`Login failed: ${result.error}`);
@@ -75,56 +76,56 @@ export default function Login({options}: Props) {
 
 	useEffect(() => {
 		const run = async () => {
+			// if the user provided a username, we assume they want to log in with username/password
 			if (options.username) {
 				setMode('form');
 				setMessage(null);
+				return;
+			}
+
+			// otherwise we load the saved session and if failed redirect to pages
+			setMessage('🔄 Trying to log in with saved session...');
+			const config = ConfigManager.getInstance();
+			await config.initialize();
+			const currentUsername = config.get<string>('login.currentUsername');
+
+			if (!currentUsername) {
+				setMessage(
+					'No saved session found. Please log in with your username and password.',
+				);
+				setMode('form');
+				return;
+			}
+
+			const sessionClient = new InstagramClient(currentUsername);
+			const result = await sessionClient.loginBySession();
+
+			if (result.success) {
+				setMessage(`✅ Logged in as @${result.username}`);
+				setMode('success');
 			} else {
-				setMessage('🔄 Trying to log in with saved session...');
-				const config = ConfigManager.getInstance();
-				await config.initialize();
-				const currentUsername = config.get<string>('login.currentUsername');
-
-				if (!currentUsername) {
+				if (result.checkpointError) {
+					setMessage('Challenge required. Requesting code...');
+					// console.log(client.getInstagramClient().state.checkpoint);
+					// console.log(result.checkpointError.response.body);
+					await client.startChallenge();
+					// console.log(client.getInstagramClient().state.checkpoint);
+					setMessage('A code has been sent to you. Please enter it below.');
+					setMode('challenge');
+				} else if (result.error) {
+					// for all other errors, we redirect to the login form, if that also fails we show an error
 					setMessage(
-						'No saved session found. Please log in with your username and password.',
+						'Could not log in with saved session. Please log in with your username and password.',
 					);
-					setMode('form');
-					return;
-				}
-
-				const sessionClient = new InstagramClient(currentUsername);
-				try {
-					const result = await sessionClient.loginBySession();
-					if (result.success) {
-						setMessage(`✅ Logged in as @${result.username}`);
-						setMode('success');
-					} else {
-						setMessage(
-							`Could not log in with saved session: ${result.error}. Please log in with your username and password.`,
-						);
-						setMode('form');
-					}
-				} catch (e) {
-					if (e instanceof Error) {
-						setMessage(
-							`Session login error: ${e.message}. Please log in with your username and password.`,
-						);
-					} else {
-						setMessage(
-							`Session login error: ${String(
-								e,
-							)}. Please log in with your username and password.`,
-						);
-					}
 					setMode('form');
 				}
 			}
 		};
 		run();
-	}, []);
+	}, [options.username]);
 
 	if (mode === 'error') {
-		return <Alert variant="error">❌ {message}</Alert>;
+		return <Alert variant="error">{message}</Alert>;
 	}
 	if (mode === 'success' || mode === 'session') {
 		return <Text>{message}</Text>;

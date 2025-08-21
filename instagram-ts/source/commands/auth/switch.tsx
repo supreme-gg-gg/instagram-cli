@@ -38,7 +38,7 @@ export default function Switch({args}: Props) {
 	}, [username]);
 
 	if (error) {
-		return <Alert variant="error">❌ {error}</Alert>;
+		return <Alert variant="error">{error}</Alert>;
 	}
 
 	return <Text>{result ? result : `Switching to @${username}...`}</Text>;

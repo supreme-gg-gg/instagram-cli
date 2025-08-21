@@ -30,7 +30,7 @@ export default function Chat({args}: Props) {
 	if (isLoading) {
 		return (
 			<Box>
-				<Alert variant="info">🚀 Starting Instagram Chat...</Alert>
+				<Alert variant="info">Starting Instagram Chat...</Alert>
 			</Box>
 		);
 	}
@@ -38,7 +38,7 @@ export default function Chat({args}: Props) {
 	if (error) {
 		return (
 			<Box>
-				<Alert variant="error">❌ {error}</Alert>
+				<Alert variant="error">{error}</Alert>
 			</Box>
 		);
 	}
@@ -46,7 +46,7 @@ export default function Chat({args}: Props) {
 	if (!client) {
 		return (
 			<Box>
-				<Alert variant="error">❌ Failed to initialize client</Alert>
+				<Alert variant="error">Failed to initialize client</Alert>
 			</Box>
 		);
 	}

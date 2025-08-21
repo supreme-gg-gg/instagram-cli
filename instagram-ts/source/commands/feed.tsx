@@ -54,10 +54,10 @@ export default function Feed({args}: Props) {
 	}, [client]);
 
 	if (isLoading) {
-		return <Alert variant="info">🚀 Fetching Instagram feed...</Alert>;
+		return <Alert variant="info">Fetching Instagram feed...</Alert>;
 	}
 	if (error) {
-		return <Alert variant="error">❌ {error}</Alert>;
+		return <Alert variant="error">{error}</Alert>;
 	}
 	return <MediaView feedItems={feedItems} />;
 }

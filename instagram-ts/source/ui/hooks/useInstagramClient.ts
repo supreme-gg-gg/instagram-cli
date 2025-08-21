@@ -52,7 +52,17 @@ export function useInstagramClient(
 				const loginResult = await instagramClient.loginBySession();
 
 				if (!loginResult.success) {
-					setError(loginResult.error || 'Failed to login with session');
+					// only the auth login command can handle these cases
+					if (loginResult.checkpointError) {
+						setError(
+							'Challenge required. Please run the `login` command to resolve.',
+						);
+					} else {
+						setError(
+							loginResult.error ||
+								'Failed to login with session, try logging in with password again.',
+						);
+					}
 					setIsLoading(false);
 					return;
 				}
