@@ -7,7 +7,7 @@ import StatusBar from '../components/StatusBar.js';
 import ThreadList from '../components/ThreadList.js';
 import {useClient} from '../context/ClientContext.js';
 import {parseAndDispatchChatCommand} from '../utils/chatCommands.js';
-// import FullScreen from '../components/FullScreen.js';
+import FullScreen from '../components/FullScreen.js';
 
 export default function ChatView() {
 	const {exit} = useApp();
@@ -52,17 +52,8 @@ export default function ChatView() {
 
 		const interval = setInterval(async () => {
 			if (!client || !chatState.currentThread) return;
-			const {messages: latestPage} = await client.getMessages(
-				chatState.currentThread.id,
-			);
-			setChatState(prev => {
-				const messageMap = new Map(prev.messages.map(m => [m.id, m]));
-				latestPage.forEach(m => messageMap.set(m.id, m));
-				const newMessages = Array.from(messageMap.values()).sort(
-					(a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
-				);
-				return {...prev, messages: newMessages};
-			});
+			const {messages} = await client.getMessages(chatState.currentThread.id);
+			setChatState(prev => ({...prev, messages}));
 		}, 5000);
 
 		return () => clearInterval(interval);
@@ -208,27 +199,27 @@ export default function ChatView() {
 	};
 
 	return (
-		// <FullScreen>
-		<Box flexDirection="column" height="100%" width="100%">
-			<StatusBar
-				currentView={currentView}
-				currentThread={chatState.currentThread}
-				loading={chatState.loading}
-				error={chatState.error}
-			/>
+		<FullScreen>
+			<Box flexDirection="column" height="100%" width="100%">
+				<StatusBar
+					currentView={currentView}
+					currentThread={chatState.currentThread}
+					loading={chatState.loading}
+					error={chatState.error}
+				/>
 
-			<Box flexGrow={1} flexDirection="column">
-				{renderContent()}
-			</Box>
+				<Box flexGrow={1} flexDirection="column">
+					{renderContent()}
+				</Box>
 
-			<Box>
-				<Text dimColor>
-					{currentView === 'threads'
-						? 'j/k: navigate, Enter: select, q: quit'
-						: 'Esc: back to threads, Ctrl+C: quit'}
-				</Text>
+				<Box>
+					<Text dimColor>
+						{currentView === 'threads'
+							? 'j/k: navigate, Enter: select, q: quit'
+							: 'Esc: back to threads, Ctrl+C: quit'}
+					</Text>
+				</Box>
 			</Box>
-		</Box>
-		// </FullScreen>
+		</FullScreen>
 	);
 }
