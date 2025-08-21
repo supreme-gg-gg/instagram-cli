@@ -31,7 +31,7 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 			case 'text':
 				return message.text;
 			case 'media':
-				return '[Media] ';
+				return '[Media]';
 			case 'clip':
 				return '[Clip]';
 			case 'placeholder':
@@ -50,33 +50,38 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 			borderStyle={isSelected ? 'bold' : 'single'}
 			borderColor={isSelected ? 'cyan' : 'gray'}
 			paddingX={1}
-			marginY={0}
+			marginBottom={1.5}
+			height={lastMessageText ? 4 : 2}
+			width="100%"
+			flexDirection="column"
+			justifyContent="space-around"
 		>
-			<Box flexDirection="column" width="100%" marginY={0}>
-				<Box justifyContent="space-between">
-					<Text bold={isSelected} color={isSelected ? 'blue' : undefined}>
+			{/* Top Row: Title, Unread, Time */}
+			<Box justifyContent="space-between">
+				<Box flexShrink={1} marginRight={2}>
+					<Text
+						bold={isSelected}
+						color={isSelected ? 'blue' : undefined}
+						wrap="truncate"
+					>
 						{thread.title}
 					</Text>
+				</Box>
+				<Box>
+					{thread.unread && (
+						<Text color="green" bold>
+							(Unread){' '}
+						</Text>
+					)}
 					<Text dimColor>{formatTime(thread.lastActivity)}</Text>
 				</Box>
+			</Box>
 
-				{lastMessageText && (
-					<Box>
-						<Text dimColor>
-							{lastMessageText.length > 50
-								? `${lastMessageText.substring(0, 50)}...`
-								: lastMessageText}
-						</Text>
-					</Box>
-				)}
-
-				{thread.unread && (
-					<Box>
-						<Text color="green" bold>
-							Unread
-						</Text>
-					</Box>
-				)}
+			{/* Bottom Row: Last Message */}
+			<Box>
+				<Text dimColor wrap="truncate">
+					{lastMessageText}
+				</Text>
 			</Box>
 		</Box>
 	);

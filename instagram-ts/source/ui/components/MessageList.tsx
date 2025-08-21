@@ -4,9 +4,9 @@ import type {
 	Message,
 	Thread,
 	TextMessage,
-	MediaMessage,
+	// MediaMessage,
 } from '../../types/instagram.js';
-import AsciiImage from './AsciiImage.js';
+// import AsciiImage from './AsciiImage.js';
 
 interface MessageListProps {
 	messages: Message[];
@@ -32,12 +32,12 @@ export default function MessageList({
 			case 'text':
 				return <Text>{(message as TextMessage).text}</Text>;
 			case 'media': {
-				const media = (message as MediaMessage).media;
-				const imageUrl = media.image_versions2?.candidates[0]?.url;
-				if (imageUrl) {
-					return <AsciiImage url={imageUrl} />;
-				}
-				return <Text dimColor>[Failed to render image]</Text>;
+				// const media = (message as MediaMessage).media;
+				// const imageUrl = media.image_versions2?.candidates[0]?.url;
+				// if (imageUrl) {
+				// 	return <AsciiImage url={imageUrl} />;
+				// }
+				return <Text dimColor>[Sent an image]</Text>;
 			}
 			case 'clip':
 				return <Text dimColor>[Sent a brainrot!]</Text>;
