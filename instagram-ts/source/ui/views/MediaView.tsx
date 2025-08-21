@@ -16,12 +16,24 @@ export default function MediaView({feed}: {feed: FeedInstance}) {
 		const renderAscii = async () => {
 			try {
 				for (const post of feed.posts) {
-					const url = post.image_versions2?.candidates?.[0]?.url;
-					if (url) {
-						const ascii = await convertImageToColorAscii(url);
-						post.ascii_image = ascii;
-					} else {
-						post.ascii_image = 'No image';
+					if (post.carousel_media) {
+						// Handle carousel media
+						for (const item of post.carousel_media) {
+							if (item.image_versions2?.candidates?.[0]?.url) {
+								item.ascii_image = await convertImageToColorAscii(
+									item.image_versions2.candidates[0].url,
+								);
+							}
+						}
+					}
+					else if (post.image_versions2?.candidates?.[0]?.url) {
+						// Handle single image
+						post.ascii_image = await convertImageToColorAscii(
+							post.image_versions2.candidates[0].url,
+						);
+					}
+					else {
+						post.ascii_image = 'No image available';
 					}
 				}
 			} catch (err) {

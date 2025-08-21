@@ -1,23 +1,33 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {Box, Text, useInput} from 'ink';
-import {Post, PostContainer, FeedInstance} from '../../types/instagram.js';
+import {Post, FeedInstance} from '../../types/instagram.js';
 import open from 'open';
 
 export default function ListMediaDisplay({posts}: FeedInstance) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
+	const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+	const [asciiImage, setAsciiImage] = useState<string>('');
 
 	if (posts.length === 0) {
 		return <Text>No posts available.</Text>;
 	}
 
-	const openMediaUrl = (activeMedia: PostContainer) => {
-		const item = activeMedia.current_media
-			? activeMedia.current_media
-			: activeMedia.post;
-		if (item.media_type === 2) {
+	const openMediaUrl = (activePost: Post) => {
+		if (activePost.media_type === 1) {
+			// If media is an image, open the image URL
+			const imageUrl = activePost.image_versions2?.candidates?.[0]?.url;
+			if (imageUrl) {
+				open(imageUrl).catch(err => {
+					console.error('Failed to open image URL:', err);
+				});
+			} else {
+				console.error('No image URL available for this item.');
+			}
+		}
+		else if (activePost.media_type === 2) {
 			// If media is a video, open the video URL
-			const videoUrl = item.video_versions?.[0]?.url;
+			const videoUrl = activePost.video_versions?.[0]?.url;
 			if (videoUrl) {
 				open(videoUrl).catch(err => {
 					console.error('Failed to open video URL:', err);
@@ -25,27 +35,22 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 			} else {
 				console.error('No video URL available for this item.');
 			}
-		} else if (item.image_versions2?.candidates?.[0]?.url) {
-			const imageUrl = item.image_versions2.candidates[0].url;
-			open(imageUrl).catch(err => {
-				console.error('Failed to open image URL:', err);
-			});
+		}
+		else if (activePost.carousel_media) {
+			// If media is a carousel, open the URL of the selected carousel item
+			const carouselItem = activePost.carousel_media[carouselIndex];
+			if (carouselItem) {
+				const carouselUrl = carouselItem.image_versions2?.candidates?.[0]?.url ||
+					carouselItem.video_versions?.[0]?.url;
+				if (carouselUrl) {
+					open(carouselUrl).catch(err => {
+						console.error('Failed to open carousel item URL:', err);
+					});
+				}
+			}
 		} else {
-			console.error('No valid media URL available for this item.');
+			console.error('Unsupported media type or no media available.');
 		}
-	};
-
-	const getActiveMedia = (post: Post, index: number): PostContainer => {
-		if (post.carousel_media && post.carousel_media.length > 0) {
-			return {
-				post: post,
-				current_media: post.carousel_media[index] ?? post.carousel_media[0]!,
-			};
-		}
-		return {
-			post: post,
-			current_media: null,
-		};
 	};
 
 	useInput((input, key) => {
@@ -60,7 +65,7 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 			if (selectedItem) {
 				const baseItem = posts[selectedIndex];
 				if (baseItem) {
-					openMediaUrl(getActiveMedia(baseItem, carouselIndex));
+					openMediaUrl(baseItem);
 				}
 			}
 		} else if (input === 'q' || key.escape) {
@@ -81,7 +86,22 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 		}
 	});
 
-	const selectedPost = posts[selectedIndex]!;
+	useEffect(() => {
+		const activePost = posts[selectedIndex];
+		if (activePost) {
+			setSelectedPost(activePost);
+			if(activePost.carousel_media) {
+				const carouselItem = activePost.carousel_media[carouselIndex];
+				if (carouselItem) {
+					setAsciiImage(carouselItem.ascii_image || '');
+				}
+			}
+			else {
+				setAsciiImage(activePost.ascii_image || '');
+			}
+		}
+	}
+	, [selectedIndex, posts, carouselIndex]);
 
 	return (
 		<Box flexDirection="column" height={process.stdout.rows} width="100%">
@@ -127,8 +147,8 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 							justifyContent="flex-start"
 							width={'50%'}
 						>
-							{selectedPost.ascii_image ? (
-								selectedPost.ascii_image.split('\n').map((line, i) => (
+							{asciiImage ? (
+								asciiImage.split('\n').map((line, i) => (
 									<Text key={i} wrap="truncate">
 										{line}
 									</Text>
@@ -138,12 +158,12 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 							)}
 
 							<Text>
-								{selectedPost.media_type === 2 || selectedPost?.media_type === 2
+								{selectedPost?.media_type === 2 || selectedPost?.media_type === 2
 									? '▶ Video'
 									: ''}
 							</Text>
 							<Text color="gray">
-								{selectedPost.carousel_media_count
+								{selectedPost?.carousel_media_count
 									? `Carousel ${carouselIndex + 1} of ${
 											selectedPost.carousel_media_count
 									  }`
@@ -160,29 +180,29 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 						>
 							<Box flexDirection="row">
 								<Text color="green">
-									👤 {selectedPost.user?.username || 'Unknown user'}
+									👤 {selectedPost?.user?.username || 'Unknown user'}
 								</Text>
 								<Text color="gray">
 									{' ('}
-									{new Date(selectedPost.taken_at * 1000).toLocaleString()}
+									{new Date(selectedPost?.taken_at! * 1000).toLocaleString()}
 									{')'}
 								</Text>
 							</Box>
 							<Text>{'\n'}</Text>
 							<Text wrap="wrap">
-								{selectedPost.caption?.text || 'No caption'}
+								{selectedPost?.caption?.text || 'No caption'}
 							</Text>
 							<Text>{'\n'}</Text>
 
 							<Box flexDirection="row">
 								<Text>
 									{' '}
-									♡ {selectedPost.like_count ?? 0}
+									♡ {selectedPost?.like_count ?? 0}
 									{'   '}
 								</Text>
 								<Text>
 									🗨{'  '}
-									{selectedPost.comment_count ?? 0}
+									{selectedPost?.comment_count ?? 0}
 								</Text>
 							</Box>
 						</Box>

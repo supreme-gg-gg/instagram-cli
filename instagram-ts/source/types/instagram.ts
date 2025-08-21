@@ -48,6 +48,7 @@ export interface CarouselItem {
 		candidates: {url: string; width: number; height: number}[];
 	};
 	video_versions?: {url: string; width: number; height: number}[];
+	ascii_image?: string;
 }
 
 export interface Post {
@@ -80,11 +81,6 @@ export interface Post {
 	carousel_media_count?: number;
 	carousel_media?: CarouselItem[];
 	ascii_carousel_media?: string[];
-}
-
-export interface PostContainer {
-	post: Post;
-	current_media: CarouselItem | null;
 }
 
 export interface FeedInstance {
