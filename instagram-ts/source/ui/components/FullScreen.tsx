@@ -1,34 +1,14 @@
-import React, {useState, useEffect} from 'react';
-import {Box} from 'ink';
+import React from 'react';
+import {Box, useInput} from 'ink';
 
-type Props = {
-	children: React.ReactNode;
-};
+import {useScreenSize} from '../hooks/useScreenSize.js';
 
-const FullScreen = (props: Props) => {
-	const [size, setSize] = useState({
-		columns: process.stdout.columns,
-		rows: process.stdout.rows,
-	});
-
-	useEffect(() => {
-		function onResize() {
-			setSize({
-				columns: process.stdout.columns,
-				rows: process.stdout.rows,
-			});
-		}
-
-		process.stdout.on('resize', onResize);
-		process.stdout.write('\x1b[?1049h');
-		return () => {
-			process.stdout.off('resize', onResize);
-			process.stdout.write('\x1b[?1049l');
-		};
-	}, []);
-
+const FullScreen = (props: {children: React.ReactNode}) => {
+	useInput(() => {}); // prevent input from rendering and shifting the layout
+	const {height, width} = useScreenSize();
+	// Make height exactly one row less than screen height to fix flickering caused by stdin
 	return (
-		<Box width={size.columns} height={size.rows}>
+		<Box height={height - 1} width={width}>
 			{props.children}
 		</Box>
 	);

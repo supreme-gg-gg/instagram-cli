@@ -6,6 +6,7 @@ import ChatView from '../ui/views/ChatView.js';
 import {ClientContext} from '../ui/context/ClientContext.js';
 import {Alert} from '@inkjs/ui';
 import {useInstagramClient} from '../ui/hooks/useInstagramClient.js';
+import AltScreen from '../ui/components/AltScreen.js';
 
 export const args = zod.tuple([
 	zod
@@ -51,8 +52,10 @@ export default function Chat({args}: Props) {
 	}
 
 	return (
-		<ClientContext.Provider value={client}>
-			<ChatView />
-		</ClientContext.Provider>
+		<AltScreen>
+			<ClientContext.Provider value={client}>
+				<ChatView />
+			</ClientContext.Provider>
+		</AltScreen>
 	);
 }
