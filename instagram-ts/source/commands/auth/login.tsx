@@ -27,8 +27,9 @@ export default function Login({options}: Props) {
 	const client = useMemo(() => new InstagramClient(), []);
 	const [message, setMessage] = useState<string | null>('Initializing...');
 	const [mode, setMode] = useState<
-		'session' | 'form' | 'challenge' | 'success' | 'error'
+		'session' | 'form' | 'challenge' | '2fa' | 'success' | 'error'
 	>('session');
+	const [twoFactorInfo, setTwoFactorInfo] = useState<any>(null);
 
 	const handleLoginSubmit = async (username: string, password: string) => {
 		setMessage(`🔄 Logging in as @${username}...`);
@@ -37,6 +38,12 @@ export default function Login({options}: Props) {
 			if (result.success) {
 				setMessage(`✅ Logged in as @${result.username}`);
 				setMode('success');
+			} else if (result.twoFactorInfo) {
+				setTwoFactorInfo(result.twoFactorInfo);
+				const {totp_two_factor_on} = result.twoFactorInfo;
+				const verificationMethod = totp_two_factor_on ? 'TOTP' : 'SMS';
+				setMessage(`Enter code received via ${verificationMethod}`);
+				setMode('2fa');
 			} else if (result.checkpointError) {
 				setMessage('Challenge required. Requesting code...');
 				await client.startChallenge();
@@ -50,6 +57,29 @@ export default function Login({options}: Props) {
 		} catch (err) {
 			setMessage(
 				`Login error: ${err instanceof Error ? err.message : String(err)}`,
+			);
+			setMode('error');
+		}
+	};
+
+	const handle2FASubmit = async (code: string) => {
+		setMessage('🔄 Verifying 2FA code...');
+		try {
+			const result = await client.twoFactorLogin({
+				verificationCode: code,
+				twoFactorIdentifier: twoFactorInfo.two_factor_identifier,
+				totp_two_factor_on: twoFactorInfo.totp_two_factor_on,
+			});
+			if (result.success) {
+				setMessage(`✅ Logged in as @${result.username}`);
+				setMode('success');
+			} else {
+				setMessage(`2FA login failed: ${result.error}`);
+				setMode('error');
+			}
+		} catch (err) {
+			setMessage(
+				`2FA error: ${err instanceof Error ? err.message : String(err)}`,
 			);
 			setMode('error');
 		}
@@ -142,7 +172,7 @@ export default function Login({options}: Props) {
 			</>
 		);
 	}
-	if (mode === 'challenge') {
+	if (mode === 'challenge' || mode === '2fa') {
 		return (
 			<>
 				{message && <Text>{message}</Text>}
@@ -150,7 +180,7 @@ export default function Login({options}: Props) {
 					<Text>Enter verification code: </Text>
 					<TextInput
 						placeholder="Enter code and press Enter"
-						onSubmit={handleChallengeSubmit}
+						onSubmit={mode === '2fa' ? handle2FASubmit : handleChallengeSubmit}
 					/>
 				</Box>
 			</>

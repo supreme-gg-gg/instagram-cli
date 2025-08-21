@@ -1,8 +1,10 @@
 import {
 	IgApiClient,
 	IgCheckpointError,
+	IgLoginTwoFactorRequiredError,
 	type DirectInboxFeedResponseThreadsItem,
 	type DirectInboxFeedResponseUsersItem,
+	type AccountRepositoryLoginErrorResponseTwoFactorInfo,
 } from 'instagram-private-api';
 import {join} from 'path';
 import fs from 'fs/promises';
@@ -15,6 +17,7 @@ export interface LoginResult {
 	error?: string;
 	username?: string;
 	checkpointError?: IgCheckpointError;
+	twoFactorInfo?: AccountRepositoryLoginErrorResponseTwoFactorInfo; // Add this to carry 2FA info
 }
 
 export class InstagramClient {
@@ -39,23 +42,18 @@ export class InstagramClient {
 			this.username = username;
 			this.sessionManager = new SessionManager(username);
 
-			// Generate device for this username FIRST (as per official docs)
 			this.ig.state.generateDevice(username);
 
-			// Set up request listener to save session after each request
 			this.ig.request.end$.subscribe(async () => {
 				await this.saveSessionState();
 			});
 
-			// Perform login
 			await this.ig.simulate.preLoginFlow();
 			await this.ig.account.login(username, password);
 
-			// Save session and update config
 			await this.saveSessionState();
 			await this.configManager.set('login.currentUsername', username);
 
-			// Set as default username if none exists
 			const defaultUsername = this.configManager.get<string>(
 				'login.defaultUsername',
 			);
@@ -65,6 +63,13 @@ export class InstagramClient {
 
 			return {success: true, username};
 		} catch (error) {
+			if (error instanceof IgLoginTwoFactorRequiredError) {
+				return {
+					success: false,
+					twoFactorInfo: error.response.body.two_factor_info,
+				};
+			}
+
 			if (error instanceof IgCheckpointError) {
 				return {success: false, checkpointError: error};
 			}
@@ -73,6 +78,39 @@ export class InstagramClient {
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Unknown login error',
+			};
+		}
+	}
+
+	public async twoFactorLogin({
+		verificationCode,
+		twoFactorIdentifier,
+		totp_two_factor_on,
+	}: {
+		verificationCode: string;
+		twoFactorIdentifier: string;
+		totp_two_factor_on: boolean;
+	}): Promise<LoginResult> {
+		try {
+			const verificationMethod = totp_two_factor_on ? '0' : '1'; // 0 = TOTP, 1 = SMS
+			await this.ig.account.twoFactorLogin({
+				username: this.username!,
+				verificationCode,
+				twoFactorIdentifier,
+				verificationMethod,
+			});
+
+			await this.saveSessionState();
+			if (this.username) {
+				await this.configManager.set('login.currentUsername', this.username);
+			}
+
+			return {success: true, username: this.username ?? undefined};
+		} catch (error) {
+			console.error('2FA Login failed:', error);
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Unknown 2FA error',
 			};
 		}
 	}
