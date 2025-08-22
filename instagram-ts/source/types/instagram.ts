@@ -74,6 +74,8 @@ export interface ChatState {
 	messages: Message[];
 	loading: boolean;
 	error?: string;
+	messageCursor?: string;
+	visibleMessageOffset: number;
 }
 
 export interface AuthState {
