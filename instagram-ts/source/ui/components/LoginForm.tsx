@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import {Box, Text} from 'ink';
-import {TextInput, PasswordInput} from '@inkjs/ui';
+import TextInput from 'ink-text-input';
 
 export default function LoginForm({
 	onSubmit,
@@ -17,13 +17,16 @@ export default function LoginForm({
 			{step === 'username' ? (
 				<TextInput
 					placeholder="Username"
-					defaultValue={username}
+					value={username}
 					onChange={setUsername}
+					showCursor={true}
 					onSubmit={() => setStep('password')}
 				/>
 			) : (
-				<PasswordInput
+				<TextInput
+					mask="*"
 					placeholder="Password"
+					value={password}
 					onChange={setPassword}
 					onSubmit={() => onSubmit(username, password)}
 				/>
