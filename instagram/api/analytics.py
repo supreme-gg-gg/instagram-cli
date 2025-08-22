@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 # import re
 from instagram.client import ClientWrapper
+from instagram.api.direct_messages import DirectMessages
 import curses
 import math
 import time
@@ -16,7 +17,9 @@ from instagram.utils.notification_utils import (
 
 def fetch_updates() -> dict:
     """Fetches latest updates from Instagram and returns them."""
-    cl = ClientWrapper().login_by_session()
+    client = ClientWrapper()
+    cl = client.login_by_session()
+    dm = DirectMessages(client)
     # Get latest updates
     data = cl.news_inbox_v1()
 
@@ -28,6 +31,7 @@ def fetch_updates() -> dict:
         "data": data,
         "threads_unread": threads_unread,
         "unread_messages": unread_messages,
+        "dm": dm,
     }
 
 
@@ -41,6 +45,7 @@ def render_updates(stdscr) -> None:
     data = updates["data"]
     threads_unread = updates["threads_unread"]
     unread_messages = updates["unread_messages"]
+    dm = updates["dm"]
     index = 0
 
     def display_updates(stdscr, data) -> None:
@@ -50,29 +55,29 @@ def render_updates(stdscr) -> None:
         This issue might or might not be addressed with a scrollable element.
         """
         # Setup colors
-        curses.start_color()
-        curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
-        curses.init_pair(2, curses.COLOR_CYAN, curses.COLOR_BLACK)
-        curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)
-        curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_BLUE)
-        curses.init_pair(5, curses.COLOR_BLACK, curses.COLOR_WHITE)
-        curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_WHITE)
-        # Get screen dimensions
-        height, width = stdscr.getmaxyx()
-
-        # Adjust window sizes to fit screen
-        title_height = 3
-        stats_height = 5
-        footer_height = 1
-        messages_height = 10
-        # updates_height = len(data['new_stories']) * 3 + 4 # 3 lines per update
-        updates_height = height - (
-            title_height + stats_height + footer_height + messages_height
-        )
-
-        nonlocal index
-
         while True:
+            curses.start_color()
+            curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+            curses.init_pair(2, curses.COLOR_CYAN, curses.COLOR_BLACK)
+            curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+            curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_BLUE)
+            curses.init_pair(5, curses.COLOR_BLACK, curses.COLOR_WHITE)
+            curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_WHITE)
+            # Get screen dimensions
+            height, width = stdscr.getmaxyx()
+
+            # Adjust window sizes to fit screen
+            title_height = 3
+            stats_height = 5
+            footer_height = 1
+            messages_height = 10
+            # updates_height = len(data['new_stories']) * 3 + 4 # 3 lines per update
+            updates_height = height - (
+                title_height + stats_height + footer_height + messages_height
+            )
+
+            nonlocal index
+
             # Create windows with adjusted positions
             title_win = curses.newwin(title_height, width, 0, 0)
             stats_win = curses.newwin(stats_height, width, title_height, 0)
@@ -97,7 +102,8 @@ def render_updates(stdscr) -> None:
                 (
                     "Total Updates",
                     str(
-                        len(data.get("new_stories", [])) + len(data.get("old_stories", []))
+                        len(data.get("new_stories", []))
+                        + len(data.get("old_stories", []))
                     ),
                 ),
             ]
@@ -122,14 +128,24 @@ def render_updates(stdscr) -> None:
                         # First user in pair
                         user1 = threads_unread[i].thread_title or "Unknown"
                         messages_win.addstr(
-                            msg_row, 4, f"{user1:<30}", curses.color_pair(3) if i != index else curses.color_pair(6)
+                            msg_row,
+                            4,
+                            f"{user1:<30}",
+                            curses.color_pair(3)
+                            if i != index
+                            else curses.color_pair(6),
                         )
 
                         # Second user in pair (if exists)
                         if i + 1 < len(threads_unread):
                             user2 = threads_unread[i + 1].thread_title or "Unknown"
                             messages_win.addstr(
-                                msg_row, 35, f"{user2:<30}", curses.color_pair(3) if i + 1 != index else curses.color_pair(6)
+                                msg_row,
+                                35,
+                                f"{user2:<30}",
+                                curses.color_pair(3)
+                                if i + 1 != index
+                                else curses.color_pair(6),
                             )
 
                         msg_row += 1
@@ -157,12 +173,14 @@ def render_updates(stdscr) -> None:
                 notif_name = get_notification_name(notif_name)
                 rich_text = update["args"]["rich_text"]
                 rich_text = format_usernames_in_text(rich_text)
-                timestamp = datetime.fromtimestamp(update["args"]["timestamp"]).strftime(
-                    "%H:%M %d/%m"
-                )
+                timestamp = datetime.fromtimestamp(
+                    update["args"]["timestamp"]
+                ).strftime("%H:%M %d/%m")
 
                 updates_win.addstr(row, 2, "►", curses.color_pair(2))
-                updates_win.addstr(row, 4, notif_name, curses.color_pair(2) | curses.A_BOLD)
+                updates_win.addstr(
+                    row, 4, notif_name, curses.color_pair(2) | curses.A_BOLD
+                )
                 updates_win.addstr(row + 1, 4, rich_text[: width - 8])
                 updates_win.addstr(row + 1, width - 12, timestamp, curses.color_pair(3))
                 row += 3
@@ -181,7 +199,15 @@ def render_updates(stdscr) -> None:
                 index -= 1
             elif c == curses.KEY_RIGHT and index < unread_messages - 1:
                 index += 1
-            elif c == ord('q'):
+            elif c == ord("\n"):
+                from instagram.chat_ui.interface.chat_interface import ChatInterface
+
+                username = threads_unread[index].users[0].username
+                chat = with_loading_screen(
+                    stdscr, dm.search_by_username, "Fetching Direct Chat", username
+                )
+                ChatInterface(stdscr, chat).run()
+            elif c == ord("q"):
                 break
 
     display_updates(stdscr, data)
