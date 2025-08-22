@@ -12,7 +12,6 @@
 		"build": "tsc",
 		"dev": "tsc --watch",
 		"start": "node dist/cli.js",
-		"start:mock": "npm run build && node dist/cli.mock.js",
 		"test": "prettier --check . && xo && ava",
 		"prepare": "cd .. && husky instagram-ts/.husky"
 	},
