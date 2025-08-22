@@ -45,7 +45,15 @@ export default function Config({args}: Props) {
 				await config.initialize();
 
 				const key = args[0];
-				const value = args[1];
+				let value = args[1];
+
+				if (value !== undefined) {
+					try {
+						value = JSON.parse(value);
+					} catch {
+						// If parsing fails, treat it as a plain string
+					}
+				}
 
 				if (key === undefined) {
 					// Get all config values

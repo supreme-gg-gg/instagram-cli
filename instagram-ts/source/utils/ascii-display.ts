@@ -35,7 +35,6 @@ function calculateDynamicAsciiWidth(
 	imageHeight: number,
 ): number {
 	const termWidth = process.stdout.columns;
-
 	let width = Math.min(Math.floor(termWidth / 3), 80);
 
 	const aspectRatio = imageWidth / imageHeight;
@@ -69,7 +68,6 @@ export async function convertImageToColorAscii(
 		const imageHeight = metadata.height ?? 600;
 
 		const finalWidth = calculateDynamicAsciiWidth(imageWidth, imageHeight);
-
 		const asciiArt = await AsciiArt.image({
 			filepath: finalPath,
 			width: finalWidth,

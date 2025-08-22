@@ -101,9 +101,13 @@ export interface FeedItem {
 			height: number;
 		}[];
 	};
-	imageUrl?: string;
-	videoUrl?: string;
 	like_count: number;
 	comment_count: number;
 	taken_at: number;
+	media_type: number;
+	video_versions?: {
+		url: string;
+		width: number;
+		height: number;
+	}[];
 }

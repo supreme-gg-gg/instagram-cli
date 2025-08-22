@@ -1,7 +1,9 @@
-import React from 'react';
-import {Box, Text} from 'ink';
+import React, {useState, useEffect} from 'react';
 import {FeedItem} from '../../types/instagram.js';
-import AsciiImage from '../components/AsciiImage.js';
+import {convertImageToColorAscii} from '../../utils/ascii-display.js';
+import TimelineMediDisplay from '../components/TimelineMediaDisplay.js';
+import ListMediaDisplay from '../components/ListMediaDisplay.js';
+import {ConfigManager} from '../../config.js';
 
 type Props = {
 	feedItems: FeedItem[];
@@ -9,55 +11,38 @@ type Props = {
 };
 
 export default function MediaView({feedItems}: Props) {
-	return (
-		<Box flexDirection="column" gap={1}>
-			<Text color="blue">Your Feed</Text>
-			{feedItems.map(item => {
-				const url = item.image_versions2?.candidates?.[0]?.url;
+	const [asciiImages, setAsciiImages] = useState<string[]>([]);
+	const [feedType, setFeedType] = useState<'timeline' | 'list'>('list');
 
-				return (
-					<Box
-						key={item.id}
-						flexDirection="column"
-						borderStyle="round"
-						padding={1}
-					>
-						<Box flexDirection="row">
-							<Text color="green">
-								👤 {item.user?.username || 'Unknown user'}
-							</Text>
-							<Text color="gray">
-								{' ('}
-								{new Date(item.taken_at * 1000).toLocaleString()}
-								{')'}
-							</Text>
-						</Box>
-						<Text>{'\n'}</Text>
-						<Text>{item.caption?.text || 'No caption'}</Text>
-						<Text>{'\n'}</Text>
+	useEffect(() => {
+		const config = ConfigManager.getInstance();
+		const savedFeedType = config.get<string>('feed.feedType') || 'list';
+		setFeedType(savedFeedType as 'timeline' | 'list');
 
-						<Box flexDirection="column">
-							{/* TODO: Handling properly posts with multiple images */}
-							{url ? (
-								<AsciiImage url={url} />
-							) : (
-								<Text color="yellow">⏳ No media found...</Text>
-							)}
-						</Box>
-						<Box flexDirection="row">
-							<Text>
-								{' '}
-								♡ {item.like_count ?? 0}
-								{'   '}
-							</Text>
-							<Text>
-								🗨{'  '}
-								{item.comment_count ?? 0}
-							</Text>
-						</Box>
-					</Box>
-				);
-			})}
-		</Box>
+		const renderAscii = async () => {
+			try {
+				const images: string[] = [];
+				for (const item of feedItems) {
+					const url = item.image_versions2?.candidates?.[0]?.url;
+					if (url) {
+						const ascii = await convertImageToColorAscii(url);
+						images.push(ascii);
+					} else {
+						images.push('No image');
+					}
+				}
+				setAsciiImages(images);
+			} catch (err) {
+				console.error('Error converting images to ASCII:', err);
+			}
+		};
+
+		renderAscii();
+	}, [feedItems]);
+
+	return feedType === 'timeline' ? (
+		<TimelineMediDisplay feedItems={feedItems} asciiImages={asciiImages} />
+	) : (
+		<ListMediaDisplay feedItems={feedItems} asciiImages={asciiImages} />
 	);
 }
