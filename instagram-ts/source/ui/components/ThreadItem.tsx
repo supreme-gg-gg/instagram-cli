@@ -1,6 +1,6 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import type {Thread} from '../../types/instagram.js';
+import type {Message, Thread} from '../../types/instagram.js';
 
 interface ThreadItemProps {
 	thread: Thread;
@@ -26,37 +26,62 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 		return `${days}d`;
 	};
 
+	const getLastMessageText = (message: Message): string => {
+		switch (message.itemType) {
+			case 'text':
+				return message.text;
+			case 'media':
+				return '[Media]';
+			case 'clip':
+				return '[Clip]';
+			case 'placeholder':
+				return message.text;
+			default:
+				return '[Unsupported Message]';
+		}
+	};
+
+	const lastMessageText = thread.lastMessage
+		? getLastMessageText(thread.lastMessage)
+		: '';
+
 	return (
 		<Box
-			borderStyle={isSelected ? 'round' : undefined}
-			borderColor={isSelected ? 'blue' : undefined}
+			borderStyle={isSelected ? 'bold' : 'single'}
+			borderColor={isSelected ? 'cyan' : 'gray'}
 			paddingX={1}
+			marginBottom={1.5}
+			height={lastMessageText ? 4 : 2}
+			width="100%"
+			flexDirection="column"
+			justifyContent="space-around"
 		>
-			<Box flexDirection="column" width="100%">
-				<Box justifyContent="space-between">
-					<Text bold={isSelected} color={isSelected ? 'blue' : undefined}>
+			{/* Top Row: Title, Unread, Time */}
+			<Box justifyContent="space-between">
+				<Box flexShrink={1} marginRight={2}>
+					<Text
+						bold={isSelected}
+						color={isSelected ? 'blue' : undefined}
+						wrap="truncate"
+					>
 						{thread.title}
 					</Text>
+				</Box>
+				<Box>
+					{thread.unread && (
+						<Text color="green" bold>
+							(Unread){' '}
+						</Text>
+					)}
 					<Text dimColor>{formatTime(thread.lastActivity)}</Text>
 				</Box>
+			</Box>
 
-				{thread.lastMessage && (
-					<Box>
-						<Text dimColor>
-							{thread.lastMessage.text.length > 50
-								? `${thread.lastMessage.text.substring(0, 50)}...`
-								: thread.lastMessage.text}
-						</Text>
-					</Box>
-				)}
-
-				{thread.unreadCount > 0 && (
-					<Box>
-						<Text color="green" bold>
-							{thread.unreadCount} unread
-						</Text>
-					</Box>
-				)}
+			{/* Bottom Row: Last Message */}
+			<Box>
+				<Text dimColor wrap="truncate">
+					{lastMessageText}
+				</Text>
 			</Box>
 		</Box>
 	);

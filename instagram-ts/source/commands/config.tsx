@@ -1,17 +1,20 @@
 import React from 'react';
-import {Text} from 'ink';
-import {Alert} from '@inkjs/ui';
+import {Text, Box} from 'ink';
+import {Alert, UnorderedList} from '@inkjs/ui';
 import zod from 'zod';
 import {argument} from 'pastel';
 import {ConfigManager} from '../config.js';
 
 export const args = zod.tuple([
-	zod.string().describe(
-		argument({
-			name: 'key',
-			description: 'Configuration key',
-		}),
-	),
+	zod
+		.string()
+		.optional()
+		.describe(
+			argument({
+				name: 'key',
+				description: 'Configuration key (optional for listing all)',
+			}),
+		),
 	zod
 		.string()
 		.optional()
@@ -30,6 +33,10 @@ type Props = {
 export default function Config({args}: Props) {
 	const [result, setResult] = React.useState<string | null>(null);
 	const [error, setError] = React.useState<string | null>(null);
+	const [configData, setConfigData] = React.useState<Record<
+		string,
+		any
+	> | null>(null);
 
 	React.useEffect(() => {
 		(async () => {
@@ -48,7 +55,11 @@ export default function Config({args}: Props) {
 					}
 				}
 
-				if (value === undefined) {
+				if (key === undefined) {
+					// Get all config values
+					const allConfig = config.getConfig();
+					setConfigData(allConfig);
+				} else if (value === undefined) {
 					// Get config value
 					const current = config.get(key);
 					setResult(`${key}: ${current ?? 'null'}`);
@@ -68,7 +79,24 @@ export default function Config({args}: Props) {
 	}, [args]);
 
 	if (error) {
-		return <Alert variant="error">❌ {error}</Alert>;
+		return <Alert variant="error">{error}</Alert>;
+	}
+
+	if (configData) {
+		return (
+			<Box flexDirection="column">
+				<Text>Current Configuration:</Text>
+				<UnorderedList>
+					{Object.entries(configData).map(([key, value]) => (
+						<UnorderedList.Item key={key}>
+							<Text>
+								{key}: {JSON.stringify(value)}
+							</Text>
+						</UnorderedList.Item>
+					))}
+				</UnorderedList>
+			</Box>
+		);
 	}
 
 	return <Text>{result ? result : 'Configuring...'}</Text>;

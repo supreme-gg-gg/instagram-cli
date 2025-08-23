@@ -84,7 +84,7 @@ export default function Schedule({args}: Props) {
 	if (error) {
 		return (
 			<Box flexDirection="column">
-				<Alert variant="error">❌ {error}</Alert>
+				<Alert variant="error">{error}</Alert>
 			</Box>
 		);
 	}

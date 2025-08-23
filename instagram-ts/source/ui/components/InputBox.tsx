@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
-import {Box, Text} from 'ink';
-import {TextInput} from '@inkjs/ui';
+import {Box} from 'ink';
+import TextInput from 'ink-text-input';
 
 interface InputBoxProps {
 	onSend: (message: string) => void;
@@ -17,16 +17,14 @@ export default function InputBox({onSend}: InputBoxProps) {
 	};
 
 	return (
-		<Box borderStyle="bold" borderTop borderLeft borderRight borderBottom>
-			<Box width="100%" paddingX={1}>
-				<Text>Message: </Text>
-				<TextInput
-					defaultValue={message}
-					onChange={setMessage}
-					onSubmit={handleSubmit}
-					placeholder="Type your message..."
-				/>
-			</Box>
+		<Box borderStyle="round" paddingX={1} marginTop={1}>
+			<TextInput
+				value={message} // Control the input value
+				onChange={setMessage}
+				onSubmit={handleSubmit}
+				showCursor={true}
+				placeholder="Type a message and press Enter to send..."
+			/>
 		</Box>
 	);
 }

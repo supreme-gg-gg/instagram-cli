@@ -6,22 +6,23 @@ import InputBox from '../components/InputBox.js';
 import StatusBar from '../components/StatusBar.js';
 import ThreadList from '../components/ThreadList.js';
 import {useClient} from '../context/ClientContext.js';
-import {parseAndDispatchChatCommand} from '../utils/chatCommands.js';
+import {parseAndDispatchChatCommand} from '../../utils/chatCommands.js';
+import FullScreen from '../components/FullScreen.js';
+import {useScreenSize} from '../hooks/useScreenSize.js';
 
 export default function ChatView() {
 	const {exit} = useApp();
 	const client = useClient();
+	const {height} = useScreenSize();
+
 	const [chatState, setChatState] = useState<ChatState>({
 		threads: [],
 		messages: [],
 		loading: true,
 		currentThread: undefined,
+		visibleMessageOffset: 0,
 	});
 	const [currentView, setCurrentView] = useState<'threads' | 'chat'>('threads');
-
-	const [messageCursor, setMessageCursor] = useState<string | undefined>(
-		undefined,
-	);
 
 	// Load threads when client is ready
 	useEffect(() => {
@@ -47,7 +48,12 @@ export default function ChatView() {
 
 	// Poll for new messages
 	useEffect(() => {
-		if (currentView !== 'chat' || !chatState.currentThread) return;
+		if (
+			currentView !== 'chat' ||
+			!chatState.currentThread ||
+			chatState.visibleMessageOffset > 0 // Don't poll when scrolled up
+		)
+			return;
 
 		const interval = setInterval(async () => {
 			if (!client || !chatState.currentThread) return;
@@ -56,7 +62,13 @@ export default function ChatView() {
 		}, 5000);
 
 		return () => clearInterval(interval);
-	}, [client, currentView, chatState.currentThread]);
+	}, [
+		client,
+		currentView,
+		chatState.currentThread,
+		chatState.visibleMessageOffset,
+	]);
+
 	useInput((input, key) => {
 		if (key.ctrl && input === 'c') {
 			exit();
@@ -70,49 +82,35 @@ export default function ChatView() {
 
 		if (key.escape && currentView === 'chat') {
 			setCurrentView('threads');
-			setChatState(prev => ({...prev, currentThread: undefined, messages: []}));
+			setChatState(prev => ({
+				...prev,
+				currentThread: undefined,
+				messages: [],
+				visibleMessageOffset: 0,
+			}));
 			return;
 		}
-
-		if (input === 'k' && currentView === 'chat') {
-			loadOlderMessages();
-		}
 	});
-
-	const loadOlderMessages = async () => {
-		if (!client || !chatState.currentThread) return;
-
-		try {
-			setChatState(prev => ({...prev, loading: true}));
-			const {messages, cursor} = await client.getMessages(
-				chatState.currentThread.id,
-				messageCursor,
-			);
-			setChatState(prev => ({
-				...prev,
-				messages: [...messages, ...prev.messages],
-				loading: false,
-			}));
-			setMessageCursor(cursor);
-		} catch (error) {
-			setChatState(prev => ({
-				...prev,
-				error:
-					error instanceof Error ? error.message : 'Failed to load messages',
-				loading: false,
-			}));
-		}
-	};
 
 	const handleThreadSelect = async (thread: Thread) => {
 		if (!client) return;
 
+		setCurrentView('chat');
+		setChatState(prev => ({
+			...prev,
+			currentThread: thread,
+			messages: [],
+			visibleMessageOffset: 0,
+		}));
+
 		try {
-			setChatState(prev => ({...prev, loading: true, currentThread: thread}));
 			const {messages, cursor} = await client.getMessages(thread.id);
-			setChatState(prev => ({...prev, messages, loading: false}));
-			setMessageCursor(cursor);
-			setCurrentView('chat');
+			setChatState(prev => ({
+				...prev,
+				messages,
+				loading: false,
+				messageCursor: cursor,
+			}));
 		} catch (error) {
 			setChatState(prev => ({
 				...prev,
@@ -131,14 +129,18 @@ export default function ChatView() {
 			client,
 			chatState,
 			setChatState,
+			height,
 		});
-		if (handled) return;
+		if (handled) {
+			return;
+		}
 
 		try {
 			await client.sendMessage(chatState.currentThread.id, text);
 			// Reload messages to show the new one
 			const {messages} = await client.getMessages(chatState.currentThread.id);
-			setChatState(prev => ({...prev, messages}));
+			// also reset to the bottom of the chat since we just sent a message
+			setChatState(prev => ({...prev, messages, visibleMessageOffset: 0}));
 		} catch (error) {
 			setChatState(prev => ({
 				...prev,
@@ -148,58 +150,93 @@ export default function ChatView() {
 		}
 	};
 
-	if (chatState.loading) {
-		return (
-			<Box flexDirection="column" height="100%">
-				<StatusBar loading={true} />
-				<Box flexGrow={1} justifyContent="center" alignItems="center">
-					<Text>Loading...</Text>
+	const renderContent = () => {
+		if (chatState.loading && chatState.threads.length === 0) {
+			return (
+				<Box
+					flexGrow={1}
+					justifyContent="center"
+					alignItems="center"
+					paddingY={1}
+				>
+					<Text>Loading threads...</Text>
 				</Box>
-			</Box>
-		);
-	}
+			);
+		}
 
-	if (chatState.error) {
-		return (
-			<Box flexDirection="column" height="100%">
-				<StatusBar error={chatState.error} />
-				<Box flexGrow={1} justifyContent="center" alignItems="center">
+		if (chatState.error) {
+			return (
+				<Box
+					flexGrow={1}
+					justifyContent="center"
+					alignItems="center"
+					paddingY={1}
+				>
 					<Text color="red">Error: {chatState.error}</Text>
 				</Box>
-				<Box>
-					<Text dimColor>Press Ctrl+C to exit</Text>
-				</Box>
-			</Box>
+			);
+		}
+
+		if (currentView === 'threads') {
+			return (
+				<ThreadList threads={chatState.threads} onSelect={handleThreadSelect} />
+			);
+		}
+
+		// Chat view
+		// Calculate visible messages based on height and offset
+		// offset is used to scroll through messages
+		const messageLines = 3; // Approximate lines per message
+		const visibleMessageCount = Math.max(
+			0,
+			Math.floor((height - 8) / messageLines),
 		);
-	}
+
+		const totalMessages = chatState.messages.length;
+		const maxOffset = Math.max(0, totalMessages - visibleMessageCount);
+		const currentOffset = Math.min(chatState.visibleMessageOffset, maxOffset);
+
+		const startIndex = Math.max(
+			0,
+			totalMessages - visibleMessageCount - currentOffset,
+		);
+		const endIndex = Math.max(0, totalMessages - currentOffset);
+
+		const visibleMessages = chatState.messages.slice(startIndex, endIndex);
+
+		return (
+			<>
+				<MessageList
+					messages={visibleMessages}
+					currentThread={chatState.currentThread}
+				/>
+				<InputBox onSend={handleSendMessage} />
+			</>
+		);
+	};
 
 	return (
-		<Box flexDirection="column" height="100%">
-			<StatusBar
-				currentView={currentView}
-				currentThread={chatState.currentThread}
-				username={client.getUsername() || undefined}
-			/>
+		<FullScreen>
+			<Box flexDirection="column" height="100%" width="100%">
+				<StatusBar
+					currentView={currentView}
+					currentThread={chatState.currentThread}
+					loading={chatState.loading}
+					error={chatState.error}
+				/>
 
-			{currentView === 'threads' ? (
-				<ThreadList threads={chatState.threads} onSelect={handleThreadSelect} />
-			) : (
-				<>
-					<MessageList
-						messages={chatState.messages}
-						currentThread={chatState.currentThread}
-					/>
-					<InputBox onSend={handleSendMessage} />
-				</>
-			)}
+				<Box flexGrow={1} flexDirection="column">
+					{renderContent()}
+				</Box>
 
-			<Box>
-				<Text dimColor>
-					{currentView === 'threads'
-						? 'j/k: navigate, Enter: select, q: quit'
-						: 'Esc: back to threads, Ctrl+C: quit'}
-				</Text>
+				<Box>
+					<Text dimColor>
+						{currentView === 'threads'
+							? 'j/k: navigate, Enter: select, q: quit'
+							: 'Esc: back to threads, Ctrl+C: quit'}
+					</Text>
+				</Box>
 			</Box>
-		</Box>
+		</FullScreen>
 	);
 }
