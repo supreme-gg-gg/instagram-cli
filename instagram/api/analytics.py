@@ -186,7 +186,7 @@ def render_updates(stdscr) -> None:
                 row += 3
 
             # Footer
-            stdscr.addstr(height - 1, 1, "Press q to exit", curses.A_DIM)
+            stdscr.addstr(height - 1, 1, "Use arrow keys and hjkl to navigate unread chats. Press q to exit", curses.A_DIM)
 
             # Refresh all windows
             stdscr.refresh()
@@ -195,10 +195,14 @@ def render_updates(stdscr) -> None:
             messages_win.refresh()
             updates_win.refresh()
             c = stdscr.getch()
-            if c == curses.KEY_LEFT and index > 0:
-                index -= 1
-            elif c == curses.KEY_RIGHT and index < unread_messages - 1:
-                index += 1
+            if (c == curses.KEY_LEFT or c == ord('h')):
+                index = max(0, index-1)
+            elif (c == curses.KEY_RIGHT or c == ord('l')):
+                index = min(unread_messages - 1, index + 1)
+            elif (c == curses.KEY_UP or c == ord('k')):
+                index = max(0, index - 2)
+            elif (c == curses.KEY_DOWN or c == ord('j')):
+                index = min(unread_messages - 1, index + 2)
             elif c == ord("\n"):
                 from instagram.chat_ui.interface.chat_interface import ChatInterface
 
