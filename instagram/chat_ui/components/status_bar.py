@@ -38,7 +38,10 @@ class StatusBar:
             status_text = "[UNSEND] Use ↑↓ to select, Enter to confirm, Esc to exit"
         elif self.mode == ChatMode.COMMAND:
             self.window.bkgd(" ", curses.color_pair(2))
-            status_text = f"[COMMAND] Command {msg} executed. Press any key to continue"
+            status_text = f"[COMMAND] Executing command {msg if msg else '...'}"
+        elif self.mode == ChatMode.COMMAND_RESULT:
+            self.window.bkgd(" ", curses.color_pair(2))
+            status_text = "[COMMAND RESULT] Press any key to return to chat"
         else:
             status_text = "Georgian mode"
 
