@@ -24,8 +24,7 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 			} else {
 				console.error('No image URL available for this item.');
 			}
-		}
-		else if (activePost.media_type === 2) {
+		} else if (activePost.media_type === 2) {
 			// If media is a video, open the video URL
 			const videoUrl = activePost.video_versions?.[0]?.url;
 			if (videoUrl) {
@@ -35,12 +34,12 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 			} else {
 				console.error('No video URL available for this item.');
 			}
-		}
-		else if (activePost.carousel_media) {
+		} else if (activePost.carousel_media) {
 			// If media is a carousel, open the URL of the selected carousel item
 			const carouselItem = activePost.carousel_media[carouselIndex];
 			if (carouselItem) {
-				const carouselUrl = carouselItem.image_versions2?.candidates?.[0]?.url ||
+				const carouselUrl =
+					carouselItem.image_versions2?.candidates?.[0]?.url ||
 					carouselItem.video_versions?.[0]?.url;
 				if (carouselUrl) {
 					open(carouselUrl).catch(err => {
@@ -90,18 +89,16 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 		const activePost = posts[selectedIndex];
 		if (activePost) {
 			setSelectedPost(activePost);
-			if(activePost.carousel_media) {
+			if (activePost.carousel_media) {
 				const carouselItem = activePost.carousel_media[carouselIndex];
 				if (carouselItem) {
 					setAsciiImage(carouselItem.ascii_image || '');
 				}
-			}
-			else {
+			} else {
 				setAsciiImage(activePost.ascii_image || '');
 			}
 		}
-	}
-	, [selectedIndex, posts, carouselIndex]);
+	}, [selectedIndex, posts, carouselIndex]);
 
 	return (
 		<Box flexDirection="column" height={process.stdout.rows} width="100%">
@@ -136,7 +133,6 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 					height="100%"
 					overflow="hidden"
 				>
-
 					<Box flexDirection="row" flexGrow={1} overflow="hidden" gap={1}>
 						{/* Media display */}
 						<Box
@@ -158,7 +154,8 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 							)}
 
 							<Text>
-								{selectedPost?.media_type === 2 || selectedPost?.media_type === 2
+								{selectedPost?.media_type === 2 ||
+								selectedPost?.media_type === 2
 									? '▶ Video'
 									: ''}
 							</Text>

@@ -25,14 +25,12 @@ export default function MediaView({feed}: {feed: FeedInstance}) {
 								);
 							}
 						}
-					}
-					else if (post.image_versions2?.candidates?.[0]?.url) {
+					} else if (post.image_versions2?.candidates?.[0]?.url) {
 						// Handle single image
 						post.ascii_image = await convertImageToColorAscii(
 							post.image_versions2.candidates[0].url,
 						);
-					}
-					else {
+					} else {
 						post.ascii_image = 'No image available';
 					}
 				}
