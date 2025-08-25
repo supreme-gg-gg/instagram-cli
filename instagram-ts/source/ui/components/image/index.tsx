@@ -1,6 +1,7 @@
 import {type ImageProps, ImageProtocol} from './protocol.js';
 import HalfBlockProtocol from './HalfBlock.js';
 import BrailleProtocol from './Braille.js';
+import SixelProtocol from './Sixel.js';
 
 class AsciiProtocol extends ImageProtocol {
 	// @ts-expect-error to be implemented
@@ -13,6 +14,7 @@ const protocolFactory = {
 	ascii: new AsciiProtocol(),
 	halfBlock: new HalfBlockProtocol(),
 	braille: new BrailleProtocol(),
+	sixel: new SixelProtocol(),
 	// Add more protocols as needed
 };
 
