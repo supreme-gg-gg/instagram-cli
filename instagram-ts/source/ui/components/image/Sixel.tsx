@@ -2,12 +2,17 @@ import React, {useState, useEffect, useRef} from 'react';
 import {Box, Text, Newline, useStdout, type DOMElement} from 'ink';
 // import { backgroundContext } from "ink";
 import {image2sixel} from 'sixel';
-import {cursorTo} from 'ansi-escapes';
 import usePosition from '../../hooks/usePosition.js';
 import {useTerminalDimensions} from '../../context/TerminalPixelDimensions.js';
-// import chalk from "chalk";
 import {ImageProps, ImageProtocol} from './protocol.js';
 import sharp from 'sharp';
+// import fs from 'fs';
+
+const cursorTo = (row: number, col: number) => {
+	const ESC = '\x1b[';
+	const SEP = ';';
+	return ESC + (row + 1 - 1) + SEP + (col + 1) + 'H';
+};
 
 class SixelProtocol extends ImageProtocol {
 	/**
@@ -40,12 +45,13 @@ class SixelProtocol extends ImageProtocol {
 			width: number;
 			height: number;
 		} | null>(null);
+		const shouldCleanupRef = useRef<boolean>(true);
+
 		// TODO: If we upgrade to Ink 6 we will need to deal with Box background colors when rendering/cleaning up
 		// const inheritedBackgroundColor = useContext(backgroundContext);
-
 		useEffect(() => {
 			const generateImageOutput = async () => {
-				if (!containerRef.current) return;
+				if (!componentPosition) return;
 				if (!terminalDimensions) return;
 
 				const image = await this.fetchImage(props.src);
@@ -92,7 +98,7 @@ class SixelProtocol extends ImageProtocol {
 			props.src,
 			props.width,
 			props.height,
-			containerRef.current,
+			componentPosition,
 			terminalDimensions,
 		]);
 
@@ -100,14 +106,33 @@ class SixelProtocol extends ImageProtocol {
 		// TODO: maybe change this when incremental rendering is implemented in Ink
 		useEffect(() => {
 			if (!imageOutput) return;
+			if (!componentPosition) return;
+			if (
+				stdout.rows - componentPosition.appHeight + componentPosition.row < 0 ||
+				componentPosition.col > stdout.columns
+			)
+				return;
+
+			function onExit() {
+				shouldCleanupRef.current = false;
+			}
+			function onSigInt() {
+				shouldCleanupRef.current = false;
+				process.exit();
+			}
+			process.on('exit', onExit);
+			process.on('SIGINT', onSigInt);
+			process.on('SIGTERM', onSigInt);
 
 			stdout.write(
 				cursorTo(
-					componentPosition.col,
 					stdout.rows - componentPosition.appHeight + componentPosition.row,
+					componentPosition.col,
 				),
 			);
 			stdout.write(imageOutput);
+
+			stdout.write(cursorTo(stdout.rows, 0));
 			const previousRenderBoundingBox = {
 				row: stdout.rows - componentPosition.appHeight + componentPosition.row,
 				col: componentPosition.col,
@@ -116,24 +141,30 @@ class SixelProtocol extends ImageProtocol {
 			};
 
 			return () => {
+				process.removeListener('exit', onExit);
+				process.removeListener('SIGINT', onSigInt);
+				process.removeListener('SIGTERM', onSigInt);
+
+				if (!shouldCleanupRef.current) return;
+
 				for (let i = 0; i < previousRenderBoundingBox.height; i++) {
 					stdout.write(
 						cursorTo(
-							previousRenderBoundingBox.col,
 							previousRenderBoundingBox.row + i,
+							previousRenderBoundingBox.col,
 						),
 					);
 					// if (inheritedBackgroundColor) {
-					//     const bgColor = "bg" + toProper(inheritedBackgroundColor);
-					//     stdout.write(
-					//         chalk[bgColor](" ".repeat(previousRenderBoundingBox.width) + "\n"),
-					//     );
+					//   const bgColor = "bg" + toProper(inheritedBackgroundColor);
+					//   stdout.write(
+					//     chalk[bgColor](" ".repeat(previousRenderBoundingBox.width) + "\n"),
+					//   );
 					// } else {
-					stdout.write(' '.repeat(previousRenderBoundingBox.width) + '\n');
+					stdout.write(' '.repeat(previousRenderBoundingBox.width));
 					// }
 				}
 				// Restore cursor position
-				stdout.write(cursorTo(stdout.columns, stdout.rows));
+				stdout.write(cursorTo(stdout.rows, 0));
 			};
 			// }, [imageOutput, ...Object.values(componentPosition)]);
 		});
@@ -142,8 +173,7 @@ class SixelProtocol extends ImageProtocol {
 			<Box ref={containerRef} flexDirection="column" flexGrow={1}>
 				{imageOutput ? (
 					<Text color="gray" wrap="wrap">
-						If you don't see an image after a few seconds, your terminal might
-						not support Sixel
+						{props.alt || 'Loading...'}
 					</Text>
 				) : (
 					<Box

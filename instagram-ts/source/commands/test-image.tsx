@@ -18,9 +18,9 @@ type Props = {
 };
 
 const testImages = [
-	//	'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
-	//	'https://sipi.usc.edu/database/preview/misc/4.1.06.png',
-	//	'https://sipi.usc.edu/database/preview/misc/4.2.06.png',
+	'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
+	'https://sipi.usc.edu/database/preview/misc/4.1.06.png',
+	'https://sipi.usc.edu/database/preview/misc/4.2.06.png',
 	'https://www.math.hkust.edu.hk/~masyleung/Teaching/CAS/MATLAB/image/images/cameraman.jpg',
 	'https://example.com/bad-url/image-that-doesnt-exist.jpg',
 	'/home/endernoke/Downloads/wn_php.png',
@@ -38,25 +38,49 @@ export default function TestImage(props: Props) {
 	}, []);
 	return (
 		<TerminalDimensionsProvider>
-			<Box flexDirection="column" gap={1}>
+			<Box flexDirection="column">
 				<Text>Test Image Component</Text>
 				<Text>{props.args[0]}</Text>
-				{testImages.map((src, index) => (
-					<Box
-						key={index}
-						flexDirection="column"
-						borderStyle="round"
-						borderColor="cyan"
-						height={18}
-					>
-						<Image
-							src={src}
-							alt={`Test Image ${index + 1}`}
-							// @ts-expect-error
-							protocol={props.args[0]}
-						/>
+				<Box flexDirection="column">
+					{/* First row */}
+					<Box flexDirection="row">
+						{testImages.slice(0, 3).map((src, index) => (
+							<Box
+								key={index}
+								borderStyle="round"
+								borderColor="cyan"
+								width={32}
+								height={17}
+							>
+								<Image
+									src={src}
+									alt={`Test Image ${index + 1}`}
+									// @ts-expect-error
+									protocol={props.args[0]}
+								/>
+							</Box>
+						))}
 					</Box>
-				))}
+					{/* Second row */}
+					<Box flexDirection="row">
+						{testImages.slice(3, 6).map((src, index) => (
+							<Box
+								key={index + 3}
+								borderStyle="round"
+								borderColor="cyan"
+								width={32}
+								height={17}
+							>
+								<Image
+									src={src}
+									alt={`Test Image ${index + 4}`}
+									// @ts-expect-error
+									protocol={props.args[0]}
+								/>
+							</Box>
+						))}
+					</Box>
+				</Box>
 			</Box>
 			<Box>
 				<Text>Ctrl+C to exit</Text>

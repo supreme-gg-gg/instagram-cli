@@ -30,7 +30,7 @@ export abstract class ImageProtocol {
 
 			return sharp(imageBuffer);
 		} catch (error) {
-			console.error('Failed to fetch image:', error);
+			// console.error('Failed to fetch image:', error);
 			return undefined;
 		}
 	}

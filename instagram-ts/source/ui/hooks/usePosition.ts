@@ -34,15 +34,10 @@ export type Position = {
  * @param ref - React ref pointing to a Box component
  * @returns Position object with col, row, width, and height
  */
-const usePosition = (ref: RefObject<DOMElement | null>): Position => {
-	const [position, setPosition] = useState<Position>({
-		col: 0,
-		row: 0,
-		width: 0,
-		height: 0,
-		appWidth: 0,
-		appHeight: 0,
-	});
+const usePosition = (
+	ref: RefObject<DOMElement | null>,
+): Position | undefined => {
+	const [position, setPosition] = useState<Position | undefined>(undefined);
 
 	const updatePosition = useCallback(() => {
 		if (!ref.current?.yogaNode) {
@@ -82,6 +77,7 @@ const usePosition = (ref: RefObject<DOMElement | null>): Position => {
 		setPosition(previousPosition => {
 			// Only update if position actually changed to avoid unnecessary re-renders
 			if (
+				!previousPosition ||
 				previousPosition.col !== newPosition.col ||
 				previousPosition.row !== newPosition.row ||
 				previousPosition.width !== newPosition.width ||
