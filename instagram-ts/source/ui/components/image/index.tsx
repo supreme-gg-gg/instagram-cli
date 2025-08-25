@@ -1,6 +1,6 @@
 import {type ImageProps, ImageProtocol} from './protocol.js';
-import HalfBlockProtocol from './half-block.js';
-import BrailleProtocol from './braille.js';
+import HalfBlockProtocol from './HalfBlock.js';
+import BrailleProtocol from './Braille.js';
 
 class AsciiProtocol extends ImageProtocol {
 	// @ts-expect-error to be implemented
