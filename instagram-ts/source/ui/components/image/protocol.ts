@@ -3,10 +3,10 @@ export interface ImageProps {
 	width?: number;
 	height?: number;
 	alt?: string;
+	onSupportDetected: (isSupported: boolean) => void;
 }
 
 export interface ImageProtocol {
 	render(props: ImageProps): JSX.Element | null;
 	name: string;
-	isSupported?(): Promise<boolean>;
 }

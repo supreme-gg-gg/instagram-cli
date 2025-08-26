@@ -1,11 +1,15 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {type ImageProps, type ImageProtocol} from './protocol.js';
 import HalfBlockImage from './HalfBlock.js';
 import BrailleImage from './Braille.js';
 import SixelImage from './Sixel.js';
 
-// @ts-expect-error to be implemented
 function AsciiImage(props: ImageProps) {
+	// ASCII should always be supported as the ultimate fallback
+	useEffect(() => {
+		props.onSupportDetected(true);
+	}, [props.onSupportDetected]);
+
 	return null;
 }
 
@@ -14,9 +18,6 @@ const createProtocolRegistry = () => {
 
 	return {
 		register: (protocol: ImageProtocol) => {
-			if (protocol.isSupported === undefined) {
-				protocol.isSupported = async () => true;
-			}
 			protocols[protocol.name] = protocol;
 		},
 
@@ -58,35 +59,78 @@ const ImageRenderer = (props: ImageProps & {protocol: string}) => {
 function Image({
 	protocol: initialProtocol = 'ascii',
 	...props
-}: ImageProps & {protocol?: string}) {
+}: Omit<ImageProps & {protocol?: string}, 'onSupportDetected'>) {
 	const [protocol, setProtocol] = useState(initialProtocol);
-	const [loading, setLoading] = useState(true);
+	const [supportCheckComplete, setSupportCheckComplete] = useState(false);
+	const [fallbackAttempts, setFallbackAttempts] = useState(0);
 
+	// Define fallback hierarchy
+	const getFallbackProtocol = useCallback(
+		(currentProtocol: string, attemptCount: number): string => {
+			if (currentProtocol === 'sixel') {
+				return attemptCount === 0
+					? 'braille'
+					: attemptCount === 1
+					? 'halfBlock'
+					: 'ascii';
+			}
+			if (currentProtocol === 'braille') {
+				return attemptCount === 0 ? 'halfBlock' : 'ascii';
+			}
+			if (currentProtocol === 'halfBlock') {
+				return 'ascii';
+			}
+			return 'ascii'; // Final fallback
+		},
+		[],
+	);
+
+	// Callback to handle support detection from child components
+	const handleSupportDetected = useCallback(
+		(isSupported: boolean) => {
+			if (isSupported) {
+				// Current protocol is supported
+				setSupportCheckComplete(true);
+			} else {
+				// Try fallback protocol
+				const nextProtocol = getFallbackProtocol(protocol, fallbackAttempts);
+				if (nextProtocol !== protocol) {
+					setProtocol(nextProtocol);
+					setFallbackAttempts(prev => prev + 1);
+					// supportCheckComplete remains false to trigger another check
+				} else {
+					// No more fallbacks, use current protocol anyway (shouldn't happen with 'ascii')
+					setSupportCheckComplete(true);
+				}
+			}
+		},
+		[protocol, fallbackAttempts, getFallbackProtocol],
+	);
+
+	// Reset support check when initial protocol changes
 	useEffect(() => {
-		let isMounted = true;
-		setLoading(true);
-		const p = protocolRegistry.getProtocol(initialProtocol);
-		const check = async () => {
-			let newProtocol = 'ascii';
-			if (p && (await p.isSupported!())) {
-				newProtocol = initialProtocol;
-			}
-			if (isMounted) {
-				setProtocol(newProtocol);
-				setLoading(false);
-			}
-		};
-		check();
-		return () => {
-			isMounted = false;
-		};
+		setProtocol(initialProtocol);
+		setSupportCheckComplete(false);
+		setFallbackAttempts(0);
 	}, [initialProtocol]);
 
-	if (loading) {
-		return null;
+	if (!supportCheckComplete) {
+		// Render the current protocol to detect support
+		const ProtocolComponent =
+			protocolRegistry.getProtocol(protocol)?.render ??
+			protocolRegistry.getProtocol('ascii')!.render;
+		return (
+			<ProtocolComponent {...props} onSupportDetected={handleSupportDetected} />
+		);
 	}
 
-	return <ImageRenderer protocol={protocol} {...props} />;
+	return (
+		<ImageRenderer
+			protocol={protocol}
+			{...props}
+			onSupportDetected={handleSupportDetected}
+		/>
+	);
 }
 
 export const ImageProtocols = protocolRegistry.getAllProtocols();

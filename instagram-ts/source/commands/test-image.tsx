@@ -1,7 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import Image from '../ui/components/image/index.js';
 import {Text, Box} from 'ink';
-import {TerminalDimensionsProvider} from '../ui/context/TerminalPixelDimensions.js';
+import {TerminalInfoProvider} from '../ui/context/TerminalInfo.js';
 import zod from 'zod';
 import {argument} from 'pastel';
 export const args = zod.tuple([
@@ -37,7 +37,7 @@ export default function TestImage(props: Props) {
 		return () => clearInterval(id);
 	}, []);
 	return (
-		<TerminalDimensionsProvider>
+		<TerminalInfoProvider>
 			<Box flexDirection="column">
 				<Text>{props.args[0]}</Text>
 				<Box flexDirection="column">
@@ -82,6 +82,6 @@ export default function TestImage(props: Props) {
 			<Box>
 				<Text>Ctrl+C to exit</Text>
 			</Box>
-		</TerminalDimensionsProvider>
+		</TerminalInfoProvider>
 	);
 }

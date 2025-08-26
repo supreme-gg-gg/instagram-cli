@@ -4,15 +4,26 @@ import chalk from 'chalk';
 import sharp from 'sharp';
 import {type ImageProps} from './protocol.js';
 import {fetchImage, calculateImageSize} from '../../../utils/image.js';
+import {useTerminalCapabilities} from '../../context/TerminalInfo.js';
 
 function HalfBlockImage(props: ImageProps) {
 	const [imageOutput, setImageOutput] = useState<string | null>(null);
 	const [hasError, setHasError] = useState<boolean>(false);
 	const containerRef = useRef<DOMElement | null>(null);
+	const terminalCapabilities = useTerminalCapabilities();
+
+	// Detect support and notify parent
+	useEffect(() => {
+		if (!terminalCapabilities) return;
+
+		const isSupported =
+			terminalCapabilities.supportsColor &&
+			terminalCapabilities.supportsUnicode;
+		props.onSupportDetected(isSupported);
+	}, [props.onSupportDetected, terminalCapabilities]);
+
 	useEffect(() => {
 		const generateImageOutput = async () => {
-			if (!containerRef.current) return;
-
 			const image = await fetchImage(props.src);
 			if (!image) {
 				setHasError(true);
@@ -22,6 +33,7 @@ function HalfBlockImage(props: ImageProps) {
 
 			const metadata = await image.metadata();
 
+			if (!containerRef.current) return;
 			const {width: maxWidth, height: maxHeight} = measureElement(
 				containerRef.current,
 			);

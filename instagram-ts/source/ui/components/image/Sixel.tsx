@@ -3,7 +3,10 @@ import {Box, Text, Newline, useStdout, type DOMElement} from 'ink';
 // import { backgroundContext } from "ink";
 import {image2sixel} from 'sixel';
 import usePosition from '../../hooks/usePosition.js';
-import {useTerminalDimensions} from '../../context/TerminalPixelDimensions.js';
+import {
+	useTerminalDimensions,
+	useTerminalCapabilities,
+} from '../../context/TerminalInfo.js';
 import {type ImageProps} from './protocol.js';
 import sharp from 'sharp';
 import {fetchImage, calculateImageSize} from '../../../utils/image.js';
@@ -32,11 +35,21 @@ function SixelImage(props: ImageProps) {
 	const containerRef = useRef<DOMElement | null>(null);
 	const componentPosition = usePosition(containerRef);
 	const terminalDimensions = useTerminalDimensions();
+	const terminalCapabilities = useTerminalCapabilities();
 	const [actualSizeInCells, setActualSizeInCells] = useState<{
 		width: number;
 		height: number;
 	} | null>(null);
 	const shouldCleanupRef = useRef<boolean>(true);
+
+	// Detect support and notify parent
+	useEffect(() => {
+		if (!terminalCapabilities) return;
+
+		// Sixel rendering requires explicit sixel graphics support
+		const isSupported = terminalCapabilities.supportsSixelGraphics;
+		props.onSupportDetected?.(isSupported);
+	}, [terminalCapabilities, props.onSupportDetected]);
 
 	// TODO: If we upgrade to Ink 6 we will need to deal with Box background colors when rendering/cleaning up
 	// const inheritedBackgroundColor = useContext(backgroundContext);
