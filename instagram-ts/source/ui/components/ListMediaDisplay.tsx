@@ -3,11 +3,17 @@ import {Box, Text, useInput} from 'ink';
 import {Post, FeedInstance} from '../../types/instagram.js';
 import open from 'open';
 
-export default function ListMediaDisplay({posts}: FeedInstance) {
+type Props = {
+	feed: FeedInstance;
+	asciiFeed: string[][];
+};
+
+export default function ListMediaDisplay({feed, asciiFeed}: Props) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
-	const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-	const [asciiImage, setAsciiImage] = useState<string>('');
+	const [activeMedia, setActiveMedia] = useState<string>('');
+
+	const posts = feed.posts || [];
 
 	if (posts.length === 0) {
 		return <Text>No posts available.</Text>;
@@ -53,22 +59,12 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 	};
 
 	useInput((input, key) => {
+		//Post navigation
 		if (input === 'j' || key.downArrow) {
 			setSelectedIndex(prev => Math.min(prev + 1, posts.length - 1));
-			setCarouselIndex(0);
 		} else if (input === 'k' || key.upArrow) {
 			setSelectedIndex(prev => Math.max(prev - 1, 0));
-			setCarouselIndex(0);
-		} else if (input === 'o' || key.return) {
-			const selectedItem = posts[selectedIndex];
-			if (selectedItem) {
-				const baseItem = posts[selectedIndex];
-				if (baseItem) {
-					openMediaUrl(baseItem);
-				}
-			}
-		} else if (input === 'q' || key.escape) {
-			process.exit(0);
+			//Carousel navigation
 		} else if (input === 'h' || key.leftArrow) {
 			if (posts[selectedIndex]?.carousel_media) {
 				setCarouselIndex(prev => Math.max(prev - 1, 0));
@@ -82,23 +78,31 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 					),
 				);
 			}
+			//Open in browser
+		} else if (input === 'o' || key.return) {
+			const selectedItem = posts[selectedIndex];
+			if (selectedItem) {
+				const baseItem = posts[selectedIndex];
+				if (baseItem) {
+					openMediaUrl(baseItem);
+				}
+			}
+			//Quit
+		} else if (input === 'q' || key.escape) {
+			process.exit(0);
 		}
 	});
 
 	useEffect(() => {
-		const activePost = posts[selectedIndex];
-		if (activePost) {
-			setSelectedPost(activePost);
-			if (activePost.carousel_media) {
-				const carouselItem = activePost.carousel_media[carouselIndex];
-				if (carouselItem) {
-					setAsciiImage(carouselItem.ascii_image || '');
-				}
-			} else {
-				setAsciiImage(activePost.ascii_image || '');
-			}
+		setCarouselIndex(0);
+	}, [selectedIndex]);
+
+	useEffect(() => {
+		let ascii = asciiFeed[selectedIndex]?.[carouselIndex];
+		if (ascii) {
+			setActiveMedia(ascii);
 		}
-	}, [selectedIndex, posts, carouselIndex]);
+	}, [selectedIndex, carouselIndex, asciiFeed]);
 
 	return (
 		<Box flexDirection="column" height={process.stdout.rows} width="100%">
@@ -143,8 +147,8 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 							justifyContent="flex-start"
 							width={'50%'}
 						>
-							{asciiImage ? (
-								asciiImage.split('\n').map((line, i) => (
+							{activeMedia ? (
+								activeMedia.split('\n').map((line, i) => (
 									<Text key={i} wrap="truncate">
 										{line}
 									</Text>
@@ -154,15 +158,15 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 							)}
 
 							<Text>
-								{selectedPost?.media_type === 2 ||
-								selectedPost?.media_type === 2
+								{posts[selectedIndex]?.media_type === 2 ||
+								posts[selectedIndex]?.media_type === 2
 									? '▶ Video'
 									: ''}
 							</Text>
 							<Text color="gray">
-								{selectedPost?.carousel_media_count
+								{posts[selectedIndex]?.carousel_media_count
 									? `Carousel ${carouselIndex + 1} of ${
-											selectedPost.carousel_media_count
+											posts[selectedIndex].carousel_media_count
 									  }`
 									: ''}
 							</Text>
@@ -177,29 +181,31 @@ export default function ListMediaDisplay({posts}: FeedInstance) {
 						>
 							<Box flexDirection="row">
 								<Text color="green">
-									👤 {selectedPost?.user?.username || 'Unknown user'}
+									👤 {posts[selectedIndex]?.user?.username || 'Unknown user'}
 								</Text>
 								<Text color="gray">
 									{' ('}
-									{new Date(selectedPost?.taken_at! * 1000).toLocaleString()}
+									{new Date(
+										posts[selectedIndex]?.taken_at! * 1000,
+									).toLocaleString()}
 									{')'}
 								</Text>
 							</Box>
 							<Text>{'\n'}</Text>
 							<Text wrap="wrap">
-								{selectedPost?.caption?.text || 'No caption'}
+								{posts[selectedIndex]?.caption?.text || 'No caption'}
 							</Text>
 							<Text>{'\n'}</Text>
 
 							<Box flexDirection="row">
 								<Text>
 									{' '}
-									♡ {selectedPost?.like_count ?? 0}
+									♡ {posts[selectedIndex]?.like_count ?? 0}
 									{'   '}
 								</Text>
 								<Text>
 									🗨{'  '}
-									{selectedPost?.comment_count ?? 0}
+									{posts[selectedIndex]?.comment_count ?? 0}
 								</Text>
 							</Box>
 						</Box>

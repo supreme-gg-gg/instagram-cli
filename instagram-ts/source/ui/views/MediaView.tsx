@@ -7,6 +7,9 @@ import {ConfigManager} from '../../config.js';
 
 export default function MediaView({feed}: {feed: FeedInstance}) {
 	const [feedType, setFeedType] = useState<'timeline' | 'list'>('list');
+	const [asciiFeed, setAsciiFeed] = useState<string[][]>(
+		Array.from({length: feed.posts.length}, () => []),
+	);
 
 	useEffect(() => {
 		const config = ConfigManager.getInstance();
@@ -15,23 +18,35 @@ export default function MediaView({feed}: {feed: FeedInstance}) {
 
 		const renderAscii = async () => {
 			try {
-				for (const post of feed.posts) {
-					if (post.carousel_media) {
-						// Handle carousel media
-						for (const item of post.carousel_media) {
-							if (item.image_versions2?.candidates?.[0]?.url) {
-								item.ascii_image = await convertImageToColorAscii(
-									item.image_versions2.candidates[0].url,
-								);
+				for (let i = 0; i < feed.posts.length; i++) {
+					const post = feed.posts[i];
+					if (post?.carousel_media) {
+						for (let j = 0; j < post.carousel_media.length; j++) {
+							const carouselItem = post.carousel_media[j];
+							const imageURL =
+								carouselItem?.image_versions2?.candidates?.[0]?.url;
+							if (imageURL) {
+								const ascii = await convertImageToColorAscii(imageURL);
+								setAsciiFeed(prev => {
+									const newFeed = [...prev];
+									const postArray: string[] = newFeed[i] ?? [];
+									postArray.push(ascii);
+									newFeed[i] = postArray;
+									return newFeed;
+								});
 							}
 						}
-					} else if (post.image_versions2?.candidates?.[0]?.url) {
-						// Handle single image
-						post.ascii_image = await convertImageToColorAscii(
-							post.image_versions2.candidates[0].url,
-						);
 					} else {
-						post.ascii_image = 'No image available';
+						const imageURL = post?.image_versions2?.candidates[0]?.url;
+						if (!imageURL) continue;
+						const ascii = await convertImageToColorAscii(imageURL);
+						setAsciiFeed(prev => {
+							const newFeed = [...prev];
+							const postArray: string[] = newFeed[i] ?? [];
+							postArray.push(ascii);
+							newFeed[i] = postArray;
+							return newFeed;
+						});
 					}
 				}
 			} catch (err) {
@@ -43,8 +58,8 @@ export default function MediaView({feed}: {feed: FeedInstance}) {
 	}, [feed]);
 
 	return feedType === 'timeline' ? (
-		<TimelineMediDisplay posts={feed.posts} />
+		<TimelineMediDisplay feed={feed} asciiFeed={asciiFeed} />
 	) : (
-		<ListMediaDisplay posts={feed.posts} />
+		<ListMediaDisplay feed={feed} asciiFeed={asciiFeed} />
 	);
 }
