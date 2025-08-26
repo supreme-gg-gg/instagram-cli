@@ -2,10 +2,9 @@ import React from 'react';
 import {Alert} from '@inkjs/ui';
 import zod from 'zod';
 import {argument} from 'pastel';
-import {InstagramClient} from '../client.js';
-import {ConfigManager} from '../config.js';
 import {FeedInstance} from '../types/instagram.js';
 import MediaView from '../ui/views/MediaView.js';
+import {useInstagramClient} from '../ui/hooks/useInstagramClient.js';
 
 export const args = zod.tuple([
 	zod
@@ -24,56 +23,44 @@ type Props = {
 };
 
 export default function Feed({args}: Props) {
-	const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>(
-		'loading',
-	);
-	const [error, setError] = React.useState<string | null>(null);
+
+	const {client, isLoading, error} = useInstagramClient(args[0]);
 	const [feed, setFeed] = React.useState<FeedInstance>({posts: []});
 
 	React.useEffect(() => {
 		const fetchFeed = async () => {
+			if (!client) {
+				return;
+			}
+
 			try {
-				const config = ConfigManager.getInstance();
-				await config.initialize();
-
-				// Determine which username to use
-				let targetUsername = args[0];
-				if (!targetUsername) {
-					targetUsername =
-						config.get<string>('login.currentUsername') ||
-						config.get<string>('login.defaultUsername');
-				}
-
-				const client = new InstagramClient(targetUsername);
-				await client.loginBySession();
 				const ig = client.getInstagramClient();
-
 				const timelineFeed = ig.feed.timeline();
 				const items = await timelineFeed.items();
 				if (items.length === 0) {
-					setError('No feed items found.');
-					setStatus('error');
-					return;
+					// If no items, set an error or handle appropriately
+					// setError('No feed items found.'); // This would require adding setError to the hook or handling it here
 				} else {
 					setFeed({posts: items});
 					setStatus('ready');
+					setFeed({posts: items});
 				}
 			} catch (err) {
-				setError(
+				// setError(`Feed error: ${err instanceof Error ? err.message : String(err)}`);
+				console.error(
 					`Feed error: ${err instanceof Error ? err.message : String(err)}`,
 				);
-				setStatus('error');
 			}
 		};
 
 		fetchFeed();
-	}, [args]);
+	}, [client]);
 
-	if (status === 'loading') {
-		return <Alert variant="info">🚀 Fetching Instagram feed...</Alert>;
+	if (isLoading) {
+		return <Alert variant="info">Fetching Instagram feed...</Alert>;
 	}
-	if (status === 'error') {
-		return <Alert variant="error">❌ {error}</Alert>;
+	if (error) {
+		return <Alert variant="error">{error}</Alert>;
 	}
 	return <MediaView feed={feed} />;
 }

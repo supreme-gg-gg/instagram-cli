@@ -1,4 +1,13 @@
-import {IgApiClient} from 'instagram-private-api';
+import {
+	IgApiClient,
+	IgCheckpointError,
+	IgLoginTwoFactorRequiredError,
+	type DirectInboxFeedResponseThreadsItem,
+	type DirectInboxFeedResponseUsersItem,
+	type AccountRepositoryLoginErrorResponseTwoFactorInfo,
+} from 'instagram-private-api';
+import {join} from 'path';
+import fs from 'fs/promises';
 import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
 import type {Thread, Message, User} from './types/instagram.js';
@@ -7,6 +16,8 @@ export interface LoginResult {
 	success: boolean;
 	error?: string;
 	username?: string;
+	checkpointError?: IgCheckpointError;
+	twoFactorInfo?: AccountRepositoryLoginErrorResponseTwoFactorInfo; // Add this to carry 2FA info
 }
 
 export class InstagramClient {
@@ -14,6 +25,7 @@ export class InstagramClient {
 	private sessionManager: SessionManager | null = null;
 	private configManager: ConfigManager;
 	private username: string | null = null;
+	private userCache: Map<string, string> = new Map(); // Cache for user ID -> username mapping
 
 	constructor(username?: string) {
 		this.ig = new IgApiClient();
@@ -25,62 +37,23 @@ export class InstagramClient {
 		}
 	}
 
-	public async login(
-		username: string,
-		password: string,
-		verificationCode?: string,
-	): Promise<LoginResult> {
+	public async login(username: string, password: string): Promise<LoginResult> {
 		try {
 			this.username = username;
 			this.sessionManager = new SessionManager(username);
 
-			// Check if we should load existing session first
-			const sessionExists = await this.sessionManager.sessionExists();
-			if (sessionExists) {
-				try {
-					const sessionData = await this.sessionManager.loadSession();
-					if (sessionData) {
-						await this.ig.state.deserialize(sessionData);
-						// Preserve device UUIDs from old session
-						const oldSettings = await this.ig.state.serialize();
-						this.ig.state.generateDevice(username);
-						if (oldSettings.deviceString) {
-							// Restore device string to maintain consistency
-							await this.ig.state.deserialize({
-								...sessionData,
-								deviceString: oldSettings.deviceString,
-							});
-						}
-					}
-				} catch (error) {
-					console.log('Could not load existing session, creating new one');
-				}
-			}
-
-			// Generate device for this username
 			this.ig.state.generateDevice(username);
 
-			// Set up request listener to save session after each request
 			this.ig.request.end$.subscribe(async () => {
 				await this.saveSessionState();
 			});
 
-			// Perform login
 			await this.ig.simulate.preLoginFlow();
+			await this.ig.account.login(username, password);
 
-			if (verificationCode) {
-				// If 2FA is needed, this would need to be handled differently
-				// For now, we'll assume the verification code is provided upfront
-				await this.ig.account.login(username, password);
-			} else {
-				await this.ig.account.login(username, password);
-			}
-
-			// Save session and update config
 			await this.saveSessionState();
 			await this.configManager.set('login.currentUsername', username);
 
-			// Set as default username if none exists
 			const defaultUsername = this.configManager.get<string>(
 				'login.defaultUsername',
 			);
@@ -90,10 +63,86 @@ export class InstagramClient {
 
 			return {success: true, username};
 		} catch (error) {
+			if (error instanceof IgLoginTwoFactorRequiredError) {
+				return {
+					success: false,
+					twoFactorInfo: error.response.body.two_factor_info,
+				};
+			}
+
+			if (error instanceof IgCheckpointError) {
+				return {success: false, checkpointError: error};
+			}
+
 			console.error('Login failed:', error);
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Unknown login error',
+			};
+		}
+	}
+
+	public async twoFactorLogin({
+		verificationCode,
+		twoFactorIdentifier,
+		totp_two_factor_on,
+	}: {
+		verificationCode: string;
+		twoFactorIdentifier: string;
+		totp_two_factor_on: boolean;
+	}): Promise<LoginResult> {
+		try {
+			const verificationMethod = totp_two_factor_on ? '0' : '1'; // 0 = TOTP, 1 = SMS
+			await this.ig.account.twoFactorLogin({
+				username: this.username!,
+				verificationCode,
+				twoFactorIdentifier,
+				verificationMethod,
+			});
+
+			await this.saveSessionState();
+			if (this.username) {
+				await this.configManager.set('login.currentUsername', this.username);
+			}
+
+			return {success: true, username: this.username ?? undefined};
+		} catch (error) {
+			console.error('2FA Login failed:', error);
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Unknown 2FA error',
+			};
+		}
+	}
+
+	public async startChallenge(): Promise<void> {
+		// this handles automatically choosing challenge type etc.
+		await this.ig.challenge.auto(true);
+	}
+
+	public async sendChallengeCode(code: string): Promise<LoginResult> {
+		try {
+			await this.ig.challenge.sendSecurityCode(code);
+
+			// After sending code, the user should be logged in.
+			// The session should be saved by the hook.
+			await this.saveSessionState();
+			if (this.username) {
+				await this.configManager.set('login.currentUsername', this.username);
+				const defaultUsername = this.configManager.get<string>(
+					'login.defaultUsername',
+				);
+				if (!defaultUsername) {
+					await this.configManager.set('login.defaultUsername', this.username);
+				}
+			}
+			return {success: true, username: this.username ?? undefined};
+		} catch (error) {
+			console.error('Sending challenge code failed:', error);
+			return {
+				success: false,
+				error:
+					error instanceof Error ? error.message : 'Unknown challenge error',
 			};
 		}
 	}
@@ -109,19 +158,35 @@ export class InstagramClient {
 				return {success: false, error: 'No session file found'};
 			}
 
-			// Deserialize the session state
+			if (!this.username) {
+				return {success: false, error: 'No username set for session login'};
+			}
+
+			// Step 1: Generate device FIRST (as per official docs)
+			this.ig.state.generateDevice(this.username);
+
+			// Step 2: Set up request listener to save session after each request
+			this.ig.request.end$.subscribe(async () => {
+				await this.saveSessionState();
+			});
+
+			// Step 3: Deserialize the session state
 			await this.ig.state.deserialize(sessionData);
 
-			// Test if session is valid by making a simple request
+			// Step 4: Test if session is valid by making a simple request
+			// Most of the time you don't have to login after loading the state (as per docs)
 			const currentUser = await this.ig.account.currentUser();
 			this.username = currentUser.username;
 
-			// Save the session after successful login
+			// Save the session after successful validation
 			await this.saveSessionState();
 			await this.configManager.set('login.currentUsername', this.username);
 
-			return {success: true, username: this.username};
+			return {success: true, username: this.username || undefined};
 		} catch (error) {
+			if (error instanceof IgCheckpointError) {
+				return {success: false, checkpointError: error};
+			}
 			console.error('Failed to login with session:', error);
 			return {
 				success: false,
@@ -143,14 +208,98 @@ export class InstagramClient {
 		}
 	}
 
-	public async logout(): Promise<void> {
+	public async logout(usernameToLogout?: string): Promise<void> {
 		try {
-			if (this.sessionManager) {
-				await this.sessionManager.deleteSession();
+			const targetUsername = usernameToLogout || this.username;
+			if (targetUsername) {
+				const sessionManager = new SessionManager(targetUsername);
+				await sessionManager.deleteSession();
+				// If the logged out user is the current user, clear currentUsername
+				if (
+					this.configManager.get('login.currentUsername') === targetUsername
+				) {
+					await this.configManager.set('login.currentUsername', null);
+				}
+			} else {
+				// If no specific username, just clear the current username
+				await this.configManager.set('login.currentUsername', null);
 			}
-			await this.configManager.set('login.currentUsername', null);
 		} catch (error) {
 			console.error('Error during logout:', error);
+			throw error; // Re-throw to be caught by the command
+		}
+	}
+
+	public async switchUser(username: string): Promise<void> {
+		try {
+			const sessionManager = new SessionManager(username);
+			const sessionExists = await sessionManager.sessionExists();
+
+			if (!sessionExists) {
+				throw new Error(
+					`No session found for @${username}. Please login first.`,
+				);
+			}
+
+			await this.configManager.set('login.currentUsername', username);
+			this.username = username; // Update the client's internal username
+		} catch (error) {
+			console.error('Error during switchUser:', error);
+			throw error; // Re-throw to be caught by the command
+		}
+	}
+
+	public static async cleanupSessions(): Promise<void> {
+		try {
+			const configManager = ConfigManager.getInstance();
+			await configManager.initialize();
+
+			// Clean up current username in config
+			await configManager.set('login.currentUsername', null);
+
+			// Clean up session files
+			const usersDir = configManager.get('advanced.usersDir') as string;
+			try {
+				const userDirs = await fs.readdir(usersDir);
+				for (const userDir of userDirs) {
+					const sessionFile = join(usersDir, userDir, 'session.ts.json');
+					try {
+						await fs.unlink(sessionFile);
+					} catch (error) {
+						// Ignore if file doesn't exist
+					}
+				}
+			} catch (error) {
+				// Ignore if usersDir doesn't exist
+			}
+		} catch (error) {
+			console.error('Error during session cleanup:', error);
+			throw error;
+		}
+	}
+
+	public static async cleanupCache(): Promise<void> {
+		try {
+			const configManager = ConfigManager.getInstance();
+			await configManager.initialize();
+
+			const cacheDir = configManager.get('advanced.cacheDir') as string;
+			const mediaDir = configManager.get('advanced.mediaDir') as string;
+			const generatedDir = configManager.get('advanced.generatedDir') as string;
+
+			for (const dir of [cacheDir, mediaDir, generatedDir]) {
+				try {
+					const files = await fs.readdir(dir);
+					for (const file of files) {
+						await fs.unlink(join(dir, file as string));
+					}
+				} catch (error) {
+					// Ignore if directory or files don't exist
+				}
+			}
+		} catch (error) {
+			console.error('Error during cache cleanup:', error);
+			throw error;
 		}
 	}
 
@@ -166,13 +315,26 @@ export class InstagramClient {
 		try {
 			const inbox = await this.ig.feed.directInbox().items();
 
+			// Clear and populate user cache from all threads
+			this.userCache.clear();
+			inbox.forEach(thread => {
+				if (thread.users) {
+					thread.users.forEach((user: DirectInboxFeedResponseUsersItem) => {
+						this.userCache.set(
+							user.pk.toString(),
+							user.username || user.full_name || `User_${user.pk}`,
+						);
+					});
+				}
+			});
+
 			return inbox.map(thread => ({
 				id: thread.thread_id,
 				title: this.getThreadTitle(thread),
 				users: this.getThreadUsers(thread),
 				lastMessage: this.getLastMessage(thread),
-				lastActivity: new Date(thread.last_activity_at),
-				unreadCount: (thread as any).read_state?.unseen_count || 0,
+				lastActivity: new Date(Number(thread.last_activity_at) / 1000),
+				unread: thread.has_newer ? true : false,
 			}));
 		} catch (error) {
 			console.error('Failed to fetch threads:', error);
@@ -191,20 +353,41 @@ export class InstagramClient {
 			});
 			const items = await thread.items();
 
+			const messages = items.map(item => {
+				const baseMessage = {
+					id: item.item_id,
+					timestamp: new Date(Number(item.timestamp) / 1000),
+					userId: item.user_id.toString(),
+					username: this.getUsernameFromCache(item.user_id, this.userCache),
+					isOutgoing: item.user_id.toString() === this.ig.state.cookieUserId,
+					threadId: threadId,
+				};
+
+				switch (item.item_type) {
+					case 'text':
+						return {...baseMessage, itemType: 'text', text: item.text || ''};
+					case 'media':
+						return {
+							...baseMessage,
+							itemType: 'media',
+							// somehow the types do not contain non-text message fields so we need to cast it
+							// this is verified by examining the API response directly
+							media: (item as any).media,
+						};
+					case 'clip':
+						return {...baseMessage, itemType: 'clip', clip: undefined};
+					default:
+						return {
+							...baseMessage,
+							itemType: 'placeholder',
+							text: `[Unsupported message type: ${item.item_type}]`,
+						};
+				}
+			}) as Message[];
+
 			return {
-				messages: items
-					.filter(item => item.item_type === 'text')
-					.map(item => ({
-						id: item.item_id,
-						text: item.text || '',
-						timestamp: new Date((item.timestamp as any) / 1000),
-						userId: item.user_id.toString(),
-						username: this.getUsernameFromId(item.user_id),
-						isOutgoing: item.user_id.toString() === this.ig.state.cookieUserId,
-						threadId: threadId,
-					}))
-					.reverse(), // Show newest messages at bottom
-				cursor: (thread as any).oldestCursor,
+				messages: messages.reverse(), // Show newest messages at top
+				cursor: thread.cursor,
 			};
 		} catch (error) {
 			console.error('Failed to fetch messages:', error);
@@ -221,7 +404,7 @@ export class InstagramClient {
 		}
 	}
 
-	private getThreadTitle(thread: any): string {
+	private getThreadTitle(thread: DirectInboxFeedResponseThreadsItem): string {
 		if (thread.thread_title) {
 			return thread.thread_title;
 		}
@@ -229,7 +412,8 @@ export class InstagramClient {
 		// For threads without titles, use usernames
 		const users = thread.users || [];
 		const otherUsers = users.filter(
-			(user: any) => user.pk.toString() !== this.ig.state.cookieUserId,
+			(user: DirectInboxFeedResponseUsersItem) =>
+				user.pk.toString() !== this.ig.state.cookieUserId,
 		);
 
 		if (otherUsers.length === 0) {
@@ -238,18 +422,21 @@ export class InstagramClient {
 
 		if (otherUsers.length === 1) {
 			return (
-				otherUsers[0].username || otherUsers[0].full_name || 'Unknown User'
+				otherUsers[0]?.username || otherUsers[0]?.full_name || 'Unknown User'
 			);
 		}
 
 		return otherUsers
-			.map((user: any) => user.username || user.full_name)
+			.map(
+				(user: DirectInboxFeedResponseUsersItem) =>
+					user.username || user.full_name,
+			)
 			.join(', ');
 	}
 
-	private getThreadUsers(thread: any): User[] {
+	private getThreadUsers(thread: DirectInboxFeedResponseThreadsItem): User[] {
 		const users = thread.users || [];
-		return users.map((user: any) => ({
+		return users.map((user: DirectInboxFeedResponseUsersItem) => ({
 			pk: user.pk.toString(),
 			username: user.username || '',
 			fullName: user.full_name || '',
@@ -258,31 +445,65 @@ export class InstagramClient {
 		}));
 	}
 
-	private getLastMessage(thread: any): Message | undefined {
+	private getLastMessage(
+		thread: DirectInboxFeedResponseThreadsItem,
+	): Message | undefined {
 		const items = thread.items || [];
-		const lastItem = items.find((item: any) => item.item_type === 'text');
+		const lastItem = items[0];
 
 		if (!lastItem) {
 			return undefined;
 		}
 
-		return {
+		const baseMessage = {
 			id: lastItem.item_id,
-			text: lastItem.text || '',
-			timestamp: new Date(lastItem.timestamp / 1000),
+			timestamp: new Date(Number(lastItem.timestamp) / 1000),
 			userId: lastItem.user_id.toString(),
-			username: this.getUsernameFromId(lastItem.user_id),
+			username: this.getUsernameFromCache(lastItem.user_id, this.userCache),
 			isOutgoing: lastItem.user_id.toString() === this.ig.state.cookieUserId,
 			threadId: thread.thread_id,
 		};
+
+		switch (lastItem.item_type) {
+			case 'text':
+				return {...baseMessage, itemType: 'text', text: lastItem.text || ''};
+			case 'media':
+				return {
+					...baseMessage,
+					itemType: 'media',
+					media: (lastItem as any).media,
+				};
+			case 'clip':
+				return {...baseMessage, itemType: 'clip', clip: undefined};
+			case 'placeholder':
+				return {
+					...baseMessage,
+					itemType: 'placeholder',
+					text: lastItem.placeholder?.message || 'Placeholder message',
+				};
+			default:
+				return {
+					...baseMessage,
+					itemType: 'placeholder',
+					text: `[Unsupported message type: ${lastItem.item_type}]`,
+				};
+		}
 	}
 
-	private getUsernameFromId(userId: number): string {
-		// This is a simplified implementation
-		// In a real app, you'd maintain a user cache
-		return userId.toString() === this.ig.state.cookieUserId
-			? 'You'
-			: `User_${userId}`;
+	private getUsernameFromCache(
+		userId: number,
+		userCache: Map<string, string>,
+	): string {
+		const userIdStr = userId.toString();
+
+		// Check if it's the current user
+		if (userIdStr === this.ig.state.cookieUserId) {
+			return 'You';
+		}
+
+		// Look up in the user cache
+		const username = userCache.get(userIdStr);
+		return username || `User_${userId}`;
 	}
 
 	async getCurrentUser(): Promise<User | null> {

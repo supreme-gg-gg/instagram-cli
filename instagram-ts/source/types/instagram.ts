@@ -1,11 +1,54 @@
-export interface Message {
+export type Message =
+	| TextMessage
+	| MediaMessage
+	| ClipMessage
+	| PlaceholderMessage;
+
+interface BaseMessage {
 	id: string;
-	text: string;
 	timestamp: Date;
 	userId: string;
 	username: string;
 	isOutgoing: boolean;
 	threadId: string;
+}
+
+export interface TextMessage extends BaseMessage {
+	itemType: 'text';
+	text: string;
+}
+
+export interface MediaMessage extends BaseMessage {
+	itemType: 'media';
+	media: MessageMedia;
+}
+
+export interface ClipMessage extends BaseMessage {
+	itemType: 'clip';
+	clip: any; // Define clip properties as needed
+}
+
+export interface PlaceholderMessage extends BaseMessage {
+	itemType: 'placeholder';
+	text: string;
+}
+
+export interface MessageMedia {
+	id: string;
+	user: {
+		pk: number;
+		username: string;
+		profilePicUrl?: string;
+	};
+	image_versions2?: {
+		candidates: {
+			url: string;
+			width: number;
+			height: number;
+		}[];
+	};
+	original_width: number;
+	original_height: number;
 }
 
 export interface Thread {
@@ -14,7 +57,7 @@ export interface Thread {
 	users: User[];
 	lastMessage?: Message;
 	lastActivity: Date;
-	unreadCount: number;
+	unread: boolean;
 }
 
 export interface User {
@@ -31,6 +74,8 @@ export interface ChatState {
 	messages: Message[];
 	loading: boolean;
 	error?: string;
+	messageCursor?: string;
+	visibleMessageOffset: number;
 }
 
 export interface AuthState {

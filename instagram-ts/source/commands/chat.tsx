@@ -3,11 +3,10 @@ import {Box} from 'ink';
 import zod from 'zod';
 import {argument} from 'pastel';
 import ChatView from '../ui/views/ChatView.js';
-import {InstagramClient} from '../client.js';
 import {ClientContext} from '../ui/context/ClientContext.js';
-import {ConfigManager} from '../config.js';
-import {SessionManager} from '../session.js';
 import {Alert} from '@inkjs/ui';
+import {useInstagramClient} from '../ui/hooks/useInstagramClient.js';
+import AltScreen from '../ui/components/AltScreen.js';
 
 export const args = zod.tuple([
 	zod
@@ -26,64 +25,12 @@ type Props = {
 };
 
 export default function Chat({args}: Props) {
-	const [error, setError] = React.useState<string | null>(null);
-	const [isLoading, setIsLoading] = React.useState(true);
-	const [client, setClient] = React.useState<InstagramClient | null>(null);
-
-	React.useEffect(() => {
-		(async () => {
-			try {
-				const config = ConfigManager.getInstance();
-				await config.initialize();
-
-				// Determine which username to use
-				let targetUsername = args[0];
-				if (!targetUsername) {
-					targetUsername =
-						config.get<string>('login.currentUsername') ||
-						config.get<string>('login.defaultUsername');
-				}
-
-				if (!targetUsername) {
-					setError(
-						'No username specified. Please login first or specify a username.',
-					);
-					setIsLoading(false);
-					return;
-				}
-
-				// Check if session exists
-				const sessionManager = new SessionManager(targetUsername);
-				const sessionExists = await sessionManager.sessionExists();
-
-				if (!sessionExists) {
-					setError(
-						`No session found for ${targetUsername}. Please login first.`,
-					);
-					setIsLoading(false);
-					return;
-				}
-
-				// Create and restore client session
-				const instagramClient = new InstagramClient(targetUsername);
-				await instagramClient.loginBySession();
-				setClient(instagramClient);
-				setIsLoading(false);
-			} catch (err) {
-				setError(
-					`Failed to start chat: ${
-						err instanceof Error ? err.message : String(err)
-					}`,
-				);
-				setIsLoading(false);
-			}
-		})();
-	}, [args]);
+	const {client, isLoading, error} = useInstagramClient(args[0]);
 
 	if (isLoading) {
 		return (
 			<Box>
-				<Alert variant="info">🚀 Starting Instagram Chat...</Alert>
+				<Alert variant="info">Starting Instagram Chat...</Alert>
 			</Box>
 		);
 	}
@@ -91,7 +38,7 @@ export default function Chat({args}: Props) {
 	if (error) {
 		return (
 			<Box>
-				<Alert variant="error">❌ {error}</Alert>
+				<Alert variant="error">{error}</Alert>
 			</Box>
 		);
 	}
@@ -99,14 +46,16 @@ export default function Chat({args}: Props) {
 	if (!client) {
 		return (
 			<Box>
-				<Alert variant="error">❌ Failed to initialize client</Alert>
+				<Alert variant="error">Failed to initialize client</Alert>
 			</Box>
 		);
 	}
 
 	return (
-		<ClientContext.Provider value={client}>
-			<ChatView />
-		</ClientContext.Provider>
+		<AltScreen>
+			<ClientContext.Provider value={client}>
+				<ChatView />
+			</ClientContext.Provider>
+		</AltScreen>
 	);
 }

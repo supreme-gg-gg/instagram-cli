@@ -1,6 +1,7 @@
 import React from 'react';
 import {Box, Text} from 'ink';
 import type {Thread} from '../../types/instagram.js';
+// import {Spinner} from '@inkjs/ui';
 
 interface StatusBarProps {
 	loading?: boolean;
@@ -15,27 +16,20 @@ export default function StatusBar({
 	error,
 	currentView,
 	currentThread,
-	username,
 }: StatusBarProps) {
 	return (
-		<Box
-			borderStyle="round"
-			borderBottom={true}
-			borderLeft={true}
-			borderRight={true}
-			borderTop={true}
-		>
-			<Box flexGrow={1}>
-				<Text bold color="blue">
-					Instagram CLI
+		<Box paddingX={1} justifyContent="space-between" width="100%">
+			<Box>
+				<Text bold color="magenta">
+					📷 InstagramCLI
 				</Text>
-				{username && <Text dimColor> - {username}</Text>}
 				{currentView === 'chat' && currentThread && (
-					<Text> - {currentThread.title}</Text>
+					<Text> / Chat with {currentThread.title}</Text>
 				)}
 			</Box>
 
 			<Box>
+				{/* {loading && <Spinner label="Loading..." />} */}
 				{loading && <Text color="yellow">Loading...</Text>}
 				{error && <Text color="red">Error</Text>}
 				{!loading && !error && (
