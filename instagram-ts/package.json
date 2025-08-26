@@ -31,6 +31,7 @@
 		"ink-testing-library": "^4.0.0",
 		"ink-text-input": "^6.0.0",
 		"instagram-private-api": "^1.46.1",
+		"is-unicode-supported": "^2.1.0",
 		"js-yaml": "^4.1.0",
 		"meow": "^11.0.0",
 		"pastel": "^3.0.0",
@@ -39,6 +40,7 @@
 		"replied": "^1.0.1",
 		"sharp": "^0.34.3",
 		"sixel": "^0.16.0",
+		"supports-color": "^10.2.0",
 		"zod": "^3.21.4"
 	},
 	"devDependencies": {
