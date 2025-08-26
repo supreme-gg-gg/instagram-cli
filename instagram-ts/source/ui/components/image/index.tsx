@@ -1,40 +1,93 @@
-import {type ImageProps, ImageProtocol} from './protocol.js';
-import HalfBlockProtocol from './HalfBlock.js';
-import BrailleProtocol from './Braille.js';
-import SixelProtocol from './Sixel.js';
+import React, {useState, useEffect} from 'react';
+import {type ImageProps, type ImageProtocol} from './protocol.js';
+import HalfBlockImage from './HalfBlock.js';
+import BrailleImage from './Braille.js';
+import SixelImage from './Sixel.js';
 
-class AsciiProtocol extends ImageProtocol {
-	// @ts-expect-error to be implemented
-	override render(props: ImageProps) {
-		return null;
-	}
+// @ts-expect-error to be implemented
+function AsciiImage(props: ImageProps) {
+	return null;
 }
 
-const protocolFactory = {
-	ascii: new AsciiProtocol(),
-	halfBlock: new HalfBlockProtocol(),
-	braille: new BrailleProtocol(),
-	sixel: new SixelProtocol(),
-	// Add more protocols as needed
+const createProtocolRegistry = () => {
+	const protocols: Record<string, ImageProtocol> = {};
+
+	return {
+		register: (protocol: ImageProtocol) => {
+			if (protocol.isSupported === undefined) {
+				protocol.isSupported = async () => true;
+			}
+			protocols[protocol.name] = protocol;
+		},
+
+		getProtocol: (name: string) => {
+			return protocols[name];
+		},
+		getAllProtocols: () => {
+			return Object.keys(protocols);
+		},
+	};
+};
+
+const protocolRegistry = createProtocolRegistry();
+protocolRegistry.register({
+	name: 'ascii',
+	render: AsciiImage,
+});
+protocolRegistry.register({
+	name: 'halfBlock',
+	render: HalfBlockImage,
+});
+protocolRegistry.register({
+	name: 'braille',
+	render: BrailleImage,
+});
+protocolRegistry.register({
+	name: 'sixel',
+	render: SixelImage,
+});
+
+const ImageRenderer = (props: ImageProps & {protocol: string}) => {
+	const ProtocolComponent =
+		protocolRegistry.getProtocol(props.protocol)?.render ??
+		protocolRegistry.getProtocol('ascii')!.render;
+	return <ProtocolComponent {...props} />;
 };
 
 // Main Image component
 function Image({
-	src,
-	width,
-	height,
-	protocol = 'ascii',
+	protocol: initialProtocol = 'ascii',
 	...props
-}: ImageProps & {protocol?: keyof typeof protocolFactory}) {
-	if (!protocolFactory[protocol]) {
-		console.warn(`Unknown protocol "${protocol}", falling back to ASCII`);
-		protocol = 'ascii';
+}: ImageProps & {protocol?: string}) {
+	const [protocol, setProtocol] = useState(initialProtocol);
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		let isMounted = true;
+		setLoading(true);
+		const p = protocolRegistry.getProtocol(initialProtocol);
+		const check = async () => {
+			let newProtocol = 'ascii';
+			if (p && (await p.isSupported!())) {
+				newProtocol = initialProtocol;
+			}
+			if (isMounted) {
+				setProtocol(newProtocol);
+				setLoading(false);
+			}
+		};
+		check();
+		return () => {
+			isMounted = false;
+		};
+	}, [initialProtocol]);
+
+	if (loading) {
+		return null;
 	}
 
-	return protocolFactory[protocol].render({src, width, height, ...props});
+	return <ImageRenderer protocol={protocol} {...props} />;
 }
 
-export const ImageProtocols = Object.keys(protocolFactory) as Array<
-	keyof typeof protocolFactory
->;
+export const ImageProtocols = protocolRegistry.getAllProtocols();
 export default Image;

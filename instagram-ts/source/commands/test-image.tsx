@@ -39,7 +39,6 @@ export default function TestImage(props: Props) {
 	return (
 		<TerminalDimensionsProvider>
 			<Box flexDirection="column">
-				<Text>Test Image Component</Text>
 				<Text>{props.args[0]}</Text>
 				<Box flexDirection="column">
 					{/* First row */}
@@ -55,7 +54,6 @@ export default function TestImage(props: Props) {
 								<Image
 									src={src}
 									alt={`Test Image ${index + 1}`}
-									// @ts-expect-error
 									protocol={props.args[0]}
 								/>
 							</Box>
@@ -74,7 +72,6 @@ export default function TestImage(props: Props) {
 								<Image
 									src={src}
 									alt={`Test Image ${index + 4}`}
-									// @ts-expect-error
 									protocol={props.args[0]}
 								/>
 							</Box>
