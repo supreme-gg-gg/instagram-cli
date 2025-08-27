@@ -1,17 +1,9 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {type ImageProps, type ImageProtocol} from './protocol.js';
+import AsciiImage from './Ascii.js';
 import HalfBlockImage from './HalfBlock.js';
 import BrailleImage from './Braille.js';
 import SixelImage from './Sixel.js';
-
-function AsciiImage(props: ImageProps) {
-	// ASCII should always be supported as the ultimate fallback
-	useEffect(() => {
-		props.onSupportDetected(true);
-	}, [props.onSupportDetected]);
-
-	return null;
-}
 
 const createProtocolRegistry = () => {
 	const protocols: Record<string, ImageProtocol> = {};
