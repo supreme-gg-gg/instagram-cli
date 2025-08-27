@@ -140,20 +140,35 @@ def unsend_message(context, index: str = None) -> str:
 
 
 @cmd_registry.register(
-    "config", "Manage Chat UI configuration", required_args=["options"], shorthand="c"
+    "config",
+    "Get or set a config value in the chat interface",
+    required_args=["options"],
+    shorthand="c",
 )
 def manage_config(context, options: str) -> dict:
     """
     Manage Chat UI configuration.
-    Options should be in format "field=value".
+    Options should be in format "field=value" for set or "field" for get
     """
-    # Parse options
-    config = {}
-    for option in options.split():
-        field, value = option.split("=")
-        config[field] = value
+    # Parse options and get or set config values
+    config = Config()
 
-    return config
+    if "=" not in options:
+        field = options.strip()
+        if not field:
+            return "No configuration key provided."
+        value = config.get(field)
+        if value is None:
+            return f"Configuration key '{field}' not found."
+        return f"{field} = {value}"
+
+    field, value = options.split("=", 1)
+    try:
+        config.set(field, value)
+    except Exception as e:
+        return f"Failed to set {field}: {e}"
+
+    return f"Successfully set {field} to {value}"
 
 
 @cmd_registry.register(
@@ -306,7 +321,12 @@ def summarize_chat_history(context, depth: int = -1) -> str:
         max_tokens = int(config.get("llm.max_tokens", 1000))
 
         if not endpoint:
-            return "LLM endpoint not configured. Set it using: /config llm.endpoint=URL"
+            return "LLM endpoint not configured. Set it using: :config llm.endpoint=URL"
+
+        if not model:
+            return (
+                "LLM model not configured. Set it using: :config llm.model=MODEL_NAME"
+            )
 
         # Format messages for the LLM
         chat_title = chat.get_title()

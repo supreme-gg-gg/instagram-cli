@@ -107,9 +107,6 @@ The chat interface is the main feature of this package. It allows you to interac
 
 In the chat list page, use arrow keys (or 'j', 'k') + Enter to select a chat. You can also search for user by username using @user_name + Enter.
 
-> [!NOTE]
-> Chat commands (prefixed with `:`) are NOT available in the chat menu page. You must enter a chat to use chat commands.
-
 After entering the chat page, you can type messages as usual and send them with Enter. You can also use chat commands to supercharge your chat experience.
 
 > [!TIP]
@@ -136,10 +133,11 @@ All chat commands have the following syntax:
 - `:delay <seconds> "<message>"`: delay sending the message, similar as schedule
 - `:cancel`: cancel the latest scheduled/delayed message
 - `:upload`: upload media using the file navigator
-- `:upload <path>`: upload media (photo or video) directly from path
+- `:upload <path?>`: upload media (photo or video) directly from path
+- `:config <key?>=<value?>`: an in-chat version of `instagram config`
 - `:view <index>`: view and download media at index or open URL directly in browser
 - `:latex $<expr>$`: render and send LaTeX code as image, see [latex](#latex)
-- `:summarize`: generate a summary of chat history using an LLM, see [chat summarization](#chat-summarization)
+- `:summarize <depth?>`: generate a summary of chat history using an LLM, see [chat summarization](#chat-summarization)
 
 ### Emoji
 
@@ -151,7 +149,7 @@ will be rendered as
 
 `This is an emoji 👍`
 
-> ![TIP]
+> [!TIP]
 > This does not have to be an exact match with the emoji name. For example, `:thumbsup:` can also be written as `:thumbs_up:`.
 
 ### LaTeX
@@ -176,16 +174,17 @@ You can choose to render with [online API](https://latex.codecogs.com) (default)
 
 You can generate a summary of the chat history using the `:summarize` command. This will create a concise summary of the conversation, highlighting key points and important information.
 
-Local LLMs are first-class citizens here, allowing for maximum privacy and flexibility. All you need is a local LLM inferencing server like [Ollama](https://ollama.com/), [LM Studio](https://lmstudio.ai/).
-You can provide your own OpenAI-compatible endpoint for summarization by configuring the `llm.endpoint` setting. For example, for Ollama, this would likely be:
+Local LLMs are first-class citizens here, allowing for maximum privacy and flexibility. All you need is a local LLM inferencing server like [Ollama](https://ollama.com/), [LM Studio](https://lmstudio.ai/). You will need to specify `llm.endpoint` (OpenAI-compatible) and `llm.model` in the config. For example, for Ollama, this would likely be:
 
-```
+```plaintext
 http://localhost:11434/v1/
 ```
 
+You can do this with `instagram config --set llm.endpoint <URL>` and `instagram config --set llm.model <MODEL_NAME>`.
+
 Once inside a chat conversation, you can summarize the chat history using:
 
-```
+```plaintext
 :summarize
 ```
 
@@ -193,7 +192,7 @@ This will process all messages fetched in the current chat.
 
 To limit (or expand) the summarization to the `n` most recent messages:
 
-```
+```plaintext
 :summarize n
 ```
 
