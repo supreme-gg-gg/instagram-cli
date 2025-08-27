@@ -18,6 +18,7 @@ DEFAULT_CONFIG = {
         "model": "gemma-3n-e4b",
         "temperature": 0.7,
         "max_tokens": 1000,
+        "streaming": False,
     },
     "advanced": {
         "debug_mode": False,

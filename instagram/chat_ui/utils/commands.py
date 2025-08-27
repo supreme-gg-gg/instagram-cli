@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Generator
 from dataclasses import dataclass
 import inspect
 import re
@@ -45,7 +45,7 @@ class CommandRegistry:
 
         return decorator
 
-    def execute(self, command_str: str, **context) -> str:
+    def execute(self, command_str: str, **context) -> str | Generator:
         """Execute a command string"""
         parsed = self.parse_command(command_str)
         if isinstance(parsed, str):

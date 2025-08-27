@@ -196,6 +196,8 @@ To limit (or expand) the summarization to the `n` most recent messages:
 :summarize n
 ```
 
+You can also turn on streaming mode with `instagram config --set llm.stream True` to see the summary being generated in real-time.
+
 > [!TIP]
 > If you don't mind giving your data to AI companies, you may set the `llama.endpoint` and `llm.model` configs to a remote endpoint, e.g. `https://api.openai.com/v1/`, `gpt-5`.
 

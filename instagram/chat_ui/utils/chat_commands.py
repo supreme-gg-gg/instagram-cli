@@ -1,6 +1,8 @@
 import os
+import yaml
 import subprocess
 from datetime import datetime, timedelta
+from typing import Generator
 
 import tkinter as tk
 from tkinter import filedialog
@@ -145,7 +147,7 @@ def unsend_message(context, index: str = None) -> str:
     required_args=["options"],
     shorthand="c",
 )
-def manage_config(context, options: str) -> dict:
+def manage_config(context, options: str) -> str:
     """
     Manage Chat UI configuration.
     Options should be in format "field=value" for set or "field" for get
@@ -162,8 +164,9 @@ def manage_config(context, options: str) -> dict:
             return f"Configuration key '{field}' not found."
         return f"{field} = {value}"
 
-    field, value = options.split("=", 1)
+    field, value_str = options.split("=", 1)
     try:
+        value = yaml.safe_load(value_str)
         config.set(field, value)
     except Exception as e:
         return f"Failed to set {field}: {e}"
@@ -279,7 +282,7 @@ def delay_sending_message(context, seconds: str, message: str) -> str:
     required_args=[],
     shorthand="s",
 )
-def summarize_chat_history(context, depth: int = -1) -> str:
+def summarize_chat_history(context, depth: int = -1) -> str | Generator:
     """
     Summarize the chat history using an OpenAI-compatible API endpoint.
     Parameters:
@@ -317,6 +320,7 @@ def summarize_chat_history(context, depth: int = -1) -> str:
         endpoint = config.get("llm.endpoint")
         api_key = config.get("llm.api_key")
         model = config.get("llm.model")
+        streaming = config.get("llm.streaming")
         temperature = float(config.get("llm.temperature", 0.7))
         max_tokens = int(config.get("llm.max_tokens", 1000))
 
@@ -384,10 +388,22 @@ def summarize_chat_history(context, depth: int = -1) -> str:
             ],
             temperature=temperature,
             max_tokens=max_tokens,
+            stream=streaming,
         )
 
-        summary = response.choices[0].message.content.strip()
-        return f"Chat Summary for: {chat_title}\n\n{summary}"
+        if streaming:
+
+            def stream_summary():
+                yield f"Chat Summary for: {chat_title}\n\n"
+                for chunk in response:
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        yield content
+
+            return stream_summary()
+        else:
+            summary = response.choices[0].message.content.strip()
+            return f"Chat Summary for: {chat_title}\n\n{summary}"
 
     except Exception as e:
         return f"Failed to summarize chat: {str(e)}"
