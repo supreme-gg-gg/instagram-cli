@@ -82,7 +82,11 @@ export const TerminalInfoProvider = ({
 			let supportsSixelGraphics = false;
 			if (
 				deviceAttributesResponse &&
-				deviceAttributesResponse.split(';').find(attr => attr === '4')
+				deviceAttributesResponse.endsWith('c') &&
+				deviceAttributesResponse
+					.slice(0, -1)
+					.split(';')
+					.find(attr => attr === '4')
 			) {
 				supportsSixelGraphics = true;
 			}
