@@ -23,7 +23,6 @@ type Props = {
 };
 
 export default function Feed({args}: Props) {
-
 	const {client, isLoading, error} = useInstagramClient(args[0]);
 	const [feed, setFeed] = React.useState<FeedInstance>({posts: []});
 
@@ -41,8 +40,6 @@ export default function Feed({args}: Props) {
 					// If no items, set an error or handle appropriately
 					// setError('No feed items found.'); // This would require adding setError to the hook or handling it here
 				} else {
-					setFeed({posts: items});
-					setStatus('ready');
 					setFeed({posts: items});
 				}
 			} catch (err) {

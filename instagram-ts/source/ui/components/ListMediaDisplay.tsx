@@ -14,11 +14,6 @@ export default function ListMediaDisplay({feed, asciiFeed}: Props) {
 	const [activeMedia, setActiveMedia] = useState<string>('');
 
 	const posts = feed.posts || [];
-
-	if (posts.length === 0) {
-		return <Text>No posts available.</Text>;
-	}
-
 	const openMediaUrl = (activePost: Post) => {
 		if (activePost.media_type === 1) {
 			// If media is an image, open the image URL
@@ -129,6 +124,8 @@ export default function ListMediaDisplay({feed, asciiFeed}: Props) {
 						</Text>
 					))}
 				</Box>
+
+				{/* Right panel */}
 				<Box
 					flexDirection="column"
 					borderStyle="round"
@@ -137,87 +134,86 @@ export default function ListMediaDisplay({feed, asciiFeed}: Props) {
 					height="100%"
 					overflow="hidden"
 				>
-					<Box flexDirection="row" flexGrow={1} overflow="hidden" gap={1}>
-						{/* Media display */}
-						<Box
-							flexDirection="column"
-							flexGrow={1}
-							overflow="hidden"
-							alignItems="center"
-							justifyContent="flex-start"
-							width={'50%'}
-						>
-							{activeMedia ? (
-								activeMedia.split('\n').map((line, i) => (
-									<Text key={i} wrap="truncate">
-										{line}
-									</Text>
-								))
-							) : (
-								<Text color="yellow">⏳ Loading media...</Text>
-							)}
-
-							<Text>
-								{posts[selectedIndex]?.media_type === 2 ||
-								posts[selectedIndex]?.media_type === 2
-									? '▶ Video'
-									: ''}
-							</Text>
-							<Text color="gray">
-								{posts[selectedIndex]?.carousel_media_count
-									? `Carousel ${carouselIndex + 1} of ${
-											posts[selectedIndex].carousel_media_count
-									  }`
-									: ''}
-							</Text>
+					{posts.length === 0 ? (
+						<Box flexGrow={1} justifyContent="center" alignItems="center">
+							<Text>⏳ Loading posts...</Text>
 						</Box>
-						{/* Caption and stats */}
-						<Box
-							flexDirection="column"
-							width={'50%'}
-							paddingRight={3}
-							overflow="hidden"
-							justifyContent="flex-start"
-						>
-							<Box flexDirection="row">
-								<Text color="green">
-									👤 {posts[selectedIndex]?.user?.username || 'Unknown user'}
+					) : (
+						<Box flexDirection="row" flexGrow={1} overflow="hidden" gap={1}>
+							{/* Media display */}
+							<Box
+								flexDirection="column"
+								flexGrow={1}
+								overflow="hidden"
+								alignItems="center"
+								justifyContent="flex-start"
+								width="50%"
+							>
+								{activeMedia ? (
+									activeMedia.split('\n').map((line, i) => (
+										<Text key={i} wrap="truncate">
+											{line}
+										</Text>
+									))
+								) : (
+									<Text color="yellow">⏳ Loading media...</Text>
+								)}
+
+								<Text>
+									{posts[selectedIndex]?.media_type === 2 ? '▶ Video' : ''}
 								</Text>
 								<Text color="gray">
-									{' ('}
-									{new Date(
-										posts[selectedIndex]?.taken_at! * 1000,
-									).toLocaleString()}
-									{')'}
+									{posts[selectedIndex]?.carousel_media_count
+										? `Carousel ${carouselIndex + 1} of ${
+												posts[selectedIndex].carousel_media_count
+										  }`
+										: ''}
 								</Text>
 							</Box>
-							<Text>{'\n'}</Text>
-							<Text wrap="wrap">
-								{posts[selectedIndex]?.caption?.text || 'No caption'}
-							</Text>
-							<Text>{'\n'}</Text>
 
-							<Box flexDirection="row">
-								<Text>
-									{' '}
-									♡ {posts[selectedIndex]?.like_count ?? 0}
-									{'   '}
+							{/* Caption and stats */}
+							<Box
+								flexDirection="column"
+								width="50%"
+								paddingRight={3}
+								overflow="hidden"
+								justifyContent="flex-start"
+							>
+								<Box flexDirection="row">
+									<Text color="green">
+										👤 {posts[selectedIndex]?.user?.username || 'Unknown user'}
+									</Text>
+									{posts[selectedIndex]?.taken_at && (
+										<Text color="gray">
+											{' ('}
+											{new Date(
+												posts[selectedIndex].taken_at * 1000,
+											).toLocaleString()}
+											{')'}
+										</Text>
+									)}
+								</Box>
+								<Text>{'\n'}</Text>
+								<Text wrap="wrap">
+									{posts[selectedIndex]?.caption?.text || 'No caption'}
 								</Text>
-								<Text>
-									🗨{'  '}
-									{posts[selectedIndex]?.comment_count ?? 0}
-								</Text>
+								<Text>{'\n'}</Text>
+
+								<Box flexDirection="row">
+									<Text>♡ {posts[selectedIndex]?.like_count ?? 0} </Text>
+									<Text>🗨 {posts[selectedIndex]?.comment_count ?? 0}</Text>
+								</Box>
 							</Box>
 						</Box>
-					</Box>
+					)}
 				</Box>
 			</Box>
 
 			{/* Footer */}
 			<Box marginTop={1}>
 				<Text dimColor>
-					j/k: navigate trough posts, h/l: navigate trough carousel, o: open in
-					browser, q: quit
+					j/k: navigate through posts, h/l: navigate through carousel, o: open
+					in browser, q: quit
 				</Text>
 			</Box>
 		</Box>
