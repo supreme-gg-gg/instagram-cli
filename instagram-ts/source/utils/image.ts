@@ -41,7 +41,7 @@ export function calculateImageSize({
 	if (specifiedWidth && specifiedHeight) {
 		const width = Math.min(specifiedWidth, maxWidth);
 		const height = Math.min(specifiedHeight, maxHeight);
-		return {width, height};
+		return {width: Math.round(width), height: Math.round(height)};
 	}
 
 	// Only width specified
@@ -54,7 +54,7 @@ export function calculateImageSize({
 			width = height * originalAspectRatio;
 		}
 
-		return {width, height};
+		return {width: Math.round(width), height: Math.round(height)};
 	}
 
 	// Only height specified
@@ -67,7 +67,7 @@ export function calculateImageSize({
 			height = width / originalAspectRatio;
 		}
 
-		return {width, height};
+		return {width: Math.round(width), height: Math.round(height)};
 	}
 
 	// No dimensions specified - scale to fit while maintaining aspect ratio
@@ -84,5 +84,5 @@ export function calculateImageSize({
 		width = height * originalAspectRatio;
 	}
 
-	return {width, height};
+	return {width: Math.round(width), height: Math.round(height)};
 }
