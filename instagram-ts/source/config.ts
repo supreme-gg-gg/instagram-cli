@@ -25,6 +25,10 @@ interface FeedConfig {
 	feedType: 'timeline' | 'list';
 }
 
+interface ImageConfig {
+	protocol: string;
+}
+
 interface AdvancedConfig {
 	debugMode: boolean;
 	dataDir: string;
@@ -41,6 +45,7 @@ interface Config {
 	scheduling: SchedulingConfig;
 	privacy: PrivacyConfig;
 	feed: FeedConfig;
+	image: ImageConfig;
 	advanced: AdvancedConfig;
 }
 
@@ -72,6 +77,9 @@ const DEFAULT_CONFIG: Config = {
 	},
 	feed: {
 		feedType: 'list',
+	},
+	image: {
+		protocol: 'ascii',
 	},
 };
 
@@ -131,6 +139,8 @@ export class ConfigManager {
 			chat: {...defaultConfig.chat, ...loadedConfig.chat},
 			scheduling: {...defaultConfig.scheduling, ...loadedConfig.scheduling},
 			privacy: {...defaultConfig.privacy, ...loadedConfig.privacy},
+			feed: {...defaultConfig.feed, ...loadedConfig.feed},
+			image: {...defaultConfig.image, ...loadedConfig.image},
 			advanced: {...defaultConfig.advanced, ...loadedConfig.advanced},
 		};
 	}
