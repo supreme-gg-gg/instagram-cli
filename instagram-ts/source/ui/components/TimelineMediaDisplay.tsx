@@ -1,13 +1,19 @@
 import React from 'react';
 import {Box, Text} from 'ink';
 import {FeedItem} from '../../types/instagram.js';
+import Image from './image/index.js';
 
 type Props = {
 	feedItems: FeedItem[];
-	asciiImages: string[];
+	imageUrls: string[];
+	protocol?: string;
 };
 
-export default function TimelineMediaDisplay({feedItems, asciiImages}: Props) {
+export default function TimelineMediaDisplay({
+	feedItems,
+	imageUrls,
+	protocol,
+}: Props) {
 	return (
 		<Box flexDirection="column" flexGrow={1} gap={1}>
 			<Text color="blue">Your Feed</Text>
@@ -29,17 +35,19 @@ export default function TimelineMediaDisplay({feedItems, asciiImages}: Props) {
 						</Text>
 					</Box>
 					<Text>{'\n'}</Text>
-					<Box flexDirection="column">
-						{asciiImages[index] ? (
-							asciiImages[index]
-								.split('\n')
-								.map((line, i) => <Text key={i}>{line}</Text>)
-						) : (
-							<Text color="yellow">⏳ Loading media...</Text>
-						)}
-					</Box>
+					{imageUrls[index] && imageUrls[index] !== 'No image' ? (
+						<Box borderStyle="round" borderColor="cyan" width={32} height={17}>
+							<Image
+								src={imageUrls[index]!}
+								alt={item.caption?.text || `Post by ${item.user?.username}`}
+								protocol={protocol}
+							/>
+						</Box>
+					) : (
+						<Text color="yellow">⏳ No media available...</Text>
+					)}
 					<Text>{'\n'}</Text>
-					<Text>{item.caption?.text || 'No caption'}</Text>
+					<Text wrap="wrap">{item.caption?.text || 'No caption'}</Text>
 					<Text>{'\n'}</Text>
 					<Box flexDirection="row">
 						<Text>
