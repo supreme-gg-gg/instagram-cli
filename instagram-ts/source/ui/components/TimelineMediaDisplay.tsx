@@ -1,23 +1,20 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import {FeedItem} from '../../types/instagram.js';
+import {FeedInstance} from '../../types/instagram.js';
 
 type Props = {
-	feedItems: FeedItem[];
-	asciiImages: string[];
+	feed: FeedInstance;
+	asciiFeed: string[][];
 };
 
-export default function TimelineMediaDisplay({feedItems, asciiImages}: Props) {
+export default function TimelineMediaDisplay({feed, asciiFeed}: Props) {
+	const posts = feed.posts || [];
 	return (
 		<Box flexDirection="column" flexGrow={1} gap={1}>
 			<Text color="blue">Your Feed</Text>
-			{feedItems.map((item, index) => (
-				<Box
-					key={item.id}
-					flexDirection="column"
-					borderStyle="round"
+			{posts.map((item, index) => (
+				<Box key={item.id} flexDirection="column" borderStyle="round">
 					padding={1}
-				>
 					<Box flexDirection="row">
 						<Text color="green">
 							👤 {item.user?.username || 'Unknown user'}
@@ -30,8 +27,8 @@ export default function TimelineMediaDisplay({feedItems, asciiImages}: Props) {
 					</Box>
 					<Text>{'\n'}</Text>
 					<Box flexDirection="column">
-						{asciiImages[index] ? (
-							asciiImages[index]
+						{asciiFeed[index]?.[0] ? (
+							asciiFeed[index]?.[0]
 								.split('\n')
 								.map((line, i) => <Text key={i}>{line}</Text>)
 						) : (

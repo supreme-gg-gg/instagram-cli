@@ -2,7 +2,7 @@ import React from 'react';
 import {Alert} from '@inkjs/ui';
 import zod from 'zod';
 import {argument} from 'pastel';
-import {FeedItem} from '../types/instagram.js';
+import {FeedInstance} from '../types/instagram.js';
 import MediaView from '../ui/views/MediaView.js';
 import {useInstagramClient} from '../ui/hooks/useInstagramClient.js';
 
@@ -24,7 +24,7 @@ type Props = {
 
 export default function Feed({args}: Props) {
 	const {client, isLoading, error} = useInstagramClient(args[0]);
-	const [feedItems, setFeedItems] = React.useState<FeedItem[]>([]);
+	const [feed, setFeed] = React.useState<FeedInstance>({posts: []});
 
 	React.useEffect(() => {
 		const fetchFeed = async () => {
@@ -40,7 +40,7 @@ export default function Feed({args}: Props) {
 					// If no items, set an error or handle appropriately
 					// setError('No feed items found.'); // This would require adding setError to the hook or handling it here
 				} else {
-					setFeedItems(items);
+					setFeed({posts: items});
 				}
 			} catch (err) {
 				// setError(`Feed error: ${err instanceof Error ? err.message : String(err)}`);
@@ -59,5 +59,5 @@ export default function Feed({args}: Props) {
 	if (error) {
 		return <Alert variant="error">{error}</Alert>;
 	}
-	return <MediaView feedItems={feedItems} />;
+	return <MediaView feed={feed} />;
 }
