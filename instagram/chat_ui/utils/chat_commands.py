@@ -358,13 +358,14 @@ def summarize_chat_history(context, depth: int = -1) -> str | Generator:
             conversation_text += "\n"
 
         # Create LLM request
-        system_prompt = (
+        system_prompt = config.get(
+            "llm.summary_system_prompt",
             "You are a helpful assistant that summarizes Instagram direct message conversations. "
             "Your task is to create a concise summary of the conversation that includes: "
             "1. The main topics discussed in the conversation. "
             "2. Any action items, decisions, or plans mentioned. "
             "The summary should be objective and focus on the content of the conversation. "
-            "Write in a clear, concise style suitable for quick reading."
+            "Write in a clear, concise style suitable for quick reading. "
             "You must not try to format your output with bold or italics text. Do not use asterisks (*)."
         )
 

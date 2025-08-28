@@ -19,6 +19,15 @@ DEFAULT_CONFIG = {
         "temperature": 0.7,
         "max_tokens": 1000,
         "streaming": False,
+        "summary_system_prompt": (
+            "You are a helpful assistant that summarizes Instagram direct message conversations. "
+            "Your task is to create a concise summary of the conversation that includes: "
+            "1. The main topics discussed in the conversation. "
+            "2. Any action items, decisions, or plans mentioned. "
+            "The summary should be objective and focus on the content of the conversation. "
+            "Write in a clear, concise style suitable for quick reading. "
+            "You must not try to format your output with bold or italics text. Do not use asterisks (*)."
+        ),
     },
     "advanced": {
         "debug_mode": False,
