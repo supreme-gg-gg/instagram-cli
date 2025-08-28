@@ -1,9 +1,9 @@
 import React, {useState, useEffect} from 'react';
 import {FeedItem} from '../../types/instagram.js';
-import {convertImageToColorAscii} from '../../utils/ascii-display.js';
-import TimelineMediDisplay from '../components/TimelineMediaDisplay.js';
+import TimelineMediaDisplay from '../components/TimelineMediaDisplay.js';
 import ListMediaDisplay from '../components/ListMediaDisplay.js';
 import {ConfigManager} from '../../config.js';
+import {TerminalInfoProvider} from '../context/TerminalInfo.js';
 
 type Props = {
 	feedItems: FeedItem[];
@@ -11,38 +11,50 @@ type Props = {
 };
 
 export default function MediaView({feedItems}: Props) {
-	const [asciiImages, setAsciiImages] = useState<string[]>([]);
+	const [imageUrls, setImageUrls] = useState<string[]>([]);
 	const [feedType, setFeedType] = useState<'timeline' | 'list'>('list');
+	const [imageProtocol, setImageProtocol] = useState<string | undefined>(
+		undefined,
+	);
 
 	useEffect(() => {
 		const config = ConfigManager.getInstance();
 		const savedFeedType = config.get<string>('feed.feedType') || 'list';
 		setFeedType(savedFeedType as 'timeline' | 'list');
+		const protocol = config.get<string>('image.protocol');
+		setImageProtocol(protocol);
 
-		const renderAscii = async () => {
-			try {
-				const images: string[] = [];
-				for (const item of feedItems) {
-					const url = item.image_versions2?.candidates?.[0]?.url;
-					if (url) {
-						const ascii = await convertImageToColorAscii(url);
-						images.push(ascii);
-					} else {
-						images.push('No image');
-					}
+		const getUrls = () => {
+			const images: string[] = [];
+			for (const item of feedItems) {
+				const url = item.image_versions2?.candidates?.[0]?.url;
+				if (url) {
+					images.push(url);
+				} else {
+					images.push('No image');
 				}
-				setAsciiImages(images);
-			} catch (err) {
-				console.error('Error converting images to ASCII:', err);
 			}
+			setImageUrls(images);
 		};
 
-		renderAscii();
+		getUrls();
 	}, [feedItems]);
 
 	return feedType === 'timeline' ? (
-		<TimelineMediDisplay feedItems={feedItems} asciiImages={asciiImages} />
+		<TerminalInfoProvider>
+			<TimelineMediaDisplay
+				feedItems={feedItems}
+				imageUrls={imageUrls}
+				protocol={imageProtocol}
+			/>
+		</TerminalInfoProvider>
 	) : (
-		<ListMediaDisplay feedItems={feedItems} asciiImages={asciiImages} />
+		<TerminalInfoProvider>
+			<ListMediaDisplay
+				feedItems={feedItems}
+				imageUrls={imageUrls}
+				protocol={imageProtocol}
+			/>
+		</TerminalInfoProvider>
 	);
 }

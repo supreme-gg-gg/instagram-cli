@@ -2,18 +2,20 @@ import React, {useState} from 'react';
 import {Box, Text, useInput} from 'ink';
 import {FeedItem} from '../../types/instagram.js';
 import open from 'open';
+import Image from './image/index.js';
 
 type Props = {
 	feedItems: FeedItem[];
-	asciiImages: string[];
+	imageUrls: string[];
+	protocol?: string;
 };
 
-export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
+export default function ListMediaDisplay({
+	feedItems,
+	imageUrls,
+	protocol,
+}: Props) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
-
-	if (feedItems.length === 0) {
-		return <Text>No posts available.</Text>;
-	}
 
 	//Function for verifying media type
 	const openMediaUrl = (item: FeedItem) => {
@@ -38,6 +40,9 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 	};
 
 	useInput((input, key) => {
+		if (feedItems.length === 0) {
+			return;
+		}
 		if (input === 'j' || key.downArrow) {
 			setSelectedIndex(prev => Math.min(prev + 1, feedItems.length - 1));
 		} else if (input === 'k' || key.upArrow) {
@@ -52,8 +57,12 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 		}
 	});
 
+	if (feedItems.length === 0) {
+		return <Text>No posts available.</Text>;
+	}
+
 	const selectedItem = feedItems[selectedIndex]!;
-	const selectedAscii = asciiImages[selectedIndex]!;
+	const selectedImageUrl = imageUrls[selectedIndex];
 
 	return (
 		<Box flexDirection="column" height={process.stdout.rows} width="100%">
@@ -105,14 +114,24 @@ export default function ListMediaDisplay({feedItems, asciiImages}: Props) {
 					<Text>{'\n'}</Text>
 
 					<Box flexDirection="column" flexGrow={1} overflow="hidden">
-						{selectedAscii ? (
-							selectedAscii.split('\n').map((line, i) => (
-								<Text key={i} wrap="truncate">
-									{line}
-								</Text>
-							))
+						{selectedImageUrl && selectedImageUrl !== 'No image' ? (
+							<Box
+								borderStyle="round"
+								borderColor="cyan"
+								width={32}
+								height={17}
+							>
+								<Image
+									src={selectedImageUrl}
+									alt={
+										selectedItem.caption?.text ||
+										`Post by ${selectedItem.user?.username}`
+									}
+									protocol={protocol}
+								/>
+							</Box>
 						) : (
-							<Text color="yellow">⏳ Loading media...</Text>
+							<Text color="yellow">⏳ No media available...</Text>
 						)}
 					</Box>
 
