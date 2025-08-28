@@ -15,7 +15,7 @@ DEFAULT_CONFIG = {
     "llm": {
         "endpoint": "http://localhost:11434/v1/",
         "api_key": "",
-        "model": "gemma-3-270m",
+        "model": "gemma3:270m",
         "temperature": 0.7,
         "max_tokens": 1000,
         "streaming": False,
