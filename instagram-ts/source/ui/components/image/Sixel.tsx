@@ -128,15 +128,15 @@ function SixelImage(props: ImageProps) {
 		process.on('SIGINT', onSigInt);
 		process.on('SIGTERM', onSigInt);
 
-		stdout.write(
-			cursorTo(
-				stdout.rows - componentPosition.appHeight + componentPosition.row,
-				componentPosition.col,
-			),
-		);
+		stdout.write(cursorUp(componentPosition.appHeight - componentPosition.row));
+		stdout.write('\r');
+		stdout.write(cursorForward(componentPosition.col));
 		stdout.write(imageOutput);
+		stdout.write(
+			cursorDown(componentPosition.appHeight - componentPosition.row),
+		);
+		stdout.write('\r');
 
-		stdout.write(cursorTo(stdout.rows, 0));
 		const previousRenderBoundingBox = {
 			row: stdout.rows - componentPosition.appHeight + componentPosition.row,
 			col: componentPosition.col,
@@ -151,13 +151,12 @@ function SixelImage(props: ImageProps) {
 
 			if (!shouldCleanupRef.current) return;
 
+			stdout.write(
+				cursorUp(componentPosition.appHeight - componentPosition.row),
+			);
 			for (let i = 0; i < previousRenderBoundingBox.height; i++) {
-				stdout.write(
-					cursorTo(
-						previousRenderBoundingBox.row + i,
-						previousRenderBoundingBox.col,
-					),
-				);
+				stdout.write('\r');
+				stdout.write(cursorForward(previousRenderBoundingBox.col));
 				// if (inheritedBackgroundColor) {
 				//   const bgColor = "bg" + toProper(inheritedBackgroundColor);
 				//   stdout.write(
@@ -165,10 +164,18 @@ function SixelImage(props: ImageProps) {
 				//   );
 				// } else {
 				stdout.write(' '.repeat(previousRenderBoundingBox.width));
+				stdout.write('\n');
 				// }
 			}
 			// Restore cursor position
-			stdout.write(cursorTo(stdout.rows, 0));
+			stdout.write(
+				cursorDown(
+					componentPosition.appHeight -
+						componentPosition.row -
+						previousRenderBoundingBox.height,
+				),
+			);
+			stdout.write('\r');
 		};
 		// }, [imageOutput, ...Object.values(componentPosition)]);
 	});
@@ -203,11 +210,14 @@ async function toSixel(imageData: {data: Buffer; info: sharp.OutputInfo}) {
 	return sixelData;
 }
 
-// Constructs an escape sequence for moving the cursor to a specific location in the terminal
-function cursorTo(row: number, col: number) {
-	const ESC = '\x1b[';
-	const SEP = ';';
-	return ESC + (row + 1 - 1) + SEP + (col + 1) + 'H';
+function cursorForward(count: number = 1) {
+	return '\x1b[' + count + 'C';
+}
+function cursorUp(count: number = 1) {
+	return '\x1b[' + count + 'A';
+}
+function cursorDown(count: number = 1) {
+	return '\x1b[' + count + 'B';
 }
 
 export default SixelImage;
