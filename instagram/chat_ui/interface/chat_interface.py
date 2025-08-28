@@ -449,6 +449,7 @@ class ChatInterface:
             curses.napms(2000)
 
         # After streaming is complete, wait for a key press to exit
+        self.status_bar.update("Response streaming complete. Press any key...")
         self.screen.get_wch()
         self.chat_window.clear_custom_content()
 
