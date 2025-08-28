@@ -12,6 +12,23 @@ DEFAULT_CONFIG = {
         "default_schedule_duration": "01:00"  # 1 hour
     },
     "privacy": {"invisible_mode": False},
+    "llm": {
+        "endpoint": "http://localhost:11434/v1/",
+        "api_key": "",
+        "model": "gemma-3n-e4b",
+        "temperature": 0.7,
+        "max_tokens": 1000,
+        "streaming": False,
+        "summary_system_prompt": (
+            "You are a helpful assistant that summarizes Instagram direct message conversations. "
+            "Your task is to create a concise summary of the conversation that includes: "
+            "1. The main topics discussed in the conversation. "
+            "2. Any action items, decisions, or plans mentioned. "
+            "The summary should be objective and focus on the content of the conversation. "
+            "Write in a clear, concise style suitable for quick reading. "
+            "You must not try to format your output with bold or italics text. Do not use asterisks (*)."
+        ),
+    },
     "advanced": {
         "debug_mode": False,
         "data_dir": str(pathlib.Path.home() / ".instagram-cli"),
@@ -79,9 +96,6 @@ class Config:
                 default_value = DEFAULT_CONFIG
                 for k in key.split("."):
                     default_value = default_value[k]
-                typer.echo(
-                    f"Warning: Config key '{key}' not found in config.yaml file, using default value: {default_value}"
-                )
                 return default_value
             except (KeyError, TypeError):
                 return default

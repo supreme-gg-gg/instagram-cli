@@ -1,5 +1,6 @@
 import curses
 import threading
+import inspect
 from ..components.input_box import InputBox
 from ..components.chat_window import ChatWindow
 from ..components.status_bar import StatusBar
@@ -166,7 +167,6 @@ class ChatInterface:
                         if result[1] == ":":
                             result = result[1:]
                         else:
-                            self.set_mode(ChatMode.COMMAND)
                             return self._handle_command(result[1:])
 
                     return self._handle_chat_message(result)
@@ -257,21 +257,26 @@ class ChatInterface:
         """
         Executes a command, listen for special return signals or display the result.
         """
+        # Show command execution status
         self.set_mode(ChatMode.COMMAND)
+        self.status_bar.update(msg=command)
+
+        # Execute the command
         result = cmd_registry.execute(
             command, chat=self.direct_chat, screen=self.screen
         )
 
-        # Handle config changes command
-        if isinstance(result, dict):
-            for key, value in result.items():
-                if Config().get(f"chat.{key}"):
-                    Config().set(f"chat.{key}", value)
-            self.chat_window.update()
+        # If result is a generator, stream the output
+        if inspect.isgenerator(result):
+            self.set_mode(ChatMode.COMMAND_RESULT)
+            self.status_bar.update(msg=command)
+            self._display_streaming_command_result(result)
             self.set_mode(ChatMode.CHAT)
+            self.chat_window.update()
+            self.status_bar.update()
             return Signal.CONTINUE
 
-        # Handle special return signals
+        # Otherwise, the result is a string and we handle special return signals first
         elif result == "__QUIT__":
             self.stop_refresh.set()
             return Signal.QUIT
@@ -406,24 +411,46 @@ class ChatInterface:
 
         # Regular command result display
         else:
+            # Display result and wait for key press
+            self.set_mode(ChatMode.COMMAND_RESULT)
             self.status_bar.update(msg=command)
             self._display_command_result(result)
-            curses.napms(1000)
             self.set_mode(ChatMode.CHAT)
+            self.chat_window.update()
             self.status_bar.update()
             return Signal.CONTINUE
 
     def _display_command_result(self, result: str):
         """
         Display the text result of a command in the chat window.
+        This is a blocking operation that waits for user key press.
         """
-        # TODO: Move this to chat window class
-        self.chat_window.window.erase()
-        lines = result.split("\n")
-        for idx, line in enumerate(lines):
-            if idx < self.height - 5:
-                self.chat_window.window.addstr(idx, 0, line[: self.width - 1])
-        self.chat_window.window.refresh()
+        self.chat_window.set_custom_content(result)
+        # Clear any buffered input that occurred during command execution
+        curses.flushinp()
+        # Handle command result mode - wait for any key press
+        self.screen.get_wch()  # Wait for any key press
+        self.chat_window.clear_custom_content()  # Clear content after display
+
+    def _display_streaming_command_result(self, result_generator):
+        """
+        Display the streaming text result of a command in the chat window.
+        """
+        self.chat_window.set_custom_content("")
+        curses.flushinp()
+        full_response = ""
+        try:
+            for chunk in result_generator:
+                full_response += chunk
+                self.chat_window.set_custom_content(full_response)
+                self.chat_window.update()
+        except Exception as e:
+            self.status_bar.update(f"Streaming error: {e}", override_default=True)
+            curses.napms(2000)
+
+        # After streaming is complete, wait for a key press to exit
+        self.screen.get_wch()
+        self.chat_window.clear_custom_content()
 
     def _handle_chat_message(self, message: str) -> Signal:
         """
