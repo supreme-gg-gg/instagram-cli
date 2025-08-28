@@ -13,18 +13,15 @@ The ultimate weapon against brainrot. Shown experimentally to effectively reduce
 
 https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb
 
-The world's first open-source CLI (command line interface) + Terminal UI client for Instagram.
-
 > [!WARNING]
 > This project is not affiliated with, authorized, or endorsed by Instagram. This is an independent and unofficial project. Using it might violate Meta's Terms of Service. Use at your own risk.
 
 ## What does it do?
 
 - We transform Instagram from a brainrot hell into productivity tool
-- We give back control of social media to the user
-- We allow you to focus on meaningful conversation with friends
+- We allow you to focus on meaningful conversations
 - We celebrate the art and simplicity of terminal UI
-- We preserve the core of social media and protect your attention
+- We extend Instagram with powerful plugins like latex, chat summarisation
 
 > [!TIP]
 > Use Instagram with 100% keyboard control - no mouse clicks or touchscreen taps needed! Perfect for developers and Linux users who love staying on the keyboard 🤣
@@ -98,14 +95,14 @@ instagram config --get --set --edit        # manage custom configuration
 instagram cleanup -t                       # cleanup media and session cache files
 ```
 
-> [!NOTE]
-> All searches in the package uses a custom fuzzy matching based on ratcliff/obershelp similarity algorithm. This means chat search and emoji search will be more flexible and forgiving.
-
 ## Chat
 
 The chat interface is the main feature of this package. It allows you to interact with your Instagram chats in a terminal-based interface.
 
 In the chat list page, use arrow keys (or 'j', 'k') + Enter to select a chat. You can also search for user by username using @user_name + Enter.
+
+> [!NOTE]
+> All searches in the package uses a custom fuzzy matching based on ratcliff/obershelp similarity algorithm. This means chat search and emoji search will be more flexible and forgiving.
 
 After entering the chat page, you can type messages as usual and send them with Enter. You can also use chat commands to supercharge your chat experience.
 
@@ -174,13 +171,10 @@ You can choose to render with [online API](https://latex.codecogs.com) (default)
 
 You can generate a summary of the chat history using the `:summarize` command. This will create a concise summary of the conversation, highlighting key points and important information.
 
-Local LLMs are first-class citizens here, allowing for maximum privacy and flexibility. All you need is a local LLM inferencing server like [Ollama](https://ollama.com/), [LM Studio](https://lmstudio.ai/). You will need to specify `llm.endpoint` (OpenAI-compatible) and `llm.model` in the config. For example, for Ollama, this would likely be:
+Local LLMs are first-class citizens here, allowing for maximum privacy and flexibility. All you need is a local LLM inferencing server like [Ollama](https://ollama.com/), [LM Studio](https://lmstudio.ai/). You will need to specify `llm.endpoint` (OpenAI-compatible) and `llm.model` in the config. For example, for Ollama, this would likely be `http://localhost:11434/v1/`.
 
-```plaintext
-http://localhost:11434/v1/
-```
-
-You can do this with `instagram config --set llm.endpoint <URL>` and `instagram config --set llm.model <MODEL_NAME>`.
+> [!IMPORTANT]
+> You are responsible for setting up the LLM server and ensuring that you have the right model pulled. You can configure the endpoint and model using the `instagram config` command, e.g. `instagram config --set llm.endpoint <URL>` and `instagram config --set llm.model <MODEL_NAME>`.
 
 Once inside a chat conversation, you can summarize the chat history using:
 
