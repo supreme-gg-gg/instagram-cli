@@ -10,6 +10,26 @@ import {type ImageProps} from './protocol.js';
 import {fetchImage} from '../../../utils/image.js';
 import {useTerminalCapabilities} from '../../context/TerminalInfo.js';
 
+/**
+ * ASCII Image Rendering Component
+ *
+ * Converts images to ASCII art using character-based representation.
+ * This is the most compatible rendering method as it works in all terminals.
+ *
+ * Features:
+ * - Works in all terminal environments (fallback protocol)
+ * - Supports both monochrome and colored ASCII art
+ * - Automatic color detection based on terminal capabilities
+ *
+ * Technical Details:
+ * - Uses the 'ascii-art' library for image-to-ASCII conversion
+ * - Applies image preprocessing (sharpening, normalization) for better results
+ * - Color support is automatically detected and applied when available
+ * - Temporary files are created and cleaned up during conversion
+ *
+ * @param props - Image rendering properties
+ * @returns JSX element containing ASCII art representation of the image
+ */
 function AsciiImage(props: ImageProps) {
 	const [imageOutput, setImageOutput] = useState<string | null>(null);
 	const [hasError, setHasError] = useState<boolean>(false);
@@ -21,7 +41,7 @@ function AsciiImage(props: ImageProps) {
 		if (!terminalCapabilities) return;
 
 		// ASCII rendering works in all terminals, but colored ASCII requires color support
-		// Inclusion of olor support is dynamically handled by conversion logic
+		// Inclusion of color support is dynamically handled by conversion logic
 		const isSupported = true; // ASCII always works as fallback
 		props.onSupportDetected(isSupported);
 	}, [props.onSupportDetected, terminalCapabilities]);
@@ -86,6 +106,20 @@ function AsciiImage(props: ImageProps) {
 	);
 }
 
+/**
+ * Converts an image to ASCII art representation.
+ *
+ * This function processes the image through several steps:
+ * 1. Applies image preprocessing (sharpening, normalization) for better conversion results
+ * 2. Creates a temporary PNG file for the ascii-art library
+ * 3. Generates ASCII art with optional color support
+ * 4. Cleans up temporary files
+ *
+ * @param image - Sharp image instance to convert
+ * @param width - Target width in characters for the ASCII output
+ * @param supportsColor - Whether to generate colored ASCII art
+ * @returns Promise resolving to ASCII art string representation
+ */
 async function toAscii(
 	image: sharp.Sharp,
 	width: number,

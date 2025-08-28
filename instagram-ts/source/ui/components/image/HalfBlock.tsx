@@ -6,6 +6,29 @@ import {type ImageProps} from './protocol.js';
 import {fetchImage, calculateImageSize} from '../../../utils/image.js';
 import {useTerminalCapabilities} from '../../context/TerminalInfo.js';
 
+/**
+ * Half-Block Image Rendering Component
+ *
+ * Renders images using Unicode half-block characters (▄) with colored backgrounds and foregrounds.
+ * This method provides higher resolution than ASCII art by utilizing both the character color
+ * and background color to represent two pixels per character cell.
+ *
+ * Features:
+ * - Higher resolution than ASCII (2 pixels per character)
+ * - Full color support using terminal RGB colors
+ * - Requires Unicode and color support
+ * - Good balance between quality and compatibility
+ *
+ * Technical Details:
+ * - Uses Unicode half-block character (U+2584 ▄)
+ * - Top pixel represented by background color
+ * - Bottom pixel represented by foreground color
+ * - Requires terminal color and Unicode support
+ * - Processes images in pairs of vertical pixels
+ *
+ * @param props - Image rendering properties
+ * @returns JSX element containing half-block representation of the image
+ */
 function HalfBlockImage(props: ImageProps) {
 	const [imageOutput, setImageOutput] = useState<string | null>(null);
 	const [hasError, setHasError] = useState<boolean>(false);
@@ -77,8 +100,28 @@ function HalfBlockImage(props: ImageProps) {
 	);
 }
 
+/** Unicode half-block character (▄) used for rendering */
 const HALF_BLOCK = '\u2584';
 
+/**
+ * Converts image data to half-block representation.
+ *
+ * This function processes the image by:
+ * 1. Iterating through pixels in pairs (top and bottom)
+ * 2. Using the top pixel color as background
+ * 3. Using the bottom pixel color as foreground
+ * 4. Rendering a half-block character with these colors
+ * 5. Handling transparency by using spaces for transparent pixels
+ *
+ * The half-block character (▄) fills the bottom half of the character cell,
+ * so the background color shows through the top half, effectively displaying
+ * two pixels per character position.
+ *
+ * Adapted from https://github.com/sindresorhus/terminal-image
+ *
+ * @param imageData - Raw image data from Sharp with buffer and metadata
+ * @returns Promise resolving to formatted string with colored half-block characters
+ */
 async function toHalfBlocks(imageData: {data: Buffer; info: sharp.OutputInfo}) {
 	const {data, info} = imageData;
 	const {width, height, channels} = info;
