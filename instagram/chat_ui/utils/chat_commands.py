@@ -366,7 +366,7 @@ def summarize_chat_history(context, depth: int = -1) -> str | Generator:
             "2. Any action items, decisions, or plans mentioned. "
             "The summary should be objective and focus on the content of the conversation. "
             "Write in a clear, concise style suitable for quick reading. "
-            "You must not try to format your output with bold or italics text. Do not use asterisks (*)."
+            "You must not try to format your output with bold or italics text. Do not use asterisks (*).",
         )
 
         # Configure OpenAI client
