@@ -71,6 +71,8 @@ def login(
             auth.login_by_username()
         else:
             auth.login()
+    except KeyboardInterrupt:
+        typer.echo("\nLogin cancelled by user.")
     except Exception as e:
         typer.echo(f"An error occurred: {e}")
 
