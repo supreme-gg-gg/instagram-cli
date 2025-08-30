@@ -3,6 +3,13 @@ from pathlib import Path
 from typing import Any, Optional
 import typer
 import pathlib
+from rich import print
+from rich.panel import Panel
+from rich import box
+from rich.console import Console
+from rich.table import Table
+from rich.text import Text
+
 
 DEFAULT_CONFIG = {
     "language": "en",
@@ -148,7 +155,7 @@ def config(
 
     if reset:
         cfg._save_config(DEFAULT_CONFIG)
-        typer.echo("Configuration reset to default")
+        print(Panel("Configuration reset to default"))
         return
 
     if edit:
@@ -162,9 +169,10 @@ def config(
     if get:
         value = cfg.get(get)
         if value is not None:
-            typer.echo(value)
+            print(Panel(value))
         else:
-            typer.echo(f"Configuration key '{get}' not found", err=True)
+            err_console = Console(stderr=True)
+            err_console.print(Panel(f"Configuration key '{get}' not found"))
             raise typer.Exit(1)
 
     elif set:
@@ -174,11 +182,18 @@ def config(
         except yaml.YAMLError:
             pass
         cfg.set(key, value)
-        typer.echo(f"Set {key} = {value}")
-
+        print(Panel(f"Set {key} = {value}", box=box.ROUNDED))
     elif list:
+        console = Console(color_system="auto")
+        table = Table( box=box.SIMPLE, show_header=False, highlight=False)
+        table.add_column("Key", justify="left", style="bright_white", no_wrap=True)
+        table.add_column("Value", justify="left", style="yellow3", no_wrap=False)
+        table.add_row(Text("Key", style="magenta bold"), Text("Value", style="bold magenta"))
         for key, value in cfg.list():
-            typer.echo(f"{key} = {value}")
+            table.add_row(f"{key}", f"{value}")
+        text = Text("🛠  Configuration Values")
+        console.print("")
+        console.print(Panel(table, title= Text("🛠  Configuration Values", style="bright_white"), style="magenta"))
 
     else:
         typer.echo("No action specified. Use --help for usage information.")
