@@ -74,10 +74,15 @@ export default function MessageList({
 	}
 
 	return (
-		<Box flexDirection="column" flexGrow={1} paddingX={1} overflowY="hidden">
-			<Box flexDirection="column" flexGrow={1}>
+		<Box flexDirection="column" flexGrow={1} paddingX={1}>
+			<Box flexDirection="column" justifyContent="flex-end" overflow="hidden">
 				{messages.map(message => (
-					<Box key={message.id} marginY={0.1} flexDirection="column">
+					<Box
+						key={message.id}
+						flexDirection="column"
+						flexGrow={1}
+						flexShrink={0}
+					>
 						<Box justifyContent="space-between">
 							<Text bold color={message.isOutgoing ? 'cyan' : 'greenBright'}>
 								{message.isOutgoing ? 'You' : message.username}
