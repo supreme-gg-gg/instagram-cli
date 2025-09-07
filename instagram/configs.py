@@ -3,13 +3,10 @@ from pathlib import Path
 from typing import Any, Optional
 import typer
 import pathlib
-from rich import print
-from rich.panel import Panel
-from rich import box
 from rich.console import Console
-from rich.table import Table
-from rich.text import Text
+from rich.panel import Panel
 
+console = Console(color_system="auto")
 
 DEFAULT_CONFIG = {
     "language": "en",
@@ -155,7 +152,7 @@ def config(
 
     if reset:
         cfg._save_config(DEFAULT_CONFIG)
-        print(Panel("Configuration reset to default"))
+        console.print("Configuration reset to default")
         return
 
     if edit:
@@ -169,12 +166,20 @@ def config(
     if get:
         value = cfg.get(get)
         if value is not None:
-            print(Panel(value))
+            panel = Panel(
+                f"[cyan]{get}[/cyan]: [green]{value}[/green]",
+                title="[bold white]CONFIG VALUE[/bold white]",
+                border_style="magenta",
+            )
+            console.print(panel)
         else:
-            err_console = Console(stderr=True)
-            err_console.print(Panel(f"Configuration key '{get}' not found"))
+            panel = Panel(
+                f"[white]Configuration key '{get}' not found[/white]",
+                title="[white]ERROR[/white]",
+                border_style="red",
+            )
+            console.print(panel)
             raise typer.Exit(1)
-
     elif set:
         key, value = set
         try:
@@ -182,18 +187,32 @@ def config(
         except yaml.YAMLError:
             pass
         cfg.set(key, value)
-        print(Panel(f"Set {key} = {value}", box=box.ROUNDED))
+        panel = Panel(
+            f"[cyan]{key}[/cyan] set to [green]{value}[/green]",
+            title="[bold white]CONFIG UPDATED[/bold white]",
+            border_style="green",
+        )
+        console.print(panel)
+
     elif list:
-        console = Console(color_system="auto")
-        table = Table( box=box.SIMPLE, show_header=False, highlight=False)
-        table.add_column("Key", justify="left", style="bright_white", no_wrap=True)
-        table.add_column("Value", justify="left", style="yellow3", no_wrap=False)
-        table.add_row(Text("Key", style="magenta bold"), Text("Value", style="bold magenta"))
+        console.print()
+        grouped = {}
         for key, value in cfg.list():
-            table.add_row(f"{key}", f"{value}")
-        text = Text("🛠  Configuration Values")
-        console.print("")
-        console.print(Panel(table, title= Text("🛠  Configuration Values", style="bright_white"), style="magenta"))
+            section = key.split(".")[0]
+            grouped.setdefault(section, []).append((key, value))
+
+        for section, items in grouped.items():
+            lines = []
+            for key, value in items:
+                lines.append(f"[cyan]{key}[/cyan]: [white]{value}[/white]")
+
+            panel_content = "\n".join(lines)
+            panel = Panel(
+                panel_content,
+                title=f"[bold white]{section.upper()}[/]",
+                border_style="blue",
+            )
+            console.print(panel)
 
     else:
         console.print("No action specified. Use --help for usage information.")
