@@ -196,4 +196,4 @@ def config(
         console.print(Panel(table, title= Text("🛠  Configuration Values", style="bright_white"), style="magenta"))
 
     else:
-        typer.echo("No action specified. Use --help for usage information.")
+        console.print("No action specified. Use --help for usage information.")
