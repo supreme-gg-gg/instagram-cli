@@ -16,8 +16,10 @@ function queryEscapeSequence(
 		let timeoutBetweenRepliesId: NodeJS.Timeout | undefined = undefined;
 		let runningReply = '';
 
-		stdin.setEncoding('utf8');
-		stdin.setRawMode(true);
+		// if Ink has not already set raw mode and it supports raw, enable it
+		if (!stdin.isRaw && stdin.isTTY) {
+			stdin.setRawMode(true);
+		}
 
 		const restoreState = () => {
 			if (responseTimeoutId !== undefined) {
@@ -26,8 +28,6 @@ function queryEscapeSequence(
 			if (timeoutBetweenRepliesId !== undefined) {
 				clearTimeout(timeoutBetweenRepliesId);
 			}
-
-			stdin.setRawMode(false);
 		};
 
 		stdin.on('data', data => {

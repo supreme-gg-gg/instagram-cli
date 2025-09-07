@@ -50,7 +50,6 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 			borderStyle={isSelected ? 'bold' : 'single'}
 			borderColor={isSelected ? 'cyan' : 'gray'}
 			paddingX={1}
-			marginBottom={1.5}
 			height={lastMessageText ? 4 : 2}
 			width="100%"
 			flexDirection="column"

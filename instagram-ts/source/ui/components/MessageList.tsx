@@ -4,9 +4,10 @@ import type {
 	Message,
 	Thread,
 	TextMessage,
-	// MediaMessage,
+	MediaMessage,
 } from '../../types/instagram.js';
-// import AsciiImage from './AsciiImage.js';
+import Image from './image/index.js';
+import {ConfigManager} from '../../config.js';
 
 interface MessageListProps {
 	messages: Message[];
@@ -18,6 +19,10 @@ export default function MessageList({
 	currentThread,
 }: MessageListProps) {
 	const endOfMessagesRef = useRef<React.ElementRef<typeof Box>>(null);
+	const imageProtocol = ConfigManager.getInstance().get<string>(
+		'image.protocol',
+		'ascii',
+	);
 
 	const formatTime = (date: Date) => {
 		return date.toLocaleTimeString('en-US', {
@@ -32,11 +37,21 @@ export default function MessageList({
 			case 'text':
 				return <Text>{(message as TextMessage).text}</Text>;
 			case 'media': {
-				// const media = (message as MediaMessage).media;
-				// const imageUrl = media.image_versions2?.candidates[0]?.url;
-				// if (imageUrl) {
-				// 	return <AsciiImage url={imageUrl} />;
-				// }
+				const media = (message as MediaMessage).media;
+				const imageUrl = media.image_versions2?.candidates[0]?.url;
+				if (imageUrl) {
+					return (
+						<Box
+							borderStyle="round"
+							borderColor="cyan"
+							width={32}
+							height={17}
+							flexDirection="column"
+						>
+							<Image src={imageUrl} alt="Sent image" protocol={imageProtocol} />
+						</Box>
+					);
+				}
 				return <Text dimColor>[Sent an image]</Text>;
 			}
 			case 'clip':
@@ -59,10 +74,15 @@ export default function MessageList({
 	}
 
 	return (
-		<Box flexDirection="column" flexGrow={1} paddingX={1} overflowY="hidden">
-			<Box flexDirection="column" flexGrow={1}>
+		<Box flexDirection="column" flexGrow={1} paddingX={1}>
+			<Box flexDirection="column" justifyContent="flex-end" overflow="hidden">
 				{messages.map(message => (
-					<Box key={message.id} marginY={0.1} flexDirection="column">
+					<Box
+						key={message.id}
+						flexDirection="column"
+						flexGrow={1}
+						flexShrink={0}
+					>
 						<Box justifyContent="space-between">
 							<Text bold color={message.isOutgoing ? 'cyan' : 'greenBright'}>
 								{message.isOutgoing ? 'You' : message.username}

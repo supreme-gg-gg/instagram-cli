@@ -73,12 +73,7 @@ export default function ThreadList({threads, onSelect}: ThreadListProps) {
 	);
 
 	return (
-		<Box
-			flexDirection="column"
-			flexGrow={1}
-			ref={containerRef}
-			paddingBottom={2}
-		>
+		<Box flexDirection="column" flexGrow={1} ref={containerRef}>
 			{visibleThreads.map((thread, index) => {
 				// We need a ref on one item to measure its height
 				const isFirstItem = index === 0;
