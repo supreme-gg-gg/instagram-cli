@@ -3,6 +3,10 @@ from pathlib import Path
 from typing import Any, Optional
 import typer
 import pathlib
+from rich.console import Console
+from rich.panel import Panel
+
+console = Console(color_system="auto")
 
 DEFAULT_CONFIG = {
     "language": "en",
@@ -148,7 +152,7 @@ def config(
 
     if reset:
         cfg._save_config(DEFAULT_CONFIG)
-        typer.echo("Configuration reset to default")
+        console.print("Configuration reset to default")
         return
 
     if edit:
@@ -162,11 +166,20 @@ def config(
     if get:
         value = cfg.get(get)
         if value is not None:
-            typer.echo(value)
+            panel = Panel(
+                f"[cyan]{get}[/cyan]: [green]{value}[/green]",
+                title="[bold white]CONFIG VALUE[/bold white]",
+                border_style="magenta",
+            )
+            console.print(panel)
         else:
-            typer.echo(f"Configuration key '{get}' not found", err=True)
+            panel = Panel(
+                f"[white]Configuration key '{get}' not found[/white]",
+                title="[white]ERROR[/white]",
+                border_style="red",
+            )
+            console.print(panel)
             raise typer.Exit(1)
-
     elif set:
         key, value = set
         try:
@@ -174,11 +187,32 @@ def config(
         except yaml.YAMLError:
             pass
         cfg.set(key, value)
-        typer.echo(f"Set {key} = {value}")
+        panel = Panel(
+            f"[cyan]{key}[/cyan] set to [green]{value}[/green]",
+            title="[bold white]CONFIG UPDATED[/bold white]",
+            border_style="green",
+        )
+        console.print(panel)
 
     elif list:
+        console.print()
+        grouped = {}
         for key, value in cfg.list():
-            typer.echo(f"{key} = {value}")
+            section = key.split(".")[0]
+            grouped.setdefault(section, []).append((key, value))
+
+        for section, items in grouped.items():
+            lines = []
+            for key, value in items:
+                lines.append(f"[cyan]{key}[/cyan]: [white]{value}[/white]")
+
+            panel_content = "\n".join(lines)
+            panel = Panel(
+                panel_content,
+                title=f"[bold white]{section.upper()}[/]",
+                border_style="blue",
+            )
+            console.print(panel)
 
     else:
-        typer.echo("No action specified. Use --help for usage information.")
+        console.print("No action specified. Use --help for usage information.")
