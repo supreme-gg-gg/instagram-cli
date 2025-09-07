@@ -13,21 +13,22 @@ The ultimate weapon against brainrot. Shown experimentally to effectively reduce
 
 https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb
 
-The world's first open-source CLI (command line interface) + Terminal UI client for Instagram.
-
 > [!WARNING]
 > This project is not affiliated with, authorized, or endorsed by Instagram. This is an independent and unofficial project. Using it might violate Meta's Terms of Service. Use at your own risk.
 
 ## What does it do?
 
 - We transform Instagram from a brainrot hell into productivity tool
-- We give back control of social media to the user
-- We allow you to focus on meaningful conversation with friends
+- We allow you to focus on meaningful conversations
 - We celebrate the art and simplicity of terminal UI
-- We preserve the core of social media and protect your attention
+- We extend Instagram with powerful plugins like latex, chat summarisation
 
 > [!TIP]
 > Use Instagram with 100% keyboard control - no mouse clicks or touchscreen taps needed! Perfect for developers and Linux users who love staying on the keyboard 🤣
+
+### Need a break and have some brainrot?
+
+Want to watch Instagram Reels right from your terminal? Check out [reels-cli](https://github.com/notMarkMP1/reels-cli). It’s a great way to enjoy some light entertainment without leaving your keyboard. (Not affiliated and not maintained by us, but highly recommended for terminal fans.)
 
 ## Installation
 
@@ -94,9 +95,6 @@ instagram config --get --set --edit        # manage custom configuration
 instagram cleanup -t                       # cleanup media and session cache files
 ```
 
-> [!NOTE]
-> All searches in the package uses a custom fuzzy matching based on ratcliff/obershelp similarity algorithm. This means chat search and emoji search will be more flexible and forgiving.
-
 ## Chat
 
 The chat interface is the main feature of this package. It allows you to interact with your Instagram chats in a terminal-based interface.
@@ -104,7 +102,7 @@ The chat interface is the main feature of this package. It allows you to interac
 In the chat list page, use arrow keys (or 'j', 'k') + Enter to select a chat. You can also search for user by username using @user_name + Enter.
 
 > [!NOTE]
-> Chat commands (prefixed with `:`) are NOT available in the chat menu page. You must enter a chat to use chat commands.
+> All searches in the package uses a custom fuzzy matching based on ratcliff/obershelp similarity algorithm. This means chat search and emoji search will be more flexible and forgiving.
 
 After entering the chat page, you can type messages as usual and send them with Enter. You can also use chat commands to supercharge your chat experience.
 
@@ -132,9 +130,11 @@ All chat commands have the following syntax:
 - `:delay <seconds> "<message>"`: delay sending the message, similar as schedule
 - `:cancel`: cancel the latest scheduled/delayed message
 - `:upload`: upload media using the file navigator
-- `:upload <path>`: upload media (photo or video) directly from path
+- `:upload <path?>`: upload media (photo or video) directly from path
+- `:config <key?>=<value?>`: an in-chat version of `instagram config`
 - `:view <index>`: view and download media at index or open URL directly in browser
 - `:latex $<expr>$`: render and send LaTeX code as image, see [latex](#latex)
+- `:summarize <depth?>`: generate a summary of chat history using an LLM, see [chat summarization](#chat-summarization)
 
 ### Emoji
 
@@ -146,7 +146,7 @@ will be rendered as
 
 `This is an emoji 👍`
 
-> ![TIP]
+> [!TIP]
 > This does not have to be an exact match with the emoji name. For example, `:thumbsup:` can also be written as `:thumbs_up:`.
 
 ### LaTeX
@@ -167,6 +167,34 @@ Please note that the LaTeX code **_MUST_** be enclosed in `$` symbols.
 
 You can choose to render with [online API](https://latex.codecogs.com) (default) or local LaTeX installation such as TeX Live, MiKTeX, etc. You can set the rendering method with `instagram config --set latex_rendering_method <online|local>`.
 
+### Chat Summarization
+
+You can generate a summary of the chat history using the `:summarize` command. This will create a concise summary of the conversation, highlighting key points and important information.
+
+Local LLMs are first-class citizens here, allowing for maximum privacy and flexibility. All you need is a local LLM inferencing server like [Ollama](https://ollama.com/), [LM Studio](https://lmstudio.ai/). You will need to specify `llm.endpoint` (OpenAI-compatible) and `llm.model` in the config. For example, for Ollama, this would likely be `http://localhost:11434/v1/`.
+
+> [!IMPORTANT]
+> You are responsible for setting up the LLM server and ensuring that you have the right model pulled. You can configure the endpoint and model using the `instagram config` command, e.g. `instagram config --set llm.endpoint <URL>` and `instagram config --set llm.model <MODEL_NAME>`.
+
+Once inside a chat conversation, you can summarize the chat history using:
+
+```plaintext
+:summarize
+```
+
+This will process all messages fetched in the current chat.
+
+To limit (or expand) the summarization to the `n` most recent messages:
+
+```plaintext
+:summarize n
+```
+
+You can also turn on streaming mode with `instagram config --set llm.stream True` to see the summary being generated in real-time.
+
+> [!TIP]
+> If you don't mind giving your data to AI companies, you may set the `llama.endpoint` and `llm.model` configs to a remote endpoint, e.g. `https://api.openai.com/v1/`, `gpt-5`.
+
 ### Scheduling Messages
 
 You can schedule messages to be sent at a later time. The syntax is as follows:
@@ -179,3 +207,7 @@ If the date is not provided, the message will be scheduled for the current day. 
 
 > [!IMPORTANT]
 > If you exit the app, the scheduled messages will not be sent but will be restored when you open the app again. You will be prompted by a notification to decide whether to send the scheduled messages or not. We might include system background service in the future to send scheduled messages even when the app is closed.
+
+## Contributing
+
+We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to get started, create issues, and submit pull requests.

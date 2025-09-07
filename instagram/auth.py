@@ -18,7 +18,7 @@ class SpinnerController:
     def __init__(self, message="Working..."):
         # Create a console object (like stdout) and spinner renderable object
         self.console = Console()
-        self.spinner = Spinner("dots", text=message)
+        self.spinner = Spinner("dots", text=message, style="green")
         self.live = None
 
     def start(self):
@@ -50,6 +50,8 @@ def login() -> ClientWrapper | None:
     spinner_controller.start()  # Start the spinner
     try:
         client.login_by_session()
+        spinner_controller.stop()
+        spinner_controller_var.reset(token)
         typer.echo(f"Logged in as {client.username}")
         return client
     except (LoginRequired, FileNotFoundError):
@@ -59,9 +61,6 @@ def login() -> ClientWrapper | None:
         spinner_controller_var.reset(token)
         typer.echo("Cannot log in via session, logging in with username and password.")
         return login_by_username()
-    finally:
-        spinner_controller.stop()
-        spinner_controller_var.reset(token)  # Reset the context variable
 
 
 def login_by_username() -> ClientWrapper | None:

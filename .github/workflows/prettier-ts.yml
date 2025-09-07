@@ -1,0 +1,36 @@
+name: TypeScript Lint and Format Check (Prettier, ESLint)
+
+# Only triggers on PRs to the TypeScript migration branch
+on:
+  pull_request:
+    branches:
+      - ts-migration/main
+    paths:
+      - "instagram-ts/**"
+
+jobs:
+  format:
+    name: "Validate TS formatting and lint"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+
+      - name: Install TS dependencies
+        working-directory: instagram-ts
+        run: |
+          npm ci
+
+      - name: Run Prettier check
+        working-directory: instagram-ts
+        run: npx prettier --check .
+
+      # I will enable this soon
+      # - name: Run ESLint + tests
+      #   working-directory: instagram-ts
+      #   run: npm test

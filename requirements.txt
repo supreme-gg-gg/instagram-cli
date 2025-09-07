@@ -1,9 +1,0 @@
-typer
-instagrapi
-art
-pydantic
-pyyaml
-pillow
-requests
-emoji
-windows-curses; platform_system == "Windows"

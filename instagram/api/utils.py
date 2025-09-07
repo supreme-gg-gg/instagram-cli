@@ -1,7 +1,7 @@
 from typing import Tuple
 import logging
 from difflib import SequenceMatcher
-from typing import List, TypeVar, Callable, Optional, Union, Literal
+from typing import List, TypeVar, Callable, Optional, Union
 import random
 import time
 import json
@@ -16,7 +16,11 @@ import re
 import instagrapi
 from instagrapi import Client
 import instagrapi.config
-from instagrapi.exceptions import ClientError, UserNotFound, DirectThreadNotFound, ClientNotFoundError, PhotoNotUpload
+from instagrapi.exceptions import (
+    DirectThreadNotFound,
+    ClientNotFoundError,
+    PhotoNotUpload,
+)
 import instagrapi.image_util
 from instagrapi.types import User, DirectThread, DirectMessage
 from instagrapi.extractors import extract_direct_thread, extract_direct_message
@@ -26,13 +30,14 @@ from instagrapi.mixins.direct import SELECTED_FILTER, BOX
 import requests
 from PIL import Image, ImageOps
 
+
 def download_media_by_url(
-        url: str,
-        filename: str = "",
-        folder: Union[str, Path] = "",
-        timeout: int = 30,
-        media_type: str = "photo"
-    ) -> Path:
+    url: str,
+    filename: str = "",
+    folder: Union[str, Path] = "",
+    timeout: int = 30,
+    media_type: str = "photo",
+) -> Path:
     """
     Download media (photo/video) using URL with proper extension handling
 
@@ -57,40 +62,40 @@ def download_media_by_url(
     url = str(url)
     parsed_url = urlparse(url)
     original_filename = parsed_url.path.rsplit("/", 1)[1]
-    
+
     # Extract extension from original filename
     # Do not extract extension if it is not present so it doesn't cause the "." in the end
     _, ext = original_filename.rsplit(".", 1) if "." in original_filename else ("", "")
-    
+
     # Clean the extension and set default based on media type
     ext = ext.lower().split("?")[0]  # Remove any query parameters
     if not ext:
         ext = "mp4" if media_type == "video" else "jpg"
-    
+
     # Construct final filename
     final_filename = f"{filename}.{ext}" if filename else original_filename
-    
+
     # Ensure folder is a Path object
     folder_path = Path(folder)
     if folder_path and not folder_path.exists():
         folder_path.mkdir(parents=True, exist_ok=True)
-    
+
     # Full path for downloaded file
     path = folder_path / final_filename
-    
+
     # Download the file
     response = requests.get(url, stream=True, timeout=timeout)
     response.raise_for_status()
-    
+
     # Additional check for video content length
     try:
-        content_length = int(response.headers.get("Content-Length"))
+        _ = int(response.headers.get("Content-Length"))
     except (TypeError, ValueError):
         if media_type == "video":
             raise ValueError(
                 "Invalid video URL. The URL may be malformed or the video may no longer be available."
             )
-    
+
     # Use different write methods for photos vs videos
     # to match instagrapi's implementation
     if media_type == "video":
@@ -102,8 +107,9 @@ def download_media_by_url(
         with open(path, "wb") as f:
             response.raw.decode_content = True
             shutil.copyfileobj(response.raw, f)
-    
+
     return path.resolve()
+
 
 def setup_logging(name: str):
     """
@@ -118,23 +124,25 @@ def setup_logging(name: str):
     logger.setLevel(logging.DEBUG)  # Set desired log level
 
     # Optional: Define log format
-    formatter = logging.Formatter('%(levelname)s: %(message)s')
+    formatter = logging.Formatter("%(levelname)s: %(message)s")
 
     # Create file handler
-    file_handler = logging.FileHandler('debug.log')
+    file_handler = logging.FileHandler("debug.log")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
 
     # Apply handler to your logger
     logger.addHandler(file_handler)
 
-    # Disable all other loggers (dependencies) 
+    # Disable all other loggers (dependencies)
     logging.getLogger().setLevel(logging.CRITICAL)
 
     return logger
 
 
-def user_info_by_username_private(self: Client, username: str, use_cache: bool = True) -> User:
+def user_info_by_username_private(
+    client: Client, username: str, use_cache: bool = True
+) -> User:
     """
     Get user object from username
 
@@ -142,7 +150,7 @@ def user_info_by_username_private(self: Client, username: str, use_cache: bool =
 
     Parameters
     ----------
-    self: Client
+    client: Client
         The instagrapi Client object
     username: str
         User name of an instagram account
@@ -161,25 +169,28 @@ def user_info_by_username_private(self: Client, username: str, use_cache: bool =
     logging.getLogger().setLevel(logging.CRITICAL)
 
     username = str(username).lower()
-    if not use_cache or username not in self._usernames_cache:
-        user = self.user_info_by_username_v1(username)
-        self._users_cache[user.pk] = user
-        self._usernames_cache[user.username] = user.pk
-    return self.user_info(self._usernames_cache[username])
+    if not use_cache or username not in client._usernames_cache:
+        user = client.user_info_by_username_v1(username)
+        client._users_cache[user.pk] = user
+        client._usernames_cache[user.username] = user.pk
+    return client.user_info(client._usernames_cache[username])
+
 
 def direct_threads_chunk(
-    self: Client,
+    client: Client,
     amount: int = 20,
     selected_filter: SELECTED_FILTER = "",
     box: BOX = "",
     thread_message_limit: Optional[int] = None,
-    cursor: str = None
+    cursor: str = None,
 ) -> Tuple[List[DirectThread], str]:
     """
     Get direct message threads
 
     Parameters
     ----------
+    client: Client
+        The instagrapi Client object used to fetch threads
     amount: int, optional
         Minimum number of media to return, default is 20
     selected_filter: str, optional
@@ -187,7 +198,7 @@ def direct_threads_chunk(
     box: str, optional
         Box to gather threads from (primary or general) (business accounts only)
     thread_message_limit: int, optional
-        Thread message limit, deafult is 10
+        Thread message limit, default is 10
     cursor: str, optional
         Cursor for pagination, default is None
 
@@ -200,9 +211,9 @@ def direct_threads_chunk(
     """
 
     threads = []
-    # self.private_request("direct_v2/get_presence/")
+    # client.private_request("direct_v2/get_presence/")
     while True:
-        threads_chunk, cursor = self.direct_threads_chunk(
+        threads_chunk, cursor = client.direct_threads_chunk(
             selected_filter, box, thread_message_limit, cursor
         )
         for thread in threads_chunk:
@@ -214,7 +225,10 @@ def direct_threads_chunk(
     #     threads = threads[:amount]
     return (threads, cursor)
 
-def direct_thread_chunk(self: Client, thread_id: int, amount: int = 20, cursor: str = None) -> Tuple[DirectThread, str]:
+
+def direct_thread_chunk(
+    client: Client, thread_id: int, amount: int = 20, cursor: str = None
+) -> Tuple[DirectThread, str]:
     """
     Get a chunk of messages in a direct message thread along with the thread's metadata
 
@@ -222,12 +236,14 @@ def direct_thread_chunk(self: Client, thread_id: int, amount: int = 20, cursor: 
 
     Parameters
     ----------
+    client: Client
+        The instagrapi Client object used to fetch the thread
     thread_id: int
         Unique identifier of a Direct Message thread
 
     amount: int, optional
         Minimum number of media to return, default is 20
-    
+
     cursor: str, optional
         Cursor for pagination, default is None
 
@@ -236,7 +252,7 @@ def direct_thread_chunk(self: Client, thread_id: int, amount: int = 20, cursor: 
     Tuple[DirectThread, str]
         A tuple containing the DirectThread object and the cursor for the next chunk of messages
     """
-    assert self.user_id, "Login required"
+    assert client.user_id, "Login required"
     params = {
         "visual_message_return_type": "unseen",
         "direction": "older",
@@ -248,16 +264,20 @@ def direct_thread_chunk(self: Client, thread_id: int, amount: int = 20, cursor: 
         if cursor:
             params["cursor"] = cursor
         try:
-            result = self.private_request(
+            result = client.private_request(
                 f"direct_v2/threads/{thread_id}/", params=params
             )
         except ClientNotFoundError as e:
-            raise DirectThreadNotFound(e, thread_id=thread_id, **self.last_json)
+            raise DirectThreadNotFound(e, thread_id=thread_id, **client.last_json)
         thread = result["thread"]
         for item in thread["items"]:
             items.append(item)
         cursor = thread.get("oldest_cursor")
-        if not cursor or not thread.get("has_older", False) or (amount and len(items) >= amount):
+        if (
+            not cursor
+            or not thread.get("has_older", False)
+            or (amount and len(items) >= amount)
+        ):
             break
     # We don't want to slice items here because it will break the pagination
     # if amount:
@@ -265,8 +285,9 @@ def direct_thread_chunk(self: Client, thread_id: int, amount: int = 20, cursor: 
     thread["items"] = items
     return (extract_direct_thread(thread), cursor)
 
+
 def direct_send_media(
-    self: Client,
+    client: Client,
     path: Path,
     user_ids: List[int] = [],
     thread_ids: List[int] = [],
@@ -279,13 +300,15 @@ def direct_send_media(
 
     Parameters
     ----------
+    client: Client
+        The instagrapi Client object used to upload and send media
     path: Path
         Path to file that will be posted on the thread
     user_ids: List[int]
         List of unique identifier of Users id
     thread_ids: List[int]
         List of unique identifier of Direct Message thread id
-    
+
     content_type: str, optional
         Type of content to send, either 'photo' or 'video', default is 'photo'
 
@@ -294,12 +317,12 @@ def direct_send_media(
     DirectMessage
         An object of DirectMessage
     """
-    assert self.user_id, "Login required"
-    assert (user_ids or thread_ids) and not (
-        user_ids and thread_ids
-    ), "Specify user_ids or thread_ids, but not both"
+    assert client.user_id, "Login required"
+    assert (user_ids or thread_ids) and not (user_ids and thread_ids), (
+        "Specify user_ids or thread_ids, but not both"
+    )
     method = f"configure_{content_type}"
-    token = self.generate_mutation_token()
+    token = client.generate_mutation_token()
     nav_chains = [
         (
             "6xQ:direct_media_picker_photos_fragment:1,5rG:direct_thread:2,"
@@ -338,20 +361,21 @@ def direct_send_media(
     upload_id = str(int(time.time() * 1000))
     match content_type:
         case "photo":
-            upload_id, width, height = photo_rupload(self, path, upload_id)[:3]
+            upload_id, width, height = photo_rupload(client, path, upload_id)[:3]
         case "video":
-            upload_id, width, height = self.video_rupload(path, upload_id)[:3]
+            upload_id, width, height = client.video_rupload(path, upload_id)[:3]
     data["upload_id"] = upload_id
     # data['content_type'] = content_type
-    result = self.private_request(
+    result = client.private_request(
         f"direct_v2/threads/broadcast/{method}/",
-        data=self.with_default_data(data),
+        data=client.with_default_data(data),
         with_signature=False,
     )
     return extract_direct_message(result["payload"])
 
+
 def photo_rupload(
-    self: Client,
+    client: Client,
     path: Path,
     upload_id: str = "",
     to_album: bool = False,
@@ -362,6 +386,8 @@ def photo_rupload(
 
     Parameters
     ----------
+    client: Client
+        The instagrapi Client object used to perform the rupload
     path: Path
         Path to the media
     upload_id: str, optional
@@ -416,9 +442,9 @@ def photo_rupload(
         )  # Story must be 1080x1920
     else:
         photo_data, photo_size = instagrapi.image_util.prepare_image(
-            str(path), 
+            str(path),
             max_size=(4096, 4096),  # TODO: Allow configurable max size
-            aspect_ratios=None  # Disable cropping
+            aspect_ratios=None,  # Disable cropping
         )
     photo_len = str(len(photo_data))
     headers = {
@@ -432,25 +458,28 @@ def photo_rupload(
         "Content-Type": "application/octet-stream",
         "Content-Length": photo_len,
     }
-    response = self.private.post(
+    response = client.private.post(
         "https://{domain}/rupload_igphoto/{name}".format(
             domain=instagrapi.config.API_DOMAIN, name=upload_name
         ),
         data=photo_data,
         headers=headers,
     )
-    self.request_log(response)
+    client.request_log(response)
     if response.status_code != 200:
-        self.logger.error(
+        client.logger.error(
             "Photo Upload failed with the following response: %s", response
         )
-        last_json = self.last_json  # local variable for read in sentry
+        last_json = client.last_json  # local variable for read in sentry
         raise PhotoNotUpload(response.text, response=response, **last_json)
     with Image.open(path) as im:
         width, height = im.size
     return upload_id, width, height
 
+
 T = TypeVar("T")
+
+
 def fuzzy_match(
     query: str,
     items: List[Union[str, T]],
@@ -458,13 +487,13 @@ def fuzzy_match(
     cutoff: float = 0.6,
     getter: Optional[Callable[[Union[str, T]], str]] = None,
     key: Callable[[str], str] = lambda x: x.lower(),
-    use_partial_ratio: bool = False
+    use_partial_ratio: bool = False,
 ) -> Union[List[Tuple[Union[str, T], float]], Tuple[Union[str, T], float], None]:
     """
     Find the closest matching items using fuzzy string matching.
     This is an implementation of the fuzzywuzzy library without the dependency.
     Uses built-in SequenceMatcher to find similarity ratio between strings.
-    
+
     Parameters:
     - query: String to match against
     - items: List of strings or objects to search through
@@ -473,19 +502,18 @@ def fuzzy_match(
     - getter: Function to extract string from object (default: str)
     - key: Function to transform strings before comparison (default: lowercase)
     - use_partial_ratio: Use partial ratio instead of simple ratio (default: False)
-    
+
     Returns:
     - If n=1: Tuple of (matched item, similarity ratio) or None if no match
     - If n>1: List of tuples (matched item, similarity ratio), sorted by ratio descending
     """
     if not items:
         return [] if n > 1 else None
-    
+
     matcher = SequenceMatcher(None, key(query))
     matches = []
 
     for item in items:
-
         # Get string to match from item
         if getter is None:
             if isinstance(item, str):
@@ -504,21 +532,22 @@ def fuzzy_match(
             for _, j, size in blocks:
                 if size == 0:
                     continue
-                block = s2[j:j+size]
+                block = s2[j : j + size]
                 m = SequenceMatcher(None, key(query), block)
                 ratios.append(m.ratio())
             ratio = max(ratios) if ratios else 0
         else:
             matcher.set_seq2(key(extracted))
             ratio = matcher.ratio()
-            
+
         if ratio >= cutoff:
             matches.append((item, ratio))
-    
+
     matches.sort(key=lambda x: x[1], reverse=True)
     matches = matches[:n]
-    
+
     return matches[0] if n == 1 and matches else matches if matches else None
+
 
 def render_latex_online(latex_expr, output_path="latex_online.png", padding=None):
     """
@@ -528,13 +557,13 @@ def render_latex_online(latex_expr, output_path="latex_online.png", padding=None
     # Encode LaTeX expression properly
     latex_expr = latex_expr.replace(" ", "%20")
     url = f"https://latex.codecogs.com/png.latex?\\dpi{{300}}\\bg_white {latex_expr}"
-    
+
     # Fetch image from API
     response = requests.get(url)
     if response.status_code == 200:
         with open(output_path, "wb") as f:
             f.write(response.content)
-        
+
         # Open the image and add padding only if specified
         img = Image.open(output_path)
         if padding is not None:
@@ -543,7 +572,10 @@ def render_latex_online(latex_expr, output_path="latex_online.png", padding=None
 
         return output_path
     else:
-        raise requests.RequestException("Failed to fetch LaTeX image from API: " + response.text)
+        raise requests.RequestException(
+            "Failed to fetch LaTeX image from API: " + response.text
+        )
+
 
 def render_latex_local(latex_expr, output_path="latex_local.png", padding=None):
     """
@@ -554,11 +586,12 @@ def render_latex_local(latex_expr, output_path="latex_local.png", padding=None):
 
     # Create figure
     fig, ax = plt.subplots(figsize=(4, 2), dpi=300)  # High DPI for better resolution
-    ax.text(0.5, 0.5, f"${latex_expr}$", fontsize=20, ha='center', va='center')
+    ax.text(0.5, 0.5, f"${latex_expr}$", fontsize=20, ha="center", va="center")
     ax.axis("off")
-    plt.savefig(output_path, bbox_inches='tight', pad_inches=0.1, dpi=300)
+    plt.savefig(output_path, bbox_inches="tight", pad_inches=0.1, dpi=300)
 
     return output_path
+
 
 def list_all_scheduled_tasks(filepath: str = None) -> list[dict]:
     """
@@ -567,7 +600,9 @@ def list_all_scheduled_tasks(filepath: str = None) -> list[dict]:
     if filepath is None:
         username = Config().get("login.current_username")
         if not username:
-            typer.echo("You are not logged in. Please login first.\nSuggested action: `instagram auth login`")
+            typer.echo(
+                "You are not logged in. Please login first.\nSuggested action: `instagram auth login`"
+            )
             return []
         filepath = Path(Config().get("advanced.users_dir")) / username / "tasks.json"
 
@@ -576,6 +611,7 @@ def list_all_scheduled_tasks(filepath: str = None) -> list[dict]:
 
     with open(filepath, "r") as f:
         return json.load(f)
+
 
 def cancel_scheduled_task_by_index(index: int, filepath: str = None) -> str:
     """
@@ -586,7 +622,9 @@ def cancel_scheduled_task_by_index(index: int, filepath: str = None) -> str:
     if filepath is None:
         username = Config().get("login.current_username")
         if not username:
-            typer.echo("You are not logged in. Please login first.\nSuggested action: `instagram auth login`")
+            typer.echo(
+                "You are not logged in. Please login first.\nSuggested action: `instagram auth login`"
+            )
             return "You are not logged in. Please login first."
         filepath = Path(Config().get("advanced.users_dir")) / username / "tasks.json"
 
@@ -602,22 +640,23 @@ def cancel_scheduled_task_by_index(index: int, filepath: str = None) -> str:
 
     return f"Cancelled task at index {index}."
 
+
 def extract_links_from_text(text: str) -> List[Tuple[str, str]]:
     """
     Extract URLs or links from a given text string.
     Extracts both complete URLs and partial ones
     e.g. corpolingo.co, www.linkedin.com, https://github.com/supreme-gg-gg/instagram-cli
-    
+
     Parameters:
     - text: The input text string to extract URLs from.
-    
+
     Returns:
     - List of extracted URLs and their expanded versions.
     - Each URL is returned as a tuple (original_url, expanded_url).
     - If no URLs are found, returns an empty list.
     """
     # Source: https://stackoverflow.com/a/50790119
-    regex=r"\b((?:https?://)?(?:(?:www\.)?(?:[\da-z\.-]+)\.(?:[a-z]{2,6})|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(?:(?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(?:ffff(?::0{1,4}){0,1}:){0,1}(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])))(?::[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?(?:/[\w\.-]*)*/?)\b"
+    regex = r"\b((?:https?://)?(?:(?:www\.)?(?:[\da-z\.-]+)\.(?:[a-z]{2,6})|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(?:(?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(?:ffff(?::0{1,4}){0,1}:){0,1}(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])))(?::[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?(?:/[\w\.-]*)*/?)\b"
 
     matches = re.findall(regex, text)
 
@@ -628,5 +667,5 @@ def extract_links_from_text(text: str) -> List[Tuple[str, str]]:
         if not orig_url.startswith("http://") and not orig_url.startswith("https://"):
             expanded_url = "https://" + orig_url
         res.append((orig_url, expanded_url))
-            
+
     return res
