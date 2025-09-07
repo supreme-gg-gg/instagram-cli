@@ -2,11 +2,11 @@ name: Test CLI tool across Python versions
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths: ["instagram/**"]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+    paths: ["instagram/**"]
 
 jobs:
   test:
