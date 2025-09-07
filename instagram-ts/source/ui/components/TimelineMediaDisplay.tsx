@@ -1,23 +1,19 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import {FeedItem} from '../../types/instagram.js';
+import {FeedInstance} from '../../types/instagram.js';
 import Image from './image/index.js';
 
 type Props = {
-	feedItems: FeedItem[];
-	imageUrls: string[];
+	feed: FeedInstance;
 	protocol?: string;
 };
 
-export default function TimelineMediaDisplay({
-	feedItems,
-	imageUrls,
-	protocol,
-}: Props) {
+export default function TimelineMediaDisplay({feed, protocol}: Props) {
+	const posts = feed.posts || [];
 	return (
 		<Box flexDirection="column" flexGrow={1} gap={1}>
 			<Text color="blue">Your Feed</Text>
-			{feedItems.map((item, index) => (
+			{posts.map(item => (
 				<Box
 					key={item.id}
 					flexDirection="column"
@@ -35,10 +31,10 @@ export default function TimelineMediaDisplay({
 						</Text>
 					</Box>
 					<Text>{'\n'}</Text>
-					{imageUrls[index] && imageUrls[index] !== 'No image' ? (
+					{item.image_versions2?.candidates?.[0]?.url ? (
 						<Box borderStyle="round" borderColor="cyan" width={32} height={17}>
 							<Image
-								src={imageUrls[index]!}
+								src={item.image_versions2.candidates[0].url}
 								alt={item.caption?.text || `Post by ${item.user?.username}`}
 								protocol={protocol}
 							/>

@@ -86,7 +86,16 @@ export interface AuthState {
 	error?: string;
 }
 
-export interface FeedItem {
+export interface CarouselItem {
+	id: string;
+	media_type: number;
+	image_versions2?: {
+		candidates: {url: string; width: number; height: number}[];
+	};
+	video_versions?: {url: string; width: number; height: number}[];
+}
+
+export interface Post {
 	id: string;
 	user: {
 		pk: number;
@@ -112,4 +121,10 @@ export interface FeedItem {
 		width: number;
 		height: number;
 	}[];
+	carousel_media_count?: number;
+	carousel_media?: CarouselItem[];
+}
+
+export interface FeedInstance {
+	posts: Post[];
 }
