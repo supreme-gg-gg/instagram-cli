@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import {Box, Text, useInput} from 'ink';
-import {Post, FeedInstance} from '../../types/instagram.js';
+import {Post, FeedInstance, MediaCandidate} from '../../types/instagram.js';
 import open from 'open';
 import Image from './image/index.js';
 
@@ -15,17 +15,17 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 
 	const posts = feed.posts || [];
 
-	// Helper function to get current image URL based on selection and carousel index
-	const getCurrentImageUrl = (): string | null => {
+	// Helper function to get current image based on selection and carousel index
+	const getCurrentImage = (): MediaCandidate | null => {
 		const currentPost = posts[selectedIndex];
 		if (!currentPost) return null;
 
 		if (currentPost.carousel_media) {
 			const carouselItem = currentPost.carousel_media[carouselIndex];
-			return carouselItem?.image_versions2?.candidates?.[0]?.url || null;
+			return carouselItem?.image_versions2?.candidates?.[0] || null;
 		}
 
-		return currentPost.image_versions2?.candidates?.[0]?.url || null;
+		return currentPost.image_versions2?.candidates?.[0] || null;
 	};
 
 	const openMediaUrl = (activePost: Post) => {
@@ -106,6 +106,12 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 		setCarouselIndex(0);
 	}, [selectedIndex]);
 
+	const currentImage = getCurrentImage();
+	let dynamicImageSize = null;
+	if (currentImage) {
+		const {width, height} = currentImage;
+		dynamicImageSize = calculateDynamicPostMediaSize(width, height);
+	}
 	return (
 		<Box flexDirection="column" height={process.stdout.rows} width="100%">
 			<Box flexDirection="row" gap={2} flexGrow={1}>
@@ -156,15 +162,15 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 								justifyContent="flex-start"
 								width="50%"
 							>
-								{posts[selectedIndex] && getCurrentImageUrl() ? (
+								{posts[selectedIndex] && getCurrentImage() ? (
 									<Box
 										borderStyle="round"
 										borderColor="cyan"
-										width={32}
-										height={17}
+										width={dynamicImageSize!.width + 2}
+										height={dynamicImageSize!.height + 2}
 									>
 										<Image
-											src={getCurrentImageUrl()!}
+											src={getCurrentImage()!.url}
 											alt={
 												posts[selectedIndex]?.caption?.text ||
 												`Post by ${posts[selectedIndex]?.user?.username}`
@@ -235,4 +241,26 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 			</Box>
 		</Box>
 	);
+}
+
+function calculateDynamicPostMediaSize(
+	imageWidth: number,
+	imageHeight: number,
+): {width: number; height: number} {
+	const termWidth = process.stdout.columns;
+	let width = Math.min(Math.floor(termWidth / 3), 80);
+
+	const aspectRatio = imageWidth / imageHeight;
+
+	if (aspectRatio < 0.8) {
+		width = Math.floor(width * 0.7);
+	} else if (aspectRatio > 1.5) {
+		width = Math.floor(width * 1.1);
+	}
+
+	const height = Math.max(
+		process.stdout.rows,
+		Math.floor((width / aspectRatio) * 0.5),
+	);
+	return {width, height};
 }

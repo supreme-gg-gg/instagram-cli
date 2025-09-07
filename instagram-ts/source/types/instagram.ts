@@ -41,11 +41,7 @@ export interface MessageMedia {
 		profilePicUrl?: string;
 	};
 	image_versions2?: {
-		candidates: {
-			url: string;
-			width: number;
-			height: number;
-		}[];
+		candidates: MediaCandidate[];
 	};
 	original_width: number;
 	original_height: number;
@@ -90,9 +86,9 @@ export interface CarouselItem {
 	id: string;
 	media_type: number;
 	image_versions2?: {
-		candidates: {url: string; width: number; height: number}[];
+		candidates: MediaCandidate[];
 	};
-	video_versions?: {url: string; width: number; height: number}[];
+	video_versions?: MediaCandidate[];
 }
 
 export interface Post {
@@ -106,11 +102,7 @@ export interface Post {
 		text: string;
 	};
 	image_versions2?: {
-		candidates: {
-			url: string;
-			width: number;
-			height: number;
-		}[];
+		candidates: MediaCandidate[];
 	};
 	like_count: number;
 	comment_count: number;
@@ -127,4 +119,10 @@ export interface Post {
 
 export interface FeedInstance {
 	posts: Post[];
+}
+
+export interface MediaCandidate {
+	url: string;
+	width: number;
+	height: number;
 }
