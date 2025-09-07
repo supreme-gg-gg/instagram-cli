@@ -27,10 +27,21 @@ To create a development build, you can use the following command:
 pip install -e .
 ```
 
-You should have `ruff` installed for code formatting and linting. If you don't have it installed, you can do so with:
+To configure the pre-commit hooks for both Python and TypeScript, run:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Now when you commit it checks any changes in both Python and TypeScript files and formats/lints them automatically using the respective linters.
+
+If you do not want to use pre-commit hooks, at the very least, run the following commands manually to ensure code quality:
 
 ```bash
 pip install ruff
+ruff check .
+ruff format .
 ```
 
 ## How to Contribute

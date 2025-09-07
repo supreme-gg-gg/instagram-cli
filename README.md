@@ -48,6 +48,12 @@ cd instagram-cli
 pip install .
 ```
 
+## Typescript Client (Experimental)
+
+You can install a development release by following the instruction [in this readme](./instagram-ts/readme.md). The new client brings additional features like modern UI, image rendering in terminal, and checking feed. An official npm release will come soon, stay tuned.
+
+> [!NOTE] The Python client is no longer maintained for Windows due to incompatibilities between the `curses` and `windows-curses` libraries. We recommend using WSL / Docker, or better, just use the TypeScript client on Windows.
+
 ### Pre-built Executables
 
 > [!CAUTION]
@@ -65,9 +71,6 @@ This will generate the executable in the `dist/` directory.
 ./instagram-cli [OPTIONS] command [ARGS] # for macOS and Linux
 instagram-cli.exe [OPTIONS] command [ARGS] # for Windows
 ```
-
-> [!CAUTION]
-> Starting from Version 1.3, Windows support will be discontinued due to incompatibilities between the `curses` and `windows-curses` libraries. While the application may still work on Windows, we will no longer be testing or maintaining Windows-specific functionality. We recommend using WSL (Windows Subsystem for Linux) or Docker for Windows users.
 
 ## Commands
 

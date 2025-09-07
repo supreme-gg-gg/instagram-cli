@@ -1,0 +1,45 @@
+repos:
+  # Python tools (Ruff for Python code - exclude TypeScript folder)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.4
+    hooks:
+      - id: ruff-check
+        types_or: [python, pyi]
+        files: '^(?!instagram-ts/).*\.py$' # Exclude TS folder
+        args: [--fix]
+      - id: ruff-format
+        types_or: [python, pyi]
+        files: '^(?!instagram-ts/).*\.py$'
+
+  # TypeScript/JavaScript tools (only for instagram-ts folder)
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        files: '^instagram-ts/.*\.(ts|tsx|js|jsx|json|md)$'
+        exclude: "^instagram-ts/(node_modules|dist)/"
+
+  # TypeScript linting via local execution (since xo config is in package.json)
+  # - repo: local
+  #   hooks:
+  #     - id: xo-lint
+  #       name: XO TypeScript Linting
+  #       entry: bash -c 'cd instagram-ts && npm run lint-check'
+  #       language: system
+  #       files: '^instagram-ts/.*\.(ts|tsx)$'
+  #       exclude: "^instagram-ts/(node_modules|dist)/"
+  #       pass_filenames: false
+
+  # Generic tools
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+        exclude: '^instagram-ts/.*\.(md|txt)$'
+      - id: end-of-file-fixer
+        exclude: '^instagram-ts/.*\.(md|txt)$'

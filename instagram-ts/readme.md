@@ -10,7 +10,14 @@ To get started, you need to install the dependencies:
 npm install
 ```
 
-This automatically sets up a pre-commit hook using `husky`. It will run `lint-staged` to format your code with Prettier (and in the future lint with `xo`) before committing.
+We no longer use `lint-staged` and `husky`. We have migrated to `pre-commit` for both Python and TypeScript. This happens automatically as you commit.
+
+If linter and formatter is not run automatically, you can run it manually with:
+
+```bash
+npm run lint-check
+npm run format # only runs prettier
+```
 
 ## Development Install
 
