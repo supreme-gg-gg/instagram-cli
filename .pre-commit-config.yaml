@@ -12,8 +12,8 @@ repos:
         files: '^(?!instagram-ts/).*\.py$'
 
   # TypeScript/JavaScript tools (only for instagram-ts folder)
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v4.0.0-alpha.8
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: v3.6.2
     hooks:
       - id: prettier
         files: '^instagram-ts/.*\.(ts|tsx|js|jsx|json|md)$'
