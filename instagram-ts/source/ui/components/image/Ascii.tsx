@@ -139,7 +139,7 @@ async function toAscii(
 				filepath: tempPath,
 				width,
 				colored: supportsColor ?? false,
-			});
+			}).toPromise();
 
 			// Clean up temporary file
 			await fs.unlink(tempPath);
