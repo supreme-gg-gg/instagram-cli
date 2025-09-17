@@ -1,7 +1,6 @@
 import React, {useState, useEffect} from 'react';
-import Image from '../ui/components/image/index.js';
+import Image, {TerminalInfoProvider} from 'ink-picture';
 import {Text, Box} from 'ink';
-import {TerminalInfoProvider} from '../ui/context/TerminalInfo.js';
 import zod from 'zod';
 import {argument} from 'pastel';
 export const args = zod.tuple([

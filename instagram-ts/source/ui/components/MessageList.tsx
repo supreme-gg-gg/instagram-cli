@@ -6,7 +6,7 @@ import type {
 	TextMessage,
 	MediaMessage,
 } from '../../types/instagram.js';
-import Image from './image/index.js';
+import Image from 'ink-picture';
 import {ConfigManager} from '../../config.js';
 
 interface MessageListProps {

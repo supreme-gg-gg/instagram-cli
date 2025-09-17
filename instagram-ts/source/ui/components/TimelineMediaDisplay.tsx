@@ -1,7 +1,7 @@
 import React from 'react';
 import {Box, Text} from 'ink';
 import {FeedInstance} from '../../types/instagram.js';
-import Image from './image/index.js';
+import Image from 'ink-picture';
 
 type Props = {
 	feed: FeedInstance;

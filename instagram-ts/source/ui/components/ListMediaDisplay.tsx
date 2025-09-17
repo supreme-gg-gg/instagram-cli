@@ -2,7 +2,7 @@ import React, {useState, useEffect} from 'react';
 import {Box, Text, useInput} from 'ink';
 import {Post, FeedInstance, MediaCandidate} from '../../types/instagram.js';
 import open from 'open';
-import Image from './image/index.js';
+import Image from 'ink-picture';
 
 type Props = {
 	feed: FeedInstance;
@@ -189,7 +189,7 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 									{posts[selectedIndex]?.carousel_media_count
 										? `Carousel ${carouselIndex + 1} of ${
 												posts[selectedIndex].carousel_media_count
-										  }`
+											}`
 										: ''}
 								</Text>
 							</Box>

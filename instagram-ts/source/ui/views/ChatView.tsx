@@ -2,7 +2,7 @@ import React, {useState, useEffect} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
 import type {Thread, ChatState} from '../../types/instagram.js';
 import MessageList from '../components/MessageList.js';
-import {TerminalInfoProvider} from '../context/TerminalInfo.js';
+import {TerminalInfoProvider} from 'ink-picture';
 import InputBox from '../components/InputBox.js';
 import StatusBar from '../components/StatusBar.js';
 import ThreadList from '../components/ThreadList.js';

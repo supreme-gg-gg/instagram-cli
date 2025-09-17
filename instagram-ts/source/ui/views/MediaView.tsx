@@ -3,7 +3,7 @@ import {FeedInstance} from '../../types/instagram.js';
 import TimelineMediaDisplay from '../components/TimelineMediaDisplay.js';
 import ListMediaDisplay from '../components/ListMediaDisplay.js';
 import {ConfigManager} from '../../config.js';
-import {TerminalInfoProvider} from '../context/TerminalInfo.js';
+import {TerminalInfoProvider} from 'ink-picture';
 
 export default function MediaView({feed}: {feed: FeedInstance}) {
 	const [feedType, setFeedType] = useState<'timeline' | 'list'>('list');
