@@ -3,6 +3,7 @@ import Image, {TerminalInfoProvider} from 'ink-picture';
 import {Text, Box} from 'ink';
 import zod from 'zod';
 import {argument} from 'pastel';
+
 export const args = zod.tuple([
 	zod.string().describe(
 		argument({
@@ -12,8 +13,8 @@ export const args = zod.tuple([
 	),
 ]);
 
-type Props = {
-	args: zod.infer<typeof args>;
+type Properties = {
+	readonly args: zod.infer<typeof args>;
 };
 
 const testImages = [
@@ -26,23 +27,26 @@ const testImages = [
 	'https://upload.wikimedia.org/wikipedia/en/thumb/7/7d/Lenna_%28test_image%29.png/500px-Lenna_%28test_image%29.png',
 ];
 
-export default function TestImage(props: Props) {
+export default function TestImage(properties: Properties) {
+	// eslint-disable-next-line react/hook-use-state
 	const [, setTick] = useState(true);
 
 	useEffect(() => {
 		const id = setInterval(() => {
 			setTick(t => !t);
-		}, 10000);
-		return () => clearInterval(id);
+		}, 10_000);
+		return () => {
+			clearInterval(id);
+		};
 	}, []);
 	return (
 		<TerminalInfoProvider>
 			<Box flexDirection="column">
-				<Text>{props.args[0]}</Text>
+				<Text>{properties.args[0]}</Text>
 				<Box flexDirection="column">
 					{/* First row */}
 					<Box flexDirection="row">
-						{testImages.slice(0, 3).map((src, index) => (
+						{testImages.slice(0, 3).map((source, index) => (
 							<Box
 								key={index}
 								borderStyle="round"
@@ -51,16 +55,16 @@ export default function TestImage(props: Props) {
 								height={17}
 							>
 								<Image
-									src={src}
+									src={source}
 									alt={`Test Image ${index + 1}`}
-									protocol={props.args[0]}
+									protocol={properties.args[0]}
 								/>
 							</Box>
 						))}
 					</Box>
 					{/* Second row */}
 					<Box flexDirection="row">
-						{testImages.slice(3, 6).map((src, index) => (
+						{testImages.slice(3, 6).map((source, index) => (
 							<Box
 								key={index + 3}
 								borderStyle="round"
@@ -69,9 +73,9 @@ export default function TestImage(props: Props) {
 								height={17}
 							>
 								<Image
-									src={src}
+									src={source}
 									alt={`Test Image ${index + 4}`}
-									protocol={props.args[0]}
+									protocol={properties.args[0]}
 								/>
 							</Box>
 						))}

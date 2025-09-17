@@ -1,11 +1,11 @@
 import React, {useState, useEffect} from 'react';
-import {FeedInstance} from '../../types/instagram.js';
-import TimelineMediaDisplay from '../components/TimelineMediaDisplay.js';
-import ListMediaDisplay from '../components/ListMediaDisplay.js';
-import {ConfigManager} from '../../config.js';
 import {TerminalInfoProvider} from 'ink-picture';
+import {type FeedInstance} from '../../types/instagram.js';
+import TimelineMediaDisplay from '../components/timeline-media-display.js';
+import ListMediaDisplay from '../components/list-media-display.js';
+import {ConfigManager} from '../../config.js';
 
-export default function MediaView({feed}: {feed: FeedInstance}) {
+export default function MediaView({feed}: {readonly feed: FeedInstance}) {
 	const [feedType, setFeedType] = useState<'timeline' | 'list'>('list');
 	const [imageProtocol, setImageProtocol] = useState<string | undefined>(
 		undefined,
@@ -13,9 +13,9 @@ export default function MediaView({feed}: {feed: FeedInstance}) {
 
 	useEffect(() => {
 		const config = ConfigManager.getInstance();
-		const savedFeedType = config.get<string>('feed.feedType') || 'list';
+		const savedFeedType = config.get('feed.feedType') || 'list';
 		setFeedType(savedFeedType as 'timeline' | 'list');
-		const protocol = config.get<string>('image.protocol');
+		const protocol = config.get('image.protocol');
 		setImageProtocol(protocol);
 	}, [feed]);
 

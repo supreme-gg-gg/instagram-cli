@@ -1,15 +1,15 @@
 import React, {useState, useEffect} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
-import type {Thread, ChatState} from '../../types/instagram.js';
-import MessageList from '../components/MessageList.js';
 import {TerminalInfoProvider} from 'ink-picture';
-import InputBox from '../components/InputBox.js';
-import StatusBar from '../components/StatusBar.js';
-import ThreadList from '../components/ThreadList.js';
-import {useClient} from '../context/ClientContext.js';
-import {parseAndDispatchChatCommand} from '../../utils/chatCommands.js';
-import FullScreen from '../components/FullScreen.js';
-import {useScreenSize} from '../hooks/useScreenSize.js';
+import type {Thread, ChatState} from '../../types/instagram.js';
+import MessageList from '../components/message-list.js';
+import InputBox from '../components/input-box.js';
+import StatusBar from '../components/status-bar.js';
+import ThreadList from '../components/thread-list.js';
+import {useClient} from '../context/client-context.js';
+import {parseAndDispatchChatCommand} from '../../utils/chat-commands.js';
+import FullScreen from '../components/full-screen.js';
+import {useScreenSize} from '../hooks/use-screen-size.js';
 
 export default function ChatView() {
 	const {exit} = useApp();
@@ -31,12 +31,12 @@ export default function ChatView() {
 			if (!client) return;
 
 			try {
-				setChatState(prev => ({...prev, loading: true}));
+				setChatState(previous => ({...previous, loading: true}));
 				const threads = await client.getThreads();
-				setChatState(prev => ({...prev, threads, loading: false}));
+				setChatState(previous => ({...previous, threads, loading: false}));
 			} catch (error) {
-				setChatState(prev => ({
-					...prev,
+				setChatState(previous => ({
+					...previous,
 					error:
 						error instanceof Error ? error.message : 'Failed to load threads',
 					loading: false,
@@ -44,7 +44,7 @@ export default function ChatView() {
 			}
 		};
 
-		loadThreads();
+		void loadThreads();
 	}, [client]);
 
 	// Poll for new messages
@@ -59,10 +59,12 @@ export default function ChatView() {
 		const interval = setInterval(async () => {
 			if (!client || !chatState.currentThread) return;
 			const {messages} = await client.getMessages(chatState.currentThread.id);
-			setChatState(prev => ({...prev, messages}));
+			setChatState(previous => ({...previous, messages}));
 		}, 5000);
 
-		return () => clearInterval(interval);
+		return () => {
+			clearInterval(interval);
+		};
 	}, [
 		client,
 		currentView,
@@ -83,13 +85,12 @@ export default function ChatView() {
 
 		if (key.escape && currentView === 'chat') {
 			setCurrentView('threads');
-			setChatState(prev => ({
-				...prev,
+			setChatState(previous => ({
+				...previous,
 				currentThread: undefined,
 				messages: [],
 				visibleMessageOffset: 0,
 			}));
-			return;
 		}
 	});
 
@@ -97,8 +98,8 @@ export default function ChatView() {
 		if (!client) return;
 
 		setCurrentView('chat');
-		setChatState(prev => ({
-			...prev,
+		setChatState(previous => ({
+			...previous,
 			currentThread: thread,
 			messages: [],
 			visibleMessageOffset: 0,
@@ -106,15 +107,15 @@ export default function ChatView() {
 
 		try {
 			const {messages, cursor} = await client.getMessages(thread.id);
-			setChatState(prev => ({
-				...prev,
+			setChatState(previous => ({
+				...previous,
 				messages,
 				loading: false,
 				messageCursor: cursor,
 			}));
 		} catch (error) {
-			setChatState(prev => ({
-				...prev,
+			setChatState(previous => ({
+				...previous,
 				error:
 					error instanceof Error ? error.message : 'Failed to load messages',
 				loading: false,
@@ -140,11 +141,15 @@ export default function ChatView() {
 			await client.sendMessage(chatState.currentThread.id, text);
 			// Reload messages to show the new one
 			const {messages} = await client.getMessages(chatState.currentThread.id);
-			// also reset to the bottom of the chat since we just sent a message
-			setChatState(prev => ({...prev, messages, visibleMessageOffset: 0}));
+			// Also reset to the bottom of the chat since we just sent a message
+			setChatState(previous => ({
+				...previous,
+				messages,
+				visibleMessageOffset: 0,
+			}));
 		} catch (error) {
-			setChatState(prev => ({
-				...prev,
+			setChatState(previous => ({
+				...previous,
 				error:
 					error instanceof Error ? error.message : 'Failed to send message',
 			}));
@@ -223,7 +228,7 @@ export default function ChatView() {
 					<StatusBar
 						currentView={currentView}
 						currentThread={chatState.currentThread}
-						loading={chatState.loading}
+						isLoading={chatState.loading}
 						error={chatState.error}
 					/>
 

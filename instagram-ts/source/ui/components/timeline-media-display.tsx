@@ -1,14 +1,14 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import {FeedInstance} from '../../types/instagram.js';
 import Image from 'ink-picture';
+import {type FeedInstance} from '../../types/instagram.js';
 
-type Props = {
-	feed: FeedInstance;
-	protocol?: string;
+type Properties = {
+	readonly feed: FeedInstance;
+	readonly protocol?: string;
 };
 
-export default function TimelineMediaDisplay({feed, protocol}: Props) {
+export default function TimelineMediaDisplay({feed, protocol}: Properties) {
 	const posts = feed.posts || [];
 	return (
 		<Box flexDirection="column" flexGrow={1} gap={1}>
@@ -26,8 +26,7 @@ export default function TimelineMediaDisplay({feed, protocol}: Props) {
 						</Text>
 						<Text color="gray">
 							{' ('}
-							{new Date(item.taken_at * 1000).toLocaleString()}
-							{')'}
+							{new Date(item.taken_at * 1000).toLocaleString()})
 						</Text>
 					</Box>
 					<Text>{'\n'}</Text>
@@ -35,7 +34,7 @@ export default function TimelineMediaDisplay({feed, protocol}: Props) {
 						<Box borderStyle="round" borderColor="cyan" width={32} height={17}>
 							<Image
 								src={item.image_versions2.candidates[0].url}
-								alt={item.caption?.text || `Post by ${item.user?.username}`}
+								alt={item.caption?.text ?? `Post by ${item.user?.username}`}
 								protocol={protocol}
 							/>
 						</Box>
@@ -43,7 +42,7 @@ export default function TimelineMediaDisplay({feed, protocol}: Props) {
 						<Text color="yellow">⏳ No media available...</Text>
 					)}
 					<Text>{'\n'}</Text>
-					<Text wrap="wrap">{item.caption?.text || 'No caption'}</Text>
+					<Text wrap="wrap">{item.caption?.text ?? 'No caption'}</Text>
 					<Text>{'\n'}</Text>
 					<Box flexDirection="row">
 						<Text>

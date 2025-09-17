@@ -5,7 +5,7 @@ import TextInput from 'ink-text-input';
 export default function LoginForm({
 	onSubmit,
 }: {
-	onSubmit: (username: string, password: string) => void;
+	readonly onSubmit: (username: string, password: string) => void;
 }) {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
@@ -16,11 +16,13 @@ export default function LoginForm({
 			<Text>Instagram Login</Text>
 			{step === 'username' ? (
 				<TextInput
+					showCursor
 					placeholder="Username"
 					value={username}
 					onChange={setUsername}
-					showCursor={true}
-					onSubmit={() => setStep('password')}
+					onSubmit={() => {
+						setStep('password');
+					}}
 				/>
 			) : (
 				<TextInput
@@ -28,7 +30,9 @@ export default function LoginForm({
 					placeholder="Password"
 					value={password}
 					onChange={setPassword}
-					onSubmit={() => onSubmit(username, password)}
+					onSubmit={() => {
+						onSubmit(username, password);
+					}}
 				/>
 			)}
 		</Box>

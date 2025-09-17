@@ -1,16 +1,16 @@
 import type {InstagramClient} from '../client.js';
 import type {ChatState, Message} from '../types/instagram.js';
 
-export interface ChatCommandContext {
+export type ChatCommandContext = {
 	client: InstagramClient;
 	chatState: ChatState;
 	setChatState: React.Dispatch<React.SetStateAction<ChatState>>;
 	height: number;
-}
+};
 
 export type ChatCommandHandler = (
-	args: string[],
-	ctx: ChatCommandContext,
+	arguments_: string[],
+	context: ChatCommandContext,
 ) => Promise<void> | void;
 
 // This message is added to the messages list
@@ -30,28 +30,28 @@ function systemMessage(text: string, threadId: string): Message {
 }
 
 export const chatCommands: Record<string, ChatCommandHandler> = {
-	help: async (_args, ctx) => {
-		ctx.setChatState(prev => ({
-			...prev,
+	async help(_arguments, context) {
+		context.setChatState(previous => ({
+			...previous,
 			messages: [
-				...prev.messages,
+				...previous.messages,
 				systemMessage(
 					'Available commands: :help, :echo <text>, :k (scroll up), :j (scroll down)',
-					prev.currentThread?.id ?? '',
+					previous.currentThread?.id ?? '',
 				),
 			],
 		}));
 	},
-	echo: async (args, ctx) => {
-		ctx.setChatState(prev => ({
-			...prev,
+	async echo(arguments_, context) {
+		context.setChatState(previous => ({
+			...previous,
 			messages: [
-				...prev.messages,
-				systemMessage(args.join(' '), prev.currentThread?.id ?? ''),
+				...previous.messages,
+				systemMessage(arguments_.join(' '), previous.currentThread?.id ?? ''),
 			],
 		}));
 	},
-	k: async (_args, {client, chatState, setChatState, height}) => {
+	async k(_arguments, {client, chatState, setChatState, height}) {
 		const messageLines = 3; // Approximate lines per message
 		const visibleMessageCount = Math.max(
 			0,
@@ -65,65 +65,70 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			if (!client || !chatState.currentThread || !chatState.messageCursor) {
 				return; // No more messages to load
 			}
+
 			try {
-				setChatState(prev => ({...prev, loading: true}));
+				setChatState(previous => ({...previous, loading: true}));
 				const {messages, cursor} = await client.getMessages(
 					chatState.currentThread.id,
 					chatState.messageCursor,
 				);
-				setChatState(prev => ({
-					...prev,
-					messages: [...messages, ...prev.messages],
+				setChatState(previous => ({
+					...previous,
+					messages: [...messages, ...previous.messages],
 					loading: false,
 					messageCursor: cursor,
 					// Keep the user roughly at the same message
-					visibleMessageOffset: prev.visibleMessageOffset + messages.length,
+					visibleMessageOffset: previous.visibleMessageOffset + messages.length,
 				}));
 			} catch (error) {
-				setChatState(prev => ({
-					...prev,
+				setChatState(previous => ({
+					...previous,
 					error:
 						error instanceof Error ? error.message : 'Failed to load messages',
 					loading: false,
 				}));
 			}
 		} else {
-			setChatState(prev => ({
-				...prev,
+			setChatState(previous => ({
+				...previous,
 				visibleMessageOffset: Math.min(
 					maxOffset,
-					// move up by 5 messages
-					prev.visibleMessageOffset + 5,
+					// Move up by 5 messages
+					previous.visibleMessageOffset + 5,
 				),
 			}));
 		}
 	},
-	j: async (_args, {setChatState}) => {
-		setChatState(prev => ({
-			...prev,
-			// move down by 5 messages, but not below 0
-			visibleMessageOffset: Math.max(0, prev.visibleMessageOffset - 5),
+	async j(_arguments, {setChatState}) {
+		setChatState(previous => ({
+			...previous,
+			// Move down by 5 messages, but not below 0
+			visibleMessageOffset: Math.max(0, previous.visibleMessageOffset - 5),
 		}));
 	},
 };
 
 export function parseAndDispatchChatCommand(
 	text: string,
-	ctx: ChatCommandContext,
+	context: ChatCommandContext,
 ): boolean {
 	if (!text.startsWith(':')) return false;
-	const [cmd, ...args] = text.slice(1).split(/\s+/);
-	const handler = chatCommands[cmd as keyof typeof chatCommands];
+	const [cmd, ...arguments_] = text.slice(1).split(/\s+/);
+	const handler = chatCommands[cmd!];
 	if (handler) {
-		handler(args, ctx);
+		void handler(arguments_, context);
 	} else {
-		ctx.setChatState(prev => ({
-			...prev,
+		context.setChatState(previous => ({
+			...previous,
 			messages: [
-				...prev.messages,
-				systemMessage(`Unknown command: :${cmd}`, prev.currentThread?.id ?? ''),
+				...previous.messages,
+				systemMessage(
+					`Unknown command: :${cmd}`,
+					previous.currentThread?.id ?? '',
+				),
 			],
 		}));
 	}
+
 	return true;
 }

@@ -14,14 +14,14 @@ export const args = zod.tuple([
 	),
 ]);
 
-type Props = {
-	args: zod.infer<typeof args>;
+type Properties = {
+	readonly args: zod.infer<typeof args>;
 };
 
-export default function Switch({args}: Props) {
+export default function Switch({args}: Properties) {
 	const username = args[0];
-	const [result, setResult] = React.useState<string | null>(null);
-	const [error, setError] = React.useState<string | null>(null);
+	const [result, setResult] = React.useState<string | undefined>(undefined);
+	const [error, setError] = React.useState<string | undefined>(undefined);
 
 	React.useEffect(() => {
 		(async () => {
@@ -29,9 +29,11 @@ export default function Switch({args}: Props) {
 				const client = new InstagramClient(username);
 				await client.switchUser(username);
 				setResult(`✅ Switched to @${username}`);
-			} catch (err) {
+			} catch (error_) {
 				setError(
-					`Switch error: ${err instanceof Error ? err.message : String(err)}`,
+					`Switch error: ${
+						error_ instanceof Error ? error_.message : String(error_)
+					}`,
 				);
 			}
 		})();
@@ -41,5 +43,5 @@ export default function Switch({args}: Props) {
 		return <Alert variant="error">{error}</Alert>;
 	}
 
-	return <Text>{result ? result : `Switching to @${username}...`}</Text>;
+	return <Text>{result ?? `Switching to @${username}...`}</Text>;
 }

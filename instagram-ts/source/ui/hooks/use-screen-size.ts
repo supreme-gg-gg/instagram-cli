@@ -13,6 +13,7 @@ export function useScreenSize() {
 		function onResize() {
 			setSize(getSize());
 		}
+
 		stdout.on('resize', onResize);
 		return () => {
 			stdout.off('resize', onResize);

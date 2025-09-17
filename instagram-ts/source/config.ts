@@ -1,44 +1,44 @@
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
 import yaml from 'js-yaml';
 
-interface LoginConfig {
+type LoginConfig = {
 	defaultUsername?: string;
 	currentUsername?: string;
-}
+};
 
-interface ChatConfig {
+type ChatConfig = {
 	layout: string;
 	colors: boolean;
-}
+};
 
-interface SchedulingConfig {
+type SchedulingConfig = {
 	defaultScheduleDuration: string;
-}
+};
 
-interface PrivacyConfig {
+type PrivacyConfig = {
 	invisibleMode: boolean;
-}
+};
 
-interface FeedConfig {
+type FeedConfig = {
 	feedType: 'timeline' | 'list';
-}
+};
 
-interface ImageConfig {
+type ImageConfig = {
 	protocol: string;
-}
+};
 
-interface AdvancedConfig {
+type AdvancedConfig = {
 	debugMode: boolean;
 	dataDir: string;
 	usersDir: string;
 	cacheDir: string;
 	mediaDir: string;
 	generatedDir: string;
-}
+};
 
-interface Config {
+type Config = {
 	language: string;
 	login: LoginConfig;
 	chat: ChatConfig;
@@ -47,7 +47,7 @@ interface Config {
 	feed: FeedConfig;
 	image: ImageConfig;
 	advanced: AdvancedConfig;
-}
+};
 
 const DEFAULT_DATA_DIR = path.join(os.homedir(), '.instagram-cli');
 
@@ -84,10 +84,15 @@ const DEFAULT_CONFIG: Config = {
 };
 
 export class ConfigManager {
+	public static getInstance(): ConfigManager {
+		ConfigManager.instance ||= new ConfigManager();
+		return ConfigManager.instance;
+	}
+
 	private static instance: ConfigManager;
 	private config: Config;
-	private configDir: string;
-	private configFile: string;
+	private readonly configDir: string;
+	private readonly configFile: string;
 
 	private constructor() {
 		this.configDir = DEFAULT_CONFIG.advanced.dataDir;
@@ -95,15 +100,53 @@ export class ConfigManager {
 		this.config = {...DEFAULT_CONFIG};
 	}
 
-	public static getInstance(): ConfigManager {
-		if (!ConfigManager.instance) {
-			ConfigManager.instance = new ConfigManager();
-		}
-		return ConfigManager.instance;
-	}
-
 	public async initialize(): Promise<void> {
 		await this.loadConfig();
+	}
+
+	public get<T = string>(keyPath: string, defaultValue?: T): T {
+		const keys = keyPath.split('.');
+		let value: any = this.config;
+
+		for (const key of keys) {
+			if (value && typeof value === 'object' && key in value) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				value = value[key];
+			} else {
+				return defaultValue as T;
+			}
+		}
+
+		return value as T;
+	}
+
+	public async set(keyPath: string, value: any): Promise<void> {
+		const keys = keyPath.split('.');
+		let current: any = this.config;
+
+		for (let i = 0; i < keys.length - 1; i++) {
+			const key = keys[i];
+			if (key && !(key in current)) {
+				current[key] = {};
+			}
+
+			if (key) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				current = current[key];
+			}
+		}
+
+		const lastKey = keys.at(-1);
+		if (lastKey) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			current[lastKey] = value;
+		}
+
+		await this.saveConfig();
+	}
+
+	public getConfig(): Config {
+		return {...this.config};
 	}
 
 	private async loadConfig(): Promise<void> {
@@ -117,6 +160,7 @@ export class ConfigManager {
 
 			if (configExists) {
 				const configData = await fs.readFile(this.configFile, 'utf8');
+				// eslint-disable-next-line import/no-named-as-default-member
 				const loadedConfig = yaml.load(configData) as Partial<Config>;
 				this.config = this.mergeConfig(DEFAULT_CONFIG, loadedConfig);
 			} else {
@@ -148,50 +192,11 @@ export class ConfigManager {
 	private async saveConfig(): Promise<void> {
 		try {
 			await fs.mkdir(this.configDir, {recursive: true});
+			// eslint-disable-next-line import/no-named-as-default-member
 			const yamlContent = yaml.dump(this.config);
 			await fs.writeFile(this.configFile, yamlContent, 'utf8');
 		} catch (error) {
 			console.error('Error saving config:', error);
 		}
-	}
-
-	public get<T>(keyPath: string, defaultValue?: T): T {
-		const keys = keyPath.split('.');
-		let value: any = this.config;
-
-		for (const key of keys) {
-			if (value && typeof value === 'object' && key in value) {
-				value = value[key];
-			} else {
-				return defaultValue as T;
-			}
-		}
-
-		return value as T;
-	}
-
-	public async set(keyPath: string, value: any): Promise<void> {
-		const keys = keyPath.split('.');
-		let current: any = this.config;
-
-		for (let i = 0; i < keys.length - 1; i++) {
-			const key = keys[i];
-			if (key && !(key in current)) {
-				current[key] = {};
-			}
-			if (key) {
-				current = current[key];
-			}
-		}
-
-		const lastKey = keys[keys.length - 1];
-		if (lastKey) {
-			current[lastKey] = value;
-		}
-		await this.saveConfig();
-	}
-
-	public getConfig(): Config {
-		return {...this.config};
 	}
 }

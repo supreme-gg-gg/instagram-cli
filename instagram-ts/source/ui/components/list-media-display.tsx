@@ -1,41 +1,50 @@
 import React, {useState, useEffect} from 'react';
-import {Box, Text, useInput} from 'ink';
-import {Post, FeedInstance, MediaCandidate} from '../../types/instagram.js';
+import {Box, Text, useInput, useApp, useStdout} from 'ink';
 import open from 'open';
 import Image from 'ink-picture';
+import {
+	type Post,
+	type FeedInstance,
+	type MediaCandidate,
+} from '../../types/instagram.js';
 
-type Props = {
-	feed: FeedInstance;
-	protocol?: string;
+type Properties = {
+	readonly feed: FeedInstance;
+	readonly protocol?: string;
 };
 
-export default function ListMediaDisplay({feed, protocol}: Props) {
+export default function ListMediaDisplay({feed, protocol}: Properties) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
+	const {exit} = useApp();
+	const {stdout} = useStdout();
 
 	const posts = feed.posts || [];
 
 	// Helper function to get current image based on selection and carousel index
-	const getCurrentImage = (): MediaCandidate | null => {
+	const getCurrentImage = (): MediaCandidate | undefined => {
 		const currentPost = posts[selectedIndex];
-		if (!currentPost) return null;
+		if (!currentPost) return undefined;
 
 		if (currentPost.carousel_media) {
 			const carouselItem = currentPost.carousel_media[carouselIndex];
-			return carouselItem?.image_versions2?.candidates?.[0] || null;
+			return carouselItem?.image_versions2?.candidates?.[0] ?? undefined;
 		}
 
-		return currentPost.image_versions2?.candidates?.[0] || null;
+		return currentPost.image_versions2?.candidates?.[0] ?? undefined;
 	};
 
-	const openMediaUrl = (activePost: Post) => {
+	const openMediaUrl = async (activePost: Post) => {
 		if (activePost.media_type === 1) {
 			// If media is an image, open the image URL
 			const imageUrl = activePost.image_versions2?.candidates?.[0]?.url;
 			if (imageUrl) {
-				open(imageUrl).catch(err => {
-					console.error('Failed to open image URL:', err);
-				});
+				try {
+					await open(imageUrl);
+				} catch {
+					// TODO: change this when logging is implemented
+					// console.error('Failed to open image URL:', error);
+				}
 			} else {
 				console.error('No image URL available for this item.');
 			}
@@ -43,9 +52,12 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 			// If media is a video, open the video URL
 			const videoUrl = activePost.video_versions?.[0]?.url;
 			if (videoUrl) {
-				open(videoUrl).catch(err => {
-					console.error('Failed to open video URL:', err);
-				});
+				try {
+					await open(videoUrl);
+				} catch {
+					// TODO: change this when logging is implemented
+					// console.error('Failed to open video URL:', error);
+				}
 			} else {
 				console.error('No video URL available for this item.');
 			}
@@ -54,12 +66,15 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 			const carouselItem = activePost.carousel_media[carouselIndex];
 			if (carouselItem) {
 				const carouselUrl =
-					carouselItem.image_versions2?.candidates?.[0]?.url ||
+					carouselItem.image_versions2?.candidates?.[0]?.url ??
 					carouselItem.video_versions?.[0]?.url;
 				if (carouselUrl) {
-					open(carouselUrl).catch(err => {
-						console.error('Failed to open carousel item URL:', err);
-					});
+					try {
+						await open(carouselUrl);
+					} catch {
+						// TODO: change this when logging is implemented
+						// console.error('Failed to open carousel item URL:', error);
+					}
 				}
 			}
 		} else {
@@ -68,37 +83,37 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 	};
 
 	useInput((input, key) => {
-		//Post navigation
+		// Post navigation
 		if (input === 'j' || key.downArrow) {
-			setSelectedIndex(prev => Math.min(prev + 1, posts.length - 1));
+			setSelectedIndex(previous => Math.min(previous + 1, posts.length - 1));
 		} else if (input === 'k' || key.upArrow) {
-			setSelectedIndex(prev => Math.max(prev - 1, 0));
-			//Carousel navigation
+			setSelectedIndex(previous => Math.max(previous - 1, 0));
+			// Carousel navigation
 		} else if (input === 'h' || key.leftArrow) {
 			if (posts[selectedIndex]?.carousel_media) {
-				setCarouselIndex(prev => Math.max(prev - 1, 0));
+				setCarouselIndex(previous => Math.max(previous - 1, 0));
 			}
 		} else if (input === 'l' || key.rightArrow) {
 			if (posts[selectedIndex]?.carousel_media) {
-				setCarouselIndex(prev =>
+				setCarouselIndex(previous =>
 					Math.min(
-						prev + 1,
+						previous + 1,
 						(posts[selectedIndex]?.carousel_media_count ?? 0) - 1,
 					),
 				);
 			}
-			//Open in browser
+			// Open in browser
 		} else if (input === 'o' || key.return) {
 			const selectedItem = posts[selectedIndex];
 			if (selectedItem) {
 				const baseItem = posts[selectedIndex];
 				if (baseItem) {
-					openMediaUrl(baseItem);
+					void openMediaUrl(baseItem);
 				}
 			}
-			//Quit
+			// Quit
 		} else if (input === 'q' || key.escape) {
-			process.exit(0);
+			exit();
 		}
 	});
 
@@ -107,13 +122,17 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 	}, [selectedIndex]);
 
 	const currentImage = getCurrentImage();
-	let dynamicImageSize = null;
-	if (currentImage) {
-		const {width, height} = currentImage;
-		dynamicImageSize = calculateDynamicPostMediaSize(width, height);
-	}
+	const dynamicImageSize = currentImage
+		? calculateDynamicPostMediaSize(
+				currentImage.width,
+				currentImage.height,
+				stdout.columns,
+				stdout.rows,
+			)
+		: undefined;
+
 	return (
-		<Box flexDirection="column" height={process.stdout.rows} width="100%">
+		<Box flexDirection="column" height={stdout.rows} width="100%">
 			<Box flexDirection="row" gap={2} flexGrow={1}>
 				{/* Users list */}
 				<Box
@@ -172,7 +191,7 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 										<Image
 											src={getCurrentImage()!.url}
 											alt={
-												posts[selectedIndex]?.caption?.text ||
+												posts[selectedIndex]?.caption?.text ??
 												`Post by ${posts[selectedIndex]?.user?.username}`
 											}
 											protocol={protocol}
@@ -204,7 +223,7 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 							>
 								<Box flexDirection="row">
 									<Text color="green">
-										👤 {posts[selectedIndex]?.user?.username || 'Unknown user'}
+										👤 {posts[selectedIndex]?.user?.username ?? 'Unknown user'}
 									</Text>
 									{posts[selectedIndex]?.taken_at && (
 										<Text color="gray">
@@ -212,13 +231,13 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 											{new Date(
 												posts[selectedIndex].taken_at * 1000,
 											).toLocaleString()}
-											{')'}
+											)
 										</Text>
 									)}
 								</Box>
 								<Text>{'\n'}</Text>
 								<Text wrap="wrap">
-									{posts[selectedIndex]?.caption?.text || 'No caption'}
+									{posts[selectedIndex]?.caption?.text ?? 'No caption'}
 								</Text>
 								<Text>{'\n'}</Text>
 
@@ -246,8 +265,9 @@ export default function ListMediaDisplay({feed, protocol}: Props) {
 function calculateDynamicPostMediaSize(
 	imageWidth: number,
 	imageHeight: number,
+	termWidth: number,
+	termHeight: number,
 ): {width: number; height: number} {
-	const termWidth = process.stdout.columns;
 	let width = Math.min(Math.floor(termWidth / 3), 80);
 
 	const aspectRatio = imageWidth / imageHeight;
@@ -258,9 +278,6 @@ function calculateDynamicPostMediaSize(
 		width = Math.floor(width * 1.1);
 	}
 
-	const height = Math.max(
-		process.stdout.rows,
-		Math.floor((width / aspectRatio) * 0.5),
-	);
+	const height = Math.max(termHeight, Math.floor((width / aspectRatio) * 0.5));
 	return {width, height};
 }

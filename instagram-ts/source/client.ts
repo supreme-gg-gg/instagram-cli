@@ -1,3 +1,5 @@
+import {join} from 'node:path';
+import fs from 'node:fs';
 import {
 	IgApiClient,
 	IgCheckpointError,
@@ -6,26 +8,86 @@ import {
 	type DirectInboxFeedResponseUsersItem,
 	type AccountRepositoryLoginErrorResponseTwoFactorInfo,
 } from 'instagram-private-api';
-import {join} from 'path';
-import fs from 'fs/promises';
 import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
 import type {Thread, Message, User} from './types/instagram.js';
 
-export interface LoginResult {
+export type LoginResult = {
 	success: boolean;
 	error?: string;
 	username?: string;
 	checkpointError?: IgCheckpointError;
 	twoFactorInfo?: AccountRepositoryLoginErrorResponseTwoFactorInfo; // Add this to carry 2FA info
-}
+};
 
 export class InstagramClient {
-	private ig: IgApiClient;
-	private sessionManager: SessionManager | null = null;
-	private configManager: ConfigManager;
-	private username: string | null = null;
-	private userCache: Map<string, string> = new Map(); // Cache for user ID -> username mapping
+	public static async cleanupSessions(): Promise<void> {
+		try {
+			const configManager = ConfigManager.getInstance();
+			await configManager.initialize();
+
+			// Clean up current username in config
+			await configManager.set('login.currentUsername', null);
+
+			// Clean up session files
+			const usersDirectory = configManager.get('advanced.usersDir');
+			try {
+				const userDirectories = fs.readdirSync(usersDirectory);
+				for (const userSubdirectory of userDirectories) {
+					const sessionFile = join(
+						usersDirectory,
+						userSubdirectory,
+						'session.ts.json',
+					);
+					try {
+						fs.unlinkSync(sessionFile);
+					} catch {
+						// Ignore if file doesn't exist
+					}
+				}
+			} catch {
+				// Ignore if usersDir doesn't exist
+			}
+		} catch (error) {
+			console.error('Error during session cleanup:', error);
+			throw error;
+		}
+	}
+
+	public static async cleanupCache(): Promise<void> {
+		try {
+			const configManager = ConfigManager.getInstance();
+			await configManager.initialize();
+
+			const cacheDirectory = configManager.get('advanced.cacheDir');
+			const mediaDirectory = configManager.get('advanced.mediaDir');
+			const generatedDirectory = configManager.get('advanced.generatedDir');
+
+			for (const directory of [
+				cacheDirectory,
+				mediaDirectory,
+				generatedDirectory,
+			]) {
+				try {
+					const files = fs.readdirSync(directory);
+					for (const file of files) {
+						fs.unlinkSync(join(directory, file));
+					}
+				} catch {
+					// Ignore if directory or files don't exist
+				}
+			}
+		} catch (error) {
+			console.error('Error during cache cleanup:', error);
+			throw error;
+		}
+	}
+
+	private readonly ig: IgApiClient;
+	private sessionManager: SessionManager | undefined = undefined;
+	private readonly configManager: ConfigManager;
+	private username: string | undefined = undefined;
+	private readonly userCache = new Map<string, string>(); // Cache for user ID -> username mapping
 
 	constructor(username?: string) {
 		this.ig = new IgApiClient();
@@ -54,9 +116,7 @@ export class InstagramClient {
 			await this.saveSessionState();
 			await this.configManager.set('login.currentUsername', username);
 
-			const defaultUsername = this.configManager.get<string>(
-				'login.defaultUsername',
-			);
+			const defaultUsername = this.configManager.get('login.defaultUsername');
 			if (!defaultUsername) {
 				await this.configManager.set('login.defaultUsername', username);
 			}
@@ -116,7 +176,7 @@ export class InstagramClient {
 	}
 
 	public async startChallenge(): Promise<void> {
-		// this handles automatically choosing challenge type etc.
+		// This handles automatically choosing challenge type etc.
 		await this.ig.challenge.auto(true);
 	}
 
@@ -129,13 +189,12 @@ export class InstagramClient {
 			await this.saveSessionState();
 			if (this.username) {
 				await this.configManager.set('login.currentUsername', this.username);
-				const defaultUsername = this.configManager.get<string>(
-					'login.defaultUsername',
-				);
+				const defaultUsername = this.configManager.get('login.defaultUsername');
 				if (!defaultUsername) {
 					await this.configManager.set('login.defaultUsername', this.username);
 				}
 			}
+
 			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
 			console.error('Sending challenge code failed:', error);
@@ -182,11 +241,12 @@ export class InstagramClient {
 			await this.saveSessionState();
 			await this.configManager.set('login.currentUsername', this.username);
 
-			return {success: true, username: this.username || undefined};
+			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
 			if (error instanceof IgCheckpointError) {
 				return {success: false, checkpointError: error};
 			}
+
 			console.error('Failed to login with session:', error);
 			return {
 				success: false,
@@ -195,22 +255,9 @@ export class InstagramClient {
 		}
 	}
 
-	private async saveSessionState(): Promise<void> {
-		if (!this.sessionManager) {
-			return;
-		}
-
-		try {
-			const serialized = await this.ig.state.serialize();
-			await this.sessionManager.saveSession(serialized);
-		} catch (error) {
-			console.error('Error saving session state:', error);
-		}
-	}
-
 	public async logout(usernameToLogout?: string): Promise<void> {
 		try {
-			const targetUsername = usernameToLogout || this.username;
+			const targetUsername = usernameToLogout ?? this.username;
 			if (targetUsername) {
 				const sessionManager = new SessionManager(targetUsername);
 				await sessionManager.deleteSession();
@@ -249,66 +296,28 @@ export class InstagramClient {
 		}
 	}
 
-	public static async cleanupSessions(): Promise<void> {
-		try {
-			const configManager = ConfigManager.getInstance();
-			await configManager.initialize();
-
-			// Clean up current username in config
-			await configManager.set('login.currentUsername', null);
-
-			// Clean up session files
-			const usersDir = configManager.get('advanced.usersDir') as string;
-			try {
-				const userDirs = await fs.readdir(usersDir);
-				for (const userDir of userDirs) {
-					const sessionFile = join(usersDir, userDir, 'session.ts.json');
-					try {
-						await fs.unlink(sessionFile);
-					} catch (error) {
-						// Ignore if file doesn't exist
-					}
-				}
-			} catch (error) {
-				// Ignore if usersDir doesn't exist
-			}
-		} catch (error) {
-			console.error('Error during session cleanup:', error);
-			throw error;
-		}
-	}
-
-	public static async cleanupCache(): Promise<void> {
-		try {
-			const configManager = ConfigManager.getInstance();
-			await configManager.initialize();
-
-			const cacheDir = configManager.get('advanced.cacheDir') as string;
-			const mediaDir = configManager.get('advanced.mediaDir') as string;
-			const generatedDir = configManager.get('advanced.generatedDir') as string;
-
-			for (const dir of [cacheDir, mediaDir, generatedDir]) {
-				try {
-					const files = await fs.readdir(dir);
-					for (const file of files) {
-						await fs.unlink(join(dir, file as string));
-					}
-				} catch (error) {
-					// Ignore if directory or files don't exist
-				}
-			}
-		} catch (error) {
-			console.error('Error during cache cleanup:', error);
-			throw error;
-		}
-	}
-
 	public getInstagramClient(): IgApiClient {
 		return this.ig;
 	}
 
-	public getUsername(): string | null {
+	public getUsername(): string | undefined {
 		return this.username;
+	}
+
+	async getCurrentUser(): Promise<User | undefined> {
+		try {
+			const user = await this.ig.user.info(this.ig.state.cookieUserId);
+			return {
+				pk: user.pk.toString(),
+				username: user.username,
+				fullName: user.full_name,
+				profilePicUrl: user.profile_pic_url,
+				isVerified: user.is_verified,
+			};
+		} catch (error) {
+			console.error('Failed to get current user:', error);
+			return undefined;
+		}
 	}
 
 	async getThreads(): Promise<Thread[]> {
@@ -317,16 +326,16 @@ export class InstagramClient {
 
 			// Clear and populate user cache from all threads
 			this.userCache.clear();
-			inbox.forEach(thread => {
+			for (const thread of inbox) {
 				if (thread.users) {
-					thread.users.forEach((user: DirectInboxFeedResponseUsersItem) => {
+					for (const user of thread.users) {
 						this.userCache.set(
 							user.pk.toString(),
-							user.username || user.full_name || `User_${user.pk}`,
+							user.username ?? user.full_name ?? `User_${user.pk}`,
 						);
-					});
+					}
 				}
-			});
+			}
 
 			return inbox.map(thread => ({
 				id: thread.thread_id,
@@ -334,7 +343,7 @@ export class InstagramClient {
 				users: this.getThreadUsers(thread),
 				lastMessage: this.getLastMessage(thread),
 				lastActivity: new Date(Number(thread.last_activity_at) / 1000),
-				unread: thread.has_newer ? true : false,
+				unread: Boolean(thread.has_newer),
 			}));
 		} catch (error) {
 			console.error('Failed to fetch threads:', error);
@@ -349,7 +358,7 @@ export class InstagramClient {
 		try {
 			const thread = this.ig.feed.directThread({
 				thread_id: threadId,
-				oldest_cursor: cursor || '',
+				oldest_cursor: cursor ?? '',
 			});
 			const items = await thread.items();
 
@@ -360,28 +369,36 @@ export class InstagramClient {
 					userId: item.user_id.toString(),
 					username: this.getUsernameFromCache(item.user_id, this.userCache),
 					isOutgoing: item.user_id.toString() === this.ig.state.cookieUserId,
-					threadId: threadId,
+					threadId,
 				};
 
 				switch (item.item_type) {
-					case 'text':
+					case 'text': {
 						return {...baseMessage, itemType: 'text', text: item.text || ''};
-					case 'media':
+					}
+
+					case 'media': {
 						return {
 							...baseMessage,
 							itemType: 'media',
-							// somehow the types do not contain non-text message fields so we need to cast it
+							// Somehow the types do not contain non-text message fields so we need to cast it
 							// this is verified by examining the API response directly
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 							media: (item as any).media,
 						};
-					case 'clip':
+					}
+
+					case 'clip': {
 						return {...baseMessage, itemType: 'clip', clip: undefined};
-					default:
+					}
+
+					default: {
 						return {
 							...baseMessage,
 							itemType: 'placeholder',
 							text: `[Unsupported message type: ${item.item_type}]`,
 						};
+					}
 				}
 			}) as Message[];
 
@@ -404,6 +421,21 @@ export class InstagramClient {
 		}
 	}
 
+	private async saveSessionState(): Promise<void> {
+		if (!this.sessionManager) {
+			return;
+		}
+
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const serialized = await this.ig.state.serialize();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			await this.sessionManager.saveSession(serialized);
+		} catch (error) {
+			console.error('Error saving session state:', error);
+		}
+	}
+
 	private getThreadTitle(thread: DirectInboxFeedResponseThreadsItem): string {
 		if (thread.thread_title) {
 			return thread.thread_title;
@@ -422,7 +454,7 @@ export class InstagramClient {
 
 		if (otherUsers.length === 1) {
 			return (
-				otherUsers[0]?.username || otherUsers[0]?.full_name || 'Unknown User'
+				otherUsers[0]?.username ?? otherUsers[0]?.full_name ?? 'Unknown User'
 			);
 		}
 
@@ -465,28 +497,38 @@ export class InstagramClient {
 		};
 
 		switch (lastItem.item_type) {
-			case 'text':
-				return {...baseMessage, itemType: 'text', text: lastItem.text || ''};
-			case 'media':
+			case 'text': {
+				return {...baseMessage, itemType: 'text', text: lastItem.text ?? ''};
+			}
+
+			case 'media': {
 				return {
 					...baseMessage,
 					itemType: 'media',
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					media: (lastItem as any).media,
 				};
-			case 'clip':
+			}
+
+			case 'clip': {
 				return {...baseMessage, itemType: 'clip', clip: undefined};
-			case 'placeholder':
+			}
+
+			case 'placeholder': {
 				return {
 					...baseMessage,
 					itemType: 'placeholder',
-					text: lastItem.placeholder?.message || 'Placeholder message',
+					text: lastItem.placeholder?.message ?? 'Placeholder message',
 				};
-			default:
+			}
+
+			default: {
 				return {
 					...baseMessage,
 					itemType: 'placeholder',
 					text: `[Unsupported message type: ${lastItem.item_type}]`,
 				};
+			}
 		}
 	}
 
@@ -494,31 +536,15 @@ export class InstagramClient {
 		userId: number,
 		userCache: Map<string, string>,
 	): string {
-		const userIdStr = userId.toString();
+		const userIdString = userId.toString();
 
 		// Check if it's the current user
-		if (userIdStr === this.ig.state.cookieUserId) {
+		if (userIdString === this.ig.state.cookieUserId) {
 			return 'You';
 		}
 
 		// Look up in the user cache
-		const username = userCache.get(userIdStr);
-		return username || `User_${userId}`;
-	}
-
-	async getCurrentUser(): Promise<User | null> {
-		try {
-			const user = await this.ig.user.info(this.ig.state.cookieUserId);
-			return {
-				pk: user.pk.toString(),
-				username: user.username,
-				fullName: user.full_name,
-				profilePicUrl: user.profile_pic_url,
-				isVerified: user.is_verified,
-			};
-		} catch (error) {
-			console.error('Failed to get current user:', error);
-			return null;
-		}
+		const username = userCache.get(userIdString);
+		return username ?? `User_${userId}`;
 	}
 }

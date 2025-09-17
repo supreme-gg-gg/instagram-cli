@@ -1,6 +1,8 @@
 {
 	"extends": "@sindresorhus/tsconfig",
 	"compilerOptions": {
+		"esModuleInterop": true,
+		"lib": ["ES2022"],
 		"outDir": "dist",
 		"moduleResolution": "node16",
 		"allowImportingTsExtensions": false

@@ -2,11 +2,11 @@ import React from 'react';
 import {Box} from 'ink';
 import zod from 'zod';
 import {argument} from 'pastel';
-import ChatView from '../ui/views/ChatView.js';
-import {ClientContext} from '../ui/context/ClientContext.js';
 import {Alert} from '@inkjs/ui';
-import {useInstagramClient} from '../ui/hooks/useInstagramClient.js';
-import AltScreen from '../ui/components/AltScreen.js';
+import ChatView from '../ui/views/chat-view.js';
+import {ClientContext} from '../ui/context/client-context.js';
+import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
+import AltScreen from '../ui/components/alt-screen.js';
 
 export const args = zod.tuple([
 	zod
@@ -20,11 +20,11 @@ export const args = zod.tuple([
 		),
 ]);
 
-type Props = {
-	args: zod.infer<typeof args>;
+type Properties = {
+	readonly args: zod.infer<typeof args>;
 };
 
-export default function Chat({args}: Props) {
+export default function Chat({args}: Properties) {
 	const {client, isLoading, error} = useInstagramClient(args[0]);
 
 	if (isLoading) {

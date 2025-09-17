@@ -6,7 +6,7 @@
 	"bin": "dist/cli.js",
 	"type": "module",
 	"engines": {
-		"node": ">=16"
+		"node": ">=16.6"
 	},
 	"scripts": {
 		"format": "prettier --write .",
@@ -30,6 +30,7 @@
 		"instagram-private-api": "^1.46.1",
 		"js-yaml": "^4.1.0",
 		"meow": "^11.0.0",
+		"open": "^10.2.0",
 		"pastel": "^3.0.0",
 		"react": "^18.2.0",
 		"readline": "^1.3.0",
@@ -63,7 +64,11 @@
 		"extends": "xo-react",
 		"prettier": true,
 		"rules": {
-			"react/prop-types": "off"
+			"react/prop-types": "off",
+			"@typescript-eslint/naming-convention": "off",
+			"@typescript-eslint/no-empty-function": "off",
+			"react/no-array-index-key": "off",
+			"unicorn/prevent-abbreviations": "off"
 		}
 	},
 	"prettier": "@vdemedes/prettier-config"

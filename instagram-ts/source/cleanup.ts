@@ -13,7 +13,7 @@ export async function cleanup(deleteAll = false): Promise<void> {
 	try {
 		await InstagramClient.cleanupSessions();
 		console.log('✅ Session files cleaned up');
-	} catch (error) {
+	} catch {
 		// Users directory might not exist
 		console.log('ℹ️  No session files to clean up');
 	}

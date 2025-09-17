@@ -26,17 +26,16 @@ export const args = zod.tuple([
 		),
 ]);
 
-type Props = {
-	args: zod.infer<typeof args>;
+type Properties = {
+	readonly args: zod.infer<typeof args>;
 };
 
-export default function Config({args}: Props) {
-	const [result, setResult] = React.useState<string | null>(null);
-	const [error, setError] = React.useState<string | null>(null);
-	const [configData, setConfigData] = React.useState<Record<
-		string,
-		any
-	> | null>(null);
+export default function Config({args}: Properties) {
+	const [result, setResult] = React.useState<string | undefined>(undefined);
+	const [error, setError] = React.useState<string | undefined>(undefined);
+	const [configData, setConfigData] = React.useState<
+		Record<string, any> | undefined
+	>(undefined);
 
 	React.useEffect(() => {
 		(async () => {
@@ -49,6 +48,7 @@ export default function Config({args}: Props) {
 
 				if (value !== undefined) {
 					try {
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						value = JSON.parse(value);
 					} catch {
 						// If parsing fails, treat it as a plain string
@@ -68,10 +68,10 @@ export default function Config({args}: Props) {
 					await config.set(key, value === 'null' ? null : value);
 					setResult(`✅ Set ${key} to: ${value}`);
 				}
-			} catch (err) {
+			} catch (error_) {
 				setError(
 					`Configuration error: ${
-						err instanceof Error ? err.message : String(err)
+						error_ instanceof Error ? error_.message : String(error_)
 					}`,
 				);
 			}
@@ -99,5 +99,5 @@ export default function Config({args}: Props) {
 		);
 	}
 
-	return <Text>{result ? result : 'Configuring...'}</Text>;
+	return <Text>{result ?? 'Configuring...'}</Text>;
 }

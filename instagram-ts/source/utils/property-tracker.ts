@@ -1,29 +1,30 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import {fileURLToPath} from 'url';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default function registerProperties(
-	obj: Record<string, any>,
+	object: Record<string, any>,
 	fileName: string,
 ): void {
 	const filePath = path.resolve(__dirname, '../../data', fileName);
 
-	const dir = path.dirname(filePath);
-	if (!fs.existsSync(dir)) {
-		fs.mkdirSync(dir, {recursive: true});
+	const directory = path.dirname(filePath);
+	if (!fs.existsSync(directory)) {
+		fs.mkdirSync(directory, {recursive: true});
 	}
 
 	if (!fs.existsSync(filePath)) {
 		fs.writeFileSync(filePath, JSON.stringify([]));
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const registeredProperties: string[] = JSON.parse(
-		fs.readFileSync(filePath, 'utf-8'),
+		fs.readFileSync(filePath, 'utf8'),
 	);
-	const newKeys = Object.keys(obj).filter(
+	const newKeys = Object.keys(object).filter(
 		key => !registeredProperties.includes(key),
 	);
 
