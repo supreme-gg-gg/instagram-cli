@@ -1,11 +1,18 @@
 {
 	"extends": "@sindresorhus/tsconfig",
 	"compilerOptions": {
+		"jsx": "react",
 		"esModuleInterop": true,
 		"lib": ["ES2022"],
 		"outDir": "dist",
 		"moduleResolution": "node16",
 		"allowImportingTsExtensions": false
 	},
-	"include": ["source"]
+	"include": ["source"],
+	"ts-node": {
+		"transpileOnly": true,
+		"files": true,
+		"experimentalResolver": true,
+		"experimentalSpecifierResolution": "node"
+	}
 }

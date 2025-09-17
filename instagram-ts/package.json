@@ -6,7 +6,7 @@
 	"bin": "dist/cli.js",
 	"type": "module",
 	"engines": {
-		"node": ">=16.6"
+		"node": ">=20"
 	},
 	"scripts": {
 		"format": "prettier --write .",
@@ -15,6 +15,7 @@
 		"dev": "tsc --watch",
 		"start": "node dist/cli.js",
 		"start:mock": "node dist/cli.mock.js",
+		"pretest": "tsc",
 		"test": "prettier --check . && xo && ava"
 	},
 	"files": [
@@ -43,15 +44,18 @@
 		"@vdemedes/prettier-config": "^2.0.1",
 		"ava": "^5.2.0",
 		"chalk": "^5.2.0",
-		"eslint-config-xo-react": "^0.27.0",
-		"eslint-plugin-react": "^7.32.2",
-		"eslint-plugin-react-hooks": "^4.6.0",
-		"prettier": "^2.8.7",
-		"ts-node": "^10.9.1",
+		"eslint-config-xo-react": "0.27.0",
+		"eslint-plugin-react": "^7.37.5",
+		"eslint-plugin-react-hooks": "^5.0.0",
+		"prettier": "^3.3.3",
+		"ts-node": "^10.9.2",
 		"typescript": "^5.0.3",
-		"xo": "^0.54.2"
+		"xo": "^0.60.0"
 	},
 	"ava": {
+		"files": [
+			"test.tsx"
+		],
 		"extensions": {
 			"ts": "module",
 			"tsx": "module"

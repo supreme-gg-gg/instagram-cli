@@ -1,11 +1,10 @@
 import React from 'react';
-import chalk from 'chalk';
-import test from 'ava';
+import test, {type ExecutionContext} from 'ava';
 import {render} from 'ink-testing-library';
-import App from './source/app.js';
+import Index from './source/commands/index.js';
 
-test('greet unknown user', t => {
-	const {lastFrame} = render(<App />);
+test('sanity check', (t: ExecutionContext) => {
+	const {lastFrame} = render(<Index />);
 
-	t.not(lastFrame(), null);
+	t.not(lastFrame(), undefined);
 });

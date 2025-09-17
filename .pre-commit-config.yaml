@@ -13,22 +13,22 @@ repos:
 
   # TypeScript/JavaScript tools (only for instagram-ts folder)
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: v3.6.2
+    rev: v3.3.3
     hooks:
       - id: prettier
         files: '^instagram-ts/.*\.(ts|tsx|js|jsx|json|md)$'
         exclude: "^instagram-ts/(node_modules|dist)/"
 
   # TypeScript linting via local execution (since xo config is in package.json)
-  # - repo: local
-  #   hooks:
-  #     - id: xo-lint
-  #       name: XO TypeScript Linting
-  #       entry: bash -c 'cd instagram-ts && npm run lint-check'
-  #       language: system
-  #       files: '^instagram-ts/.*\.(ts|tsx)$'
-  #       exclude: "^instagram-ts/(node_modules|dist)/"
-  #       pass_filenames: false
+  - repo: local
+    hooks:
+      - id: xo-lint
+        name: XO TypeScript Linting
+        entry: bash -c 'cd instagram-ts && npm run lint-check'
+        language: system
+        files: '^instagram-ts/.*\.(ts|tsx)$'
+        exclude: "^instagram-ts/(node_modules|dist)/"
+        pass_filenames: false
 
   # Generic tools
   - repo: https://github.com/pre-commit/pre-commit-hooks
