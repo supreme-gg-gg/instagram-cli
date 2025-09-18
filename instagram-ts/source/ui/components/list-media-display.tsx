@@ -7,6 +7,8 @@ import {
 	type FeedInstance,
 	type MediaCandidate,
 } from '../../types/instagram.js';
+import AltScreen from './alt-screen.js';
+import FullScreen from './full-screen.js';
 
 type Properties = {
 	readonly feed: FeedInstance;
@@ -132,133 +134,136 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 		: undefined;
 
 	return (
-		<Box flexDirection="column" height={stdout.rows} width="100%">
-			<Box flexDirection="row" gap={2} flexGrow={1}>
-				{/* Users list */}
-				<Box
-					flexDirection="column"
-					borderStyle="round"
-					paddingX={1}
-					width={30}
-					flexShrink={0}
-					height="100%"
-				>
-					<Text color="cyan">📜 Feed</Text>
-					<Box height={1} />
-					{posts.map((item, index) => (
-						<Text
-							key={item.id}
-							color={index === selectedIndex ? 'blue' : undefined}
-							wrap="truncate"
+		<AltScreen>
+			<FullScreen>
+				<Box flexDirection="column" height="100%" width="100%">
+					<Box flexDirection="row" gap={2} flexGrow={1}>
+						{/* Users list */}
+						<Box
+							flexDirection="column"
+							borderStyle="round"
+							paddingX={1}
+							width={30}
+							flexShrink={0}
+							height="100%"
 						>
-							{index === selectedIndex ? '➜ ' : '   '}
-							{item.user?.username || 'Unknown'}
-						</Text>
-					))}
-				</Box>
-
-				{/* Right panel */}
-				<Box
-					flexDirection="column"
-					borderStyle="round"
-					padding={1}
-					flexGrow={1}
-					height="100%"
-					overflow="hidden"
-				>
-					{posts.length === 0 ? (
-						<Box flexGrow={1} justifyContent="center" alignItems="center">
-							<Text>⏳ Loading posts...</Text>
+							<Text color="cyan">📜 Feed</Text>
+							<Box height={1} />
+							{posts.map((item, index) => (
+								<Text
+									key={item.id}
+									color={index === selectedIndex ? 'blue' : undefined}
+									wrap="truncate"
+								>
+									{index === selectedIndex ? '➜ ' : '   '}
+									{item.user?.username || 'Unknown'}
+								</Text>
+							))}
 						</Box>
-					) : (
-						<Box flexDirection="row" flexGrow={1} overflow="hidden" gap={1}>
-							{/* Media display */}
-							<Box
-								flexDirection="column"
-								flexGrow={1}
-								overflow="hidden"
-								alignItems="center"
-								justifyContent="flex-start"
-								width="50%"
-							>
-								{posts[selectedIndex] && getCurrentImage() ? (
+
+						{/* Right panel */}
+						<Box
+							flexDirection="column"
+							borderStyle="round"
+							padding={1}
+							flexGrow={1}
+							height="100%"
+							overflow="hidden"
+						>
+							{posts.length === 0 ? (
+								<Box flexGrow={1} justifyContent="center" alignItems="center">
+									<Text>⏳ Loading posts...</Text>
+								</Box>
+							) : (
+								<Box flexDirection="row" flexGrow={1} overflow="hidden" gap={1}>
+									{/* Media display */}
 									<Box
-										borderStyle="round"
-										borderColor="cyan"
-										width={dynamicImageSize!.width + 2}
-										height={dynamicImageSize!.height + 2}
+										flexDirection="column"
+										flexGrow={1}
+										overflow="hidden"
+										alignItems="center"
+										justifyContent="flex-start"
+										width="50%"
 									>
-										<Image
-											src={getCurrentImage()!.url}
-											alt={
-												posts[selectedIndex]?.caption?.text ??
-												`Post by ${posts[selectedIndex]?.user?.username}`
-											}
-											protocol={protocol}
-										/>
-									</Box>
-								) : (
-									<Text color="yellow">⏳ Loading media...</Text>
-								)}
+										{posts[selectedIndex] && getCurrentImage() ? (
+											<Box
+												borderStyle="round"
+												borderColor="cyan"
+												width={dynamicImageSize!.width + 2}
+												height={dynamicImageSize!.height + 2}
+											>
+												<Image
+													src={getCurrentImage()!.url}
+													alt={
+														posts[selectedIndex]?.caption?.text ??
+														`Post by ${posts[selectedIndex]?.user?.username}`
+													}
+													protocol={protocol}
+												/>
+											</Box>
+										) : (
+											<Text color="yellow">⏳ Loading media...</Text>
+										)}
 
-								<Text>
-									{posts[selectedIndex]?.media_type === 2 ? '▶ Video' : ''}
-								</Text>
-								<Text color="gray">
-									{posts[selectedIndex]?.carousel_media_count
-										? `Carousel ${carouselIndex + 1} of ${
-												posts[selectedIndex].carousel_media_count
-											}`
-										: ''}
-								</Text>
-							</Box>
-
-							{/* Caption and stats */}
-							<Box
-								flexDirection="column"
-								width="50%"
-								paddingRight={3}
-								overflow="hidden"
-								justifyContent="flex-start"
-							>
-								<Box flexDirection="row">
-									<Text color="green">
-										👤 {posts[selectedIndex]?.user?.username ?? 'Unknown user'}
-									</Text>
-									{posts[selectedIndex]?.taken_at && (
-										<Text color="gray">
-											{' ('}
-											{new Date(
-												posts[selectedIndex].taken_at * 1000,
-											).toLocaleString()}
-											)
+										<Text>
+											{posts[selectedIndex]?.media_type === 2 ? '▶ Video' : ''}
 										</Text>
-									)}
-								</Box>
-								<Text>{'\n'}</Text>
-								<Text wrap="wrap">
-									{posts[selectedIndex]?.caption?.text ?? 'No caption'}
-								</Text>
-								<Text>{'\n'}</Text>
+										<Text color="gray">
+											{posts[selectedIndex]?.carousel_media_count
+												? `Carousel ${carouselIndex + 1} of ${
+														posts[selectedIndex].carousel_media_count
+													}`
+												: ''}
+										</Text>
+									</Box>
 
-								<Box flexDirection="row">
-									<Text>♡ {posts[selectedIndex]?.like_count ?? 0} </Text>
-									<Text>🗨 {posts[selectedIndex]?.comment_count ?? 0}</Text>
+									{/* Caption and stats */}
+									<Box
+										flexDirection="column"
+										width="50%"
+										paddingRight={3}
+										overflow="hidden"
+										justifyContent="flex-start"
+									>
+										<Box flexDirection="row" marginBottom={1}>
+											<Text color="green">
+												👤{' '}
+												{posts[selectedIndex]?.user?.username ?? 'Unknown user'}
+											</Text>
+											{posts[selectedIndex]?.taken_at && (
+												<Text color="gray">
+													{' ('}
+													{new Date(
+														posts[selectedIndex].taken_at * 1000,
+													).toLocaleString()}
+													)
+												</Text>
+											)}
+										</Box>
+										<Text wrap="wrap">
+											{posts[selectedIndex]?.caption?.text ?? 'No caption'}
+										</Text>
+
+										<Box flexDirection="row" marginTop={1}>
+											<Text>♡ {posts[selectedIndex]?.like_count ?? 0} </Text>
+											<Text>🗨 {posts[selectedIndex]?.comment_count ?? 0}</Text>
+										</Box>
+									</Box>
 								</Box>
-							</Box>
+							)}
 						</Box>
-					)}
-				</Box>
-			</Box>
+					</Box>
 
-			{/* Footer */}
-			<Box marginTop={1}>
-				<Text dimColor>
-					j/k: navigate through posts, h/l: navigate through carousel, o: open
-					in browser, q: quit
-				</Text>
-			</Box>
-		</Box>
+					{/* Footer */}
+					<Box marginTop={1}>
+						<Text dimColor>
+							j/k: navigate through posts, h/l: navigate through carousel, o:
+							open in browser, q: quit
+						</Text>
+					</Box>
+				</Box>
+			</FullScreen>
+		</AltScreen>
 	);
 }
 

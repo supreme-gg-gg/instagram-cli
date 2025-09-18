@@ -16,7 +16,8 @@
 		"start": "node dist/cli.js",
 		"start:mock": "node dist/cli.mock.js",
 		"pretest": "tsc",
-		"test": "prettier --check . && xo && ava"
+		"test": "prettier --check . && xo && ava",
+		"postinstall": "patch-package"
 	},
 	"files": [
 		"dist"
@@ -33,6 +34,7 @@
 		"meow": "^11.0.0",
 		"open": "^10.2.0",
 		"pastel": "^3.0.0",
+		"patch-package": "^8.0.0",
 		"react": "^18.2.0",
 		"readline": "^1.3.0",
 		"zod": "^3.21.4"
