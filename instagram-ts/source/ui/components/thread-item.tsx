@@ -2,16 +2,16 @@ import React from 'react';
 import {Box, Text} from 'ink';
 import type {Message, Thread} from '../../types/instagram.js';
 
-interface ThreadItemProps {
-	thread: Thread;
-	isSelected: boolean;
-}
+type ThreadItemProperties = {
+	readonly thread: Thread;
+	readonly isSelected: boolean;
+};
 
-export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
+export default function ThreadItem({thread, isSelected}: ThreadItemProperties) {
 	const formatTime = (date: Date) => {
 		const now = new Date();
 		const diff = now.getTime() - date.getTime();
-		const minutes = Math.floor(diff / 60000);
+		const minutes = Math.floor(diff / 60_000);
 
 		if (minutes < 60) {
 			return `${minutes}m`;
@@ -28,16 +28,26 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 
 	const getLastMessageText = (message: Message): string => {
 		switch (message.itemType) {
-			case 'text':
+			case 'text': {
 				return message.text;
-			case 'media':
+			}
+
+			case 'media': {
 				return '[Media]';
-			case 'clip':
+			}
+
+			case 'clip': {
 				return '[Clip]';
-			case 'placeholder':
+			}
+
+			case 'placeholder': {
 				return message.text;
-			default:
+			}
+
+			// eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+			default: {
 				return '[Unsupported Message]';
+			}
 		}
 	};
 
@@ -68,7 +78,7 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProps) {
 				</Box>
 				<Box>
 					{thread.unread && (
-						<Text color="green" bold>
+						<Text bold color="green">
 							(Unread){' '}
 						</Text>
 					)}

@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "16"
+          node-version: "20"
 
       - name: Install TS dependencies
         working-directory: instagram-ts
@@ -30,7 +30,6 @@ jobs:
         working-directory: instagram-ts
         run: npx prettier --check .
 
-      # I will enable this soon
-      # - name: Run ESLint + tests
-      #   working-directory: instagram-ts
-      #   run: npm test
+      - name: Run xo + tests
+        working-directory: instagram-ts
+        run: npm test

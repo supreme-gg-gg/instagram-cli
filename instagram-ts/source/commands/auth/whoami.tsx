@@ -3,13 +3,13 @@ import {Text} from 'ink';
 import {ConfigManager} from '../../config.js';
 
 export default function Whoami() {
-	const [username, setUsername] = React.useState<string | null>(null);
+	const [username, setUsername] = React.useState<string | undefined>(undefined);
 
 	React.useEffect(() => {
 		(async () => {
 			const config = ConfigManager.getInstance();
 			await config.initialize();
-			const currentUsername = config.get<string>('login.currentUsername');
+			const currentUsername = config.get('login.currentUsername');
 
 			if (currentUsername) {
 				setUsername(`Currently active account: @${currentUsername}`);
@@ -19,5 +19,5 @@ export default function Whoami() {
 		})();
 	}, []);
 
-	return <Text>{username ? username : 'Fetching user...'}</Text>;
+	return <Text>{username ?? 'Fetching user...'}</Text>;
 }

@@ -1,25 +1,25 @@
 import React, {useRef} from 'react';
 import {Box, Text} from 'ink';
+import Image from 'ink-picture';
 import type {
 	Message,
 	Thread,
-	TextMessage,
-	MediaMessage,
+	// TextMessage,
+	// MediaMessage,
 } from '../../types/instagram.js';
-import Image from './image/index.js';
 import {ConfigManager} from '../../config.js';
 
-interface MessageListProps {
-	messages: Message[];
-	currentThread?: Thread;
-}
+type MessageListProperties = {
+	readonly messages: Message[];
+	readonly currentThread?: Thread;
+};
 
 export default function MessageList({
 	messages,
 	currentThread,
-}: MessageListProps) {
-	const endOfMessagesRef = useRef<React.ElementRef<typeof Box>>(null);
-	const imageProtocol = ConfigManager.getInstance().get<string>(
+}: MessageListProperties) {
+	const endOfMessagesReference = useRef<React.ElementRef<typeof Box>>(null);
+	const imageProtocol = ConfigManager.getInstance().get(
 		'image.protocol',
 		'ascii',
 	);
@@ -34,10 +34,12 @@ export default function MessageList({
 
 	const renderMessageContent = (message: Message) => {
 		switch (message.itemType) {
-			case 'text':
-				return <Text>{(message as TextMessage).text}</Text>;
+			case 'text': {
+				return <Text>{message.text}</Text>;
+			}
+
 			case 'media': {
-				const media = (message as MediaMessage).media;
+				const {media} = message;
 				const imageUrl = media.image_versions2?.candidates[0]?.url;
 				if (imageUrl) {
 					return (
@@ -52,12 +54,17 @@ export default function MessageList({
 						</Box>
 					);
 				}
+
 				return <Text dimColor>[Sent an image]</Text>;
 			}
-			case 'clip':
+
+			case 'clip': {
 				return <Text dimColor>[Sent a brainrot!]</Text>;
-			default:
+			}
+
+			default: {
 				return <Text dimColor>[Unknown Message Type]</Text>;
+			}
 		}
 	};
 
@@ -93,7 +100,7 @@ export default function MessageList({
 					</Box>
 				))}
 			</Box>
-			<Box ref={endOfMessagesRef} />
+			<Box ref={endOfMessagesReference} />
 		</Box>
 	);
 }

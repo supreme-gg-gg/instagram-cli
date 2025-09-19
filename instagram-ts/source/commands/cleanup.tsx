@@ -17,18 +17,18 @@ export const args = zod.tuple([
 		),
 ]);
 
-type Props = {
-	args: zod.infer<typeof args>;
+type Properties = {
+	readonly args: zod.infer<typeof args>;
 };
 
-export default function Cleanup({args}: Props) {
-	const [result, setResult] = React.useState<string | null>(null);
-	const [error, setError] = React.useState<string | null>(null);
+export default function Cleanup({args}: Properties) {
+	const [result, setResult] = React.useState<string | undefined>(undefined);
+	const [error, setError] = React.useState<string | undefined>(undefined);
 
 	React.useEffect(() => {
 		(async () => {
 			try {
-				const cleanupType = args[0] || 'all';
+				const cleanupType = args[0] ?? 'all';
 				let output = '';
 
 				if (cleanupType === 'all' || cleanupType === 'sessions') {
@@ -43,9 +43,11 @@ export default function Cleanup({args}: Props) {
 
 				output += '✅ Cleanup complete';
 				setResult(output);
-			} catch (err) {
+			} catch (error_) {
 				setError(
-					`Cleanup error: ${err instanceof Error ? err.message : String(err)}`,
+					`Cleanup error: ${
+						error_ instanceof Error ? error_.message : String(error_)
+					}`,
 				);
 			}
 		})();
@@ -55,5 +57,5 @@ export default function Cleanup({args}: Props) {
 		return <Alert variant="error">{error}</Alert>;
 	}
 
-	return <Text>{result ? result : 'Cleaning up...'}</Text>;
+	return <Text>{result ?? 'Cleaning up...'}</Text>;
 }

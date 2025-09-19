@@ -1,27 +1,30 @@
 import React, {useState, useEffect, useRef} from 'react';
-import {Box, Text, useInput, measureElement} from 'ink';
+import {Box, Text, useInput, measureElement, type DOMElement} from 'ink';
 import type {Thread} from '../../types/instagram.js';
-import ThreadItem from './ThreadItem.js';
+import ThreadItem from './thread-item.js';
 
-interface ThreadListProps {
-	threads: Thread[];
-	onSelect: (thread: Thread) => void;
-}
+type ThreadListProperties = {
+	readonly threads: Thread[];
+	readonly onSelect: (thread: Thread) => void;
+};
 
-export default function ThreadList({threads, onSelect}: ThreadListProps) {
+export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const [viewportSize, setViewportSize] = useState(10);
 
-	const containerRef = useRef<any>(null);
-	const itemRef = useRef<any>(null);
+	// Type null is required for these refs to work
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	const containerReference = useRef<DOMElement | null>(null);
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	const itemReference = useRef<DOMElement | null>(null);
 
 	// Measure container and item height to determine viewport size
 	useEffect(() => {
 		// We only need to measure if there are threads to display
-		if (containerRef.current && itemRef.current) {
-			const containerHeight = measureElement(containerRef.current).height;
-			const itemHeight = measureElement(itemRef.current).height;
+		if (containerReference.current && itemReference.current) {
+			const containerHeight = measureElement(containerReference.current).height;
+			const itemHeight = measureElement(itemReference.current).height;
 
 			// Ensure itemHeight is not zero to avoid division by zero errors
 			if (itemHeight > 0) {
@@ -43,7 +46,7 @@ export default function ThreadList({threads, onSelect}: ThreadListProps) {
 
 			// Scroll down if selection moves below the viewport
 			if (newIndex >= scrollOffset + viewportSize) {
-				setScrollOffset(prev => prev + 1);
+				setScrollOffset(previous => previous + 1);
 			}
 		} else if (input === 'k' || key.upArrow) {
 			const newIndex = Math.max(selectedIndex - 1, 0);
@@ -51,7 +54,7 @@ export default function ThreadList({threads, onSelect}: ThreadListProps) {
 
 			// Scroll up if selection moves above the viewport
 			if (newIndex < scrollOffset) {
-				setScrollOffset(prev => prev - 1);
+				setScrollOffset(previous => previous - 1);
 			}
 		} else if (key.return && threads[selectedIndex]) {
 			onSelect(threads[selectedIndex]);
@@ -73,7 +76,7 @@ export default function ThreadList({threads, onSelect}: ThreadListProps) {
 	);
 
 	return (
-		<Box flexDirection="column" flexGrow={1} ref={containerRef}>
+		<Box ref={containerReference} flexDirection="column" flexGrow={1}>
 			{visibleThreads.map((thread, index) => {
 				// We need a ref on one item to measure its height
 				const isFirstItem = index === 0;
@@ -81,7 +84,7 @@ export default function ThreadList({threads, onSelect}: ThreadListProps) {
 				const absoluteIndex = scrollOffset + index;
 
 				return (
-					<Box key={thread.id} ref={isFirstItem ? itemRef : undefined}>
+					<Box key={thread.id} ref={isFirstItem ? itemReference : undefined}>
 						<ThreadItem
 							thread={thread}
 							isSelected={absoluteIndex === selectedIndex}

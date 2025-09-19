@@ -19,15 +19,15 @@ const NOTIFICATION_NAMES: Record<string, string> = {
  * Get the human-readable name for a notification key.
  * If the key is not found, return the key itself.
  */
-export function getNotificationName(notifKey: string): string {
-	return NOTIFICATION_NAMES[notifKey] || notifKey;
+export function getNotificationName(notificationKey: string): string {
+	return NOTIFICATION_NAMES[notificationKey] ?? notificationKey;
 }
 
 /**
  * Format usernames in rich text (e.g., from {username|id}) to plain @username.
  */
 export function formatUsernamesInText(text: string): string {
-	return text.replace(/\{([^{}]+)\}/g, (_, match: string) => {
+	return text.replaceAll(/{([^{}]+)}/g, (_, match: string) => {
 		const username = match.split('|')[0];
 		return `@${username}`;
 	});

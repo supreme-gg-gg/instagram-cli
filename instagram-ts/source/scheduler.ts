@@ -1,38 +1,56 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import {ConfigManager} from './config.js';
 
-export interface ScheduledTask {
+export type ScheduledTask = {
 	threadId: string;
 	sendTime: string;
 	message: string;
 	displayName?: string;
-}
+};
 
 export class Scheduler {
+	public static getInstance(): Scheduler {
+		Scheduler.instance ||= new Scheduler();
+		return Scheduler.instance;
+	}
+
 	private static instance: Scheduler;
-	private taskFile: string;
+	private readonly taskFile: string;
 	private tasks: ScheduledTask[] = [];
 
 	private constructor() {
 		const config = ConfigManager.getInstance();
-		const usersDir = config.get<string>('advanced.usersDir');
-		const username = config.get<string>('login.currentUsername');
+		const usersDirectory = config.get('advanced.usersDir');
+		const username = config.get('login.currentUsername');
 		if (!username) {
 			throw new Error('No current user found in config');
 		}
-		this.taskFile = path.join(usersDir, username, 'tasks.json');
-	}
 
-	public static getInstance(): Scheduler {
-		if (!Scheduler.instance) {
-			Scheduler.instance = new Scheduler();
-		}
-		return Scheduler.instance;
+		this.taskFile = path.join(usersDirectory, username, 'tasks.json');
 	}
 
 	public async initialize(): Promise<void> {
 		await this.loadTasks();
+	}
+
+	public async addTask(task: ScheduledTask): Promise<void> {
+		this.tasks.push(task);
+		await this.saveTasks();
+	}
+
+	public async listTasks(): Promise<ScheduledTask[]> {
+		return this.tasks;
+	}
+
+	public async cancelTask(index: number): Promise<boolean> {
+		if (index < 0 || index >= this.tasks.length) {
+			return false;
+		}
+
+		this.tasks.splice(index, 1);
+		await this.saveTasks();
+		return true;
 	}
 
 	private async loadTasks(): Promise<void> {
@@ -65,23 +83,5 @@ export class Scheduler {
 		} catch (error) {
 			console.error('Error saving tasks:', error);
 		}
-	}
-
-	public async addTask(task: ScheduledTask): Promise<void> {
-		this.tasks.push(task);
-		await this.saveTasks();
-	}
-
-	public async listTasks(): Promise<ScheduledTask[]> {
-		return this.tasks;
-	}
-
-	public async cancelTask(index: number): Promise<boolean> {
-		if (index < 0 || index >= this.tasks.length) {
-			return false;
-		}
-		this.tasks.splice(index, 1);
-		await this.saveTasks();
-		return true;
 	}
 }

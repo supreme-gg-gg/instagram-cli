@@ -3,18 +3,18 @@ import {InstagramClient} from '../../client.js';
 import {ConfigManager} from '../../config.js';
 import {SessionManager} from '../../session.js';
 
-interface UseInstagramClientResult {
-	client: InstagramClient | null;
+type UseInstagramClientResult = {
+	client: InstagramClient | undefined;
 	isLoading: boolean;
-	error: string | null;
-}
+	error: string | undefined;
+};
 
 export function useInstagramClient(
-	usernameArg?: string,
+	usernameArgument?: string,
 ): UseInstagramClientResult {
-	const [client, setClient] = useState<InstagramClient | null>(null);
+	const [client, setClient] = useState<InstagramClient | undefined>(undefined);
 	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<string | undefined>(undefined);
 
 	useEffect(() => {
 		const initializeClient = async () => {
@@ -22,12 +22,10 @@ export function useInstagramClient(
 				const config = ConfigManager.getInstance();
 				await config.initialize();
 
-				let targetUsername = usernameArg;
-				if (!targetUsername) {
-					targetUsername =
-						config.get<string>('login.currentUsername') ||
-						config.get<string>('login.defaultUsername');
-				}
+				let targetUsername = usernameArgument;
+				targetUsername ||=
+					config.get('login.currentUsername') ??
+					config.get('login.defaultUsername');
 
 				if (!targetUsername) {
 					setError(
@@ -52,35 +50,36 @@ export function useInstagramClient(
 				const loginResult = await instagramClient.loginBySession();
 
 				if (!loginResult.success) {
-					// only the auth login command can handle these cases
+					// Only the auth login command can handle these cases
 					if (loginResult.checkpointError) {
 						setError(
 							'Challenge required. Please run the `login` command to resolve.',
 						);
 					} else {
 						setError(
-							loginResult.error ||
+							loginResult.error ??
 								'Failed to login with session, try logging in with password again.',
 						);
 					}
+
 					setIsLoading(false);
 					return;
 				}
 
 				setClient(instagramClient);
 				setIsLoading(false);
-			} catch (err) {
+			} catch (error_) {
 				setError(
 					`Failed to initialize Instagram client: ${
-						err instanceof Error ? err.message : String(err)
+						error_ instanceof Error ? error_.message : String(error_)
 					}`,
 				);
 				setIsLoading(false);
 			}
 		};
 
-		initializeClient();
-	}, [usernameArg]);
+		void initializeClient();
+	}, [usernameArgument]);
 
 	return {client, isLoading, error};
 }

@@ -28,7 +28,7 @@ Edit `app.mock.tsx` to switch between different views:
 
 ```typescript
 const MOCK_CONFIG = {
-  view: "chat" as "chat" | "media", // Change this line
+	view: 'chat' as 'chat' | 'media', // Change this line
 };
 ```
 
@@ -49,7 +49,7 @@ Available views:
 The mock client can be easily imported for unit tests:
 
 ```typescript
-import { mockClient } from "./mocks/index.js";
+import {mockClient} from './mocks/index.js';
 
 // Use mockClient in your tests
 ```

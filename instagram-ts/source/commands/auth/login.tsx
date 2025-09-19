@@ -3,7 +3,8 @@ import {Box, Text} from 'ink';
 import {Alert, TextInput} from '@inkjs/ui';
 import zod from 'zod';
 import {option} from 'pastel';
-import LoginForm from '../../ui/components/LoginForm.js';
+import {type AccountRepositoryLoginErrorResponseTwoFactorInfo} from 'instagram-private-api';
+import LoginForm from '../../ui/components/login-form.js';
 import {InstagramClient} from '../../client.js';
 import {ConfigManager} from '../../config.js';
 
@@ -19,17 +20,19 @@ export const options = zod.object({
 		),
 });
 
-type Props = {
-	options: zod.infer<typeof options>;
+type Properties = {
+	readonly options: zod.infer<typeof options>;
 };
 
-export default function Login({options}: Props) {
+export default function Login({options}: Properties) {
 	const client = useMemo(() => new InstagramClient(), []);
-	const [message, setMessage] = useState<string | null>('Initializing...');
+	const [message, setMessage] = useState<string | undefined>('Initializing...');
 	const [mode, setMode] = useState<
 		'session' | 'form' | 'challenge' | '2fa' | 'success' | 'error'
 	>('session');
-	const [twoFactorInfo, setTwoFactorInfo] = useState<any>(null);
+	const [twoFactorInfo, setTwoFactorInfo] = useState<
+		AccountRepositoryLoginErrorResponseTwoFactorInfo | undefined
+	>(undefined);
 
 	const handleLoginSubmit = async (username: string, password: string) => {
 		setMessage(`🔄 Logging in as @${username}...`);
@@ -48,15 +51,17 @@ export default function Login({options}: Props) {
 				setMessage('Challenge required. Requesting code...');
 				await client.startChallenge();
 				setMessage('A code has been sent to you. Please enter it below.');
-				// redirect to the challenge resolution page
+				// Redirect to the challenge resolution page
 				setMode('challenge');
 			} else {
 				setMessage(`Login failed: ${result.error}`);
 				setMode('error');
 			}
-		} catch (err) {
+		} catch (error) {
 			setMessage(
-				`Login error: ${err instanceof Error ? err.message : String(err)}`,
+				`Login error: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
 			);
 			setMode('error');
 		}
@@ -67,8 +72,8 @@ export default function Login({options}: Props) {
 		try {
 			const result = await client.twoFactorLogin({
 				verificationCode: code,
-				twoFactorIdentifier: twoFactorInfo.two_factor_identifier,
-				totp_two_factor_on: twoFactorInfo.totp_two_factor_on,
+				twoFactorIdentifier: twoFactorInfo!.two_factor_identifier,
+				totp_two_factor_on: twoFactorInfo!.totp_two_factor_on,
 			});
 			if (result.success) {
 				setMessage(`✅ Logged in as @${result.username}`);
@@ -77,9 +82,9 @@ export default function Login({options}: Props) {
 				setMessage(`2FA login failed: ${result.error}`);
 				setMode('error');
 			}
-		} catch (err) {
+		} catch (error) {
 			setMessage(
-				`2FA error: ${err instanceof Error ? err.message : String(err)}`,
+				`2FA error: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			setMode('error');
 		}
@@ -96,9 +101,11 @@ export default function Login({options}: Props) {
 				setMessage(`Challenge failed: ${result.error}`);
 				setMode('error');
 			}
-		} catch (err) {
+		} catch (error) {
 			setMessage(
-				`Challenge error: ${err instanceof Error ? err.message : String(err)}`,
+				`Challenge error: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
 			);
 			setMode('error');
 		}
@@ -106,18 +113,18 @@ export default function Login({options}: Props) {
 
 	useEffect(() => {
 		const run = async () => {
-			// if the user provided a username, we assume they want to log in with username/password
+			// If the user provided a username, we assume they want to log in with username/password
 			if (options.username) {
 				setMode('form');
-				setMessage(null);
+				setMessage(undefined);
 				return;
 			}
 
-			// otherwise we load the saved session and if failed redirect to pages
+			// Otherwise we load the saved session and if failed redirect to pages
 			setMessage('🔄 Trying to log in with saved session...');
 			const config = ConfigManager.getInstance();
 			await config.initialize();
-			const currentUsername = config.get<string>('login.currentUsername');
+			const currentUsername = config.get('login.currentUsername');
 
 			if (!currentUsername) {
 				setMessage(
@@ -133,45 +140,47 @@ export default function Login({options}: Props) {
 			if (result.success) {
 				setMessage(`✅ Logged in as @${result.username}`);
 				setMode('success');
-			} else {
-				if (result.checkpointError) {
-					setMessage('Challenge required. Requesting code...');
-					// console.log(client.getInstagramClient().state.checkpoint);
-					// console.log(result.checkpointError.response.body);
-					await client.startChallenge();
-					// console.log(client.getInstagramClient().state.checkpoint);
-					setMessage('A code has been sent to you. Please enter it below.');
-					setMode('challenge');
-				} else if (result.error) {
-					// for all other errors, we redirect to the login form, if that also fails we show an error
-					setMessage(
-						'Could not log in with saved session. Please log in with your username and password.',
-					);
-					setMode('form');
-				}
+			} else if (result.checkpointError) {
+				setMessage('Challenge required. Requesting code...');
+				// Console.log(client.getInstagramClient().state.checkpoint);
+				// console.log(result.checkpointError.response.body);
+				await client.startChallenge();
+				// Console.log(client.getInstagramClient().state.checkpoint);
+				setMessage('A code has been sent to you. Please enter it below.');
+				setMode('challenge');
+			} else if (result.error) {
+				// For all other errors, we redirect to the login form, if that also fails we show an error
+				setMessage(
+					'Could not log in with saved session. Please log in with your username and password.',
+				);
+				setMode('form');
 			}
 		};
-		run();
-	}, [options.username]);
+
+		void run();
+	}, [options.username, client]);
 
 	if (mode === 'error') {
 		return <Alert variant="error">{message}</Alert>;
 	}
+
 	if (mode === 'success' || mode === 'session') {
 		return <Text>{message}</Text>;
 	}
+
 	if (mode === 'form') {
 		return (
 			<>
 				{message && <Text>{message}</Text>}
 				<LoginForm
 					onSubmit={(username, password) => {
-						handleLoginSubmit(username, password);
+						void handleLoginSubmit(username, password);
 					}}
 				/>
 			</>
 		);
 	}
+
 	if (mode === 'challenge' || mode === '2fa') {
 		return (
 			<>

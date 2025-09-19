@@ -1,9 +1,9 @@
-import React, {useEffect} from 'react';
-import {useApp} from 'ink';
+import {useEffect, type default as React} from 'react';
+import {useApp, useStdout} from 'ink';
 
-async function write(content: string) {
+async function write(content: string, stdout: NodeJS.WriteStream) {
 	return new Promise<void>((resolve, reject) => {
-		process.stdout.write(content, error => {
+		stdout.write(content, error => {
 			if (error) reject(error);
 			else resolve();
 		});
@@ -26,22 +26,25 @@ async function write(content: string) {
  * };
  * ```
  */
-const AltScreen = (props: {children: React.ReactNode}) => {
+function AltScreen(properties: {children: React.ReactNode}) {
 	const {exit} = useApp();
+	const {stdout} = useStdout();
 	useEffect(() => {
 		const enterAltScreen = async () => {
-			await write('\x1b[?1049h'); // enter alternate buffer
+			await write('\u001B[?1049h', stdout); // Enter alternate buffer
 		};
+
 		const leaveAltScreen = async () => {
-			await write('\x1b[?1049l'); // exit alternate buffer
+			await write('\u001B[?1049l', stdout); // Exit alternate buffer
 			exit();
 		};
-		enterAltScreen();
+
+		void enterAltScreen();
 		return () => {
-			leaveAltScreen();
+			void leaveAltScreen();
 		};
-	}, [exit]);
-	return <>{props.children}</>;
-};
+	}, [exit, stdout]);
+	return properties.children;
+}
 
 export default AltScreen;

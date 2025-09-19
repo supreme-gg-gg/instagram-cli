@@ -1,22 +1,21 @@
 import React from 'react';
 import {Box, Text} from 'ink';
 import type {Thread} from '../../types/instagram.js';
-// import {Spinner} from '@inkjs/ui';
+// Import {Spinner} from '@inkjs/ui';
 
-interface StatusBarProps {
-	loading?: boolean;
-	error?: string;
-	currentView?: 'threads' | 'chat';
-	currentThread?: Thread;
-	username?: string;
-}
+type StatusBarProperties = {
+	readonly isLoading?: boolean;
+	readonly error?: string;
+	readonly currentView?: 'threads' | 'chat';
+	readonly currentThread?: Thread;
+};
 
 export default function StatusBar({
-	loading,
+	isLoading,
 	error,
 	currentView,
 	currentThread,
-}: StatusBarProps) {
+}: StatusBarProperties) {
 	return (
 		<Box paddingX={1} justifyContent="space-between" width="100%">
 			<Box>
@@ -30,9 +29,9 @@ export default function StatusBar({
 
 			<Box>
 				{/* {loading && <Spinner label="Loading..." />} */}
-				{loading && <Text color="yellow">Loading...</Text>}
+				{isLoading && <Text color="yellow">Loading...</Text>}
 				{error && <Text color="red">Error</Text>}
-				{!loading && !error && (
+				{!isLoading && !error && (
 					<Text color="green">
 						{currentView === 'threads' ? 'Threads' : 'Chat'}
 					</Text>
