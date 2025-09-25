@@ -36,7 +36,7 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			messages: [
 				...previous.messages,
 				systemMessage(
-					'Available commands: :help, :echo <text>, :k (scroll up), :j (scroll down)',
+					'Available commands: :help, :upload, :unsend, :k (scroll up), :j (scroll down)',
 					previous.currentThread?.id ?? '',
 				),
 			],
@@ -51,6 +51,99 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			],
 		}));
 	},
+
+	async upload(arguments_, {client, chatState, setChatState}) {
+		const [path] = arguments_;
+		if (!path) {
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						'Usage: :upload <path-to-file>',
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+			return;
+		}
+
+		// Detect the file type to determine if we should send as photo or video
+		const lowerPath = path.toLowerCase();
+		const isImage = /\.(jpg|jpeg|png|gif)$/.test(lowerPath);
+		const isVideo = /\.(mp4|mov|avi|mkv)$/.test(lowerPath);
+
+		if (chatState.currentThread) {
+			if (isImage) {
+				await client.sendPhoto(chatState.currentThread.id, path);
+			} else if (isVideo) {
+				await client.sendVideo(chatState.currentThread.id, path);
+			} else {
+				setChatState(previous => ({
+					...previous,
+					messages: [
+						...previous.messages,
+						systemMessage(
+							'Unsupported file type. Please upload an image or video.',
+							previous.currentThread?.id ?? '',
+						),
+					],
+				}));
+			}
+		}
+	},
+
+	async unsend(arguments_, {client, chatState, setChatState}) {
+		const [indexString] = arguments_;
+		const index = Number.parseInt(indexString!, 10) - 1;
+
+		if (
+			Number.isNaN(index) ||
+			index < 0 ||
+			index >= chatState.messages.length
+		) {
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						'Usage: :unsend <message-index>',
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+			return;
+		}
+
+		const messageToUnsend = chatState.messages[index];
+
+		if (!messageToUnsend?.isOutgoing) {
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						'You can only unsend your own messages.',
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+			return;
+		}
+
+		if (chatState.currentThread) {
+			await client.unsendMessage(
+				chatState.currentThread.id,
+				messageToUnsend.id,
+			);
+			// Optimistic update
+			setChatState(previous => ({
+				...previous,
+				messages: previous.messages.filter(m => m.id !== messageToUnsend.id),
+			}));
+		}
+	},
+
 	async k(_arguments, {client, chatState, setChatState, height}) {
 		const messageLines = 3; // Approximate lines per message
 		const visibleMessageCount = Math.max(
@@ -108,15 +201,32 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 	},
 };
 
-export function parseAndDispatchChatCommand(
+export async function parseAndDispatchChatCommand(
 	text: string,
 	context: ChatCommandContext,
-): boolean {
+): Promise<boolean> {
 	if (!text.startsWith(':')) return false;
+
 	const [cmd, ...arguments_] = text.slice(1).split(/\s+/);
 	const handler = chatCommands[cmd!];
+
 	if (handler) {
-		void handler(arguments_, context);
+		try {
+			await handler(arguments_, context);
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : 'An unknown error occurred';
+			context.setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						`Error in command :${cmd}: ${errorMessage}`,
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+		}
 	} else {
 		context.setChatState(previous => ({
 			...previous,

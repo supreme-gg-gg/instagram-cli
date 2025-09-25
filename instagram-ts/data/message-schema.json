@@ -1,0 +1,11 @@
+[
+	"id",
+	"timestamp",
+	"userId",
+	"username",
+	"isOutgoing",
+	"threadId",
+	"itemType",
+	"text",
+	"media"
+]

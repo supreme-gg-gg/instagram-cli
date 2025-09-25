@@ -127,13 +127,13 @@ export default function ChatView() {
 		if (!client || !chatState.currentThread) return;
 
 		// Check for chat command (starts with ':') and dispatch
-		const handled = parseAndDispatchChatCommand(text, {
+		const isCommand = await parseAndDispatchChatCommand(text, {
 			client,
 			chatState,
 			setChatState,
 			height,
 		});
-		if (handled) {
+		if (isCommand) {
 			return;
 		}
 

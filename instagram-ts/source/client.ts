@@ -421,6 +421,39 @@ export class InstagramClient {
 		}
 	}
 
+	async sendPhoto(threadId: string, filePath: string): Promise<void> {
+		try {
+			const fileBuffer = await fs.promises.readFile(filePath);
+			await this.ig.entity.directThread(threadId).broadcastPhoto({
+				file: fileBuffer,
+			});
+		} catch (error) {
+			console.error('Failed to send photo:', error);
+			throw error;
+		}
+	}
+
+	async sendVideo(threadId: string, filePath: string): Promise<void> {
+		try {
+			const fileBuffer = await fs.promises.readFile(filePath);
+			await this.ig.entity.directThread(threadId).broadcastVideo({
+				video: fileBuffer,
+			});
+		} catch (error) {
+			console.error('Failed to send video:', error);
+			throw error;
+		}
+	}
+
+	async unsendMessage(threadId: string, messageId: string): Promise<void> {
+		try {
+			await this.ig.entity.directThread(threadId).deleteItem(messageId);
+		} catch (error) {
+			console.error('Failed to unsend message:', error);
+			throw error;
+		}
+	}
+
 	private async saveSessionState(): Promise<void> {
 		if (!this.sessionManager) {
 			return;
