@@ -1,7 +1,8 @@
 import React, {useState, useEffect} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
 import {TerminalInfoProvider} from 'ink-picture';
-import type {Thread, ChatState} from '../../types/instagram.js';
+import type {Thread, ChatState, Message} from '../../types/instagram.js';
+import type {RealtimeStatus} from '../../client.js';
 import MessageList from '../components/message-list.js';
 import InputBox from '../components/input-box.js';
 import StatusBar from '../components/status-bar.js';
@@ -24,6 +25,8 @@ export default function ChatView() {
 		visibleMessageOffset: 0,
 	});
 	const [currentView, setCurrentView] = useState<'threads' | 'chat'>('threads');
+	const [realtimeStatus, setRealtimeStatus] =
+		useState<RealtimeStatus>('disconnected');
 
 	// Load threads when client is ready
 	useEffect(() => {
@@ -47,30 +50,47 @@ export default function ChatView() {
 		void loadThreads();
 	}, [client]);
 
-	// Poll for new messages
+	// Effect for client events (realtime, errors, etc.)
 	useEffect(() => {
-		if (
-			currentView !== 'chat' ||
-			!chatState.currentThread ||
-			chatState.visibleMessageOffset > 0 // Don't poll when scrolled up
-		)
-			return;
+		if (!client) return;
 
-		const interval = setInterval(async () => {
-			if (!client || !chatState.currentThread) return;
-			const {messages} = await client.getMessages(chatState.currentThread.id);
-			setChatState(previous => ({...previous, messages}));
-		}, 5000);
+		const handleRealtimeStatus = (status: RealtimeStatus) => {
+			setRealtimeStatus(status);
+		};
+
+		const handleError = (error: Error) => {
+			setChatState(prev => ({...prev, error: error.message, loading: false}));
+		};
+
+		const handleMessage = (message: Message) => {
+			if (message.threadId === chatState.currentThread?.id) {
+				setChatState(prev => ({
+					...prev,
+					messages: [...prev.messages, message],
+				}));
+			}
+		};
+
+		client.on('realtimeStatus', handleRealtimeStatus);
+		client.on('error', handleError);
+		client.on('message', handleMessage);
 
 		return () => {
-			clearInterval(interval);
+			client.off('realtimeStatus', handleRealtimeStatus);
+			client.off('error', handleError);
+			client.off('message', handleMessage);
 		};
-	}, [
-		client,
-		currentView,
-		chatState.currentThread,
-		chatState.visibleMessageOffset,
-	]);
+	}, [client, chatState.currentThread?.id]);
+
+	useEffect(() => {
+		// When unmounts call the destructor for the client
+		return () => {
+			if (client) {
+				// We don't await this because cleanup functions must be synchronous
+				void client.shutdown();
+			}
+		};
+	}, [client]);
 
 	useInput((input, key) => {
 		if (key.ctrl && input === 'c') {
@@ -138,15 +158,9 @@ export default function ChatView() {
 		}
 
 		try {
+			// Send the message. If using MQTT, the message will be received via the 'message' event.
+			// If falling back to the API, it will appear on the next history fetch (e.g., chat reopen).
 			await client.sendMessage(chatState.currentThread.id, text);
-			// Reload messages to show the new one
-			const {messages} = await client.getMessages(chatState.currentThread.id);
-			// Also reset to the bottom of the chat since we just sent a message
-			setChatState(previous => ({
-				...previous,
-				messages,
-				visibleMessageOffset: 0,
-			}));
 		} catch (error) {
 			setChatState(previous => ({
 				...previous,
@@ -211,13 +225,17 @@ export default function ChatView() {
 		const visibleMessages = chatState.messages.slice(startIndex, endIndex);
 
 		return (
-			<>
-				<MessageList
-					messages={visibleMessages}
-					currentThread={chatState.currentThread}
-				/>
-				<InputBox onSend={handleSendMessage} />
-			</>
+			<Box flexDirection="column" height="100%">
+				<Box flexGrow={1} overflow="hidden">
+					<MessageList
+						messages={visibleMessages}
+						currentThread={chatState.currentThread}
+					/>
+				</Box>
+				<Box flexShrink={0}>
+					<InputBox onSend={handleSendMessage} />
+				</Box>
+			</Box>
 		);
 	};
 
@@ -230,6 +248,7 @@ export default function ChatView() {
 						currentThread={chatState.currentThread}
 						isLoading={chatState.loading}
 						error={chatState.error}
+						realtimeStatus={realtimeStatus}
 					/>
 
 					<Box flexGrow={1} flexDirection="column">
