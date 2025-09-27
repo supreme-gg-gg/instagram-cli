@@ -36,7 +36,7 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			messages: [
 				...previous.messages,
 				systemMessage(
-					'Available commands: :help, :upload, :unsend, :k (scroll up), :j (scroll down)',
+					'Available commands: :help, :react, :upload, :unsend, :k (scroll up), :j (scroll down)',
 					previous.currentThread?.id ?? '',
 				),
 			],
@@ -50,6 +50,50 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 				systemMessage(arguments_.join(' '), previous.currentThread?.id ?? ''),
 			],
 		}));
+	},
+
+	async react(arguments_, {client, chatState, setChatState}) {
+		const [indexString, emoji = '❤️'] = arguments_;
+		const index = Number.parseInt(indexString!, 10) - 1;
+
+		if (
+			Number.isNaN(index) ||
+			index < 0 ||
+			index >= chatState.messages.length
+		) {
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						'Usage: :react <message-index> [emoji]',
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+			return;
+		}
+
+		const messageToReactTo = chatState.messages[index];
+		if (!messageToReactTo || !chatState.currentThread) return;
+
+		try {
+			await client.sendReaction(
+				chatState.currentThread.id,
+				messageToReactTo.id,
+				emoji,
+			);
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : 'Could not send reaction.';
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(errorMessage, previous.currentThread?.id ?? ''),
+				],
+			}));
+		}
 	},
 
 	async upload(arguments_, {client, chatState, setChatState}) {
