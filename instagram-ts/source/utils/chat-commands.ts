@@ -52,6 +52,7 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 		}));
 	},
 
+	// If you try to send reaction without MQTT connected, it will show you the error message
 	async react(arguments_, {client, chatState, setChatState}) {
 		const [indexString, emoji = '❤️'] = arguments_;
 		const index = Number.parseInt(indexString!, 10) - 1;
@@ -66,7 +67,7 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 				messages: [
 					...previous.messages,
 					systemMessage(
-						'Usage: :react <message-index> [emoji]',
+						'Usage: :react <message-index> [emoji], 0 is the latest message',
 						previous.currentThread?.id ?? '',
 					),
 				],
@@ -74,7 +75,8 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			return;
 		}
 
-		const messageToReactTo = chatState.messages[index];
+		const messageToReactTo =
+			chatState.messages[chatState.messages.length - 1 - index];
 		if (!messageToReactTo || !chatState.currentThread) return;
 
 		try {
@@ -151,7 +153,7 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 				messages: [
 					...previous.messages,
 					systemMessage(
-						'Usage: :unsend <message-index>',
+						'Usage: :unsend <message-index>, 0 is the latest message',
 						previous.currentThread?.id ?? '',
 					),
 				],
@@ -159,7 +161,8 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			return;
 		}
 
-		const messageToUnsend = chatState.messages[index];
+		const messageToUnsend =
+			chatState.messages[chatState.messages.length - 1 - index];
 
 		if (!messageToUnsend?.isOutgoing) {
 			setChatState(previous => ({

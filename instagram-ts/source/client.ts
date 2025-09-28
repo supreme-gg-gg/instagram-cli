@@ -160,6 +160,7 @@ export class InstagramClient extends EventEmitter {
 				try {
 					await this.initializeRealtime();
 				} catch (error) {
+					this.setRealtimeStatus('error');
 					this.emit(
 						'error',
 						new Error(
@@ -287,6 +288,7 @@ export class InstagramClient extends EventEmitter {
 				try {
 					await this.initializeRealtime();
 				} catch (error) {
+					this.setRealtimeStatus('error');
 					this.emit(
 						'error',
 						new Error(

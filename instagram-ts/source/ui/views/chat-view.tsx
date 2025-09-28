@@ -82,9 +82,66 @@ export default function ChatView() {
 		};
 	}, [client, chatState.currentThread?.id]);
 
+	// Polling effect for messages when realtime client is disconnected
+	useEffect(() => {
+		let pollingInterval: NodeJS.Timeout | undefined;
+
+		const pollForNewMessages = async () => {
+			if (!client || !chatState.currentThread) {
+				return;
+			}
+
+			try {
+				// Fetch the latest messages without a cursor to get the most recent ones
+				const {messages: latestMessages} = await client.getMessages(
+					chatState.currentThread.id,
+				);
+
+				setChatState(previous => {
+					const existingMessageIds = new Set(previous.messages.map(m => m.id));
+					const newMessages = latestMessages.filter(
+						m => !existingMessageIds.has(m.id),
+					);
+
+					if (newMessages.length > 0) {
+						return {
+							...previous,
+							messages: [...previous.messages, ...newMessages],
+						};
+					}
+
+					return previous;
+				});
+			} catch (error) {
+				console.error('Polling for new messages failed:', error);
+				// Optionally, set an error state in chatState if needed
+				setChatState(previous => ({
+					...previous,
+					error:
+						error instanceof Error
+							? error.message
+							: 'Failed to poll for new messages',
+				}));
+			}
+		};
+
+		if (realtimeStatus === 'disconnected' && chatState.currentThread) {
+			// Start polling only if realtime is disconnected and a thread is selected
+			pollingInterval = setInterval(pollForNewMessages, 5000); // Poll every 5 seconds
+		}
+
+		return () => {
+			if (pollingInterval) {
+				clearInterval(pollingInterval);
+			}
+		};
+	}, [client, chatState.currentThread, realtimeStatus]);
+
 	useEffect(() => {
 		// When unmounts call the destructor for the client
 		return () => {
+			// The first commented line is what we SHOULD do, but somehwo there's a bug preventing realtimeStatus from being correct
+			// If (realtimeStatus === 'connected' && client) {
 			if (client) {
 				// We don't await this because cleanup functions must be synchronous
 				void client.shutdown();
