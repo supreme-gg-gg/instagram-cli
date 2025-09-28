@@ -23,6 +23,8 @@ export default function ChatView() {
 		loading: true,
 		currentThread: undefined,
 		visibleMessageOffset: 0,
+		selectedMessageIndex: undefined,
+		isSelectionMode: false,
 	});
 	const [currentView, setCurrentView] = useState<'threads' | 'chat'>('threads');
 	const [realtimeStatus, setRealtimeStatus] =
@@ -50,7 +52,7 @@ export default function ChatView() {
 		void loadThreads();
 	}, [client]);
 
-	// Effect for client events (realtime, errors, etc.)
+	// Effect for realtime status and errors (no thread dependency)
 	useEffect(() => {
 		if (!client) return;
 
@@ -62,7 +64,26 @@ export default function ChatView() {
 			setChatState(prev => ({...prev, error: error.message, loading: false}));
 		};
 
+		client.on('realtimeStatus', handleRealtimeStatus);
+		client.on('error', handleError);
+
+		// Emit the current status immediately in case we missed the initial event
+		// This might be a temporary fix but it seems like the logic follows through?
+		client.emit('realtimeStatus', client.getRealtimeStatus());
+
+		return () => {
+			client.off('realtimeStatus', handleRealtimeStatus);
+			client.off('error', handleError);
+		};
+	}, [client]);
+
+	// Effect for message events (needs thread dependency)
+	useEffect(() => {
+		if (!client) return;
+
 		const handleMessage = (message: Message) => {
+			// We only care about events about THIS thread
+			// Tho in the future we can use this to send notifications in the app as new messages lands
 			if (message.threadId === chatState.currentThread?.id) {
 				setChatState(prev => ({
 					...prev,
@@ -71,13 +92,9 @@ export default function ChatView() {
 			}
 		};
 
-		client.on('realtimeStatus', handleRealtimeStatus);
-		client.on('error', handleError);
 		client.on('message', handleMessage);
 
 		return () => {
-			client.off('realtimeStatus', handleRealtimeStatus);
-			client.off('error', handleError);
 			client.off('message', handleMessage);
 		};
 	}, [client, chatState.currentThread?.id]);
@@ -140,14 +157,12 @@ export default function ChatView() {
 	useEffect(() => {
 		// When unmounts call the destructor for the client
 		return () => {
-			// The first commented line is what we SHOULD do, but somehwo there's a bug preventing realtimeStatus from being correct
-			// If (realtimeStatus === 'connected' && client) {
-			if (client) {
+			if (realtimeStatus === 'connected' && client) {
 				// We don't await this because cleanup functions must be synchronous
 				void client.shutdown();
 			}
 		};
-	}, [client]);
+	}, [client, realtimeStatus]);
 
 	useInput((input, key) => {
 		if (key.ctrl && input === 'c') {
@@ -161,13 +176,65 @@ export default function ChatView() {
 		}
 
 		if (key.escape && currentView === 'chat') {
-			setCurrentView('threads');
-			setChatState(previous => ({
-				...previous,
-				currentThread: undefined,
-				messages: [],
-				visibleMessageOffset: 0,
-			}));
+			if (chatState.isSelectionMode) {
+				// Exit selection mode
+				setChatState(previous => ({
+					...previous,
+					isSelectionMode: false,
+					selectedMessageIndex: undefined,
+				}));
+			} else {
+				// Exit chat view
+				setCurrentView('threads');
+				setChatState(previous => ({
+					...previous,
+					currentThread: undefined,
+					messages: [],
+					visibleMessageOffset: 0,
+					selectedMessageIndex: undefined,
+					isSelectionMode: false,
+				}));
+			}
+
+			return;
+		}
+
+		// Handle j/k navigation in selection mode
+		if (chatState.isSelectionMode && currentView === 'chat') {
+			if (input === 'j') {
+				// Move down (next message)
+				setChatState(previous => {
+					const maxIndex = Math.max(0, previous.messages.length - 1);
+					const newIndex =
+						previous.selectedMessageIndex === undefined
+							? maxIndex
+							: Math.min(maxIndex, previous.selectedMessageIndex + 1);
+					return {
+						...previous,
+						selectedMessageIndex: newIndex,
+					};
+				});
+			} else if (input === 'k') {
+				// Move up (previous message)
+				setChatState(previous => {
+					const newIndex =
+						previous.selectedMessageIndex === undefined
+							? Math.max(0, previous.messages.length - 1)
+							: Math.max(0, previous.selectedMessageIndex - 1);
+					return {
+						...previous,
+						selectedMessageIndex: newIndex,
+					};
+				});
+			} else if (key.return) {
+				// Confirm selection and exit selection mode
+				// Keep the selectedMessageIndex so commands can use it
+				setChatState(previous => ({
+					...previous,
+					isSelectionMode: false,
+					// SelectedMessageIndex remains the same
+				}));
+			}
 		}
 	});
 
@@ -287,10 +354,14 @@ export default function ChatView() {
 					<MessageList
 						messages={visibleMessages}
 						currentThread={chatState.currentThread}
+						selectedMessageIndex={chatState.selectedMessageIndex}
 					/>
 				</Box>
 				<Box flexShrink={0}>
-					<InputBox onSend={handleSendMessage} />
+					<InputBox
+						isDisabled={chatState.isSelectionMode}
+						onSend={handleSendMessage}
+					/>
 				</Box>
 			</Box>
 		);
@@ -316,7 +387,9 @@ export default function ChatView() {
 						<Text dimColor>
 							{currentView === 'threads'
 								? 'j/k: navigate, Enter: select, q: quit'
-								: 'Esc: back to threads, Ctrl+C: quit'}
+								: chatState.isSelectionMode
+									? 'j/k: navigate messages, Enter: confirm, Esc: exit selection'
+									: 'Esc: back to threads, Ctrl+C: quit'}
 						</Text>
 					</Box>
 				</Box>

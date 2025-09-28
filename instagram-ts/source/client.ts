@@ -332,6 +332,13 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
+	/**
+	 * Disconnects the realtime client if it is connected.
+	 *
+	 * @remarks This destructor must be invoked by the view using the client.
+	 * However, calling this is not strictly necessary based on the library examples.
+	 * For example when the app quits by Ctrl+C, it is not disconnected but it's ok.
+	 */
 	public async shutdown(): Promise<void> {
 		if (this.realtime) {
 			await this.realtime.disconnect();
@@ -363,6 +370,10 @@ export class InstagramClient extends EventEmitter {
 
 	public getUsername(): string | undefined {
 		return this.username;
+	}
+
+	public getRealtimeStatus(): RealtimeStatus {
+		return this.realtimeStatus;
 	}
 
 	public async getCurrentUser(): Promise<User | undefined> {
