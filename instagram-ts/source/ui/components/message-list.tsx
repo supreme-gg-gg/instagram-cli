@@ -7,11 +7,13 @@ import {ConfigManager} from '../../config.js';
 type MessageListProperties = {
 	readonly messages: Message[];
 	readonly currentThread?: Thread;
+	readonly selectedMessageIndex?: number | undefined;
 };
 
 export default function MessageList({
 	messages,
 	currentThread,
+	selectedMessageIndex,
 }: MessageListProperties) {
 	const endOfMessagesReference = useRef<React.ElementRef<typeof Box>>(null);
 	const imageProtocol = ConfigManager.getInstance().get(
@@ -95,38 +97,44 @@ export default function MessageList({
 				flexGrow={1}
 				overflow="hidden"
 			>
-				{messages.map(message => (
-					<Box
-						key={message.id}
-						flexDirection="column"
-						flexShrink={0}
-						marginBottom={1}
-					>
-						<Box justifyContent="space-between">
-							<Text bold color={message.isOutgoing ? 'cyan' : 'greenBright'}>
-								{message.isOutgoing ? 'You' : message.username}
-							</Text>
-							<Text dimColor>{formatTime(message.timestamp)}</Text>
+				{messages.map((message, index) => {
+					const isSelected = selectedMessageIndex === index;
+					return (
+						<Box
+							key={message.id}
+							flexDirection="column"
+							flexShrink={0}
+							marginBottom={1}
+							borderStyle={isSelected ? 'round' : undefined}
+							borderColor={isSelected ? 'yellow' : undefined}
+							paddingX={isSelected ? 1 : 0}
+						>
+							<Box justifyContent="space-between">
+								<Text bold color={message.isOutgoing ? 'cyan' : 'greenBright'}>
+									{message.isOutgoing ? 'You' : message.username}
+								</Text>
+								<Text dimColor>{formatTime(message.timestamp)}</Text>
+							</Box>
+							<Box flexDirection="column">
+								{renderMessageContent(message)}
+								{message.reactions && message.reactions.length > 0 && (
+									<Box
+										borderStyle="round"
+										borderColor="gray"
+										paddingX={1}
+										marginTop={1}
+									>
+										<Text color="gray">
+											{[...new Set(message.reactions.map(r => r.emoji))].join(
+												' ',
+											)}
+										</Text>
+									</Box>
+								)}
+							</Box>
 						</Box>
-						<Box flexDirection="column">
-							{renderMessageContent(message)}
-							{message.reactions && message.reactions.length > 0 && (
-								<Box
-									borderStyle="round"
-									borderColor="gray"
-									paddingX={1}
-									marginTop={1}
-								>
-									<Text color="gray">
-										{[...new Set(message.reactions.map(r => r.emoji))].join(
-											' ',
-										)}
-									</Text>
-								</Box>
-							)}
-						</Box>
-					</Box>
-				))}
+					);
+				})}
 			</Box>
 			<Box ref={endOfMessagesReference} />
 		</Box>

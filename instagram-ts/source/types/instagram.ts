@@ -80,6 +80,8 @@ export type ChatState = {
 	error?: string;
 	messageCursor?: string;
 	visibleMessageOffset: number;
+	selectedMessageIndex: number | undefined;
+	isSelectionMode: boolean;
 };
 
 export type AuthState = {

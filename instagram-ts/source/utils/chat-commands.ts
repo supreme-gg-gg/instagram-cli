@@ -36,7 +36,7 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			messages: [
 				...previous.messages,
 				systemMessage(
-					'Available commands: :help, :react, :upload, :unsend, :k (scroll up), :j (scroll down)',
+					'Available commands: :help, :select (enter selection mode), :react [emoji] (react to selected), :unsend (delete selected), :upload <path>, :k (scroll up), :j (scroll down)',
 					previous.currentThread?.id ?? '',
 				),
 			],
@@ -52,22 +52,14 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 		}));
 	},
 
-	// If you try to send reaction without MQTT connected, it will show you the error message
-	async react(arguments_, {client, chatState, setChatState}) {
-		const [indexString, emoji = '❤️'] = arguments_;
-		const index = Number.parseInt(indexString!, 10) - 1;
-
-		if (
-			Number.isNaN(index) ||
-			index < 0 ||
-			index >= chatState.messages.length
-		) {
+	async select(_arguments, {setChatState, chatState}) {
+		if (chatState.messages.length === 0) {
 			setChatState(previous => ({
 				...previous,
 				messages: [
 					...previous.messages,
 					systemMessage(
-						'Usage: :react <message-index> [emoji], 0 is the latest message',
+						'No messages to select from.',
 						previous.currentThread?.id ?? '',
 					),
 				],
@@ -75,8 +67,33 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			return;
 		}
 
-		const messageToReactTo =
-			chatState.messages[chatState.messages.length - 1 - index];
+		setChatState(previous => ({
+			...previous,
+			isSelectionMode: true,
+			selectedMessageIndex: previous.messages.length - 1, // Start with the last message
+		}));
+	},
+
+	// If you try to send reaction without MQTT connected, it will show you the error message
+	async react(arguments_, {client, chatState, setChatState}) {
+		const [emoji = '❤️'] = arguments_;
+
+		// Check if we have a selected message
+		if (chatState.selectedMessageIndex === undefined) {
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						'Usage: :select to enter selection mode, then :react [emoji] to react to the selected message',
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+			return;
+		}
+
+		const messageToReactTo = chatState.messages[chatState.selectedMessageIndex];
 		if (!messageToReactTo || !chatState.currentThread) return;
 
 		try {
@@ -85,6 +102,12 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 				messageToReactTo.id,
 				emoji,
 			);
+
+			// Clear selected message after successful reaction
+			setChatState(previous => ({
+				...previous,
+				selectedMessageIndex: undefined,
+			}));
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : 'Could not send reaction.';
@@ -139,21 +162,15 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 		}
 	},
 
-	async unsend(arguments_, {client, chatState, setChatState}) {
-		const [indexString] = arguments_;
-		const index = Number.parseInt(indexString!, 10) - 1;
-
-		if (
-			Number.isNaN(index) ||
-			index < 0 ||
-			index >= chatState.messages.length
-		) {
+	async unsend(_arguments, {client, chatState, setChatState}) {
+		// Check if we have a selected message
+		if (chatState.selectedMessageIndex === undefined) {
 			setChatState(previous => ({
 				...previous,
 				messages: [
 					...previous.messages,
 					systemMessage(
-						'Usage: :unsend <message-index>, 0 is the latest message',
+						'Usage: :select to enter selection mode, then :unsend to delete the selected message',
 						previous.currentThread?.id ?? '',
 					),
 				],
@@ -161,8 +178,7 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			return;
 		}
 
-		const messageToUnsend =
-			chatState.messages[chatState.messages.length - 1 - index];
+		const messageToUnsend = chatState.messages[chatState.selectedMessageIndex];
 
 		if (!messageToUnsend?.isOutgoing) {
 			setChatState(previous => ({
@@ -187,6 +203,8 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			setChatState(previous => ({
 				...previous,
 				messages: previous.messages.filter(m => m.id !== messageToUnsend.id),
+				// Clear selected message after successful unsend
+				selectedMessageIndex: undefined,
 			}));
 		}
 	},
