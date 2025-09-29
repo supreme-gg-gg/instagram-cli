@@ -1,16 +1,16 @@
-name: TypeScript Lint and Format Check (Prettier, ESLint)
+name: TypeScript linting and e2e tests
 
-# Only triggers on PRs to the TypeScript migration branch
+# Only triggers on changes to the TypeScript codebase
 on:
   pull_request:
     branches:
-      - ts-migration/main
+      - ts-migration/main-
+      - main
     paths:
       - "instagram-ts/**"
 
 jobs:
   format:
-    name: "Validate TS formatting and lint"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

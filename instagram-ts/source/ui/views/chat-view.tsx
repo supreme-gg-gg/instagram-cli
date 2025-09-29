@@ -11,6 +11,7 @@ import {useClient} from '../context/client-context.js';
 import {parseAndDispatchChatCommand} from '../../utils/chat-commands.js';
 import FullScreen from '../components/full-screen.js';
 import {useScreenSize} from '../hooks/use-screen-size.js';
+import {preprocessMessage} from '../../utils/preprocess.js';
 
 export default function ChatView() {
 	const {exit} = useApp();
@@ -270,7 +271,7 @@ export default function ChatView() {
 	const handleSendMessage = async (text: string) => {
 		if (!client || !chatState.currentThread) return;
 
-		// Check for chat command (starts with ':') and dispatch
+		// First, check for client-side chat commands (e.g., :help, :select)
 		const isCommand = await parseAndDispatchChatCommand(text, {
 			client,
 			chatState,
@@ -278,13 +279,20 @@ export default function ChatView() {
 			height,
 		});
 		if (isCommand) {
-			return;
+			return; // Command was handled, no message to send
 		}
 
 		try {
-			// Send the message. If using MQTT, the message will be received via the 'message' event.
-			// If falling back to the API, it will appear on the next history fetch (e.g., chat reopen).
-			await client.sendMessage(chatState.currentThread.id, text);
+			// Preprocess the message for special syntax like @<file> or :emoji:
+			const processedText = await preprocessMessage(text, {
+				client,
+				threadId: chatState.currentThread.id,
+			});
+
+			// Only send the message if there is content left after processing, i.e. if only an image was sent, skip sending an empty message
+			if (processedText) {
+				await client.sendMessage(chatState.currentThread.id, processedText);
+			}
 		} catch (error) {
 			setChatState(previous => ({
 				...previous,
