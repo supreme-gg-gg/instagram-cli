@@ -108,6 +108,27 @@ This feature assists users in finding and inputting file paths directly in the c
   - **`Tab` or `Enter`**: Accepts the currently selected suggestion. The text from the trigger (`@<query>`) will be replaced with the completed path (`@<suggestion>`). Note that `Enter` is locked to only handle acceptions when autocomplete is active; otherwise, it sends the message.
   - **`Escape`**: Deactivates autocomplete and closes the suggestion list without making a change.
 
+### Command Autocomplete
+
+This feature provides in-line suggestions for chat commands, triggered by the `:` character.
+
+#### Triggering Mechanism
+
+- Autocomplete is triggered when the user types `:` at the beginning of the input.
+- The system will use the text immediately following the `:` as the query for command suggestions.
+
+#### Suggestion Logic
+
+- A new function, `getCommandSuggestions(query: string)`, will be added.
+- This function will import the `chatCommands` object and filter commands whose names start with the `query`.
+- It will return an array of objects, each containing the command's `name` and `description`.
+
+#### State Management (Input Box)
+
+- The `AutocompleteState` will be updated to differentiate between `command` and `filePath` suggestions to handle different triggers and display formats.
+- The `handleInputChange` function will be expanded to detect the `:` trigger at the start of the input and fetch command suggestions.
+- `handleAutocompleteSelection` will be updated to replace the partial command (e.g., `:he`) with the selected command name (e.g., `:help `).
+
 ## Message Preprocessing
 
 Before a message is sent to a thread, it will pass through a preprocessing step to handle special syntax for file embedding and emojis. This logic will be encapsulated in a `preprocessMessage` function that is called from the `InputBox`'s `onSend` handler.

@@ -1,6 +1,28 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import {chatCommands} from './chat-commands.js';
+
+export type CommandSuggestion = {
+	readonly name: string;
+	readonly description: string;
+};
+
+export function getCommandSuggestions(
+	query: string,
+): readonly CommandSuggestion[] {
+	const suggestions: CommandSuggestion[] = [];
+	for (const name in chatCommands) {
+		if (name.startsWith(query)) {
+			suggestions.push({
+				name,
+				description: chatCommands[name]!.description,
+			});
+		}
+	}
+
+	return suggestions;
+}
 
 /**
  * Expands a path starting with '~/' to an absolute path.

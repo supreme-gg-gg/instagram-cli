@@ -1,7 +1,10 @@
 import React, {useState, useEffect} from 'react';
 import {Box, useInput} from 'ink';
 import TextInput from 'ink-text-input';
-import {getFilePathSuggestions} from '../../utils/autocomplete.js';
+import {
+	getFilePathSuggestions,
+	getCommandSuggestions,
+} from '../../utils/autocomplete.js';
 import {AutocompleteView} from './autocomplete-view.js';
 
 type InputBoxProperties = {
@@ -10,6 +13,7 @@ type InputBoxProperties = {
 };
 
 type AutocompleteState = {
+	readonly type: 'command' | 'filePath' | undefined;
 	readonly isActive: boolean;
 	readonly suggestions: readonly string[];
 	readonly selectedIndex: number;
@@ -18,6 +22,7 @@ type AutocompleteState = {
 };
 
 const initialAutocompleteState: AutocompleteState = {
+	type: undefined,
 	isActive: false,
 	suggestions: [],
 	selectedIndex: 0,
@@ -47,17 +52,24 @@ export default function InputBox({
 	};
 
 	const handleAutocompleteSelection = (suggestion: string) => {
-		const textBefore = message.slice(0, autocomplete.triggerIndex);
-		const newMessage = `${textBefore}@${suggestion}`;
-		setMessage(newMessage);
+		if (autocomplete.type === 'command') {
+			const commandName = suggestion.split(' ')[0];
+			const newMessage = `:${commandName} `;
+			setMessage(newMessage);
+		} else if (autocomplete.type === 'filePath') {
+			const textBefore = message.slice(0, autocomplete.triggerIndex);
+			const newMessage = `${textBefore}@${suggestion}`;
+			setMessage(newMessage);
+		}
+
 		setAutocomplete(initialAutocompleteState);
 		// Force re-mount of TextInput to ensure cursor is at the end
 		setInputKey(previous => previous + 1);
 	};
 
-	// Effect to fetch suggestions when the query changes
+	// Effect to fetch suggestions for file paths (async)
 	useEffect(() => {
-		if (!autocomplete.isActive) {
+		if (!autocomplete.isActive || autocomplete.type !== 'filePath') {
 			return;
 		}
 
@@ -80,28 +92,40 @@ export default function InputBox({
 		return () => {
 			isCancelled = true;
 		};
-	}, [autocomplete.isActive, autocomplete.query]);
+	}, [autocomplete.isActive, autocomplete.type, autocomplete.query]);
 
 	const handleInputChange = (value: string) => {
 		setMessage(value);
 
-		// Regex to find " @<query>" at the end of the string
-		const triggerRegex = /\s@(\S*)$/;
-		const match = triggerRegex.exec(value);
+		const commandMatch = /^:(\w*)$/.exec(value);
+		const filePathMatch = /\s@(\S*)$/.exec(value);
 
-		if (match && typeof match.index === 'number') {
-			const query = match[1] ?? '';
-			// The trigger index is the position of the '@'
-			const triggerIndex = match.index + 1;
+		if (commandMatch) {
+			const query = commandMatch[1] ?? '';
+			// This is sync, so no need for useEffect
+			const commandSuggestions = getCommandSuggestions(query);
 			setAutocomplete({
+				type: 'command',
+				isActive: true,
+				suggestions: commandSuggestions.map(
+					s => `${s.name} - ${s.description}`,
+				),
+				query,
+				triggerIndex: 0,
+				selectedIndex: 0,
+			});
+		} else if (filePathMatch && typeof filePathMatch.index === 'number') {
+			const query = filePathMatch[1] ?? '';
+			const triggerIndex = filePathMatch.index + 1;
+			setAutocomplete(previous => ({
+				...previous, // Preserve existing suggestions while typing
+				type: 'filePath',
 				isActive: true,
 				query,
 				triggerIndex,
-				suggestions: autocomplete.suggestions, // Keep existing suggestions for a moment
 				selectedIndex: 0,
-			});
+			}));
 		} else if (autocomplete.isActive) {
-			// If the pattern no longer matches, deactivate autocomplete
 			setAutocomplete(initialAutocompleteState);
 		}
 	};
@@ -112,7 +136,7 @@ export default function InputBox({
 			return;
 		}
 
-		// Priority 1: Autocomplete handling, consumes events if active
+		// Priority 1: Autocomplete handling
 		if (autocomplete.isActive && autocomplete.suggestions.length > 0) {
 			if (key.upArrow) {
 				setAutocomplete(previous => ({
@@ -121,7 +145,7 @@ export default function InputBox({
 						(previous.selectedIndex - 1 + previous.suggestions.length) %
 						previous.suggestions.length,
 				}));
-				return;
+				return; // Consume event
 			}
 
 			if (key.downArrow) {
@@ -130,12 +154,12 @@ export default function InputBox({
 					selectedIndex:
 						(previous.selectedIndex + 1) % previous.suggestions.length,
 				}));
-				return;
+				return; // Consume event
 			}
 
 			if (key.escape) {
 				setAutocomplete(initialAutocompleteState);
-				return;
+				return; // Consume event
 			}
 
 			if (key.tab || key.return) {
@@ -145,7 +169,7 @@ export default function InputBox({
 					handleAutocompleteSelection(selectedSuggestion);
 				}
 
-				return;
+				return; // Consume event, preventing submission
 			}
 		}
 
@@ -166,7 +190,7 @@ export default function InputBox({
 					placeholder={
 						isDisabled
 							? 'Selection mode active - use j/k to navigate, Esc to exit'
-							: 'Type a message and press Enter to send... (try " @<path>")'
+							: 'Type a message, : for commands, or @ for files'
 					}
 					onChange={isDisabled ? () => {} : handleInputChange}
 					// OnSubmit is now handled by the master useInput hook
