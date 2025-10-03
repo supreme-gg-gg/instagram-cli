@@ -1,22 +1,19 @@
 import React, {useRef} from 'react';
 import {Box, Text} from 'ink';
 import Image from 'ink-picture';
-import type {
-	Message,
-	Thread,
-	// TextMessage,
-	// MediaMessage,
-} from '../../types/instagram.js';
+import type {Message, Thread} from '../../types/instagram.js';
 import {ConfigManager} from '../../config.js';
 
 type MessageListProperties = {
 	readonly messages: Message[];
 	readonly currentThread?: Thread;
+	readonly selectedMessageIndex?: number | undefined;
 };
 
 export default function MessageList({
 	messages,
 	currentThread,
+	selectedMessageIndex,
 }: MessageListProperties) {
 	const endOfMessagesReference = useRef<React.ElementRef<typeof Box>>(null);
 	const imageProtocol = ConfigManager.getInstance().get(
@@ -40,6 +37,13 @@ export default function MessageList({
 
 			case 'media': {
 				const {media} = message;
+				// Video
+				if (media.media_type === 2) {
+					const videoUrl = media.video_versions?.[0]?.url;
+					return <Text dimColor>{`[Sent a video: ${videoUrl}]`}</Text>;
+				}
+
+				// Image
 				const imageUrl = media.image_versions2?.candidates[0]?.url;
 				if (imageUrl) {
 					return (
@@ -58,12 +62,17 @@ export default function MessageList({
 				return <Text dimColor>[Sent an image]</Text>;
 			}
 
-			case 'clip': {
-				return <Text dimColor>[Sent a brainrot!]</Text>;
+			case 'link': {
+				return (
+					<Text>
+						{message.link.text}
+						<Text color="gray"> ({message.link.url})</Text>
+					</Text>
+				);
 			}
 
 			default: {
-				return <Text dimColor>[Unknown Message Type]</Text>;
+				return <Text dimColor>{(message as any).text}</Text>;
 			}
 		}
 	};
@@ -81,24 +90,51 @@ export default function MessageList({
 	}
 
 	return (
-		<Box flexDirection="column" flexGrow={1} paddingX={1}>
-			<Box flexDirection="column" justifyContent="flex-end" overflow="hidden">
-				{messages.map(message => (
-					<Box
-						key={message.id}
-						flexDirection="column"
-						flexGrow={1}
-						flexShrink={0}
-					>
-						<Box justifyContent="space-between">
-							<Text bold color={message.isOutgoing ? 'cyan' : 'greenBright'}>
-								{message.isOutgoing ? 'You' : message.username}
-							</Text>
-							<Text dimColor>{formatTime(message.timestamp)}</Text>
+		<Box flexDirection="column" flexGrow={1} paddingX={1} overflow="hidden">
+			<Box
+				flexDirection="column"
+				justifyContent="flex-end"
+				flexGrow={1}
+				overflow="hidden"
+			>
+				{messages.map((message, index) => {
+					const isSelected = selectedMessageIndex === index;
+					return (
+						<Box
+							key={message.id}
+							flexDirection="column"
+							flexShrink={0}
+							marginBottom={1}
+							borderStyle={isSelected ? 'round' : undefined}
+							borderColor={isSelected ? 'yellow' : undefined}
+							paddingX={isSelected ? 1 : 0}
+						>
+							<Box justifyContent="space-between">
+								<Text bold color={message.isOutgoing ? 'cyan' : 'greenBright'}>
+									{message.isOutgoing ? 'You' : message.username}
+								</Text>
+								<Text dimColor>{formatTime(message.timestamp)}</Text>
+							</Box>
+							<Box flexDirection="column">
+								{renderMessageContent(message)}
+								{message.reactions && message.reactions.length > 0 && (
+									<Box
+										borderStyle="round"
+										borderColor="gray"
+										paddingX={1}
+										marginTop={1}
+									>
+										<Text color="gray">
+											{[...new Set(message.reactions.map(r => r.emoji))].join(
+												' ',
+											)}
+										</Text>
+									</Box>
+								)}
+							</Box>
 						</Box>
-						<Box>{renderMessageContent(message)}</Box>
-					</Box>
-				))}
+					);
+				})}
 			</Box>
 			<Box ref={endOfMessagesReference} />
 		</Box>

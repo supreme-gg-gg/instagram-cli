@@ -36,15 +36,10 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProperties) {
 				return '[Media]';
 			}
 
-			case 'clip': {
-				return '[Clip]';
-			}
-
 			case 'placeholder': {
 				return message.text;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
 			default: {
 				return '[Unsupported Message]';
 			}

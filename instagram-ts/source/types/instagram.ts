@@ -1,7 +1,17 @@
+export type Reaction = {
+	emoji: string;
+	senderId: string;
+};
+
+export type Link = {
+	url: string;
+	text: string;
+};
+
 export type Message =
 	| TextMessage
 	| MediaMessage
-	| ClipMessage
+	| LinkMessage
 	| PlaceholderMessage;
 
 type BaseMessage = {
@@ -11,6 +21,7 @@ type BaseMessage = {
 	username: string;
 	isOutgoing: boolean;
 	threadId: string;
+	reactions?: Reaction[];
 };
 
 export type TextMessage = {
@@ -23,9 +34,9 @@ export type MediaMessage = {
 	media: MessageMedia;
 } & BaseMessage;
 
-export type ClipMessage = {
-	itemType: 'clip';
-	clip: any; // Define clip properties as needed
+export type LinkMessage = {
+	itemType: 'link';
+	link: Link;
 } & BaseMessage;
 
 export type PlaceholderMessage = {
@@ -35,14 +46,11 @@ export type PlaceholderMessage = {
 
 export type MessageMedia = {
 	id: string;
-	user: {
-		pk: number;
-		username: string;
-		profilePicUrl?: string;
-	};
+	media_type: number; // 1 for image, 2 for video
 	image_versions2?: {
 		candidates: MediaCandidate[];
 	};
+	video_versions?: MediaCandidate[];
 	original_width: number;
 	original_height: number;
 };
@@ -72,6 +80,8 @@ export type ChatState = {
 	error?: string;
 	messageCursor?: string;
 	visibleMessageOffset: number;
+	selectedMessageIndex: number | undefined;
+	isSelectionMode: boolean;
 };
 
 export type AuthState = {

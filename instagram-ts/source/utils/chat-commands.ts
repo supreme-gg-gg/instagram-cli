@@ -36,7 +36,7 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			messages: [
 				...previous.messages,
 				systemMessage(
-					'Available commands: :help, :echo <text>, :k (scroll up), :j (scroll down)',
+					'Available commands: :help, :select (enter selection mode), :react [emoji] (react to selected), :unsend (delete selected), :upload <path>, :k (scroll up), :j (scroll down)',
 					previous.currentThread?.id ?? '',
 				),
 			],
@@ -51,6 +51,164 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 			],
 		}));
 	},
+
+	async select(_arguments, {setChatState, chatState}) {
+		if (chatState.messages.length === 0) {
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						'No messages to select from.',
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+			return;
+		}
+
+		setChatState(previous => ({
+			...previous,
+			isSelectionMode: true,
+			selectedMessageIndex: previous.messages.length - 1, // Start with the last message
+		}));
+	},
+
+	// If you try to send reaction without MQTT connected, it will show you the error message
+	async react(arguments_, {client, chatState, setChatState}) {
+		const [emoji = '❤️'] = arguments_;
+
+		// Check if we have a selected message
+		if (chatState.selectedMessageIndex === undefined) {
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						'Usage: :select to enter selection mode, then :react [emoji] to react to the selected message',
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+			return;
+		}
+
+		const messageToReactTo = chatState.messages[chatState.selectedMessageIndex];
+		if (!messageToReactTo || !chatState.currentThread) return;
+
+		try {
+			await client.sendReaction(
+				chatState.currentThread.id,
+				messageToReactTo.id,
+				emoji,
+			);
+
+			// Clear selected message after successful reaction
+			setChatState(previous => ({
+				...previous,
+				selectedMessageIndex: undefined,
+			}));
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : 'Could not send reaction.';
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(errorMessage, previous.currentThread?.id ?? ''),
+				],
+			}));
+		}
+	},
+
+	async upload(arguments_, {client, chatState, setChatState}) {
+		const [path] = arguments_;
+		if (!path) {
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						'Usage: :upload <path-to-file>',
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+			return;
+		}
+
+		// Detect the file type to determine if we should send as photo or video
+		const lowerPath = path.toLowerCase();
+		const isImage = /\.(jpg|jpeg|png|gif)$/.test(lowerPath);
+		const isVideo = /\.(mp4|mov|avi|mkv)$/.test(lowerPath);
+
+		if (chatState.currentThread) {
+			if (isImage) {
+				await client.sendPhoto(chatState.currentThread.id, path);
+			} else if (isVideo) {
+				await client.sendVideo(chatState.currentThread.id, path);
+			} else {
+				setChatState(previous => ({
+					...previous,
+					messages: [
+						...previous.messages,
+						systemMessage(
+							'Unsupported file type. Please upload an image or video.',
+							previous.currentThread?.id ?? '',
+						),
+					],
+				}));
+			}
+		}
+	},
+
+	async unsend(_arguments, {client, chatState, setChatState}) {
+		// Check if we have a selected message
+		if (chatState.selectedMessageIndex === undefined) {
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						'Usage: :select to enter selection mode, then :unsend to delete the selected message',
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+			return;
+		}
+
+		const messageToUnsend = chatState.messages[chatState.selectedMessageIndex];
+
+		if (!messageToUnsend?.isOutgoing) {
+			setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						'You can only unsend your own messages.',
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+			return;
+		}
+
+		if (chatState.currentThread) {
+			await client.unsendMessage(
+				chatState.currentThread.id,
+				messageToUnsend.id,
+			);
+			// Optimistic update
+			setChatState(previous => ({
+				...previous,
+				messages: previous.messages.filter(m => m.id !== messageToUnsend.id),
+				// Clear selected message after successful unsend
+				selectedMessageIndex: undefined,
+			}));
+		}
+	},
+
 	async k(_arguments, {client, chatState, setChatState, height}) {
 		const messageLines = 3; // Approximate lines per message
 		const visibleMessageCount = Math.max(
@@ -108,15 +266,32 @@ export const chatCommands: Record<string, ChatCommandHandler> = {
 	},
 };
 
-export function parseAndDispatchChatCommand(
+export async function parseAndDispatchChatCommand(
 	text: string,
 	context: ChatCommandContext,
-): boolean {
+): Promise<boolean> {
 	if (!text.startsWith(':')) return false;
+
 	const [cmd, ...arguments_] = text.slice(1).split(/\s+/);
 	const handler = chatCommands[cmd!];
+
 	if (handler) {
-		void handler(arguments_, context);
+		try {
+			await handler(arguments_, context);
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : 'An unknown error occurred';
+			context.setChatState(previous => ({
+				...previous,
+				messages: [
+					...previous.messages,
+					systemMessage(
+						`Error in command :${cmd}: ${errorMessage}`,
+						previous.currentThread?.id ?? '',
+					),
+				],
+			}));
+		}
 	} else {
 		context.setChatState(previous => ({
 			...previous,

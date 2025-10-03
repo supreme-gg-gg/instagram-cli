@@ -4,6 +4,7 @@ import type {
 	User,
 	Post,
 	FeedInstance,
+	Reaction,
 } from '../types/instagram.js';
 
 // Mock users
@@ -126,6 +127,10 @@ export const mockMessages: Message[] = [
 		threadId: 'thread1',
 		itemType: 'text',
 		text: 'Hey, are you free tonight?',
+		reactions: [
+			{emoji: '👍', senderId: 'user2'},
+			{emoji: '😊', senderId: 'user2'},
+		],
 	},
 	{
 		id: 'msg2',
@@ -136,6 +141,7 @@ export const mockMessages: Message[] = [
 		threadId: 'thread1',
 		itemType: 'text',
 		text: 'I might be, what do you have in mind?',
+		reactions: [{emoji: '🤔', senderId: 'user1'}],
 	},
 	{
 		id: 'msg3',
@@ -147,10 +153,7 @@ export const mockMessages: Message[] = [
 		itemType: 'media',
 		media: {
 			id: 'media1',
-			user: {
-				pk: 1001,
-				username: 'alice_smith',
-			},
+			media_type: 1,
 			image_versions2: {
 				candidates: [
 					{
@@ -163,6 +166,11 @@ export const mockMessages: Message[] = [
 			original_width: 512,
 			original_height: 512,
 		},
+		reactions: [
+			{emoji: '🔥', senderId: 'user2'},
+			{emoji: '💯', senderId: 'user3'},
+			{emoji: '❤️', senderId: 'user4'},
+		],
 	},
 	{
 		id: 'msg4',
@@ -174,10 +182,7 @@ export const mockMessages: Message[] = [
 		itemType: 'media',
 		media: {
 			id: 'media2',
-			user: {
-				pk: 1002,
-				username: 'bob_johnson',
-			},
+			media_type: 1,
 			image_versions2: {
 				candidates: [
 					{
@@ -190,6 +195,10 @@ export const mockMessages: Message[] = [
 			original_width: 256,
 			original_height: 256,
 		},
+		reactions: [
+			{emoji: '📸', senderId: 'user1'},
+			{emoji: '👌', senderId: 'user1'},
+		],
 	},
 	{
 		id: 'msg5',
@@ -201,10 +210,7 @@ export const mockMessages: Message[] = [
 		itemType: 'media',
 		media: {
 			id: 'media3',
-			user: {
-				pk: 1001,
-				username: 'alice_smith',
-			},
+			media_type: 1,
 			image_versions2: {
 				candidates: [
 					{
@@ -217,6 +223,7 @@ export const mockMessages: Message[] = [
 			original_width: 500,
 			original_height: 500,
 		},
+		// No reactions for this message
 	},
 ];
 
@@ -245,6 +252,10 @@ export const mockThreads: Thread[] = [
 			threadId: 'thread2',
 			itemType: 'text',
 			text: 'Thanks for the help earlier!',
+			reactions: [
+				{emoji: '🙏', senderId: 'user1'},
+				{emoji: '💪', senderId: 'user1'},
+			],
 		},
 	},
 	{
@@ -262,11 +273,64 @@ export const mockThreads: Thread[] = [
 			threadId: 'thread3',
 			itemType: 'text',
 			text: 'Can we schedule a meeting for tomorrow?',
+			reactions: [
+				{emoji: '📅', senderId: 'user1'},
+				{emoji: '✅', senderId: 'user1'},
+			],
 		},
 	},
 ];
 
+// Mock reaction emojis for easy testing
+export const mockEmojis = [
+	'❤️',
+	'😍',
+	'😂',
+	'😮',
+	'😢',
+	'😡',
+	'👍',
+	'👎',
+	'🔥',
+	'💯',
+	'🎉',
+	'✨',
+	'🙏',
+	'💪',
+	'👌',
+	'📸',
+	'📅',
+	'✅',
+	'🤔',
+	'😊',
+	'🥳',
+	'🎊',
+	'💕',
+	'🌟',
+];
+
 // Helper functions to generate more data
+export function generateReactions(
+	senderIds: string[],
+	emojiCount = 1,
+): Reaction[] {
+	const reactions: Reaction[] = [];
+	const shuffledEmojis = [...mockEmojis].sort(() => Math.random() - 0.5);
+
+	for (
+		let i = 0;
+		i < Math.min(emojiCount, senderIds.length, shuffledEmojis.length);
+		i++
+	) {
+		reactions.push({
+			emoji: shuffledEmojis[i]!,
+			senderId: senderIds[i]!,
+		});
+	}
+
+	return reactions;
+}
+
 export function generateMessage(
 	id: string,
 	threadId: string,
@@ -275,6 +339,7 @@ export function generateMessage(
 	text: string,
 	isOutgoing = false,
 	minutesAgo = 0,
+	reactions?: Reaction[],
 ): Message {
 	return {
 		id,
@@ -285,6 +350,7 @@ export function generateMessage(
 		threadId,
 		itemType: 'text',
 		text,
+		...(reactions && reactions.length > 0 && {reactions}),
 	};
 }
 

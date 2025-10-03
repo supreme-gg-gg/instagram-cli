@@ -1,7 +1,8 @@
 import React, {useState, useEffect} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
 import {TerminalInfoProvider} from 'ink-picture';
-import type {Thread, ChatState} from '../../types/instagram.js';
+import type {Thread, ChatState, Message} from '../../types/instagram.js';
+import type {RealtimeStatus} from '../../client.js';
 import MessageList from '../components/message-list.js';
 import InputBox from '../components/input-box.js';
 import StatusBar from '../components/status-bar.js';
@@ -22,8 +23,12 @@ export default function ChatView() {
 		loading: true,
 		currentThread: undefined,
 		visibleMessageOffset: 0,
+		selectedMessageIndex: undefined,
+		isSelectionMode: false,
 	});
 	const [currentView, setCurrentView] = useState<'threads' | 'chat'>('threads');
+	const [realtimeStatus, setRealtimeStatus] =
+		useState<RealtimeStatus>('disconnected');
 
 	// Load threads when client is ready
 	useEffect(() => {
@@ -47,30 +52,117 @@ export default function ChatView() {
 		void loadThreads();
 	}, [client]);
 
-	// Poll for new messages
+	// Effect for realtime status and errors (no thread dependency)
 	useEffect(() => {
-		if (
-			currentView !== 'chat' ||
-			!chatState.currentThread ||
-			chatState.visibleMessageOffset > 0 // Don't poll when scrolled up
-		)
-			return;
+		if (!client) return;
 
-		const interval = setInterval(async () => {
-			if (!client || !chatState.currentThread) return;
-			const {messages} = await client.getMessages(chatState.currentThread.id);
-			setChatState(previous => ({...previous, messages}));
-		}, 5000);
+		const handleRealtimeStatus = (status: RealtimeStatus) => {
+			setRealtimeStatus(status);
+		};
+
+		const handleError = (error: Error) => {
+			setChatState(prev => ({...prev, error: error.message, loading: false}));
+		};
+
+		client.on('realtimeStatus', handleRealtimeStatus);
+		client.on('error', handleError);
+
+		// Emit the current status immediately in case we missed the initial event
+		// This might be a temporary fix but it seems like the logic follows through?
+		client.emit('realtimeStatus', client.getRealtimeStatus());
 
 		return () => {
-			clearInterval(interval);
+			client.off('realtimeStatus', handleRealtimeStatus);
+			client.off('error', handleError);
 		};
-	}, [
-		client,
-		currentView,
-		chatState.currentThread,
-		chatState.visibleMessageOffset,
-	]);
+	}, [client]);
+
+	// Effect for message events (needs thread dependency)
+	useEffect(() => {
+		if (!client) return;
+
+		const handleMessage = (message: Message) => {
+			// We only care about events about THIS thread
+			// Tho in the future we can use this to send notifications in the app as new messages lands
+			if (message.threadId === chatState.currentThread?.id) {
+				setChatState(prev => ({
+					...prev,
+					messages: [...prev.messages, message],
+				}));
+			}
+		};
+
+		client.on('message', handleMessage);
+
+		return () => {
+			client.off('message', handleMessage);
+		};
+	}, [client, chatState.currentThread?.id]);
+
+	// Polling effect for messages when realtime client is disconnected
+	useEffect(() => {
+		let pollingInterval: NodeJS.Timeout | undefined;
+
+		const pollForNewMessages = async () => {
+			if (!client || !chatState.currentThread) {
+				return;
+			}
+
+			try {
+				// Fetch the latest messages without a cursor to get the most recent ones
+				const {messages: latestMessages} = await client.getMessages(
+					chatState.currentThread.id,
+				);
+
+				setChatState(previous => {
+					const existingMessageIds = new Set(previous.messages.map(m => m.id));
+					const newMessages = latestMessages.filter(
+						m => !existingMessageIds.has(m.id),
+					);
+
+					if (newMessages.length > 0) {
+						return {
+							...previous,
+							messages: [...previous.messages, ...newMessages],
+						};
+					}
+
+					return previous;
+				});
+			} catch (error) {
+				console.error('Polling for new messages failed:', error);
+				// Optionally, set an error state in chatState if needed
+				setChatState(previous => ({
+					...previous,
+					error:
+						error instanceof Error
+							? error.message
+							: 'Failed to poll for new messages',
+				}));
+			}
+		};
+
+		if (realtimeStatus === 'disconnected' && chatState.currentThread) {
+			// Start polling only if realtime is disconnected and a thread is selected
+			pollingInterval = setInterval(pollForNewMessages, 5000); // Poll every 5 seconds
+		}
+
+		return () => {
+			if (pollingInterval) {
+				clearInterval(pollingInterval);
+			}
+		};
+	}, [client, chatState.currentThread, realtimeStatus]);
+
+	useEffect(() => {
+		// When unmounts call the destructor for the client
+		return () => {
+			if (realtimeStatus === 'connected' && client) {
+				// We don't await this because cleanup functions must be synchronous
+				void client.shutdown();
+			}
+		};
+	}, [client, realtimeStatus]);
 
 	useInput((input, key) => {
 		if (key.ctrl && input === 'c') {
@@ -84,13 +176,65 @@ export default function ChatView() {
 		}
 
 		if (key.escape && currentView === 'chat') {
-			setCurrentView('threads');
-			setChatState(previous => ({
-				...previous,
-				currentThread: undefined,
-				messages: [],
-				visibleMessageOffset: 0,
-			}));
+			if (chatState.isSelectionMode) {
+				// Exit selection mode
+				setChatState(previous => ({
+					...previous,
+					isSelectionMode: false,
+					selectedMessageIndex: undefined,
+				}));
+			} else {
+				// Exit chat view
+				setCurrentView('threads');
+				setChatState(previous => ({
+					...previous,
+					currentThread: undefined,
+					messages: [],
+					visibleMessageOffset: 0,
+					selectedMessageIndex: undefined,
+					isSelectionMode: false,
+				}));
+			}
+
+			return;
+		}
+
+		// Handle j/k navigation in selection mode
+		if (chatState.isSelectionMode && currentView === 'chat') {
+			if (input === 'j') {
+				// Move down (next message)
+				setChatState(previous => {
+					const maxIndex = Math.max(0, previous.messages.length - 1);
+					const newIndex =
+						previous.selectedMessageIndex === undefined
+							? maxIndex
+							: Math.min(maxIndex, previous.selectedMessageIndex + 1);
+					return {
+						...previous,
+						selectedMessageIndex: newIndex,
+					};
+				});
+			} else if (input === 'k') {
+				// Move up (previous message)
+				setChatState(previous => {
+					const newIndex =
+						previous.selectedMessageIndex === undefined
+							? Math.max(0, previous.messages.length - 1)
+							: Math.max(0, previous.selectedMessageIndex - 1);
+					return {
+						...previous,
+						selectedMessageIndex: newIndex,
+					};
+				});
+			} else if (key.return) {
+				// Confirm selection and exit selection mode
+				// Keep the selectedMessageIndex so commands can use it
+				setChatState(previous => ({
+					...previous,
+					isSelectionMode: false,
+					// SelectedMessageIndex remains the same
+				}));
+			}
 		}
 	});
 
@@ -127,26 +271,20 @@ export default function ChatView() {
 		if (!client || !chatState.currentThread) return;
 
 		// Check for chat command (starts with ':') and dispatch
-		const handled = parseAndDispatchChatCommand(text, {
+		const isCommand = await parseAndDispatchChatCommand(text, {
 			client,
 			chatState,
 			setChatState,
 			height,
 		});
-		if (handled) {
+		if (isCommand) {
 			return;
 		}
 
 		try {
+			// Send the message. If using MQTT, the message will be received via the 'message' event.
+			// If falling back to the API, it will appear on the next history fetch (e.g., chat reopen).
 			await client.sendMessage(chatState.currentThread.id, text);
-			// Reload messages to show the new one
-			const {messages} = await client.getMessages(chatState.currentThread.id);
-			// Also reset to the bottom of the chat since we just sent a message
-			setChatState(previous => ({
-				...previous,
-				messages,
-				visibleMessageOffset: 0,
-			}));
 		} catch (error) {
 			setChatState(previous => ({
 				...previous,
@@ -211,13 +349,21 @@ export default function ChatView() {
 		const visibleMessages = chatState.messages.slice(startIndex, endIndex);
 
 		return (
-			<>
-				<MessageList
-					messages={visibleMessages}
-					currentThread={chatState.currentThread}
-				/>
-				<InputBox onSend={handleSendMessage} />
-			</>
+			<Box flexDirection="column" height="100%">
+				<Box flexGrow={1} overflow="hidden">
+					<MessageList
+						messages={visibleMessages}
+						currentThread={chatState.currentThread}
+						selectedMessageIndex={chatState.selectedMessageIndex}
+					/>
+				</Box>
+				<Box flexShrink={0}>
+					<InputBox
+						isDisabled={chatState.isSelectionMode}
+						onSend={handleSendMessage}
+					/>
+				</Box>
+			</Box>
 		);
 	};
 
@@ -230,6 +376,7 @@ export default function ChatView() {
 						currentThread={chatState.currentThread}
 						isLoading={chatState.loading}
 						error={chatState.error}
+						realtimeStatus={realtimeStatus}
 					/>
 
 					<Box flexGrow={1} flexDirection="column">
@@ -240,7 +387,9 @@ export default function ChatView() {
 						<Text dimColor>
 							{currentView === 'threads'
 								? 'j/k: navigate, Enter: select, q: quit'
-								: 'Esc: back to threads, Ctrl+C: quit'}
+								: chatState.isSelectionMode
+									? 'j/k: navigate messages, Enter: confirm, Esc: exit selection'
+									: 'Esc: back to threads, Ctrl+C: quit'}
 						</Text>
 					</Box>
 				</Box>

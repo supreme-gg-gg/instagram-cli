@@ -1,4 +1,4 @@
-import React, {useState, useMemo, useEffect} from 'react';
+import React, {useState, useEffect} from 'react';
 import {Box, Text} from 'ink';
 import {Alert, TextInput} from '@inkjs/ui';
 import zod from 'zod';
@@ -25,7 +25,7 @@ type Properties = {
 };
 
 export default function Login({options}: Properties) {
-	const client = useMemo(() => new InstagramClient(), []);
+	const [client, setClient] = useState<InstagramClient | undefined>(undefined);
 	const [message, setMessage] = useState<string | undefined>('Initializing...');
 	const [mode, setMode] = useState<
 		'session' | 'form' | 'challenge' | '2fa' | 'success' | 'error'
@@ -34,12 +34,25 @@ export default function Login({options}: Properties) {
 		AccountRepositoryLoginErrorResponseTwoFactorInfo | undefined
 	>(undefined);
 
+	// Effect to handle client shutdown when the component unmounts
+	useEffect(() => {
+		return () => {
+			if (client) {
+				void client.shutdown();
+			}
+		};
+	}, [client]);
+
 	const handleLoginSubmit = async (username: string, password: string) => {
-		setMessage(`🔄 Logging in as @${username}...`);
+		if (!client) return;
+
+		setMessage(`Logging in as @${username}...`);
 		try {
-			const result = await client.login(username, password);
+			const result = await client.login(username, password, {
+				initializeRealtime: false,
+			});
 			if (result.success) {
-				setMessage(`✅ Logged in as @${result.username}`);
+				setMessage(`Logged in as @${result.username}`);
 				setMode('success');
 			} else if (result.twoFactorInfo) {
 				setTwoFactorInfo(result.twoFactorInfo);
@@ -51,7 +64,6 @@ export default function Login({options}: Properties) {
 				setMessage('Challenge required. Requesting code...');
 				await client.startChallenge();
 				setMessage('A code has been sent to you. Please enter it below.');
-				// Redirect to the challenge resolution page
 				setMode('challenge');
 			} else {
 				setMessage(`Login failed: ${result.error}`);
@@ -68,7 +80,9 @@ export default function Login({options}: Properties) {
 	};
 
 	const handle2FASubmit = async (code: string) => {
-		setMessage('🔄 Verifying 2FA code...');
+		if (!client) return;
+
+		setMessage('Verifying 2FA code...');
 		try {
 			const result = await client.twoFactorLogin({
 				verificationCode: code,
@@ -76,7 +90,7 @@ export default function Login({options}: Properties) {
 				totp_two_factor_on: twoFactorInfo!.totp_two_factor_on,
 			});
 			if (result.success) {
-				setMessage(`✅ Logged in as @${result.username}`);
+				setMessage(`Logged in as @${result.username}`);
 				setMode('success');
 			} else {
 				setMessage(`2FA login failed: ${result.error}`);
@@ -91,11 +105,13 @@ export default function Login({options}: Properties) {
 	};
 
 	const handleChallengeSubmit = async (code: string) => {
-		setMessage('🔄 Verifying code...');
+		if (!client) return;
+
+		setMessage('Verifying code...');
 		try {
 			const result = await client.sendChallengeCode(code);
 			if (result.success) {
-				setMessage(`✅ Logged in as @${result.username}`);
+				setMessage(`Logged in as @${result.username}`);
 				setMode('success');
 			} else {
 				setMessage(`Challenge failed: ${result.error}`);
@@ -115,13 +131,14 @@ export default function Login({options}: Properties) {
 		const run = async () => {
 			// If the user provided a username, we assume they want to log in with username/password
 			if (options.username) {
+				setClient(new InstagramClient());
 				setMode('form');
 				setMessage(undefined);
 				return;
 			}
 
 			// Otherwise we load the saved session and if failed redirect to pages
-			setMessage('🔄 Trying to log in with saved session...');
+			setMessage('Trying to log in with saved session...');
 			const config = ConfigManager.getInstance();
 			await config.initialize();
 			const currentUsername = config.get('login.currentUsername');
@@ -130,22 +147,23 @@ export default function Login({options}: Properties) {
 				setMessage(
 					'No saved session found. Please log in with your username and password.',
 				);
+				setClient(new InstagramClient());
 				setMode('form');
 				return;
 			}
 
 			const sessionClient = new InstagramClient(currentUsername);
-			const result = await sessionClient.loginBySession();
+			setClient(sessionClient);
+			const result = await sessionClient.loginBySession({
+				initializeRealtime: false,
+			});
 
 			if (result.success) {
-				setMessage(`✅ Logged in as @${result.username}`);
+				setMessage(`Logged in as @${result.username}`);
 				setMode('success');
 			} else if (result.checkpointError) {
 				setMessage('Challenge required. Requesting code...');
-				// Console.log(client.getInstagramClient().state.checkpoint);
-				// console.log(result.checkpointError.response.body);
-				await client.startChallenge();
-				// Console.log(client.getInstagramClient().state.checkpoint);
+				await sessionClient.startChallenge();
 				setMessage('A code has been sent to you. Please enter it below.');
 				setMode('challenge');
 			} else if (result.error) {
@@ -153,19 +171,36 @@ export default function Login({options}: Properties) {
 				setMessage(
 					'Could not log in with saved session. Please log in with your username and password.',
 				);
+				setClient(new InstagramClient());
 				setMode('form');
 			}
 		};
 
 		void run();
-	}, [options.username, client]);
+	}, [options.username]);
 
 	if (mode === 'error') {
-		return <Alert variant="error">{message}</Alert>;
+		return (
+			<Box>
+				<Alert variant="error">{message}</Alert>;
+			</Box>
+		);
 	}
 
-	if (mode === 'success' || mode === 'session') {
-		return <Text>{message}</Text>;
+	if (mode === 'success') {
+		return (
+			<Box>
+				<Alert variant="success">{message}</Alert>
+			</Box>
+		);
+	}
+
+	if (mode === 'session') {
+		return (
+			<Box>
+				<Alert variant="info">{message}</Alert>
+			</Box>
+		);
 	}
 
 	if (mode === 'form') {

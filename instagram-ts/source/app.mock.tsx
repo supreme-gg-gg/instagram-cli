@@ -6,42 +6,30 @@ import ChatView from './ui/views/chat-view.js';
 import MediaView from './ui/views/media-view.js';
 import AltScreen from './ui/components/alt-screen.js';
 
-const MOCK_CONFIG = {
-	view: 'chat' as 'chat' | 'media', // Change this to switch views
-	// user: "alice_smith",
-	// theme: "dark",
-	// etc.
-};
-
-function AppMock() {
+export function AppMock({view}: {readonly view: 'chat' | 'feed'}) {
 	const renderView = () => {
-		switch (MOCK_CONFIG.view) {
+		switch (view) {
 			case 'chat': {
 				return <ChatView />;
 			}
 
-			case 'media': {
+			case 'feed': {
 				return <MediaView feed={mockFeed} />;
-			}
-
-			// eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
-			default: {
-				return <ChatView />;
 			}
 		}
 	};
 
 	return (
-		<ClientContext.Provider value={mockClient}>
-			<AltScreen>
+		<AltScreen>
+			<ClientContext.Provider value={mockClient}>
 				<Box flexDirection="column" width="100%" height="100%">
 					{renderView()}
 				</Box>
-			</AltScreen>
-		</ClientContext.Provider>
+			</ClientContext.Provider>
+		</AltScreen>
 	);
 }
 
 export const run = () => {
-	render(<AppMock />);
+	render(<AppMock view="chat" />);
 };
