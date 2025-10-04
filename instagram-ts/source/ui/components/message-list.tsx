@@ -118,12 +118,7 @@ export default function MessageList({
 							<Box flexDirection="column">
 								{renderMessageContent(message)}
 								{message.reactions && message.reactions.length > 0 && (
-									<Box
-										borderStyle="round"
-										borderColor="gray"
-										paddingX={1}
-										marginTop={1}
-									>
+									<Box borderStyle="round" borderColor="gray" paddingX={1}>
 										<Text color="gray">
 											{[...new Set(message.reactions.map(r => r.emoji))].join(
 												' ',

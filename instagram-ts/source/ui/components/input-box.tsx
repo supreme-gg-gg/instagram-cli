@@ -1,15 +1,22 @@
 import React, {useState, useEffect} from 'react';
-import {Box, useInput} from 'ink';
+import {Box, Text, useInput} from 'ink';
 import TextInput from 'ink-text-input';
+import type {InstagramClient} from '../../client.js';
+import type {ChatState} from '../../types/instagram.js';
 import {
 	getFilePathSuggestions,
 	getCommandSuggestions,
 } from '../../utils/autocomplete.js';
+import {parseAndDispatchChatCommand} from '../../utils/chat-commands.js';
+import {preprocessMessage} from '../../utils/preprocess.js';
 import {AutocompleteView} from './autocomplete-view.js';
 
 type InputBoxProperties = {
-	readonly onSend: (message: string) => void;
 	readonly isDisabled?: boolean;
+	readonly client: InstagramClient;
+	readonly chatState: ChatState;
+	readonly setChatState: React.Dispatch<React.SetStateAction<ChatState>>;
+	readonly height: number;
 };
 
 type AutocompleteState = {
@@ -17,7 +24,7 @@ type AutocompleteState = {
 	readonly isActive: boolean;
 	readonly suggestions: readonly string[];
 	readonly selectedIndex: number;
-	readonly triggerIndex: number; // Position where the trigger starts
+	readonly triggerIndex: number;
 	readonly query: string;
 };
 
@@ -31,24 +38,72 @@ const initialAutocompleteState: AutocompleteState = {
 };
 
 export default function InputBox({
-	onSend,
 	isDisabled = false,
+	client,
+	chatState,
+	setChatState,
+	height,
 }: InputBoxProperties) {
 	const [message, setMessage] = useState('');
 	const [autocomplete, setAutocomplete] = useState<AutocompleteState>(
 		initialAutocompleteState,
 	);
-
-	// By changing the key, we force the TextInput to re-mount, which resets its internal state (including cursor position after autocomplete selection)
+	const [systemMessage, setSystemMessage] = useState<string | undefined>(
+		undefined,
+	);
 	const [inputKey, setInputKey] = useState(0);
 
-	const handleSubmit = (value: string) => {
-		if (value.trim()) {
-			onSend(value.trim());
-			setMessage('');
+	// Effect to clear system messages after a delay
+	useEffect(() => {
+		if (systemMessage) {
+			const timer = setTimeout(() => {
+				setSystemMessage(undefined);
+			}, 3000); // Clear after 3 seconds
+			return () => {
+				clearTimeout(timer);
+			};
+		}
+	}, [systemMessage]);
+
+	const handleSubmit = async (text: string) => {
+		if (!text.trim() || !client || !chatState.currentThread) {
+			return;
 		}
 
-		setAutocomplete(initialAutocompleteState); // Reset on submit
+		// Reset UI state first
+		setMessage('');
+		setAutocomplete(initialAutocompleteState);
+
+		const {isCommand, systemMessage: cmdSystemMessage} =
+			await parseAndDispatchChatCommand(text, {
+				client,
+				chatState,
+				setChatState,
+				height,
+			});
+
+		if (cmdSystemMessage) {
+			setSystemMessage(cmdSystemMessage);
+		}
+
+		if (isCommand) {
+			return; // Command was handled
+		}
+
+		try {
+			const processedText = await preprocessMessage(text, {
+				client,
+				threadId: chatState.currentThread.id,
+			});
+
+			if (processedText) {
+				await client.sendMessage(chatState.currentThread.id, processedText);
+			}
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : 'Failed to send message';
+			setSystemMessage(errorMessage);
+		}
 	};
 
 	const handleAutocompleteSelection = (suggestion: string) => {
@@ -58,7 +113,7 @@ export default function InputBox({
 			setMessage(newMessage);
 		} else if (autocomplete.type === 'filePath') {
 			const textBefore = message.slice(0, autocomplete.triggerIndex);
-			const newMessage = `${textBefore}@${suggestion}`;
+			const newMessage = `${textBefore}#${suggestion}`;
 			setMessage(newMessage);
 		}
 
@@ -98,7 +153,7 @@ export default function InputBox({
 		setMessage(value);
 
 		const commandMatch = /^:(\w*)$/.exec(value);
-		const filePathMatch = /\s@(\S*)$/.exec(value);
+		const filePathMatch = /\s#(\S*)$/.exec(value);
 
 		if (commandMatch) {
 			const query = commandMatch[1] ?? '';
@@ -118,7 +173,7 @@ export default function InputBox({
 			const query = filePathMatch[1] ?? '';
 			const triggerIndex = filePathMatch.index + 1;
 			setAutocomplete(previous => ({
-				...previous, // Preserve existing suggestions while typing
+				...previous,
 				type: 'filePath',
 				isActive: true,
 				query,
@@ -145,7 +200,7 @@ export default function InputBox({
 						(previous.selectedIndex - 1 + previous.suggestions.length) %
 						previous.suggestions.length,
 				}));
-				return; // Consume event
+				return;
 			}
 
 			if (key.downArrow) {
@@ -154,12 +209,12 @@ export default function InputBox({
 					selectedIndex:
 						(previous.selectedIndex + 1) % previous.suggestions.length,
 				}));
-				return; // Consume event
+				return;
 			}
 
 			if (key.escape) {
 				setAutocomplete(initialAutocompleteState);
-				return; // Consume event
+				return;
 			}
 
 			if (key.tab || key.return) {
@@ -169,14 +224,14 @@ export default function InputBox({
 					handleAutocompleteSelection(selectedSuggestion);
 				}
 
-				return; // Consume event, preventing submission
+				return;
 			}
 		}
 
 		// Priority 2: Default submission on Enter
 
 		if (key.return) {
-			handleSubmit(message);
+			void handleSubmit(message);
 		}
 	});
 
@@ -190,18 +245,24 @@ export default function InputBox({
 					placeholder={
 						isDisabled
 							? 'Selection mode active - use j/k to navigate, Esc to exit'
-							: 'Type a message, : for commands, or @ for files'
+							: 'Type a message, : for commands, or # for files'
 					}
 					onChange={isDisabled ? () => {} : handleInputChange}
 					// OnSubmit is now handled by the master useInput hook
 					onSubmit={() => {}}
 				/>
 			</Box>
-			{autocomplete.isActive && (
-				<AutocompleteView
-					suggestions={autocomplete.suggestions}
-					selectedIndex={autocomplete.selectedIndex}
-				/>
+			{systemMessage ? (
+				<Box marginTop={1}>
+					<Text color="yellow">{systemMessage}</Text>
+				</Box>
+			) : (
+				autocomplete.isActive && (
+					<AutocompleteView
+						suggestions={autocomplete.suggestions}
+						selectedIndex={autocomplete.selectedIndex}
+					/>
+				)
 			)}
 		</Box>
 	);

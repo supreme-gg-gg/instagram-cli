@@ -8,10 +8,8 @@ import InputBox from '../components/input-box.js';
 import StatusBar from '../components/status-bar.js';
 import ThreadList from '../components/thread-list.js';
 import {useClient} from '../context/client-context.js';
-import {parseAndDispatchChatCommand} from '../../utils/chat-commands.js';
 import FullScreen from '../components/full-screen.js';
 import {useScreenSize} from '../hooks/use-screen-size.js';
-import {preprocessMessage} from '../../utils/preprocess.js';
 
 export default function ChatView() {
 	const {exit} = useApp();
@@ -268,40 +266,6 @@ export default function ChatView() {
 		}
 	};
 
-	const handleSendMessage = async (text: string) => {
-		if (!client || !chatState.currentThread) return;
-
-		// First, check for client-side chat commands (e.g., :help, :select)
-		const isCommand = await parseAndDispatchChatCommand(text, {
-			client,
-			chatState,
-			setChatState,
-			height,
-		});
-		if (isCommand) {
-			return; // Command was handled, no message to send
-		}
-
-		try {
-			// Preprocess the message for special syntax like @<file> or :emoji:
-			const processedText = await preprocessMessage(text, {
-				client,
-				threadId: chatState.currentThread.id,
-			});
-
-			// Only send the message if there is content left after processing, i.e. if only an image was sent, skip sending an empty message
-			if (processedText) {
-				await client.sendMessage(chatState.currentThread.id, processedText);
-			}
-		} catch (error) {
-			setChatState(previous => ({
-				...previous,
-				error:
-					error instanceof Error ? error.message : 'Failed to send message',
-			}));
-		}
-	};
-
 	const renderContent = () => {
 		if (chatState.loading && chatState.threads.length === 0) {
 			return (
@@ -312,19 +276,6 @@ export default function ChatView() {
 					paddingY={1}
 				>
 					<Text>Loading threads...</Text>
-				</Box>
-			);
-		}
-
-		if (chatState.error) {
-			return (
-				<Box
-					flexGrow={1}
-					justifyContent="center"
-					alignItems="center"
-					paddingY={1}
-				>
-					<Text color="red">Error: {chatState.error}</Text>
 				</Box>
 			);
 		}
@@ -366,10 +317,15 @@ export default function ChatView() {
 					/>
 				</Box>
 				<Box flexShrink={0}>
-					<InputBox
-						isDisabled={chatState.isSelectionMode}
-						onSend={handleSendMessage}
-					/>
+					{client && (
+						<InputBox
+							isDisabled={chatState.isSelectionMode}
+							client={client}
+							chatState={chatState}
+							setChatState={setChatState}
+							height={height}
+						/>
+					)}
 				</Box>
 			</Box>
 		);
