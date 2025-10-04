@@ -30,6 +30,6 @@ export function AppMock({view}: {readonly view: 'chat' | 'feed'}) {
 	);
 }
 
-export const run = () => {
-	render(<AppMock view="chat" />);
+export const run = (view: 'chat' | 'feed' = 'chat') => {
+	render(<AppMock view={view} />);
 };
