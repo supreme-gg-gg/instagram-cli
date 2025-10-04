@@ -1,24 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {fileTypeFromFile} from 'file-type';
 import type {InstagramClient} from '../client.js';
-
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif']);
-// A list of common text file extensions
-const TEXT_EXTENSIONS = new Set([
-	'.txt',
-	'.md',
-	'.js',
-	'.ts',
-	'.tsx',
-	'.json',
-	'.html',
-	'.css',
-	'.py',
-	'.sh',
-	'.yaml',
-	'.yml',
-	'.log',
-]);
 
 type PreprocessContext = {
 	readonly client: InstagramClient;
@@ -40,10 +23,10 @@ export async function preprocessMessage(
 
 	// 1. Emoji Handling: Replace :emoji_name: with a placeholder
 	// eslint-disable-next-line unicorn/prefer-string-replace-all
-	processedText = processedText.replace(/:(\w+):/g, '✨');
+	processedText = processedText.replace(/:(\w+):/g, '🧂');
 
-	// 2. File Path Handling: Find @<path.ext> patterns
-	const filePathRegex = /@(\S+\.\w+)/g;
+	// 2. File Path Handling: Find #<path.ext> patterns
+	const filePathRegex = /#(\S+\.\w+)/g;
 	const matches = [...processedText.matchAll(filePathRegex)];
 
 	for (const match of matches) {
@@ -51,37 +34,38 @@ export async function preprocessMessage(
 		if (!filePath) continue;
 
 		const absolutePath = path.resolve(filePath);
-		const extension = path.extname(absolutePath).toLowerCase();
 
-		if (IMAGE_EXTENSIONS.has(extension)) {
-			// It's an image, upload it and remove the tag from the text
-			try {
+		try {
+			// eslint-disable-next-line no-await-in-loop
+			const fileType = await fileTypeFromFile(absolutePath);
+
+			if (fileType?.mime.startsWith('image/')) {
+				// It's an image, upload it and remove the tag from the text
 				// eslint-disable-next-line no-await-in-loop
 				await context.client.sendPhoto(context.threadId, absolutePath);
 				processedText = processedText.replace(match[0], ''); // Remove the @<path> part
-			} catch {
-				// If upload fails, leave the @<path> in the message as-is for the user to see the error.
-			}
-		} else if (TEXT_EXTENSIONS.has(extension)) {
-			// It's a text file. Read it and queue its content for appending.
-			// The @<path> tag will be preserved in the main message body.
-			try {
+			} else {
+				// Assume it could be a text file if not identified as a known binary type that isn't an image.
+				// We'll read it and check for binary content.
 				// eslint-disable-next-line no-await-in-loop
 				const content = await fs.readFile(absolutePath, 'utf8');
 
 				// Simple check for binary content by looking for the null character.
 				if (content.includes('\u0000')) {
-					// This is likely a binary file, so we do nothing.
+					// This is likely a binary file we don't handle, so do nothing.
 					continue;
 				}
 
+				// It's a text file. Queue its content for appending.
+				// The @<path> tag will be preserved in the main message body.
 				const formattedContent = `\n--- ${path.basename(
 					absolutePath,
 				)} ---\n${content}`;
 				textContents.push(formattedContent);
-			} catch {
-				// If read fails (e.g., not valid utf8), do nothing. The tag will remain in the message.
 			}
+		} catch {
+			// If any file operation fails (e.g., file not found, permission denied),
+			// leave the @<path> in the message as-is for the user to see the error.
 		}
 	}
 
