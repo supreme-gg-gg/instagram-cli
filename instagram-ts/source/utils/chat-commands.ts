@@ -46,6 +46,7 @@ export const chatCommands: Record<string, ChatCommand> = {
 				isSelectionMode: true,
 				selectedMessageIndex: previous.messages.length - 1,
 			}));
+			return 'Entered selection mode. Use j/k to navigate.';
 		},
 	},
 	react: {
@@ -59,7 +60,9 @@ export const chatCommands: Record<string, ChatCommand> = {
 
 			const messageToReactTo =
 				chatState.messages[chatState.selectedMessageIndex];
-			if (!messageToReactTo || !chatState.currentThread) return;
+			if (!messageToReactTo || !chatState.currentThread) {
+				return;
+			}
 
 			await client.sendReaction(
 				chatState.currentThread.id,
@@ -71,6 +74,9 @@ export const chatCommands: Record<string, ChatCommand> = {
 				...previous,
 				selectedMessageIndex: undefined,
 			}));
+
+			// eslint-disable-next-line no-useless-return
+			return;
 		},
 	},
 	upload: {
@@ -86,19 +92,21 @@ export const chatCommands: Record<string, ChatCommand> = {
 			const isImage = /\.(jpg|jpeg|png|gif)$/.test(lowerPath);
 			const isVideo = /\.(mp4|mov|avi|mkv)$/.test(lowerPath);
 
-			if (chatState.currentThread) {
-				if (isImage) {
-					await client.sendPhoto(chatState.currentThread.id, path);
-					return `Image uploaded: ${path}`;
-				}
-
-				if (isVideo) {
-					await client.sendVideo(chatState.currentThread.id, path);
-					return `Video uploaded: ${path}`;
-				}
-
-				return 'Unsupported file type. Please upload an image or video.';
+			if (!chatState.currentThread) {
+				return;
 			}
+
+			if (isImage) {
+				await client.sendPhoto(chatState.currentThread.id, path);
+				return `Image uploaded: ${path}`;
+			}
+
+			if (isVideo) {
+				await client.sendVideo(chatState.currentThread.id, path);
+				return `Video uploaded: ${path}`;
+			}
+
+			return 'Unsupported file type. Please upload an image or video.';
 		},
 	},
 	unsend: {
@@ -115,17 +123,21 @@ export const chatCommands: Record<string, ChatCommand> = {
 				return 'You can only unsend your own messages.';
 			}
 
-			if (chatState.currentThread) {
-				await client.unsendMessage(
-					chatState.currentThread.id,
-					messageToUnsend.id,
-				);
-				setChatState(previous => ({
-					...previous,
-					messages: previous.messages.filter(m => m.id !== messageToUnsend.id),
-					selectedMessageIndex: undefined,
-				}));
+			if (!chatState.currentThread) {
+				return;
 			}
+
+			await client.unsendMessage(
+				chatState.currentThread.id,
+				messageToUnsend.id,
+			);
+			setChatState(previous => ({
+				...previous,
+				messages: previous.messages.filter(m => m.id !== messageToUnsend.id),
+				selectedMessageIndex: undefined,
+			}));
+			// eslint-disable-next-line no-useless-return
+			return;
 		},
 	},
 	k: {
@@ -139,24 +151,7 @@ export const chatCommands: Record<string, ChatCommand> = {
 			const totalMessages = chatState.messages.length;
 			const maxOffset = Math.max(0, totalMessages - visibleMessageCount);
 
-			if (chatState.visibleMessageOffset >= maxOffset) {
-				if (!client || !chatState.currentThread || !chatState.messageCursor) {
-					return 'No more messages to load.';
-				}
-
-				setChatState(previous => ({...previous, loading: true}));
-				const {messages, cursor} = await client.getMessages(
-					chatState.currentThread.id,
-					chatState.messageCursor,
-				);
-				setChatState(previous => ({
-					...previous,
-					messages: [...messages, ...previous.messages],
-					loading: false,
-					messageCursor: cursor,
-					visibleMessageOffset: previous.visibleMessageOffset + messages.length,
-				}));
-			} else {
+			if (chatState.visibleMessageOffset < maxOffset) {
 				setChatState(previous => ({
 					...previous,
 					visibleMessageOffset: Math.min(
@@ -164,7 +159,29 @@ export const chatCommands: Record<string, ChatCommand> = {
 						previous.visibleMessageOffset + 5,
 					),
 				}));
+				return;
 			}
+
+			// If we are at the top, try to load more messages
+			if (!client || !chatState.currentThread || !chatState.messageCursor) {
+				return 'No more messages to load.';
+			}
+
+			setChatState(previous => ({...previous, loading: true}));
+			const {messages, cursor} = await client.getMessages(
+				chatState.currentThread.id,
+				chatState.messageCursor,
+			);
+			setChatState(previous => ({
+				...previous,
+				messages: [...messages, ...previous.messages],
+				loading: false,
+				messageCursor: cursor,
+				visibleMessageOffset: previous.visibleMessageOffset + messages.length,
+			}));
+
+			// eslint-disable-next-line no-useless-return
+			return;
 		},
 	},
 	j: {
