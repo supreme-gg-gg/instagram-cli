@@ -45,6 +45,10 @@ type Props = {
 	readonly initialScrollPosition?: 'start' | 'end';
 	/** Content to be rendered inside the scrollable area */
 	readonly children: ReactNode;
+	/** Callback that is triggered when the scroll view hits the top */
+	readonly onScrollToStart?: () => void;
+	/** Callback that is triggered when the scroll view hits the bottom */
+	readonly onScrollToEnd?: () => void;
 };
 
 /**
@@ -59,6 +63,8 @@ const ScrollView = forwardRef(
 			children,
 			scrollDirection = 'vertical',
 			initialScrollPosition = 'end',
+			onScrollToStart,
+			onScrollToEnd,
 		}: Props,
 		ref: React.Ref<ScrollViewRef>,
 	) => {
@@ -87,13 +93,39 @@ const ScrollView = forwardRef(
 
 					return Math.max(0, Math.min(maxOffset, newOffset));
 				});
+
+				// Trigger scroll callbacks if needed
+				if (onScrollToStart && offset === 0) {
+					onScrollToStart();
+				}
+
+				if (
+					onScrollToEnd &&
+					(scrollDirection === 'vertical'
+						? offset >= contentSize.height - height
+						: offset >= contentSize.width - width)
+				) {
+					onScrollToEnd();
+				}
 			},
-			[contentSize.height, contentSize.width, height, width, scrollDirection],
+			[
+				contentSize.height,
+				contentSize.width,
+				height,
+				width,
+				scrollDirection,
+				offset,
+				onScrollToStart,
+				onScrollToEnd,
+			],
 		);
 
 		const scrollToStart = useCallback(() => {
 			setOffset(0);
-		}, []);
+			if (onScrollToStart) {
+				onScrollToStart();
+			}
+		}, [onScrollToStart]);
 
 		const scrollToEnd = useCallback(() => {
 			setOffset(
@@ -101,7 +133,17 @@ const ScrollView = forwardRef(
 					? Math.max(0, contentSize.height - height)
 					: Math.max(0, contentSize.width - width),
 			);
-		}, [contentSize.height, contentSize.width, height, width, scrollDirection]);
+			if (onScrollToEnd) {
+				onScrollToEnd();
+			}
+		}, [
+			contentSize.height,
+			contentSize.width,
+			height,
+			width,
+			scrollDirection,
+			onScrollToEnd,
+		]);
 
 		const getScrollOffset = useCallback(() => {
 			return offset;

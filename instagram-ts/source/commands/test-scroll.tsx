@@ -27,8 +27,10 @@ function VeryLongList() {
 function App() {
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	const scrollViewRef = useRef<ScrollViewRef | null>(null);
+	const [message, setMessage] = useState('Use Up/Down arrows to scroll');
 
 	useInput((...args) => {
+		setMessage(''); // Clear message on input
 		const [, key] = args;
 		if (!scrollViewRef.current) return;
 		if (key.upArrow) {
@@ -46,9 +48,18 @@ function App() {
 				height={20}
 				scrollDirection="vertical"
 				initialScrollPosition="end"
+				onScrollToStart={() => {
+					setMessage('Reached the top');
+				}}
+				onScrollToEnd={() => {
+					setMessage('Reached the bottom');
+				}}
 			>
 				<VeryLongList />
 			</ScrollView>
+			<Box marginTop={1}>
+				<Text>{message}</Text>
+			</Box>
 		</Box>
 	);
 }
