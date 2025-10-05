@@ -8,7 +8,7 @@ import React, {
 	useCallback,
 } from 'react';
 import {Box, type DOMElement} from 'ink';
-import useContentSize from '../../utils/measure-content-size.js';
+import useContentSize from '../hooks/use-content-size.js';
 
 /**
  * Reference interface for programmatically controlling a ScrollView component.

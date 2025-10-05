@@ -19,7 +19,7 @@ type ContentSize = {
  * Unlike `measureElement`, which returns the constrained size of the container,
  * this function returns the actual bounding box of all children.
  */
-const measureContentSize = (node: DOMElement): ContentSize => {
+export const measureContentSize = (node: DOMElement): ContentSize => {
 	if (!node.yogaNode) {
 		return {width: 0, height: 0};
 	}
