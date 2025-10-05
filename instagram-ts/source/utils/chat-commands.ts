@@ -1,11 +1,13 @@
 import type {InstagramClient} from '../client.js';
 import type {ChatState} from '../types/instagram.js';
+import type {ScrollViewRef} from '../ui/components/scroll-view.js';
 
 export type ChatCommandContext = {
 	readonly client: InstagramClient;
 	readonly chatState: ChatState;
 	readonly setChatState: React.Dispatch<React.SetStateAction<ChatState>>;
 	readonly height: number;
+	readonly scrollViewRef: React.RefObject<ScrollViewRef>;
 };
 
 // Handler will return a system message when needed, or void otherwise
@@ -142,43 +144,12 @@ export const chatCommands: Record<string, ChatCommand> = {
 	},
 	k: {
 		description: 'Scroll up in the message history. Usage: :k',
-		async handler(_arguments, {client, chatState, setChatState, height}) {
-			const messageLines = 3;
-			const visibleMessageCount = Math.max(
-				0,
-				Math.floor((height - 8) / messageLines),
-			);
-			const totalMessages = chatState.messages.length;
-			const maxOffset = Math.max(0, totalMessages - visibleMessageCount);
-
-			if (chatState.visibleMessageOffset < maxOffset) {
-				setChatState(previous => ({
-					...previous,
-					visibleMessageOffset: Math.min(
-						maxOffset,
-						previous.visibleMessageOffset + 5,
-					),
-				}));
-				return;
+		async handler(_arguments, {scrollViewRef}) {
+			if (!scrollViewRef.current) {
+				return 'ScrollView not available.';
 			}
 
-			// If we are at the top, try to load more messages
-			if (!client || !chatState.currentThread || !chatState.messageCursor) {
-				return 'No more messages to load.';
-			}
-
-			setChatState(previous => ({...previous, loading: true}));
-			const {messages, cursor} = await client.getMessages(
-				chatState.currentThread.id,
-				chatState.messageCursor,
-			);
-			setChatState(previous => ({
-				...previous,
-				messages: [...messages, ...previous.messages],
-				loading: false,
-				messageCursor: cursor,
-				visibleMessageOffset: previous.visibleMessageOffset + messages.length,
-			}));
+			scrollViewRef.current.scrollTo(curr => curr - 10);
 
 			// eslint-disable-next-line no-useless-return
 			return;
@@ -186,12 +157,15 @@ export const chatCommands: Record<string, ChatCommand> = {
 	},
 	j: {
 		description: 'Scroll down in the message history. Usage: :j',
-		handler(_arguments, {setChatState}) {
-			setChatState(previous => ({
-				...previous,
-				// Move down by 5 messages, but not below 0
-				visibleMessageOffset: Math.max(0, previous.visibleMessageOffset - 5),
-			}));
+		handler(_arguments, {scrollViewRef}) {
+			if (!scrollViewRef.current) {
+				return 'ScrollView not available.';
+			}
+
+			scrollViewRef.current.scrollTo(curr => curr + 10);
+
+			// eslint-disable-next-line no-useless-return
+			return;
 		},
 	},
 };

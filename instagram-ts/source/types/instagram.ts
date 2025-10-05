@@ -79,7 +79,6 @@ export type ChatState = {
 	loading: boolean;
 	error?: string;
 	messageCursor?: string;
-	visibleMessageOffset: number;
 	selectedMessageIndex: number | undefined;
 	isSelectionMode: boolean;
 };

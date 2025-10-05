@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
 import {TerminalInfoProvider} from 'ink-picture';
 import type {Thread, ChatState, Message} from '../../types/instagram.js';
@@ -7,6 +7,7 @@ import MessageList from '../components/message-list.js';
 import InputBox from '../components/input-box.js';
 import StatusBar from '../components/status-bar.js';
 import ThreadList from '../components/thread-list.js';
+import ScrollView, {type ScrollViewRef} from '../components/scroll-view.js';
 import {useClient} from '../context/client-context.js';
 import {parseAndDispatchChatCommand} from '../../utils/chat-commands.js';
 import FullScreen from '../components/full-screen.js';
@@ -16,14 +17,14 @@ import {preprocessMessage} from '../../utils/preprocess.js';
 export default function ChatView() {
 	const {exit} = useApp();
 	const client = useClient();
-	const {height} = useScreenSize();
+	const {height, width} = useScreenSize();
+	const scrollViewRef = useRef<ScrollViewRef>(null);
 
 	const [chatState, setChatState] = useState<ChatState>({
 		threads: [],
 		messages: [],
 		loading: true,
 		currentThread: undefined,
-		visibleMessageOffset: 0,
 		selectedMessageIndex: undefined,
 		isSelectionMode: false,
 	});
@@ -198,7 +199,6 @@ export default function ChatView() {
 					...previous,
 					currentThread: undefined,
 					messages: [],
-					visibleMessageOffset: 0,
 					selectedMessageIndex: undefined,
 					isSelectionMode: false,
 				}));
@@ -247,8 +247,8 @@ export default function ChatView() {
 		setChatState(previous => ({
 			...previous,
 			currentThread: thread,
+			loading: true,
 			messages: [],
-			visibleMessageOffset: 0,
 		}));
 
 		try {
@@ -278,6 +278,7 @@ export default function ChatView() {
 				chatState,
 				setChatState,
 				height,
+				scrollViewRef,
 			});
 
 		if (cmdSystemMessage) {
@@ -296,11 +297,54 @@ export default function ChatView() {
 
 			if (processedText) {
 				await client.sendMessage(chatState.currentThread.id, processedText);
+
+				// Scroll to bottom after sending a message
+				// Timeout to ensure message is rendered before scrolling
+				const timeout = setTimeout(() => {
+					if (scrollViewRef.current) {
+						scrollViewRef.current.scrollToEnd();
+					}
+				}, 1000);
+
+				return () => {
+					clearTimeout(timeout);
+				};
 			}
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : 'Failed to send message';
 			setSystemMessage(errorMessage);
+		}
+
+		// eslint-disable-next-line no-useless-return
+		return;
+	};
+
+	const handleOnScrollToBottom = () => {
+		setSystemMessage('Scrolled to bottom');
+	};
+
+	const handleOnScrollToTop = async () => {
+		if (!chatState.messageCursor || !client || !chatState.currentThread) {
+			return;
+		}
+
+		setChatState(previous => ({...previous, loading: true}));
+		try {
+			const {messages, cursor} = await client.getMessages(
+				chatState.currentThread.id,
+				chatState.messageCursor,
+			);
+			setChatState(previous => ({
+				...previous,
+				messages: [...messages, ...previous.messages],
+				loading: false,
+				messageCursor: cursor,
+			}));
+			setSystemMessage(`Loaded ${messages.length} more messages.`);
+		} catch {
+			setChatState(previous => ({...previous, loading: false}));
+			setSystemMessage('Failed to load more messages.');
 		}
 	};
 
@@ -324,33 +368,36 @@ export default function ChatView() {
 			);
 		}
 
-		const messageLines = 3;
-		const visibleMessageCount = Math.max(
-			0,
-			Math.floor((height - 8) / messageLines),
-		);
-
-		const totalMessages = chatState.messages.length;
-		const maxOffset = Math.max(0, totalMessages - visibleMessageCount);
-		const currentOffset = Math.min(chatState.visibleMessageOffset, maxOffset);
-
-		const startIndex = Math.max(
-			0,
-			totalMessages - visibleMessageCount - currentOffset,
-		);
-		const endIndex = Math.max(0, totalMessages - currentOffset);
-
-		const visibleMessages = chatState.messages.slice(startIndex, endIndex);
+		// Calculate available height for messages (total height minus status bar and input area)
+		const messageAreaHeight = Math.max(1, height - 8);
 
 		return (
 			<Box flexDirection="column" height="100%">
-				<Box flexGrow={1} overflow="hidden">
-					<MessageList
-						messages={visibleMessages}
-						currentThread={chatState.currentThread}
-						selectedMessageIndex={chatState.selectedMessageIndex}
-					/>
-				</Box>
+				{!chatState.loading || chatState.messages.length > 0 ? (
+					<ScrollView
+						ref={scrollViewRef}
+						width={width}
+						height={messageAreaHeight}
+						initialScrollPosition="end"
+						onScrollToStart={handleOnScrollToTop}
+						onScrollToEnd={handleOnScrollToBottom}
+					>
+						<MessageList
+							messages={chatState.messages}
+							currentThread={chatState.currentThread}
+							selectedMessageIndex={chatState.selectedMessageIndex}
+						/>
+					</ScrollView>
+				) : (
+					<Box
+						flexGrow={1}
+						justifyContent="center"
+						alignItems="center"
+						paddingY={1}
+					>
+						<Text>Loading messages...</Text>
+					</Box>
+				)}
 				<Box flexShrink={0} flexDirection="column">
 					{systemMessage && (
 						<Box marginTop={1}>

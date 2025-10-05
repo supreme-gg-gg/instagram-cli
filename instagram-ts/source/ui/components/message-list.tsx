@@ -1,4 +1,4 @@
-import React, {useRef} from 'react';
+import React from 'react';
 import {Box, Text} from 'ink';
 import Image from 'ink-picture';
 import type {Message, Thread} from '../../types/instagram.js';
@@ -15,7 +15,6 @@ export default function MessageList({
 	currentThread,
 	selectedMessageIndex,
 }: MessageListProperties) {
-	const endOfMessagesReference = useRef<React.ElementRef<typeof Box>>(null);
 	const imageProtocol = ConfigManager.getInstance().get(
 		'image.protocol',
 		'ascii',
@@ -90,13 +89,8 @@ export default function MessageList({
 	}
 
 	return (
-		<Box flexDirection="column" flexGrow={1} paddingX={1} overflow="hidden">
-			<Box
-				flexDirection="column"
-				justifyContent="flex-end"
-				flexGrow={1}
-				overflow="hidden"
-			>
+		<Box flexShrink={0} flexDirection="column" flexGrow={1} paddingX={1}>
+			<Box flexShrink={0} flexDirection="column" flexGrow={1}>
 				{messages.map((message, index) => {
 					const isSelected = selectedMessageIndex === index;
 					return (
@@ -131,7 +125,6 @@ export default function MessageList({
 					);
 				})}
 			</Box>
-			<Box ref={endOfMessagesReference} />
 		</Box>
 	);
 }
