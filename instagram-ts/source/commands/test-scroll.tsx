@@ -1,18 +1,32 @@
-import React, {useRef} from 'react';
+import React, {useRef, useState, useEffect} from 'react';
 import {render, Box, Text, useInput} from 'ink';
 import ScrollView, {type ScrollViewRef} from '../ui/components/scroll-view.js';
 
 function VeryLongList() {
-	const items = Array.from({length: 100}, (_, i) => (
-		<Box key={i} flexShrink={0} borderStyle="round" borderColor="cyan">
-			<Text>Item {i + 1}</Text>
+	const [items, setItems] = useState(
+		Array.from({length: 5}, (_, i) => 'Item ' + (i + 1)),
+	);
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setItems(prevItems => [...prevItems, 'Item ' + (prevItems.length + 1)]);
+		}, 1000);
+		return () => {
+			clearInterval(interval);
+		};
+	}, []);
+
+	return (
+		<Box flexShrink={0} flexDirection="column">
+			{items.map((item, index) => (
+				<Text key={index}>{item}</Text>
+			))}
 		</Box>
-	));
-	return <Box flexDirection="column">{items}</Box>;
+	);
 }
 
 function App() {
-	const scrollViewRef = useRef<ScrollViewRef | undefined>(null);
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	const scrollViewRef = useRef<ScrollViewRef | null>(null);
 
 	useInput((...args) => {
 		const [, key] = args;
@@ -31,7 +45,7 @@ function App() {
 				width={50}
 				height={20}
 				scrollDirection="vertical"
-				initialScrollPosition="start"
+				initialScrollPosition="end"
 			>
 				<VeryLongList />
 			</ScrollView>

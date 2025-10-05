@@ -5,30 +5,52 @@ import React, {
 	type ReactNode,
 	useImperativeHandle,
 	forwardRef,
+	useCallback,
 } from 'react';
 import {Box, type DOMElement} from 'ink';
-import measureContentSize from '../../utils/measure-content-size.js';
+import useContentSize from '../../utils/measure-content-size.js';
 
+/**
+ * Reference interface for programmatically controlling a ScrollView component.
+ * Provides methods to scroll to specific positions and query current state.
+ */
 export type ScrollViewRef = {
+	/** Scroll to a specific offset or calculate new offset based on current position */
 	scrollTo: (
 		currentOffset: number | ((currentOffset: number) => number),
 	) => void;
+	/** Scroll to the beginning of the content */
 	scrollToStart: () => void;
+	/** Scroll to the end of the content */
 	scrollToEnd: () => void;
+	/** Get the current scroll offset */
 	getScrollOffset: () => number;
+	/** Get the total content dimensions */
 	getContentSize: () => {width: number; height: number};
 };
 
 type ScrollDirection = 'vertical' | 'horizontal';
 
+/**
+ * Props for the ScrollView component.
+ */
 type Props = {
+	/** Width of the visible viewport */
 	readonly width: number;
+	/** Height of the visible viewport */
 	readonly height: number;
+	/** Direction of scrolling - defaults to 'vertical' */
 	readonly scrollDirection?: ScrollDirection;
+	/** Initial scroll position when component mounts - defaults to 'end' */
 	readonly initialScrollPosition?: 'start' | 'end';
+	/** Content to be rendered inside the scrollable area */
 	readonly children: ReactNode;
 };
 
+/**
+ * A scrollable container component that supports both vertical and horizontal scrolling.
+ * Uses negative margins to position content within a clipped viewport.
+ */
 const ScrollView = forwardRef(
 	(
 		{
@@ -43,54 +65,51 @@ const ScrollView = forwardRef(
 		// eslint-disable-next-line @typescript-eslint/ban-types
 		const containerRef = useRef<DOMElement | null>(null);
 		const [offset, setOffset] = useState<number>(0);
-		const [contentSize, setContentSize] = useState<{
-			width: number;
-			height: number;
-		}>({
-			width: 0,
-			height: 0,
-		});
+		const contentSize = useContentSize(containerRef);
 
-		const scrollTo = (
-			currentOffset: number | ((currentOffset: number) => number),
-		) => {
-			const newOffset =
-				typeof currentOffset === 'number'
-					? currentOffset
-					: currentOffset(offset);
+		/**
+		 * Scroll to a specific offset, clamping to valid bounds.
+		 * Accepts either a number or a function that calculates offset based on current position.
+		 */
+		const scrollTo = useCallback(
+			(currentOffset: number | ((currentOffset: number) => number)) => {
+				setOffset(currentValue => {
+					const newOffset =
+						typeof currentOffset === 'number'
+							? currentOffset
+							: currentOffset(currentValue);
 
-			setOffset(
-				Math.max(
-					0,
-					Math.min(
+					// Clamp offset to valid scrollable range
+					const maxOffset =
 						scrollDirection === 'vertical'
 							? contentSize.height - height
-							: contentSize.width - width,
-						newOffset,
-					),
-				),
-			);
-		};
+							: contentSize.width - width;
 
-		const scrollToStart = () => {
+					return Math.max(0, Math.min(maxOffset, newOffset));
+				});
+			},
+			[contentSize.height, contentSize.width, height, width, scrollDirection],
+		);
+
+		const scrollToStart = useCallback(() => {
 			setOffset(0);
-		};
+		}, []);
 
-		const scrollToEnd = () => {
+		const scrollToEnd = useCallback(() => {
 			setOffset(
 				scrollDirection === 'vertical'
 					? Math.max(0, contentSize.height - height)
 					: Math.max(0, contentSize.width - width),
 			);
-		};
+		}, [contentSize.height, contentSize.width, height, width, scrollDirection]);
 
-		const getScrollOffset = () => {
+		const getScrollOffset = useCallback(() => {
 			return offset;
-		};
+		}, [offset]);
 
-		const getContentSize = () => {
+		const getContentSize = useCallback(() => {
 			return contentSize;
-		};
+		}, [contentSize]);
 
 		useImperativeHandle(ref, () => ({
 			scrollTo,
@@ -100,13 +119,12 @@ const ScrollView = forwardRef(
 			getContentSize,
 		}));
 
+		// Set initial scroll position only once when component mounts
 		useEffect(() => {
 			if (!containerRef?.current) {
 				return;
 			}
 
-			const contentSize = measureContentSize(containerRef.current);
-			setContentSize(contentSize);
 			if (initialScrollPosition === 'end') {
 				setOffset(
 					scrollDirection === 'vertical'
@@ -116,7 +134,8 @@ const ScrollView = forwardRef(
 			} else {
 				setOffset(0);
 			}
-		}, [height, width, initialScrollPosition, scrollDirection]);
+			// eslint-disable-next-line react-hooks/exhaustive-deps
+		}, [containerRef.current]);
 
 		return (
 			<Box
@@ -130,10 +149,10 @@ const ScrollView = forwardRef(
 					width={scrollDirection === 'horizontal' ? undefined : '100%'}
 					height={scrollDirection === 'vertical' ? undefined : '100%'}
 					flexDirection={scrollDirection === 'horizontal' ? 'row' : 'column'}
-					// Apply negative margin to shift content based on offset
-					// From testing, only margin works but padding doesn't
-					// So need an inner Box to apply margin
+					// Apply negative margin to shift content based on scroll offset
+					// Note: margin is used instead of padding as it properly moves content out of view
 					marginTop={scrollDirection === 'vertical' ? -offset : undefined}
+					// Note: the positive offset is not a typo. From testing somehow it is the correct way for setting horizontal offset
 					marginLeft={scrollDirection === 'horizontal' ? offset : undefined}
 				>
 					{children}
@@ -142,5 +161,7 @@ const ScrollView = forwardRef(
 		);
 	},
 );
+
+ScrollView.displayName = 'ScrollView';
 
 export default ScrollView;
