@@ -204,6 +204,11 @@ export async function parseAndDispatchChatCommand(
 		return {isCommand: false, systemMessage: undefined};
 	}
 
+	// Allow sending a literal ':' by checking if the text starts with '::'
+	if (text.startsWith('::')) {
+		return {isCommand: false, systemMessage: undefined};
+	}
+
 	const [cmd, ...arguments_] = text.slice(1).split(/\s+/);
 	const command = chatCommands[cmd!];
 	let systemMessage: string | undefined;

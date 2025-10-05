@@ -21,6 +21,11 @@ export async function preprocessMessage(
 	let processedText = text;
 	const textContents: string[] = [];
 
+	// 0. Handle escaped colons '::' to single ':'
+	if (processedText.startsWith('::')) {
+		processedText = processedText.slice(1);
+	}
+
 	// 1. Emoji Handling: Replace :emoji_name: with a placeholder
 	// eslint-disable-next-line unicorn/prefer-string-replace-all
 	processedText = processedText.replace(/:(\w+):/g, '🧂');
