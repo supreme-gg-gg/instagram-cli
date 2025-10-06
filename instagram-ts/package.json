@@ -78,6 +78,7 @@
 			"@typescript-eslint/naming-convention": "off",
 			"@typescript-eslint/no-empty-function": "off",
 			"react/no-array-index-key": "off",
+			"react/require-default-props": "off",
 			"unicorn/prevent-abbreviations": "off"
 		}
 	},

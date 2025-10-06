@@ -26,17 +26,31 @@ interface ChatState {
 
 ## Available Commands
 
-| Command          | Description                  | Selection Required |
-| ---------------- | ---------------------------- | ------------------ |
-| `:help`          | Show available commands      | No                 |
-| `:select`        | Enter message selection mode | No                 |
-| `:react [emoji]` | React to selected message    | Yes                |
-| `:unsend`        | Delete selected message      | Yes                |
-| `:upload <path>` | Upload file to thread        | No                 |
-| `:k`             | Scroll up messages           | No                 |
-| `:j`             | Scroll down messages         | No                 |
+| Command          | Description                           | Selection Required |
+| ---------------- | ------------------------------------- | ------------------ |
+| `:help`          | Show available commands               | No                 |
+| `:select`        | Enter message selection mode          | No                 |
+| `:react [emoji]` | React to selected message             | Yes                |
+| `:unsend`        | Delete selected message               | Yes                |
+| `:upload <path>` | Upload file to thread                 | No                 |
+| `:k`             | Scroll up by 75% of viewport height   | No                 |
+| `:j`             | Scroll down by 75% of viewport height | No                 |
+| `:K`             | Jump to top of message history        | No                 |
+| `:J`             | Jump to bottom of message history     | No                 |
 
 ## Selection Logic
+
+### Scrolling Behavior
+
+The message scrolling system uses a `ScrollView` component that provides smooth, viewport-relative navigation:
+
+- **Incremental Scrolling** (`:j` / `:k`): Scrolls by 75% of the viewport height for comfortable navigation with content overlap
+- **Jump Navigation** (`:J` / `:K`): Instantly jumps to the bottom or top of loaded messages
+- **Infinite Scroll**: When scrolling to the top (`:K` or reaching the boundary), older messages are automatically loaded from the API
+- **Auto-scroll**: After sending a message, the view automatically scrolls to the bottom to show the sent message
+- **Mouse Support**: Planned for future implementation to enable scroll wheel navigation
+
+The scrolling commands interact with the `ScrollView` component via ref methods, providing programmatic control over the scroll position while maintaining smooth UX.
 
 ### UI Behavior
 
