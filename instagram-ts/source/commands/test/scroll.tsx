@@ -1,6 +1,8 @@
 import React, {useRef, useState, useEffect} from 'react';
 import {render, Box, Text, useInput} from 'ink';
-import ScrollView, {type ScrollViewRef} from '../ui/components/scroll-view.js';
+import ScrollView, {
+	type ScrollViewRef,
+} from '../../ui/components/scroll-view.js';
 
 function VeryLongList() {
 	const [items, setItems] = useState(
