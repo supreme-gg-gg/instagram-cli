@@ -144,12 +144,13 @@ export const chatCommands: Record<string, ChatCommand> = {
 	},
 	k: {
 		description: 'Scroll up in the message history. Usage: :k',
-		async handler(_arguments, {scrollViewRef}) {
+		async handler(_arguments, {height, scrollViewRef}) {
 			if (!scrollViewRef.current) {
 				return 'ScrollView not available.';
 			}
 
-			scrollViewRef.current.scrollTo(curr => curr - 10);
+			const scrollAmount = Math.max(1, height * 0.75);
+			scrollViewRef.current.scrollTo(curr => curr - scrollAmount);
 
 			// eslint-disable-next-line no-useless-return
 			return;
@@ -157,12 +158,14 @@ export const chatCommands: Record<string, ChatCommand> = {
 	},
 	j: {
 		description: 'Scroll down in the message history. Usage: :j',
-		handler(_arguments, {scrollViewRef}) {
+		handler(_arguments, {height, scrollViewRef}) {
 			if (!scrollViewRef.current) {
 				return 'ScrollView not available.';
 			}
 
-			scrollViewRef.current.scrollTo(curr => curr + 10);
+			const scrollAmount = Math.max(1, height * 0.75);
+
+			scrollViewRef.current.scrollTo(curr => curr + scrollAmount);
 
 			// eslint-disable-next-line no-useless-return
 			return;
