@@ -1,5 +1,5 @@
 import React, {useRef, useState, useEffect} from 'react';
-import {render, Box, Text, useInput} from 'ink';
+import {Box, Text, useInput} from 'ink';
 import ScrollView, {
 	type ScrollViewRef,
 } from '../../ui/components/scroll-view.js';
@@ -26,7 +26,7 @@ function VeryLongList() {
 	);
 }
 
-function App() {
+export default function TestScroll() {
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	const scrollViewRef = useRef<ScrollViewRef | null>(null);
 	const [message, setMessage] = useState('Use Up/Down arrows to scroll');
@@ -65,5 +65,3 @@ function App() {
 		</Box>
 	);
 }
-
-render(<App />);
