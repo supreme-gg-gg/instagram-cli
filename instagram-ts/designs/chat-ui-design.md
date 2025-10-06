@@ -69,15 +69,26 @@ The chat UI operates in two distinct views that never overlap:
   - Window scrolls to keep selection visible
   - Never show more threads than fit on screen
 
-#### Message List Pagination
+#### Message List Scrolling
 
-- **Available Space**: `terminal_height - 6` (status bar + input box + help + padding)
-- **Window Size**: Dynamic based on available space
-- **Navigation**:
-  - `j/k` scroll through message history
-  - `scrollOffset` tracks current window position
-  - Load older messages when scrolling up
-  - Never show more messages than fit on screen
+The message list uses a `ScrollView` component that provides smooth, viewport-relative scrolling with automatic content measurement.
+
+- **Available Space**: `terminal_height - 8` (status bar + input box + help + padding)
+- **Scrolling Behavior**:
+  - `:j` / `:k` commands scroll by 75% of viewport height
+  - `:J` jumps to the bottom (newest messages)
+  - `:K` jumps to the top (oldest loaded messages)
+  - Automatically scrolls to bottom when entering a chat or sending a message
+  - Infinite scroll: Loading older messages when scrolling to the top
+- **Content Rendering**: All messages are rendered; `ScrollView` handles viewport clipping
+- **Mouse Support**: Planned for future implementation to enable scroll wheel navigation
+
+**Technical Implementation:**
+
+- `ScrollView` component manages scroll offset using negative margins
+- `useContentSize` hook polls at 60fps to measure total content dimensions
+- Scroll position is controlled programmatically via ref methods
+- `onScrollToStart` callback triggers loading of older messages from the API
 
 ### 3. View Transitions
 
@@ -138,17 +149,20 @@ interface ChatUIState {
 	// Chat state
 	currentThread?: Thread;
 	messages: Message[];
-	messageScrollOffset: number;
-	messageWindowSize: number;
+	messageCursor?: string; // Cursor for loading older messages
 
 	// UI state machine
 	uiMode: 'normal' | 'reply' | 'unsend' | 'selecting';
+	selectedMessageIndex?: number;
+	isSelectionMode: boolean;
 
 	// Loading states
 	loading: boolean;
 	error?: string;
 }
 ```
+
+**Note:** The `visibleMessageOffset` property has been removed as scrolling is now managed internally by the `ScrollView` component.
 
 ### Component Responsibilities
 
@@ -168,10 +182,22 @@ interface ChatUIState {
 
 #### MessageList
 
-- Renders visible messages based on scroll offset
-- Handles message scrolling
-- Shows pagination info
-- Never renders more than `messageWindowSize` items
+- Renders all messages in a simple flex column layout
+- No longer manages windowing or pagination internally
+- Wrapped by `ScrollView` component which handles viewport clipping
+- Shows message content, reactions, and selection highlights
+
+#### ScrollView
+
+- Reusable scrolling container component
+- Supports both vertical and horizontal scrolling
+- Uses negative margins to shift content within a clipped viewport
+- Provides imperative API via ref:
+  - `scrollTo(offset)`: Scroll to specific position
+  - `scrollToStart()`: Jump to beginning
+  - `scrollToEnd()`: Jump to end
+- Automatically measures content size using `useContentSize` hook
+- Triggers callbacks when reaching boundaries (`onScrollToStart`, `onScrollToEnd`)
 
 #### InputBox
 
@@ -194,11 +220,21 @@ re-render with new window
 #### Chat Navigation
 
 ```
-j/k pressed → update messageScrollOffset →
-check if at top/bottom →
-if at top, load older messages →
+:j/:k pressed → call scrollViewRef.scrollTo() →
+scroll by 75% of viewport height →
+if at top boundary, trigger onScrollToStart →
+load older messages from API →
 re-render with new messages
+
+:J/:K pressed → call scrollToEnd()/scrollToStart() →
+jump to bottom/top of content →
+update scroll offset immediately (doesn't fetch more messages)
 ```
+
+**Auto-scroll Behaviors:**
+
+- When entering a chat: Automatically scrolls to bottom (newest messages)
+- After sending a message: Automatically scrolls to bottom to show sent message
 
 #### View Transitions
 
@@ -217,11 +253,12 @@ render thread list
 ## Key Principles
 
 1. **Single Source of Truth**: All state managed in ChatView
-2. **Windowed Rendering**: Never render more items than fit on screen
-3. **Input Consumption**: Always clear input after processing
-4. **Clean Transitions**: Complete view replacement, not stacking
-5. **Bounds Checking**: Navigation never goes out of bounds
-6. **Responsive Layout**: Adapt to terminal size changes
+2. **ScrollView Abstraction**: Centralized scrolling logic with imperative control
+3. **Content-based Rendering**: All items rendered; viewport manages visibility
+4. **Input Consumption**: Always clear input after processing
+5. **Clean Transitions**: Complete view replacement, not stacking
+6. **Bounds Checking**: Navigation never goes out of bounds
+7. **Responsive Layout**: Adapt to terminal size changes
 
 ## Error Handling
 
@@ -232,7 +269,13 @@ render thread list
 
 ## Performance Considerations
 
-- **Lazy loading**: Only load messages when needed
-- **Windowed rendering**: Only render visible items
+- **Lazy loading**: Only load messages when needed (infinite scroll)
+- **Efficient content measurement**: Polls at 60fps using Yoga layout engine
+- **Viewport clipping**: Only visible content affects rendering performance
 - **Debounced input**: Prevent excessive re-renders
 - **Efficient updates**: Use React's reconciliation properly
+
+## Future Enhancements
+
+- **Mouse Support**: Enable scroll wheel navigation for message history
+- **Bounds Checking**: Prevent navigation beyond available messages
