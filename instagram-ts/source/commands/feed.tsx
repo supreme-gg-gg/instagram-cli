@@ -23,7 +23,9 @@ type Properties = {
 };
 
 export default function Feed({args}: Properties) {
-	const {client, isLoading, error} = useInstagramClient(args[0]);
+	const {client, isLoading, error} = useInstagramClient(args[0], {
+		realtime: false,
+	});
 	const [feed, setFeed] = React.useState<FeedInstance>({posts: []});
 
 	React.useEffect(() => {

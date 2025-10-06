@@ -9,8 +9,13 @@ type UseInstagramClientResult = {
 	error: string | undefined;
 };
 
+type InstagramClientOptions = {
+	realtime?: boolean;
+};
+
 export function useInstagramClient(
 	usernameArgument?: string,
+	options: InstagramClientOptions = {},
 ): UseInstagramClientResult {
 	const [client, setClient] = useState<InstagramClient | undefined>(undefined);
 	const [isLoading, setIsLoading] = useState(true);
@@ -47,7 +52,9 @@ export function useInstagramClient(
 				}
 
 				const instagramClient = new InstagramClient(targetUsername);
-				const loginResult = await instagramClient.loginBySession();
+				const loginResult = await instagramClient.loginBySession({
+					initializeRealtime: options.realtime ?? true,
+				});
 
 				if (!loginResult.success) {
 					// Only the auth login command can handle these cases

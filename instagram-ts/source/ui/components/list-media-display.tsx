@@ -114,7 +114,7 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 				}
 			}
 			// Quit
-		} else if (input === 'q' || key.escape) {
+		} else if (key.escape) {
 			exit();
 		}
 	});
@@ -258,7 +258,7 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 					<Box marginTop={1}>
 						<Text dimColor>
 							j/k: navigate through posts, h/l: navigate through carousel, o:
-							open in browser, q: quit
+							open in browser, Esc: quit
 						</Text>
 					</Box>
 				</Box>
