@@ -1,0 +1,44 @@
+# This workflow will publish the TypeScript package to NPM when a tag matching ts-v*.*.* is pushed
+
+name: Build and Publish TypeScript Package to NPM
+
+on:
+  push:
+    tags:
+      - "ts-v*.*.*"
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  npm-publish:
+    runs-on: ubuntu-latest
+    # Only run if tag matches ts-v*.*.* pattern
+    if: >
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/ts-v')) ||
+      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'ts-v'))
+
+    permissions:
+      contents: read
+      id-token: write # Required for NPM provenance
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          registry-url: "https://registry.npmjs.org"
+          scope: "@i7m"
+
+      - name: Install dependencies and build
+        working-directory: ./instagram-ts
+        run: npm ci && npm run build
+
+      - name: Publish to NPM
+        working-directory: ./instagram-ts
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

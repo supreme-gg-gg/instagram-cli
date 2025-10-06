@@ -16,21 +16,23 @@ We celebrate the art and simplicity of terminal UI, while contributing to the In
 The following commands will be available after installing the package:
 
 ```bash
-instagram                                  # display title art
-instagram --help                           # view available commands
+instagram-cli                                  # display title art
+instagram-cli --help                           # view available commands
 
 # Authentication
-instagram auth login --username            # login with username and password
-instagram auth logout                      # logout and removes session
+instagram-cli auth login --username            # login with username and password
+instagram-cli auth logout                      # logout and removes session
 
 # Core features
-instagram chat                             # start chat interface
-instagram feed                             # view posts from people you follow
-instagram notify                           # view notifications (inbox, followers, mentions)
+instagram-cli chat                             # start chat interface
+instagram-cli feed                             # view posts from people you follow
+instagram-cli notify                           # view notifications (inbox, followers, mentions)
 
 # Modify configuration
-instagram config                           # view and modify configuration
+instagram-cli config                           # view and modify configuration
 ```
+
+Note that the parent command is `instagram-cli` instead of `instagram` to avoid conflict with the Python client if you have both installed.
 
 ## Chat Commands
 
