@@ -181,7 +181,7 @@ export default function ChatView() {
 			return;
 		}
 
-		if (input === 'q' && currentView === 'threads') {
+		if (key.escape && currentView === 'threads') {
 			exit();
 			return;
 		}
@@ -432,7 +432,7 @@ export default function ChatView() {
 					<Box>
 						<Text dimColor>
 							{currentView === 'threads'
-								? 'j/k: navigate, Enter: select, q: quit'
+								? 'j/k: navigate, Enter: select, Esc: quit'
 								: chatState.isSelectionMode
 									? 'j/k: navigate messages, Enter: confirm, Esc: exit selection'
 									: 'Esc: back to threads, Ctrl+C: quit'}
