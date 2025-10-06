@@ -30,7 +30,7 @@ https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb
 
 Want to watch Instagram Reels right from your terminal? Check out [reels-cli](https://github.com/notMarkMP1/reels-cli). It’s a great way to enjoy some light entertainment without leaving your keyboard. (Not affiliated and not maintained by us, but highly recommended for terminal fans.)
 
-## Installation
+## Python Client
 
 The simplest way to get started is to install the package from PyPI if you have Python installed:
 
@@ -48,29 +48,22 @@ cd instagram-cli
 pip install .
 ```
 
-## Typescript Client (Experimental)
-
-You can install a development release by following the instruction [in this readme](./instagram-ts/readme.md). The new client brings additional features like modern UI, image rendering in terminal, and checking feed. An official npm release will come soon, stay tuned.
-
 > [!NOTE] The Python client is no longer maintained for Windows due to incompatibilities between the `curses` and `windows-curses` libraries. We recommend using WSL / Docker, or better, just use the TypeScript client on Windows.
 
-### Pre-built Executables
+## Typescript Client (Public Beta)
+
+Requires Node.js to be installed.
+
+```bash
+npm install -g @i7m/instagram-cli@beta
+```
+
+The new client brings additional features like modern UI redesign, image rendering in terminal, checking feed, and using MQTT protocol for messaging to significantly reduce latency and account flags.
+
+Alternatively, you can install a development release by following the instruction [in this readme](./instagram-ts/readme.md).
 
 > [!CAUTION]
-> This option is **not recommended** unless the other methods do not work for you.
-
-We no longer provide pre-built executables. If you want to run the application in an environment without Python, you can build the executable yourself with `pyinstaller`. We recommend using the `instagram-cli.spec` file we provided.
-
-```bash
-pyinstaller --onedir instagram-cli.spec
-```
-
-This will generate the executable in the `dist/` directory.
-
-```bash
-./instagram-cli [OPTIONS] command [ARGS] # for macOS and Linux
-instagram-cli.exe [OPTIONS] command [ARGS] # for Windows
-```
+> We do not recommend using the TypeScript and Python client simultaneously with the same account to reduce the risk of account bans. We recommend using the TypeScript client when possible.
 
 ## Commands
 
