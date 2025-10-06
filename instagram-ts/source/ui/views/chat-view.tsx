@@ -302,7 +302,7 @@ export default function ChatView() {
 				// Timeout to ensure message is rendered before scrolling
 				const timeout = setTimeout(() => {
 					if (scrollViewRef.current) {
-						scrollViewRef.current.scrollToEnd();
+						scrollViewRef.current.scrollToEnd(false);
 					}
 				}, 1000);
 

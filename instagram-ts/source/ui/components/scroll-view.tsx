@@ -18,11 +18,12 @@ export type ScrollViewRef = {
 	/** Scroll to a specific offset or calculate new offset based on current position */
 	scrollTo: (
 		currentOffset: number | ((currentOffset: number) => number),
+		fireCallback?: boolean,
 	) => void;
 	/** Scroll to the beginning of the content */
-	scrollToStart: () => void;
+	scrollToStart: (fireCallback?: boolean) => void;
 	/** Scroll to the end of the content */
-	scrollToEnd: () => void;
+	scrollToEnd: (fireCallback?: boolean) => void;
 	/** Get the current scroll offset */
 	getScrollOffset: () => number;
 	/** Get the total content dimensions */
@@ -78,9 +79,12 @@ const ScrollView = forwardRef(
 		 * Accepts either a number or a function that calculates offset based on current position.
 		 */
 		const scrollTo = useCallback(
-			(currentOffset: number | ((currentOffset: number) => number)) => {
+			(
+				currentOffset: number | ((currentOffset: number) => number),
+				fireCallback = true,
+			) => {
 				setOffset(currentValue => {
-					const newOffset =
+					const requestedOffset =
 						typeof currentOffset === 'number'
 							? currentOffset
 							: currentOffset(currentValue);
@@ -91,22 +95,25 @@ const ScrollView = forwardRef(
 							? contentSize.height - height
 							: contentSize.width - width;
 
-					return Math.max(0, Math.min(maxOffset, newOffset));
+					const newOffset = Math.max(0, Math.min(maxOffset, requestedOffset));
+
+					// Trigger scroll callbacks if needed
+					if (fireCallback && onScrollToStart && newOffset === 0) {
+						onScrollToStart();
+					}
+
+					if (
+						fireCallback &&
+						onScrollToEnd &&
+						(scrollDirection === 'vertical'
+							? newOffset === contentSize.height - height
+							: newOffset === contentSize.width - width)
+					) {
+						onScrollToEnd();
+					}
+
+					return newOffset;
 				});
-
-				// Trigger scroll callbacks if needed
-				if (onScrollToStart && offset === 0) {
-					onScrollToStart();
-				}
-
-				if (
-					onScrollToEnd &&
-					(scrollDirection === 'vertical'
-						? offset >= contentSize.height - height
-						: offset >= contentSize.width - width)
-				) {
-					onScrollToEnd();
-				}
 			},
 			[
 				contentSize.height,
@@ -114,36 +121,52 @@ const ScrollView = forwardRef(
 				height,
 				width,
 				scrollDirection,
-				offset,
 				onScrollToStart,
 				onScrollToEnd,
 			],
 		);
 
-		const scrollToStart = useCallback(() => {
-			setOffset(0);
-			if (onScrollToStart) {
-				onScrollToStart();
-			}
-		}, [onScrollToStart]);
+		const scrollToStart = useCallback(
+			(fireCallback = true) => {
+				setOffset(current => {
+					if (current > 0 && fireCallback && onScrollToStart) {
+						onScrollToStart();
+					}
 
-		const scrollToEnd = useCallback(() => {
-			setOffset(
-				scrollDirection === 'vertical'
-					? Math.max(0, contentSize.height - height)
-					: Math.max(0, contentSize.width - width),
-			);
-			if (onScrollToEnd) {
-				onScrollToEnd();
-			}
-		}, [
-			contentSize.height,
-			contentSize.width,
-			height,
-			width,
-			scrollDirection,
-			onScrollToEnd,
-		]);
+					return 0;
+				});
+			},
+			[onScrollToStart],
+		);
+
+		const scrollToEnd = useCallback(
+			(fireCallback = true) => {
+				setOffset(current => {
+					const newOffset =
+						scrollDirection === 'vertical'
+							? Math.max(0, contentSize.height - height)
+							: Math.max(0, contentSize.width - width);
+					if (
+						fireCallback &&
+						newOffset > 0 &&
+						current < newOffset &&
+						onScrollToEnd
+					) {
+						onScrollToEnd();
+					}
+
+					return newOffset;
+				});
+			},
+			[
+				contentSize.height,
+				contentSize.width,
+				height,
+				width,
+				scrollDirection,
+				onScrollToEnd,
+			],
+		);
 
 		const getScrollOffset = useCallback(() => {
 			return offset;

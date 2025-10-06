@@ -171,6 +171,32 @@ export const chatCommands: Record<string, ChatCommand> = {
 			return;
 		},
 	},
+	K: {
+		description: 'Scroll to the top of the message history. Usage: :K',
+		handler(_arguments, {scrollViewRef}) {
+			if (!scrollViewRef.current) {
+				return 'ScrollView not available.';
+			}
+
+			scrollViewRef.current.scrollToStart(false); // Don't load earlier messages
+
+			// eslint-disable-next-line no-useless-return
+			return;
+		},
+	},
+	J: {
+		description: 'Scroll to the bottom of the message history. Usage: :J',
+		handler(_arguments, {scrollViewRef}) {
+			if (!scrollViewRef.current) {
+				return 'ScrollView not available.';
+			}
+
+			scrollViewRef.current.scrollToEnd(false); // Don't show scroll to bottom message
+
+			// eslint-disable-next-line no-useless-return
+			return;
+		},
+	},
 };
 
 export async function parseAndDispatchChatCommand(
