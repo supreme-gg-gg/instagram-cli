@@ -11,7 +11,15 @@ We are the ultimate weapon against brainrot, so that you can focus on meaningful
 
 We celebrate the art and simplicity of terminal UI, while contributing to the Ink open source ecosystem so that everyone can build amazing terminal apps! Checkout [ink-picture](https://github.com/endernoke/ink-picture), our sister-project for displaying images in the terminal.
 
-## Commands
+## Usage
+
+Install the package globally:
+
+```bash
+npm install -g @i7m/instagram-cli
+```
+
+### Commands
 
 The following commands will be available after installing the package:
 
@@ -34,7 +42,7 @@ instagram-cli config                           # view and modify configuration
 
 Note that the parent command is `instagram-cli` instead of `instagram` to avoid conflict with the Python client if you have both installed.
 
-## Chat Commands
+### Chat Commands
 
 You can navigate all interface with 100% keyboard support. When messaging, the following commands are available:
 
@@ -49,6 +57,14 @@ You can navigate all interface with 100% keyboard support. When messaging, the f
 :j # go down
 :J # go to bottom
 ```
+
+> [!TIP]  
+> You can quickly include text files or images in a message by using `#` followed by the file path. For example, `#path/to/file.txt` or `#path/to/image.png`.  
+> Use `tab` and `enter` to autocomplete file paths.
+
+### Configuration
+
+You can view and modify configuration with `instagram-cli config`. The configuration file is located at `~/.instagram-cli/config.ts.yaml`.
 
 ## Design philosophy
 

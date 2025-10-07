@@ -1,12 +1,27 @@
 {
 	"name": "@i7m/instagram-cli",
 	"description": "The unofficial CLI and terminal client for Instagram",
-	"version": "1.0.1-beta",
+	"version": "1.0.2-beta",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/supreme-gg-gg/instagram-cli"
 	},
+	"keywords": [
+		"instagram",
+		"cli",
+		"terminal",
+		"tui",
+		"ink",
+		"typescript",
+		"react",
+		"productivity",
+		"instagram-api",
+		"command-line",
+		"messenger",
+		"terminal-ui",
+		"brainrot"
+	],
 	"bin": {
 		"instagram-cli": "dist/cli.js"
 	},
