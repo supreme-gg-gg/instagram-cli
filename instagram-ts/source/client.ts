@@ -1,34 +1,108 @@
+import {join} from 'node:path';
+import fs from 'node:fs';
+import {EventEmitter} from 'node:events';
 import {
-	IgApiClient,
+	type IgApiClient,
 	IgCheckpointError,
 	IgLoginTwoFactorRequiredError,
 	type DirectInboxFeedResponseThreadsItem,
 	type DirectInboxFeedResponseUsersItem,
 	type AccountRepositoryLoginErrorResponseTwoFactorInfo,
 } from 'instagram-private-api';
-import {join} from 'path';
-import fs from 'fs/promises';
+import {
+	withRealtime,
+	GraphQLSubscriptions,
+	SkywalkerSubscriptions,
+	type RealtimeClient,
+	IgApiClientExt,
+} from 'instagram_mqtt';
 import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
 import type {Thread, Message, User} from './types/instagram.js';
+import {parseMessageItem} from './utils/message-parser.js';
 
-export interface LoginResult {
+export type LoginResult = {
 	success: boolean;
 	error?: string;
 	username?: string;
 	checkpointError?: IgCheckpointError;
-	twoFactorInfo?: AccountRepositoryLoginErrorResponseTwoFactorInfo; // Add this to carry 2FA info
-}
+	twoFactorInfo?: AccountRepositoryLoginErrorResponseTwoFactorInfo;
+};
 
-export class InstagramClient {
-	private ig: IgApiClient;
-	private sessionManager: SessionManager | null = null;
-	private configManager: ConfigManager;
-	private username: string | null = null;
-	private userCache: Map<string, string> = new Map(); // Cache for user ID -> username mapping
+export type RealtimeStatus =
+	| 'disconnected'
+	| 'connecting'
+	| 'connected'
+	| 'error';
+
+// eslint-disable-next-line unicorn/prefer-event-target
+export class InstagramClient extends EventEmitter {
+	public static async cleanupSessions(): Promise<void> {
+		try {
+			const configManager = ConfigManager.getInstance();
+			await configManager.initialize();
+
+			await configManager.set('login.currentUsername', undefined);
+
+			const usersDirectory = configManager.get('advanced.usersDir');
+			try {
+				const userDirectories = fs.readdirSync(usersDirectory);
+				for (const userSubdirectory of userDirectories) {
+					const sessionFile = join(
+						usersDirectory,
+						userSubdirectory,
+						'session.ts.json',
+					);
+					try {
+						fs.unlinkSync(sessionFile);
+					} catch {}
+				}
+			} catch {}
+		} catch (error) {
+			console.error('Error during session cleanup:', error);
+			throw error;
+		}
+	}
+
+	public static async cleanupCache(): Promise<void> {
+		try {
+			const configManager = ConfigManager.getInstance();
+			await configManager.initialize();
+
+			const cacheDirectory = configManager.get('advanced.cacheDir');
+			const mediaDirectory = configManager.get('advanced.mediaDir');
+			const generatedDirectory = configManager.get('advanced.generatedDir');
+
+			for (const directory of [
+				cacheDirectory,
+				mediaDirectory,
+				generatedDirectory,
+			]) {
+				try {
+					const files = fs.readdirSync(directory);
+					for (const file of files) {
+						fs.unlinkSync(join(directory, file));
+					}
+				} catch {}
+			}
+		} catch (error) {
+			console.error('Error during cache cleanup:', error);
+			throw error;
+		}
+	}
+
+	private readonly ig: IgApiClientExt;
+	private realtime: RealtimeClient | undefined;
+	private realtimeStatus: RealtimeStatus = 'disconnected';
+
+	private sessionManager: SessionManager | undefined = undefined;
+	private readonly configManager: ConfigManager;
+	private username: string | undefined = undefined;
+	private readonly userCache = new Map<string, string>();
 
 	constructor(username?: string) {
-		this.ig = new IgApiClient();
+		super();
+		this.ig = new IgApiClientExt();
 		this.configManager = ConfigManager.getInstance();
 
 		if (username) {
@@ -37,7 +111,30 @@ export class InstagramClient {
 		}
 	}
 
-	public async login(username: string, password: string): Promise<LoginResult> {
+	/**
+	 * Attempts to log in to Instagram using the provided username and password.
+	 *
+	 * Performs pre-login flow and on successful login saves session states and config values.
+	 * Handles two-factor authentication and checkpoint challenges by returning relevant information.
+	 *
+	 * @param username - The Instagram username to log in with.
+	 * @param password - The password for the specified username.
+	 * @param options - Optional settings for login, including whether to initialize the realtime connection.
+	 * @returns A promise that resolves to a `LoginResult` indicating success or failure, and additional info if required.
+	 *
+	 * @remarks
+	 * This method performs a full credential-based login, which differs from session-based login.
+	 * This is the default fallback method for session-based login when it fails (e.g. session expired)
+	 *
+	 *  @note If you do not wish to initialize realtime client, you can pass in the options parameter with false.
+	 * 		  If this is the case, all responses will be handled by the API client instead
+	 */
+	public async login(
+		username: string,
+		password: string,
+		options?: {initializeRealtime: boolean},
+	): Promise<LoginResult> {
+		const loginOptions = options ?? {initializeRealtime: true};
 		try {
 			this.username = username;
 			this.sessionManager = new SessionManager(username);
@@ -54,11 +151,23 @@ export class InstagramClient {
 			await this.saveSessionState();
 			await this.configManager.set('login.currentUsername', username);
 
-			const defaultUsername = this.configManager.get<string>(
-				'login.defaultUsername',
-			);
+			const defaultUsername = this.configManager.get('login.defaultUsername');
 			if (!defaultUsername) {
 				await this.configManager.set('login.defaultUsername', username);
+			}
+
+			if (loginOptions.initializeRealtime) {
+				try {
+					await this.initializeRealtime();
+				} catch (error) {
+					this.setRealtimeStatus('error');
+					this.emit(
+						'error',
+						new Error(
+							`Realtime connection failed: ${(error as Error).message}`,
+						),
+					);
+				}
 			}
 
 			return {success: true, username};
@@ -92,7 +201,7 @@ export class InstagramClient {
 		totp_two_factor_on: boolean;
 	}): Promise<LoginResult> {
 		try {
-			const verificationMethod = totp_two_factor_on ? '0' : '1'; // 0 = TOTP, 1 = SMS
+			const verificationMethod = totp_two_factor_on ? '0' : '1';
 			await this.ig.account.twoFactorLogin({
 				username: this.username!,
 				verificationCode,
@@ -116,7 +225,6 @@ export class InstagramClient {
 	}
 
 	public async startChallenge(): Promise<void> {
-		// this handles automatically choosing challenge type etc.
 		await this.ig.challenge.auto(true);
 	}
 
@@ -124,18 +232,15 @@ export class InstagramClient {
 		try {
 			await this.ig.challenge.sendSecurityCode(code);
 
-			// After sending code, the user should be logged in.
-			// The session should be saved by the hook.
 			await this.saveSessionState();
 			if (this.username) {
 				await this.configManager.set('login.currentUsername', this.username);
-				const defaultUsername = this.configManager.get<string>(
-					'login.defaultUsername',
-				);
+				const defaultUsername = this.configManager.get('login.defaultUsername');
 				if (!defaultUsername) {
 					await this.configManager.set('login.defaultUsername', this.username);
 				}
 			}
+
 			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
 			console.error('Sending challenge code failed:', error);
@@ -147,7 +252,10 @@ export class InstagramClient {
 		}
 	}
 
-	public async loginBySession(): Promise<LoginResult> {
+	public async loginBySession(options?: {
+		initializeRealtime: boolean;
+	}): Promise<LoginResult> {
+		const sessionOptions = options ?? {initializeRealtime: true};
 		if (!this.sessionManager) {
 			return {success: false, error: 'No session manager initialized'};
 		}
@@ -162,31 +270,40 @@ export class InstagramClient {
 				return {success: false, error: 'No username set for session login'};
 			}
 
-			// Step 1: Generate device FIRST (as per official docs)
 			this.ig.state.generateDevice(this.username);
 
-			// Step 2: Set up request listener to save session after each request
 			this.ig.request.end$.subscribe(async () => {
 				await this.saveSessionState();
 			});
 
-			// Step 3: Deserialize the session state
 			await this.ig.state.deserialize(sessionData);
 
-			// Step 4: Test if session is valid by making a simple request
-			// Most of the time you don't have to login after loading the state (as per docs)
 			const currentUser = await this.ig.account.currentUser();
 			this.username = currentUser.username;
 
-			// Save the session after successful validation
 			await this.saveSessionState();
 			await this.configManager.set('login.currentUsername', this.username);
 
-			return {success: true, username: this.username || undefined};
+			if (sessionOptions.initializeRealtime) {
+				try {
+					await this.initializeRealtime();
+				} catch (error) {
+					this.setRealtimeStatus('error');
+					this.emit(
+						'error',
+						new Error(
+							`Realtime connection failed: ${(error as Error).message}`,
+						),
+					);
+				}
+			}
+
+			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
 			if (error instanceof IgCheckpointError) {
 				return {success: false, checkpointError: error};
 			}
+
 			console.error('Failed to login with session:', error);
 			return {
 				success: false,
@@ -195,38 +312,36 @@ export class InstagramClient {
 		}
 	}
 
-	private async saveSessionState(): Promise<void> {
-		if (!this.sessionManager) {
-			return;
-		}
-
-		try {
-			const serialized = await this.ig.state.serialize();
-			await this.sessionManager.saveSession(serialized);
-		} catch (error) {
-			console.error('Error saving session state:', error);
-		}
-	}
-
 	public async logout(usernameToLogout?: string): Promise<void> {
 		try {
-			const targetUsername = usernameToLogout || this.username;
+			const targetUsername = usernameToLogout ?? this.username;
 			if (targetUsername) {
 				const sessionManager = new SessionManager(targetUsername);
 				await sessionManager.deleteSession();
-				// If the logged out user is the current user, clear currentUsername
 				if (
 					this.configManager.get('login.currentUsername') === targetUsername
 				) {
-					await this.configManager.set('login.currentUsername', null);
+					await this.configManager.set('login.currentUsername', undefined);
 				}
 			} else {
-				// If no specific username, just clear the current username
-				await this.configManager.set('login.currentUsername', null);
+				await this.configManager.set('login.currentUsername', undefined);
 			}
 		} catch (error) {
 			console.error('Error during logout:', error);
-			throw error; // Re-throw to be caught by the command
+			throw error;
+		}
+	}
+
+	/**
+	 * Disconnects the realtime client if it is connected.
+	 *
+	 * @remarks This destructor must be invoked by the view using the client.
+	 * However, calling this is not strictly necessary based on the library examples.
+	 * For example when the app quits by Ctrl+C, it is not disconnected but it's ok.
+	 */
+	public async shutdown(): Promise<void> {
+		if (this.realtime) {
+			await this.realtime.disconnect();
 		}
 	}
 
@@ -242,63 +357,9 @@ export class InstagramClient {
 			}
 
 			await this.configManager.set('login.currentUsername', username);
-			this.username = username; // Update the client's internal username
+			this.username = username;
 		} catch (error) {
 			console.error('Error during switchUser:', error);
-			throw error; // Re-throw to be caught by the command
-		}
-	}
-
-	public static async cleanupSessions(): Promise<void> {
-		try {
-			const configManager = ConfigManager.getInstance();
-			await configManager.initialize();
-
-			// Clean up current username in config
-			await configManager.set('login.currentUsername', null);
-
-			// Clean up session files
-			const usersDir = configManager.get('advanced.usersDir') as string;
-			try {
-				const userDirs = await fs.readdir(usersDir);
-				for (const userDir of userDirs) {
-					const sessionFile = join(usersDir, userDir, 'session.ts.json');
-					try {
-						await fs.unlink(sessionFile);
-					} catch (error) {
-						// Ignore if file doesn't exist
-					}
-				}
-			} catch (error) {
-				// Ignore if usersDir doesn't exist
-			}
-		} catch (error) {
-			console.error('Error during session cleanup:', error);
-			throw error;
-		}
-	}
-
-	public static async cleanupCache(): Promise<void> {
-		try {
-			const configManager = ConfigManager.getInstance();
-			await configManager.initialize();
-
-			const cacheDir = configManager.get('advanced.cacheDir') as string;
-			const mediaDir = configManager.get('advanced.mediaDir') as string;
-			const generatedDir = configManager.get('advanced.generatedDir') as string;
-
-			for (const dir of [cacheDir, mediaDir, generatedDir]) {
-				try {
-					const files = await fs.readdir(dir);
-					for (const file of files) {
-						await fs.unlink(join(dir, file as string));
-					}
-				} catch (error) {
-					// Ignore if directory or files don't exist
-				}
-			}
-		} catch (error) {
-			console.error('Error during cache cleanup:', error);
 			throw error;
 		}
 	}
@@ -307,26 +368,45 @@ export class InstagramClient {
 		return this.ig;
 	}
 
-	public getUsername(): string | null {
+	public getUsername(): string | undefined {
 		return this.username;
 	}
 
-	async getThreads(): Promise<Thread[]> {
+	public getRealtimeStatus(): RealtimeStatus {
+		return this.realtimeStatus;
+	}
+
+	public async getCurrentUser(): Promise<User | undefined> {
+		try {
+			const user = await this.ig.user.info(this.ig.state.cookieUserId);
+			return {
+				pk: user.pk.toString(),
+				username: user.username,
+				fullName: user.full_name,
+				profilePicUrl: user.profile_pic_url,
+				isVerified: user.is_verified,
+			};
+		} catch (error) {
+			console.error('Failed to get current user:', error);
+			return undefined;
+		}
+	}
+
+	public async getThreads(): Promise<Thread[]> {
 		try {
 			const inbox = await this.ig.feed.directInbox().items();
 
-			// Clear and populate user cache from all threads
 			this.userCache.clear();
-			inbox.forEach(thread => {
+			for (const thread of inbox) {
 				if (thread.users) {
-					thread.users.forEach((user: DirectInboxFeedResponseUsersItem) => {
+					for (const user of thread.users) {
 						this.userCache.set(
 							user.pk.toString(),
-							user.username || user.full_name || `User_${user.pk}`,
+							user.username ?? user.full_name ?? `User_${user.pk}`,
 						);
-					});
+					}
 				}
-			});
+			}
 
 			return inbox.map(thread => ({
 				id: thread.thread_id,
@@ -334,7 +414,7 @@ export class InstagramClient {
 				users: this.getThreadUsers(thread),
 				lastMessage: this.getLastMessage(thread),
 				lastActivity: new Date(Number(thread.last_activity_at) / 1000),
-				unread: thread.has_newer ? true : false,
+				unread: Boolean(thread.has_newer),
 			}));
 		} catch (error) {
 			console.error('Failed to fetch threads:', error);
@@ -342,51 +422,29 @@ export class InstagramClient {
 		}
 	}
 
-	async getMessages(
+	public async getMessages(
 		threadId: string,
 		cursor?: string,
 	): Promise<{messages: Message[]; cursor: string | undefined}> {
 		try {
 			const thread = this.ig.feed.directThread({
 				thread_id: threadId,
-				oldest_cursor: cursor || '',
+				oldest_cursor: cursor ?? '',
 			});
 			const items = await thread.items();
 
-			const messages = items.map(item => {
-				const baseMessage = {
-					id: item.item_id,
-					timestamp: new Date(Number(item.timestamp) / 1000),
-					userId: item.user_id.toString(),
-					username: this.getUsernameFromCache(item.user_id, this.userCache),
-					isOutgoing: item.user_id.toString() === this.ig.state.cookieUserId,
-					threadId: threadId,
-				};
-
-				switch (item.item_type) {
-					case 'text':
-						return {...baseMessage, itemType: 'text', text: item.text || ''};
-					case 'media':
-						return {
-							...baseMessage,
-							itemType: 'media',
-							// somehow the types do not contain non-text message fields so we need to cast it
-							// this is verified by examining the API response directly
-							media: (item as any).media,
-						};
-					case 'clip':
-						return {...baseMessage, itemType: 'clip', clip: undefined};
-					default:
-						return {
-							...baseMessage,
-							itemType: 'placeholder',
-							text: `[Unsupported message type: ${item.item_type}]`,
-						};
-				}
-			}) as Message[];
+			const messages = items
+				.map(item =>
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+					parseMessageItem(item as any, threadId, {
+						userCache: this.userCache,
+						currentUserId: this.ig.state.cookieUserId,
+					}),
+				)
+				.filter((message): message is Message => message !== undefined);
 
 			return {
-				messages: messages.reverse(), // Show newest messages at top
+				messages: messages.reverse(),
 				cursor: thread.cursor,
 			};
 		} catch (error) {
@@ -395,7 +453,16 @@ export class InstagramClient {
 		}
 	}
 
-	async sendMessage(threadId: string, text: string): Promise<void> {
+	public async sendMessage(threadId: string, text: string): Promise<void> {
+		try {
+			if (this.realtimeStatus === 'connected' && this.realtime) {
+				await this.realtime.direct?.sendText({threadId, text});
+				return;
+			}
+		} catch (error) {
+			console.warn('MQTT sendMessage failed, falling back to API.', error);
+		}
+
 		try {
 			await this.ig.entity.directThread(threadId).broadcastText(text);
 		} catch (error) {
@@ -404,12 +471,139 @@ export class InstagramClient {
 		}
 	}
 
+	public async sendReaction(
+		threadId: string,
+		itemId: string,
+		emoji: string,
+	): Promise<void> {
+		if (this.realtimeStatus === 'connected' && this.realtime) {
+			try {
+				await this.realtime.direct?.sendReaction({
+					threadId,
+					itemId,
+					emoji,
+					reactionStatus: 'created',
+				});
+			} catch (error) {
+				console.warn('MQTT sendReaction failed.', error);
+				throw error;
+			}
+		} else {
+			throw new Error('Real-time client not connected. Cannot send reaction.');
+		}
+	}
+
+	public async sendPhoto(threadId: string, filePath: string): Promise<void> {
+		try {
+			const fileBuffer = await fs.promises.readFile(filePath);
+			await this.ig.entity.directThread(threadId).broadcastPhoto({
+				file: fileBuffer,
+			});
+		} catch (error) {
+			console.error('Failed to send photo:', error);
+			throw error;
+		}
+	}
+
+	public async sendVideo(threadId: string, filePath: string): Promise<void> {
+		try {
+			const fileBuffer = await fs.promises.readFile(filePath);
+			await this.ig.entity.directThread(threadId).broadcastVideo({
+				video: fileBuffer,
+			});
+		} catch (error) {
+			console.error('Failed to send video:', error);
+			throw error;
+		}
+	}
+
+	public async unsendMessage(
+		threadId: string,
+		messageId: string,
+	): Promise<void> {
+		try {
+			await this.ig.entity.directThread(threadId).deleteItem(messageId);
+		} catch (error) {
+			console.error('Failed to unsend message:', error);
+			throw error;
+		}
+	}
+
+	private setRealtimeStatus(status: RealtimeStatus) {
+		this.realtimeStatus = status;
+		this.emit('realtimeStatus', status);
+	}
+
+	private async initializeRealtime(): Promise<void> {
+		this.setRealtimeStatus('connecting');
+		this.realtime = withRealtime(this.ig).realtime;
+
+		this.realtime.on('error', error => {
+			console.error('Realtime Error:', error);
+			this.setRealtimeStatus('error');
+			this.emit('error', error);
+		});
+
+		this.realtime.on('close', () => {
+			this.setRealtimeStatus('disconnected');
+		});
+
+		this.realtime.on('message', wrapper => {
+			// ThreadId must exist otherwise it's not possible to identify where this event belongs
+			const threadId =
+				wrapper.message.thread_id ?? wrapper.message.thread_v2_id;
+			if (!threadId) return;
+			const parsedMessage = parseMessageItem(wrapper.message, threadId, {
+				userCache: this.userCache,
+				currentUserId: this.ig.state.cookieUserId,
+			});
+			if (parsedMessage) {
+				this.emit('message', parsedMessage);
+			}
+		});
+
+		await this.realtime.connect({
+			graphQlSubs: [
+				GraphQLSubscriptions.getAppPresenceSubscription(),
+				GraphQLSubscriptions.getZeroProvisionSubscription(
+					this.ig.state.phoneId,
+				),
+				GraphQLSubscriptions.getDirectStatusSubscription(),
+				GraphQLSubscriptions.getDirectTypingSubscription(
+					this.ig.state.cookieUserId,
+				),
+				GraphQLSubscriptions.getAsyncAdSubscription(this.ig.state.cookieUserId),
+			],
+			skywalkerSubs: [
+				SkywalkerSubscriptions.directSub(this.ig.state.cookieUserId),
+				SkywalkerSubscriptions.liveSub(this.ig.state.cookieUserId),
+			],
+			irisData: await this.ig.feed.directInbox().request(),
+		});
+
+		this.setRealtimeStatus('connected');
+	}
+
+	private async saveSessionState(): Promise<void> {
+		if (!this.sessionManager) {
+			return;
+		}
+
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const serialized = await this.ig.state.serialize();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			await this.sessionManager.saveSession(serialized);
+		} catch (error) {
+			console.error('Error saving session state:', error);
+		}
+	}
+
 	private getThreadTitle(thread: DirectInboxFeedResponseThreadsItem): string {
 		if (thread.thread_title) {
 			return thread.thread_title;
 		}
 
-		// For threads without titles, use usernames
 		const users = thread.users || [];
 		const otherUsers = users.filter(
 			(user: DirectInboxFeedResponseUsersItem) =>
@@ -422,7 +616,7 @@ export class InstagramClient {
 
 		if (otherUsers.length === 1) {
 			return (
-				otherUsers[0]?.username || otherUsers[0]?.full_name || 'Unknown User'
+				otherUsers[0]?.username ?? otherUsers[0]?.full_name ?? 'Unknown User'
 			);
 		}
 
@@ -455,70 +649,10 @@ export class InstagramClient {
 			return undefined;
 		}
 
-		const baseMessage = {
-			id: lastItem.item_id,
-			timestamp: new Date(Number(lastItem.timestamp) / 1000),
-			userId: lastItem.user_id.toString(),
-			username: this.getUsernameFromCache(lastItem.user_id, this.userCache),
-			isOutgoing: lastItem.user_id.toString() === this.ig.state.cookieUserId,
-			threadId: thread.thread_id,
-		};
-
-		switch (lastItem.item_type) {
-			case 'text':
-				return {...baseMessage, itemType: 'text', text: lastItem.text || ''};
-			case 'media':
-				return {
-					...baseMessage,
-					itemType: 'media',
-					media: (lastItem as any).media,
-				};
-			case 'clip':
-				return {...baseMessage, itemType: 'clip', clip: undefined};
-			case 'placeholder':
-				return {
-					...baseMessage,
-					itemType: 'placeholder',
-					text: lastItem.placeholder?.message || 'Placeholder message',
-				};
-			default:
-				return {
-					...baseMessage,
-					itemType: 'placeholder',
-					text: `[Unsupported message type: ${lastItem.item_type}]`,
-				};
-		}
-	}
-
-	private getUsernameFromCache(
-		userId: number,
-		userCache: Map<string, string>,
-	): string {
-		const userIdStr = userId.toString();
-
-		// Check if it's the current user
-		if (userIdStr === this.ig.state.cookieUserId) {
-			return 'You';
-		}
-
-		// Look up in the user cache
-		const username = userCache.get(userIdStr);
-		return username || `User_${userId}`;
-	}
-
-	async getCurrentUser(): Promise<User | null> {
-		try {
-			const user = await this.ig.user.info(this.ig.state.cookieUserId);
-			return {
-				pk: user.pk.toString(),
-				username: user.username,
-				fullName: user.full_name,
-				profilePicUrl: user.profile_pic_url,
-				isVerified: user.is_verified,
-			};
-		} catch (error) {
-			console.error('Failed to get current user:', error);
-			return null;
-		}
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		return parseMessageItem(lastItem as any, thread.thread_id, {
+			userCache: this.userCache,
+			currentUserId: this.ig.state.cookieUserId,
+		});
 	}
 }

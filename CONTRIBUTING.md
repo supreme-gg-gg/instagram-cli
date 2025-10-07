@@ -2,12 +2,22 @@
 
 Thank you for contributing to instagram-cli, and welcome to the force against brainrot!
 
+## Project Structure
+
+This repository contains **two separate clients** for Instagram:
+
+- **Python Client** (`instagram/` folder) - Stable, production-ready
+- **TypeScript Client** (`instagram-ts/` folder) - Modern, React-based UI
+
+Choose the client you want to work on based on your preferences and the feature you're implementing.
+
+The team is primarily focused on actively developing the TypeScript client. However, both clients are maintained actively.
+
 ## Getting Started
 
-> [!NOTE]
-> This only applies to the Python client. Please refer to the README file for the `ts-migration/main` branch instead for the TypeScript client.
+### Python Client Development
 
-To get started, clone the repository to your local machine:
+To get started with the Python client, clone the repository:
 
 ```bash
 git clone https://github.com/supreme-gg-gg/instagram-cli.git
@@ -21,27 +31,70 @@ python -m venv venv
 source venv/bin/activate  # On Windows use `venv\Scripts\activate`
 ```
 
-To create a development build, you can use the following command:
+To create a development build:
 
 ```bash
 pip install -e .
 ```
 
-To configure the pre-commit hooks for both Python and TypeScript, run:
+### TypeScript Client Development
+
+For the TypeScript client, navigate to the TypeScript directory:
+
+```bash
+cd instagram-ts
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+To build and run during development:
+
+```bash
+npm run build
+npm run start -- <command>  # Replace instagram with "npm run start"
+npm start -- <command>  # This allows you to pass in flags / arguments properly
+```
+
+> [!TIP]
+> When making UI changes, we highly encourage using the extensive mocking system in place to avoid making excessive API calls to Instagram. Start the mock UI with `npm run start:mock -- --chat | --feed`. Mocks are currently only supported for the Chat and Feed views. You should update the mock data when making changes to relevant client endpoints.
+
+For example:
+
+```bash
+npm run start auth login
+npm run start chat
+```
+
+## Code Quality and Pre-commit Hooks
+
+We use pre-commit hooks for both Python and TypeScript. To set up:
 
 ```bash
 pip install pre-commit
 pre-commit install
 ```
 
-Now when you commit it checks any changes in both Python and TypeScript files and formats/lints them automatically using the respective linters.
+This automatically formats and lints your code when you commit.
 
-If you do not want to use pre-commit hooks, at the very least, run the following commands manually to ensure code quality:
+### Manual Code Quality Checks
+
+**Python:**
 
 ```bash
-pip install ruff
 ruff check .
 ruff format .
+```
+
+**TypeScript:**
+
+```bash
+cd instagram-ts
+npm run format
+npm run lint-check
 ```
 
 ## How to Contribute
@@ -85,19 +138,6 @@ git checkout -b feature-new-command  # For new features
 > [!TIP]
 > During development, we recommend using a secondary Instagram account if you are making a lot of API calls to avoid appearing suspicious to Instagram.
 
-### 5. Code Quality Checks
-
-For Python client, we do not have a pre-commit hook set up yet, so you will need to run the following commands manually:
-
-```bash
-ruff check .
-ruff format .
-```
-
-For TypeScript client, we already have a pre-commit hook using `prettier` and `eslint`.
-
-Code quality check action will run automatically when you submit any PR, so make sure your code passes the checks before submitting.
-
 ### 5. Submit a Pull Request (PR)
 
 Once you're done with your changes:
@@ -111,11 +151,18 @@ Once you're done with your changes:
 
 - Your PR will be reviewed, and maintainers may request changes.
 
-### 7. Semantic Versioning
+### 7. Releases and Versioning
 
-- Bug fixes will increment the patch version (e.g., `1.0.1`).
-- New features will increment the minor version (e.g., `1.1.0`).
-- Breaking changes will increment the major version (e.g., `2.0.0`).
+Releases are created manually through GitHub's release page. We use different tag conventions for each client:
+
+- **Python Client**: Use `v1.4.2`, `v1.5.0`, etc.
+- **TypeScript Client**: Use `ts-v1.0.0`, `ts-v1.1.0-beta`, etc.
+
+**Semantic Versioning:**
+
+- Bug fixes increment the patch version (e.g., `1.0.1`)
+- New features increment the minor version (e.g., `1.1.0`)
+- Breaking changes increment the major version (e.g., `2.0.0`)
 
 ## Code of Conduct
 

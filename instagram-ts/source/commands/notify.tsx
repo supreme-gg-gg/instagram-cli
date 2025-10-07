@@ -3,8 +3,8 @@ import {Box, Text} from 'ink';
 import zod from 'zod';
 import {argument} from 'pastel';
 import {Alert} from '@inkjs/ui';
-import {useInstagramClient} from '../ui/hooks/useInstagramClient.js';
-
+import {type NewsRepositoryInboxResponseRootObject} from 'instagram-private-api';
+import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 import {formatUsernamesInText} from '../utils/notifications.js';
 
 export const args = zod.tuple([
@@ -19,13 +19,15 @@ export const args = zod.tuple([
 		),
 ]);
 
-type Props = {
-	args: zod.infer<typeof args>;
+type Properties = {
+	readonly args: zod.infer<typeof args>;
 };
 
-export default function Notify({args}: Props) {
+export default function Notify({args}: Properties) {
 	const {client, isLoading, error} = useInstagramClient(args[0]);
-	const [notifications, setNotifications] = React.useState<any>(null);
+	const [notifications, setNotifications] = React.useState<
+		NewsRepositoryInboxResponseRootObject | undefined
+	>(undefined);
 
 	React.useEffect(() => {
 		const fetchNotifications = async () => {
@@ -36,17 +38,17 @@ export default function Notify({args}: Props) {
 			try {
 				const newsInbox = await client.getInstagramClient().news.inbox();
 				setNotifications(newsInbox);
-			} catch (err) {
-				// setError(`Notification error: ${err instanceof Error ? err.message : String(err)}`);
+			} catch (error_) {
+				// SetError(`Notification error: ${err instanceof Error ? err.message : String(err)}`);
 				console.error(
 					`Notification error: ${
-						err instanceof Error ? err.message : String(err)
+						error_ instanceof Error ? error_.message : String(error_)
 					}`,
 				);
 			}
 		};
 
-		fetchNotifications();
+		void fetchNotifications();
 	}, [client]);
 
 	if (isLoading) {
@@ -59,40 +61,19 @@ export default function Notify({args}: Props) {
 
 	return (
 		<Box flexDirection="column" padding={1}>
-			<Text color="cyan" bold>
+			<Text bold color="cyan">
 				📣 Instagram Activity Dashboard
 			</Text>
 			<Text>
 				🔔 Total Updates:{' '}
-				{(notifications?.new_stories?.length || 0) +
-					(notifications?.old_stories?.length || 0)}
+				{(notifications?.new_stories?.length ?? 0) +
+					(notifications?.old_stories?.length ?? 0)}
 			</Text>
-			{notifications?.new_stories?.length > 0 && (
-				<Box flexDirection="column" marginTop={1}>
-					<Text color="yellow">🆕 Recent Activity:</Text>
-					{notifications.new_stories.map((u: any, i: number) => {
-						const ts = new Date(u.args.timestamp * 1000).toLocaleString();
-						return (
-							<Box
-								key={i}
-								flexDirection="column"
-								marginLeft={3}
-								marginBottom={1}
-							>
-								<Text>• {formatUsernamesInText(u.args.rich_text)}</Text>
-								<Text dimColor>{ts}</Text>
-							</Box>
-						);
-					})}
-				</Box>
-			)}
-			{notifications?.old_stories?.length > 0 && (
-				<Box flexDirection="column" marginTop={1}>
-					<Text color="yellow">📜 Activity:</Text>
-					{notifications.old_stories
-						.slice(0, 10 - notifications.new_stories?.length)
-						.map((u: any, i: number) => {
-							//TODO: only when new_stories are less than 10
+			{notifications?.new_stories?.length &&
+				notifications?.new_stories?.length > 0 && (
+					<Box flexDirection="column" marginTop={1}>
+						<Text color="yellow">🆕 Recent Activity:</Text>
+						{notifications.new_stories.map((u: any, i: number) => {
 							const ts = new Date(u.args.timestamp * 1000).toLocaleString();
 							return (
 								<Box
@@ -101,13 +82,38 @@ export default function Notify({args}: Props) {
 									marginLeft={3}
 									marginBottom={1}
 								>
+									{/* eslint-disable-next-line @typescript-eslint/no-unsafe-argument */}
 									<Text>• {formatUsernamesInText(u.args.rich_text)}</Text>
 									<Text dimColor>{ts}</Text>
 								</Box>
 							);
 						})}
-				</Box>
-			)}
+					</Box>
+				)}
+			{notifications?.old_stories?.length &&
+				notifications?.old_stories?.length > 0 && (
+					<Box flexDirection="column" marginTop={1}>
+						<Text color="yellow">📜 Activity:</Text>
+						{notifications.old_stories
+							.slice(0, 10 - (notifications.new_stories?.length ?? 0))
+							.map((u: any, i: number) => {
+								// TODO: only when new_stories are less than 10
+								const ts = new Date(u.args.timestamp * 1000).toLocaleString();
+								return (
+									<Box
+										key={i}
+										flexDirection="column"
+										marginLeft={3}
+										marginBottom={1}
+									>
+										{/* eslint-disable-next-line @typescript-eslint/no-unsafe-argument */}
+										<Text>• {formatUsernamesInText(u.args.rich_text)}</Text>
+										<Text dimColor>{ts}</Text>
+									</Box>
+								);
+							})}
+					</Box>
+				)}
 			{!notifications?.new_stories?.length &&
 				!notifications?.old_stories?.length && (
 					<Text color="gray">No recent activity found.</Text>

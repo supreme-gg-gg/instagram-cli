@@ -1,97 +1,106 @@
+export type Reaction = {
+	emoji: string;
+	senderId: string;
+};
+
+export type Link = {
+	url: string;
+	text: string;
+};
+
 export type Message =
 	| TextMessage
 	| MediaMessage
-	| ClipMessage
+	| LinkMessage
 	| PlaceholderMessage;
 
-interface BaseMessage {
+type BaseMessage = {
 	id: string;
 	timestamp: Date;
 	userId: string;
 	username: string;
 	isOutgoing: boolean;
 	threadId: string;
-}
+	reactions?: Reaction[];
+};
 
-export interface TextMessage extends BaseMessage {
+export type TextMessage = {
 	itemType: 'text';
 	text: string;
-}
+} & BaseMessage;
 
-export interface MediaMessage extends BaseMessage {
+export type MediaMessage = {
 	itemType: 'media';
 	media: MessageMedia;
-}
+} & BaseMessage;
 
-export interface ClipMessage extends BaseMessage {
-	itemType: 'clip';
-	clip: any; // Define clip properties as needed
-}
+export type LinkMessage = {
+	itemType: 'link';
+	link: Link;
+} & BaseMessage;
 
-export interface PlaceholderMessage extends BaseMessage {
+export type PlaceholderMessage = {
 	itemType: 'placeholder';
 	text: string;
-}
+} & BaseMessage;
 
-export interface MessageMedia {
+export type MessageMedia = {
 	id: string;
-	user: {
-		pk: number;
-		username: string;
-		profilePicUrl?: string;
-	};
+	media_type: number; // 1 for image, 2 for video
 	image_versions2?: {
 		candidates: MediaCandidate[];
 	};
+	video_versions?: MediaCandidate[];
 	original_width: number;
 	original_height: number;
-}
+};
 
-export interface Thread {
+export type Thread = {
 	id: string;
 	title: string;
 	users: User[];
 	lastMessage?: Message;
 	lastActivity: Date;
 	unread: boolean;
-}
+};
 
-export interface User {
+export type User = {
 	pk: string;
 	username: string;
 	fullName: string;
 	profilePicUrl?: string;
 	isVerified: boolean;
-}
+};
 
-export interface ChatState {
+export type ChatState = {
 	currentThread?: Thread;
 	threads: Thread[];
 	messages: Message[];
 	loading: boolean;
 	error?: string;
 	messageCursor?: string;
-	visibleMessageOffset: number;
-}
+	selectedMessageIndex: number | undefined;
+	isSelectionMode: boolean;
+};
 
-export interface AuthState {
+export type AuthState = {
 	isLoggedIn: boolean;
 	username?: string;
 	userId?: string;
 	loading: boolean;
 	error?: string;
-}
+};
 
-export interface CarouselItem {
+export type CarouselItem = {
 	id: string;
 	media_type: number;
 	image_versions2?: {
 		candidates: MediaCandidate[];
 	};
 	video_versions?: MediaCandidate[];
-}
+};
 
-export interface Post {
+export type Post = {
 	id: string;
 	user: {
 		pk: number;
@@ -108,21 +117,21 @@ export interface Post {
 	comment_count: number;
 	taken_at: number;
 	media_type: number;
-	video_versions?: {
+	video_versions?: Array<{
 		url: string;
 		width: number;
 		height: number;
-	}[];
+	}>;
 	carousel_media_count?: number;
 	carousel_media?: CarouselItem[];
-}
+};
 
-export interface FeedInstance {
+export type FeedInstance = {
 	posts: Post[];
-}
+};
 
-export interface MediaCandidate {
+export type MediaCandidate = {
 	url: string;
 	width: number;
 	height: number;
-}
+};

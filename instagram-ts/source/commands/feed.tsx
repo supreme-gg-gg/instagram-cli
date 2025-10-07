@@ -2,9 +2,9 @@ import React from 'react';
 import {Alert} from '@inkjs/ui';
 import zod from 'zod';
 import {argument} from 'pastel';
-import {FeedInstance} from '../types/instagram.js';
-import MediaView from '../ui/views/MediaView.js';
-import {useInstagramClient} from '../ui/hooks/useInstagramClient.js';
+import {type FeedInstance} from '../types/instagram.js';
+import MediaView from '../ui/views/media-view.js';
+import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 
 export const args = zod.tuple([
 	zod
@@ -18,12 +18,14 @@ export const args = zod.tuple([
 		),
 ]);
 
-type Props = {
-	args: zod.infer<typeof args>;
+type Properties = {
+	readonly args: zod.infer<typeof args>;
 };
 
-export default function Feed({args}: Props) {
-	const {client, isLoading, error} = useInstagramClient(args[0]);
+export default function Feed({args}: Properties) {
+	const {client, isLoading, error} = useInstagramClient(args[0], {
+		realtime: false,
+	});
 	const [feed, setFeed] = React.useState<FeedInstance>({posts: []});
 
 	React.useEffect(() => {
@@ -42,22 +44,26 @@ export default function Feed({args}: Props) {
 				} else {
 					setFeed({posts: items});
 				}
-			} catch (err) {
-				// setError(`Feed error: ${err instanceof Error ? err.message : String(err)}`);
+			} catch (error_) {
+				// SetError(`Feed error: ${err instanceof Error ? err.message : String(err)}`);
 				console.error(
-					`Feed error: ${err instanceof Error ? err.message : String(err)}`,
+					`Feed error: ${
+						error_ instanceof Error ? error_.message : String(error_)
+					}`,
 				);
 			}
 		};
 
-		fetchFeed();
+		void fetchFeed();
 	}, [client]);
 
 	if (isLoading) {
 		return <Alert variant="info">Fetching Instagram feed...</Alert>;
 	}
+
 	if (error) {
 		return <Alert variant="error">{error}</Alert>;
 	}
+
 	return <MediaView feed={feed} />;
 }

@@ -1,248 +1,174 @@
-# Chat Commands Design: Typed State Machine Approach
+# Chat Commands System
 
 ## Overview
 
-This document outlines the improved design for chat commands in the Instagram CLI TypeScript migration, using a typed state machine approach for better type safety, maintainability, and user experience.
+Interactive command system for message operations with visual selection. Commands are prefixed with `:` and processed by `parseAndDispatchChatCommand()`.
 
-## Problem Statement
+## State Management
 
-The original Python implementation used event signals (e.g., `__REPLY__`, `__UNSEND__`) to communicate between commands and the UI. While simple, this approach has several limitations:
-
-- **Not type-safe**: Magic strings are error-prone and hard to refactor
-- **Not composable**: Difficult to coordinate multi-step UI flows
-- **Poor developer experience**: Hard to understand the full UI state at a glance
-
-## Proposed Solution: Typed State Machine
-
-### Core Principles
-
-1. **Type Safety**: All UI states and transitions are defined as TypeScript types
-2. **Single Source of Truth**: UI state is managed centrally with explicit transitions
-3. **Declarative**: Commands return typed actions, not imperative callbacks
-4. **Testable**: All state transitions can be unit tested independently
-
-### Architecture
-
-#### 1. UI State Definition
+### ChatState Properties
 
 ```typescript
-type ChatUIState =
-	| {mode: 'normal'}
-	| {mode: 'reply'; selectedMessageId?: string}
-	| {mode: 'unsend'; selectedMessageId?: string}
-	| {mode: 'selecting'; action: 'reply' | 'unsend'}
-	| {mode: 'scrolling'; direction: 'up' | 'down'}
-	| {mode: 'configuring'; field?: string; value?: string}
-	| {mode: 'scheduling'; time?: string; message?: string};
-```
-
-#### 2. UI Actions
-
-```typescript
-type ChatUIAction =
-	| {type: 'ENTER_REPLY_MODE'; messageId?: string}
-	| {type: 'ENTER_UNSEND_MODE'; messageId?: string}
-	| {type: 'ENTER_SELECTION_MODE'; action: 'reply' | 'unsend'}
-	| {type: 'SELECT_MESSAGE'; messageId: string}
-	| {type: 'EXIT_SPECIAL_MODE'}
-	| {type: 'SCROLL_MESSAGES'; direction: 'up' | 'down'}
-	| {type: 'SHOW_SYSTEM_MESSAGE'; text: string}
-	| {type: 'UPDATE_CONFIG'; field: string; value: string};
-```
-
-#### 3. State Reducer
-
-```typescript
-function chatUIReducer(state: ChatUIState, action: ChatUIAction): ChatUIState {
-	switch (action.type) {
-		case 'ENTER_REPLY_MODE':
-			return {mode: 'reply', selectedMessageId: action.messageId};
-
-		case 'ENTER_UNSEND_MODE':
-			return {mode: 'unsend', selectedMessageId: action.messageId};
-
-		case 'ENTER_SELECTION_MODE':
-			return {mode: 'selecting', action: action.action};
-
-		case 'SELECT_MESSAGE':
-			if (state.mode === 'selecting') {
-				return {
-					mode: state.action === 'reply' ? 'reply' : 'unsend',
-					selectedMessageId: action.messageId,
-				};
-			}
-			return state;
-
-		case 'EXIT_SPECIAL_MODE':
-			return {mode: 'normal'};
-
-		case 'SCROLL_MESSAGES':
-			return {mode: 'scrolling', direction: action.direction};
-
-		default:
-			return state;
-	}
+interface ChatState {
+	selectedMessageIndex: number | null; // 0-based index in messages array
+	isSelectionMode: boolean; // UI selection mode active
+	// other existing properties...
 }
 ```
 
-#### 4. Updated Command Interface
+### State Flow
 
-```typescript
-interface ChatCommand {
-	name: string;
-	handler: (
-		args: string[],
-		ctx: ChatCommandContext,
-	) => ChatUIAction | ChatUIAction[];
-	help: string;
-	usage: string;
-	shorthand?: string;
-}
-```
+1. **Selection**: `:select` → `isSelectionMode: true`, `selectedMessageIndex: lastMessage`
+2. **Navigation**: `j`/`k` keys update `selectedMessageIndex`
+3. **Confirmation**: `Enter` → `isSelectionMode: false` (preserves `selectedMessageIndex`)
+4. **Execution**: Commands check `selectedMessageIndex !== null`
+5. **Cleanup**: Commands clear `selectedMessageIndex` after execution
 
-#### 5. Command Context
+## Available Commands
 
-```typescript
-interface ChatCommandContext {
-	client: InstagramClient;
-	chatState: ChatState;
-	dispatch: (action: ChatUIAction) => void;
-	getCurrentUIState: () => ChatUIState;
-}
-```
+| Command          | Description                           | Selection Required |
+| ---------------- | ------------------------------------- | ------------------ |
+| `:help`          | Show available commands               | No                 |
+| `:select`        | Enter message selection mode          | No                 |
+| `:react [emoji]` | React to selected message             | Yes                |
+| `:unsend`        | Delete selected message               | Yes                |
+| `:upload <path>` | Upload file to thread                 | No                 |
+| `:k`             | Scroll up by 75% of viewport height   | No                 |
+| `:j`             | Scroll down by 75% of viewport height | No                 |
+| `:K`             | Jump to top of message history        | No                 |
+| `:J`             | Jump to bottom of message history     | No                 |
 
-## Implementation Examples
+## Selection Logic
 
-### Reply Command
+### Scrolling Behavior
 
-```typescript
-export const replyCommand: ChatCommand = {
-	name: 'reply',
-	handler: (args, ctx) => {
-		const index = args[0];
+The message scrolling system uses a `ScrollView` component that provides smooth, viewport-relative navigation:
 
-		if (index) {
-			const messageIndex = parseInt(index);
-			if (
-				isNaN(messageIndex) ||
-				messageIndex < 0 ||
-				messageIndex >= ctx.chatState.messages.length
-			) {
-				return {
-					type: 'SHOW_SYSTEM_MESSAGE',
-					text: `Error: Invalid message index ${index}`,
-				};
-			}
+- **Incremental Scrolling** (`:j` / `:k`): Scrolls by 75% of the viewport height for comfortable navigation with content overlap
+- **Jump Navigation** (`:J` / `:K`): Instantly jumps to the bottom or top of loaded messages
+- **Infinite Scroll**: When scrolling to the top (`:K` or reaching the boundary), older messages are automatically loaded from the API
+- **Auto-scroll**: After sending a message, the view automatically scrolls to the bottom to show the sent message
+- **Mouse Support**: Planned for future implementation to enable scroll wheel navigation
 
-			const message =
-				ctx.chatState.messages[
-					ctx.chatState.messages.length - 1 - messageIndex
-				];
-			if (!message) {
-				return {type: 'SHOW_SYSTEM_MESSAGE', text: 'Error: Message not found'};
-			}
+The scrolling commands interact with the `ScrollView` component via ref methods, providing programmatic control over the scroll position while maintaining smooth UX.
 
-			return {type: 'ENTER_REPLY_MODE', messageId: message.id};
-		}
+### UI Behavior
 
-		return {type: 'ENTER_SELECTION_MODE', action: 'reply'};
-	},
-	help: 'Reply to a message in the chat',
-	usage: ':reply [index]',
-	shorthand: 'r',
-};
-```
+- **Selection Mode**: Input disabled, shows "Selection mode active - use j/k to navigate, Esc to exit"
+- **Visual Feedback**: Selected message highlighted with yellow border
+- **Navigation**: `j` (down), `k` (up), `Enter` (confirm), `Esc` (cancel)
 
-### Scroll Command
+### Command Execution
 
-```typescript
-export const scrollUpCommand: ChatCommand = {
-	name: 'scrollup',
-	handler: (_args, ctx) => {
-		return {type: 'SCROLL_MESSAGES', direction: 'up'};
-	},
-	help: 'Scroll up the chat history',
-	usage: ':scrollup',
-	shorthand: 'k',
-};
-```
+- Commands check `chatState.selectedMessageIndex !== null`
+- Target message: `chatState.messages[selectedMessageIndex]`
+- After execution: `selectedMessageIndex` cleared to `null`
 
-## Benefits
+### Key Bindings
 
-### 1. Type Safety
+- **Normal Mode**: `Esc` → back to threads, `Ctrl+C` → quit
+- **Selection Mode**: `j`/`k` → navigate, `Enter` → confirm, `Esc` → cancel
 
-- All UI states and transitions are checked at compile time
-- Impossible to dispatch invalid actions
-- Easy refactoring with IDE support
+## Autocomplete System
 
-### 2. Predictability
+To enhance user experience, an autocomplete system will be implemented, providing suggestions for file paths. This system is designed to be extensible for other types of autocompletion in the future.
 
-- UI state is always in a known, valid state
-- All transitions are explicit and documented
-- Easy to debug and trace state changes
+### File Path Autocomplete
 
-### 3. Testability
+This feature assists users in finding and inputting file paths directly in the chat input, triggered by a special character combination.
 
-- Reducer can be unit tested independently
-- Command handlers can be tested by checking returned actions
-- UI components can be tested with specific state inputs
+#### **1. Triggering Mechanism**
 
-### 4. Extensibility
+- Autocomplete is triggered when the user types a space followed by `@` and begins typing a path (e.g., `:upload @p` or simply ` @p`).
+- The system will use the text immediately following the `@` as the query for file path suggestions.
 
-- Easy to add new UI modes (e.g., search, filter, bulk actions)
-- Actions can be composed for complex workflows
-- State machine can handle multi-step processes
+#### **2. UI Component (`AutocompleteView`)**
 
-### 5. Developer Experience
+- A new component, `AutocompleteView`, will be responsible for rendering suggestions.
+- It will appear directly **below** the main chat input box.
+- It will display a vertical list of matching file and directory names.
+- The currently highlighted suggestion will have a distinct background color.
+- Directory names in the suggestion list will be appended with a `/` (e.g., `source/`) to denote they are directories and allow for easier traversal.
 
-- Clear separation between command logic and UI logic
-- Self-documenting code through types
-- Better IDE support and autocomplete
+#### **3. State Management (`ChatView`)**
 
-## Migration Strategy
+- The main `ChatView` will manage the autocomplete state. A possible structure for the state would be:
+  ```typescript
+  interface AutocompleteState {
+  	isActive: boolean;
+  	suggestions: string[];
+  	selectedIndex: number;
+  	triggerPosition: number; // The cursor position where '@' was typed
+  	query: string; // The text after '@' used for filtering
+  }
+  ```
+- On input change, the view will check for the ` @` pattern to activate or update the autocomplete state.
 
-### Phase 1: Define Types
+#### **4. Suggestion Logic (`utils/autocomplete.ts`)**
 
-1. Create the `ChatUIState` and `ChatUIAction` types
-2. Implement the `chatUIReducer` function
-3. Update the `ChatCommandContext` interface
+- A new `getFilePathSuggestions(query: string): Promise<string[]>` function will be created in a new `utils/autocomplete.ts` file.
+- This function will perform a case-insensitive search on the file system based on the `query`.
+- **Path Resolution**: It will support:
+  - **Relative paths**: (e.g., `source/`, `../`) relative to the current working directory.
+  - **Absolute paths**: (e.g., `/Users/`).
+  - **Home directory**: `~/` will be expanded to the user's home directory.
+- It will use Node.js's `fs` module for all file system lookups.
 
-### Phase 2: Update Commands
+#### **5. Keyboard Interaction**
 
-1. Convert existing commands to return actions instead of calling callbacks
-2. Update the command registry to handle action dispatching
-3. Add new commands that leverage the state machine
+- When the `AutocompleteView` is active, the following keys will be handled by the input component:
+  - **`ArrowDown`**: Moves the selection down the list (and loops back to the top).
+  - **`ArrowUp`**: Moves the selection up the list (and loops back to the bottom).
+  - **`Tab` or `Enter`**: Accepts the currently selected suggestion. The text from the trigger (`@<query>`) will be replaced with the completed path (`@<suggestion>`). Note that `Enter` is locked to only handle acceptions when autocomplete is active; otherwise, it sends the message.
+  - **`Escape`**: Deactivates autocomplete and closes the suggestion list without making a change.
 
-### Phase 3: Update UI Components
+### Command Autocomplete
 
-1. Integrate the reducer into `ChatView` using `useReducer`
-2. Update components to respond to UI state changes
-3. Add visual indicators for different modes (reply, unsend, etc.)
+This feature provides in-line suggestions for chat commands, triggered by the `:` character.
 
-### Phase 4: Advanced Features
+#### Triggering Mechanism
 
-1. Add support for multi-step workflows
-2. Implement undo/redo functionality
-3. Add keyboard shortcuts that dispatch actions
+- Autocomplete is triggered when the user types `:` at the beginning of the input.
+- The system will use the text immediately following the `:` as the query for command suggestions.
 
-## Comparison with Alternatives
+#### Suggestion Logic
 
-| Approach          | Type Safety | Maintainability | Testability | Developer Experience |
-| ----------------- | ----------- | --------------- | ----------- | -------------------- |
-| Magic Strings     | ❌          | ❌              | ❌          | ❌                   |
-| Callbacks         | ⚠️          | ⚠️              | ⚠️          | ⚠️                   |
-| **State Machine** | ✅          | ✅              | ✅          | ✅                   |
+- A new function, `getCommandSuggestions(query: string)`, will be added.
+- This function will import the `chatCommands` object and filter commands whose names start with the `query`.
+- It will return an array of objects, each containing the command's `name` and `description`.
 
-## Industry Examples
+#### State Management (Input Box)
 
-This pattern is widely used in modern software development:
+- The `AutocompleteState` will be updated to differentiate between `command` and `filePath` suggestions to handle different triggers and display formats.
+- The `handleInputChange` function will be expanded to detect the `:` trigger at the start of the input and fetch command suggestions.
+- `handleAutocompleteSelection` will be updated to replace the partial command (e.g., `:he`) with the selected command name (e.g., `:help `).
 
-- **Redux**: Uses reducers and actions for state management
-- **XState**: Formal state machine library for complex UI flows
-- **React useReducer**: Built-in hook for managing complex state
-- **VSCode**: Uses state machines for editor modes
-- **Slack/Discord**: Chat input modes managed with state machines
+## Message Preprocessing
 
-## Conclusion
+Before a message is sent to a thread, it will pass through a preprocessing step to handle special syntax for file embedding and emojis. This logic will be encapsulated in a `preprocessMessage` function that is called from the `InputBox`'s `onSend` handler.
 
-The typed state machine approach provides a robust, scalable, and maintainable solution for chat commands that require UI state transitions. It aligns with modern React/TypeScript best practices and provides a solid foundation for future feature development.
+### Preprocessing Flow
+
+The `preprocessMessage` function takes the raw text in input box, checks if it contains any special syntax, and processes it accordingly, either modifying the text or triggering additional actions (like file uploads), then returns the final text to be sent.
+
+### 1. File Path Handling (`@<path>`)
+
+- **Syntax**: `@path/to/your/file.ext`
+- **Text Files** (e.g., `.txt`, `.md`, `.js`, `.ts`, `.json`):
+  - The content of the specified file will be read from the filesystem.
+  - The `@<path>` string in the message will load the file's content and append it to the end of message text, preserving the `@<path>` string's position.
+- **Image Files** (e.g., `.png`, `.jpg`, `.jpeg`, `.gif`):
+  - For each image path found, the `client.sendPhoto()` method will be called for the current thread.
+  - The `@<path>` string will be removed from the message text.
+  - If the message contains only image paths, no text message will be sent.
+  - If the message contains text and image paths, the images will be uploaded, and the remaining text will be sent as a separate message.
+
+> NOTE: For those interested, this design follows directly from Gemini CLI's UX, but we modified where text files are added. For AI, it doesn't matter if you just replace `@<path>` with the file content inline. But for human users, we're more used to seeing the file content as an "appendix" and referencing the file content with the file path. This is an intentional UX choice.
+
+### 2. Emoji Handling (`:emoji_name:`)
+
+- **Syntax**: `:smile:`, `:fire:`, etc.
+- **Action**:
+  - All occurrences of the `:emoji_name:` pattern will be replaced with a static placeholder emoji (e.g., `✨`).
+  - This is a placeholder for a future implementation that could map names to actual emoji characters.
+  - Example: `Hello world :wave:` becomes `Hello world ✨`

@@ -1,18 +1,16 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import {ConfigManager} from './config.js';
 
-export interface SerializedState {
-	[key: string]: any;
-}
+export type SerializedState = Record<string, any>;
 
 export class SessionManager {
-	private username: string | null;
-	private configManager: ConfigManager;
+	private username: string | undefined;
+	private readonly configManager: ConfigManager;
 
 	constructor(username?: string) {
 		this.configManager = ConfigManager.getInstance();
-		this.username = username || null;
+		this.username = username ?? undefined;
 
 		if (!this.username) {
 			this.username = this.getDefaultUsername();
@@ -24,48 +22,12 @@ export class SessionManager {
 		}
 	}
 
-	private getDefaultUsername(): string | null {
-		const current = this.configManager.get<string>('login.currentUsername');
-		if (current) {
-			return current;
-		}
-
-		const defaultUsername = this.configManager.get<string>(
-			'login.defaultUsername',
-		);
-		if (defaultUsername) {
-			return defaultUsername;
-		}
-
-		return null;
-	}
-
-	public getUsername(): string | null {
+	public getUsername(): string | undefined {
 		return this.username;
 	}
 
 	public setUsername(username: string): void {
 		this.username = username;
-	}
-
-	private getSessionPath(): string {
-		if (!this.username) {
-			throw new Error('Username is not set');
-		}
-
-		const usersDir = this.configManager.get<string>('advanced.usersDir');
-		return path.join(usersDir, this.username, 'session.ts.json');
-	}
-
-	private async ensureSessionDir(): Promise<string> {
-		if (!this.username) {
-			throw new Error('Username is not set');
-		}
-
-		const usersDir = this.configManager.get<string>('advanced.usersDir');
-		const sessionDir = path.join(usersDir, this.username);
-		await fs.mkdir(sessionDir, {recursive: true});
-		return sessionDir;
 	}
 
 	public async saveSession(serializedState: SerializedState): Promise<void> {
@@ -75,7 +37,7 @@ export class SessionManager {
 		try {
 			// Remove constants to always use the latest version
 			const {constants, ...stateToSave} = serializedState;
-			await fs.writeFile(
+			fs.writeFileSync(
 				sessionPath,
 				JSON.stringify(stateToSave, null, 2),
 				'utf8',
@@ -86,23 +48,27 @@ export class SessionManager {
 		}
 	}
 
-	public async loadSession(): Promise<SerializedState | null> {
+	public async loadSession(): Promise<SerializedState | undefined> {
 		const sessionPath = this.getSessionPath();
 
 		try {
-			const sessionExists = await fs
-				.access(sessionPath)
-				.then(() => true)
-				.catch(() => false);
-			if (!sessionExists) {
-				return null;
+			let sessionExists;
+			try {
+				fs.accessSync(sessionPath);
+				sessionExists = true;
+			} catch {
+				sessionExists = false;
 			}
 
-			const sessionData = await fs.readFile(sessionPath, 'utf8');
+			if (!sessionExists) {
+				return undefined;
+			}
+
+			const sessionData = fs.readFileSync(sessionPath, 'utf8');
 			return JSON.parse(sessionData) as SerializedState;
 		} catch (error) {
 			console.error('Error loading session:', error);
-			return null;
+			return undefined;
 		}
 	}
 
@@ -110,7 +76,7 @@ export class SessionManager {
 		const sessionPath = this.getSessionPath();
 
 		try {
-			await fs.unlink(sessionPath);
+			fs.unlinkSync(sessionPath);
 		} catch (error) {
 			// Session file doesn't exist, which is fine
 			if ((error as any).code !== 'ENOENT') {
@@ -122,9 +88,45 @@ export class SessionManager {
 
 	public async sessionExists(): Promise<boolean> {
 		const sessionPath = this.getSessionPath();
-		return fs
-			.access(sessionPath)
-			.then(() => true)
-			.catch(() => false);
+		try {
+			fs.accessSync(sessionPath);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	private getDefaultUsername(): string | undefined {
+		const current = this.configManager.get('login.currentUsername');
+		if (current) {
+			return current;
+		}
+
+		const defaultUsername = this.configManager.get('login.defaultUsername');
+		if (defaultUsername) {
+			return defaultUsername;
+		}
+
+		return undefined;
+	}
+
+	private getSessionPath(): string {
+		if (!this.username) {
+			throw new Error('Username is not set');
+		}
+
+		const usersDirectory = this.configManager.get('advanced.usersDir');
+		return path.join(usersDirectory, this.username, 'session.ts.json');
+	}
+
+	private async ensureSessionDir(): Promise<string> {
+		if (!this.username) {
+			throw new Error('Username is not set');
+		}
+
+		const usersDirectory = this.configManager.get('advanced.usersDir');
+		const sessionDirectory = path.join(usersDirectory, this.username);
+		fs.mkdirSync(sessionDirectory, {recursive: true});
+		return sessionDirectory;
 	}
 }

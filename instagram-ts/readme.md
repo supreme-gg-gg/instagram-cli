@@ -1,96 +1,77 @@
-# instagram-ts
+# Instagram CLI
 
-The TypeScript Client is contained in the `instagram-ts` folder. For all of the following commands, you should first `cd` into the `instagram-ts` directory.
+Welcome to the TypeScript client of the Instagram CLI project. The Typescript client is a successor to the original Python client, built with a modern React-based UI using Ink, with features like image rendering in terminal, checking feed, and using MQTT protocol for messaging to significantly reduce latency and account flags.
 
-## Getting Started
+The original python client can be found [on our GitHub](https://github.com/supreme-gg-gg/instagram-cli)
 
-To get started, you need to install the dependencies:
+> [!NOTE]
+> Typescript client is current in Public Beta. While we have tested it extensively, there may still be some bugs. Please report them [on our issues page](https://github.com/supreme-gg-gg/instagram-cli/issues).
 
-```bash
-npm install
-```
+We are the ultimate weapon against brainrot, so that you can focus on meaningful conversations without distractions.
 
-We no longer use `lint-staged` and `husky`. We have migrated to `pre-commit` for both Python and TypeScript. This happens automatically as you commit.
+We celebrate the art and simplicity of terminal UI, while contributing to the Ink open source ecosystem so that everyone can build amazing terminal apps! Checkout [ink-picture](https://github.com/endernoke/ink-picture), our sister-project for displaying images in the terminal.
 
-If linter and formatter is not run automatically, you can run it manually with:
+## Usage
 
-```bash
-npm run lint-check
-npm run format # only runs prettier
-```
-
-## Development Install
+Install the package globally:
 
 ```bash
-npm run build
+npm install -g @i7m/instagram-cli
 ```
 
-To run the CLI:
+### Commands
+
+The following commands will be available after installing the package:
 
 ```bash
-npm run start -- <command>
+instagram-cli                                  # display title art
+instagram-cli --help                           # view available commands
+
+# Authentication
+instagram-cli auth login --username            # login with username and password
+instagram-cli auth logout                      # logout and removes session
+
+# Core features
+instagram-cli chat                             # start chat interface
+instagram-cli feed                             # view posts from people you follow
+instagram-cli notify                           # view notifications (inbox, followers, mentions)
+
+# Modify configuration
+instagram-cli config                           # view and modify configuration
 ```
 
-Basically replace `instagram` with `npm run start`, for example:
+Note that the parent command is `instagram-cli` instead of `instagram` to avoid conflict with the Python client if you have both installed.
+
+### Chat Commands
+
+You can navigate all interface with 100% keyboard support. When messaging, the following commands are available:
 
 ```bash
-npm run start auth login
-npm run start chat
+:help
+:select # select first before unsend or react
+:react <emoji>
+:unsend
+:upload <path-to-image-or-video>
+:k # go up
+:K # go to top
+:j # go down
+:J # go to bottom
 ```
 
-## Install
+> [!TIP]  
+> You can quickly include text files or images in a message by using `#` followed by the file path. For example, `#path/to/file.txt` or `#path/to/image.png`.  
+> Use `tab` and `enter` to autocomplete file paths.
 
-> DO NOT DO THIS DURING DEV
+### Configuration
 
-```bash
-npm install --global instagram-ts
-```
+You can view and modify configuration with `instagram-cli config`. The configuration file is located at `~/.instagram-cli/config.ts.yaml`.
 
-## Notes
+## Design philosophy
 
-### Pastel
+1. Simplicity, a clean interface with minimal distractions
 
-- We use `pastel` for building CLI commands
-- `pastel` supports `tsx` for each commands, so you can just render UI directly in there
-- Read pastel docs for how to group commands, how to use `zod`, etc.
+2. Absolutely no brainrot, no ads, no attention traps
 
-## Ink
+3. Convenience, quick access to essential features, open anywhere even in VSCode Integrated Terminals, super fast startup (no browser)
 
-- We use `ink` for building UI
-- We use existing `@inkjs/ui` components for UI such as alert, text input, loading, etc.
-
-## Structure
-
-```plaintext
-instagram-ts/source/
-├── cli.ts              # Main CLI entry point (meow)
-├── client.ts           # Unified Instagram API client (all IG logic)
-├── config.ts           # YAML-based config management
-├── session.ts          # Session serialization and management
-│
-├── commands/           # Each CLI command in its own file
-│   ├── auth/           # Subcommands grouped in folders
-│   │   ├── login.tsx
-│   │   └── logout.tsx
-│   ├── chat.tsx
-│   ├── config.tsx
-│   ├── notify.tsx
-│   ├── stats.tsx
-│   └── ...
-│
-├── ui/
-│   ├── components/     # Stateless, reusable Ink components (MessageList, InputBox, etc.)
-│   ├── views/          # Top-level stateful views (ChatView, ThreadListView, etc.)
-│   ├── hooks/          # Custom React hooks (useClient, useThreads, etc.)
-│   └── context/        # React context providers (ClientContext)
-│
-└── types/              # All TypeScript type definitions
-    ├── instagram.ts
-    └── ui.ts
-```
-
-Quick notes:
-
-- Currently all API wrapper are contained in `client.ts`
-- In the future in case this grows out of hand we will move them to separate files especially when we add realtime
-- We hope to add testing at some point, will use the `ink-testing-library` for that
+4. Developer-first, open source, extensible, and keyboard-first
