@@ -89,18 +89,13 @@ export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 						key={thread.id}
 						ref={isFirstItem ? itemReference : undefined}
 						flexDirection="column"
+						marginTop={isFirstItem ? 1 : 0}
 						marginBottom={isLastItem ? 0 : 1}
 					>
 						<ThreadItem
 							thread={thread}
 							isSelected={absoluteIndex === selectedIndex}
 						/>
-						{/* Separator line for non-selected items
-						{!isLastItem && absoluteIndex !== selectedIndex && (
-							<Box paddingX={1}>
-								<Text dimColor>{'─'.repeat(50)}</Text>
-							</Box>
-						)} */}
 					</Box>
 				);
 			})}
