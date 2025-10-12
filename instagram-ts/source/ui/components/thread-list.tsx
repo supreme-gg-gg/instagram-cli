@@ -82,9 +82,16 @@ export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 				const isFirstItem = index === 0;
 				// The actual index in the full threads array
 				const absoluteIndex = scrollOffset + index;
+				const isLastItem = index === visibleThreads.length - 1;
 
 				return (
-					<Box key={thread.id} ref={isFirstItem ? itemReference : undefined}>
+					<Box
+						key={thread.id}
+						ref={isFirstItem ? itemReference : undefined}
+						flexDirection="column"
+						marginTop={isFirstItem ? 1 : 0}
+						marginBottom={isLastItem ? 0 : 1}
+					>
 						<ThreadItem
 							thread={thread}
 							isSelected={absoluteIndex === selectedIndex}
