@@ -8,6 +8,15 @@ export type Link = {
 	text: string;
 };
 
+// IMPORTANT: This field is neglected by both the API and MQTT, but apparently exists on both!
+export type RepliedToMessage = {
+	id: string;
+	userId: string;
+	username: string;
+	text?: string;
+	itemType: string;
+};
+
 export type Message =
 	| TextMessage
 	| MediaMessage
@@ -22,6 +31,7 @@ type BaseMessage = {
 	isOutgoing: boolean;
 	threadId: string;
 	reactions?: Reaction[];
+	repliedTo?: RepliedToMessage;
 };
 
 export type TextMessage = {

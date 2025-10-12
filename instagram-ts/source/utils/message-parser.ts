@@ -1,13 +1,22 @@
 import {type DirectThreadFeedResponseItemsItem} from 'instagram-private-api';
 import type {MessageSyncMessage} from 'instagram_mqtt';
-import type {Message, Reaction} from '../types/instagram.js';
+import type {Message, Reaction, RepliedToMessage} from '../types/instagram.js';
 
 // Chat is this real? Yes, this is real I love monkey patching
 // (this has been verified using the API response, the instagram-private-api type is outdated)
-// note that thread_id may not exist here unlike MessageSyncMessage because you request a threadId already when calling this API
+// Note that thread_id may not exist here unlike MessageSyncMessage because you request a threadId already when calling this API
 type RealChatItem = DirectThreadFeedResponseItemsItem & {
 	media: MessageSyncMessage['media'];
 	reactions: MessageSyncMessage['reactions'];
+	// This type is NOT defined on either API or MQTT and is extended by monkey patching
+	replied_to_message?: RawRepliedToMessage;
+};
+
+type RawRepliedToMessage = {
+	item_id: string;
+	user_id: number;
+	text?: string;
+	item_type: string;
 };
 
 /**
@@ -91,6 +100,21 @@ export function parseMessageItem(
 	const userId = item.user_id.toString();
 	const timestamp = new Date(Number(item.timestamp) / 1000);
 
+	const repliedToMessage = (item as RealChatItem).replied_to_message;
+	const repliedTo: RepliedToMessage | undefined = repliedToMessage
+		? {
+				id: repliedToMessage.item_id,
+				userId: repliedToMessage.user_id.toString(),
+				text: repliedToMessage.text,
+				itemType: repliedToMessage.item_type,
+				username: getUsernameFromCache(
+					repliedToMessage.user_id,
+					context.userCache,
+					context.currentUserId,
+				),
+			}
+		: undefined;
+
 	const baseMessage = {
 		id: item.item_id,
 		timestamp,
@@ -103,6 +127,7 @@ export function parseMessageItem(
 		isOutgoing: userId === context.currentUserId,
 		threadId,
 		reactions: item.reactions ? parseReactions(item.reactions) : undefined,
+		repliedTo,
 	};
 
 	switch (item.item_type) {

@@ -110,6 +110,28 @@ export default function MessageList({
 								<Text dimColor>{formatTime(message.timestamp)}</Text>
 							</Box>
 							<Box flexDirection="column">
+								{message.repliedTo && (
+									<Box
+										flexDirection="column"
+										borderLeftColor="gray"
+										paddingLeft={1}
+										marginBottom={1}
+									>
+										<Text dimColor>
+											Replying to <Text bold>{message.repliedTo.username}</Text>
+										</Text>
+										<Text dimColor>
+											{message.repliedTo.itemType === 'text'
+												? `"${message.repliedTo.text?.slice(0, 40) ?? ''}${
+														message.repliedTo.text &&
+														message.repliedTo.text.length > 40
+															? '...'
+															: ''
+													}"`
+												: `[A ${message.repliedTo.itemType}]`}
+										</Text>
+									</Box>
+								)}
 								{renderMessageContent(message)}
 								{message.reactions && message.reactions.length > 0 && (
 									<Box borderStyle="round" borderColor="gray" paddingX={1}>
