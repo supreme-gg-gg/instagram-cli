@@ -122,6 +122,44 @@ class MockClient extends EventEmitter {
 		);
 	}
 
+	async sendReply(
+		threadId: string,
+		text: string,
+		replyToMessage: Message,
+	): Promise<void> {
+		// Simulate sending a reply
+		const newMessage: Message = {
+			id: `reply_${Date.now()}`,
+			timestamp: new Date(),
+			userId: 'current_user',
+			username: 'current_user',
+			isOutgoing: true,
+			threadId,
+			itemType: 'text',
+			text,
+			repliedTo: {
+				id: replyToMessage.id,
+				userId: replyToMessage.userId,
+				username: replyToMessage.username,
+				text:
+					replyToMessage.itemType === 'text'
+						? replyToMessage.text
+						: replyToMessage.itemType === 'link'
+							? replyToMessage.link.text
+							: replyToMessage.itemType === 'media'
+								? '[Media]'
+								: '[Unsupported Media]',
+				itemType: replyToMessage.itemType,
+			},
+		};
+
+		this.sentMessages.push(newMessage);
+		await new Promise(resolve => {
+			setTimeout(resolve, 150);
+		});
+		this.emit('message', newMessage);
+	}
+
 	async sendPhoto(threadId: string, filePath: string): Promise<void> {
 		// Simulate sending a photo
 		const newMessage: Message = {

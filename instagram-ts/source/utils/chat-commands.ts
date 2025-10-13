@@ -25,7 +25,7 @@ export const chatCommands: Record<string, ChatCommand> = {
 	help: {
 		description: 'Show available commands. Usage: :help',
 		handler() {
-			return 'Available commands: :help, :select, :react, :unsend, :upload, :k, :j';
+			return 'Available commands: :help, :select, :reply, :react, :unsend, :upload, :k, :j';
 		},
 	},
 	echo: {
@@ -49,6 +49,47 @@ export const chatCommands: Record<string, ChatCommand> = {
 				selectedMessageIndex: previous.messages.length - 1,
 			}));
 			return 'Entered selection mode. Use j/k to navigate.';
+		},
+	},
+	reply: {
+		description: 'Reply to the selected message. Usage: :reply [text]',
+		async handler(
+			arguments_,
+			{client, chatState, setChatState, scrollViewRef},
+		) {
+			const text = arguments_.join(' ');
+			if (!text) {
+				return 'Usage: :reply <text>';
+			}
+
+			if (chatState.selectedMessageIndex === undefined) {
+				return 'Usage: :select to enter selection mode first.';
+			}
+
+			const messageToReplyTo =
+				chatState.messages[chatState.selectedMessageIndex];
+			if (!messageToReplyTo || !chatState.currentThread) {
+				return;
+			}
+
+			await client.sendReply(
+				chatState.currentThread.id,
+				text,
+				messageToReplyTo,
+			);
+
+			// Scroll to bottom after sending a reply
+			if (scrollViewRef.current) {
+				scrollViewRef.current.scrollToEnd(true);
+			}
+
+			setChatState(previous => ({
+				...previous,
+				selectedMessageIndex: undefined,
+			}));
+
+			// eslint-disable-next-line no-useless-return
+			return;
 		},
 	},
 	react: {

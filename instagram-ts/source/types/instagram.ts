@@ -32,6 +32,8 @@ type BaseMessage = {
 	threadId: string;
 	reactions?: Reaction[];
 	repliedTo?: RepliedToMessage;
+	item_id?: string;
+	client_context?: string;
 };
 
 export type TextMessage = {
