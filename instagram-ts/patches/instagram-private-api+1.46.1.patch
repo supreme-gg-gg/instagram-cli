@@ -1,0 +1,49 @@
+diff --git a/node_modules/instagram-private-api/dist/entities/direct-thread.entity.d.ts b/node_modules/instagram-private-api/dist/entities/direct-thread.entity.d.ts
+index 93eb781..2cadf27 100644
+--- a/node_modules/instagram-private-api/dist/entities/direct-thread.entity.d.ts
++++ b/node_modules/instagram-private-api/dist/entities/direct-thread.entity.d.ts
+@@ -1,11 +1,12 @@
+ /// <reference types="node" />
+ import { Entity } from '../core/entity';
+ import { DirectThreadBroadcastPhotoOptions, DirectThreadBroadcastPhotoStoryOptions, DirectThreadBroadcastReelOptions, DirectThreadBroadcastVideoOptions, DirectThreadBroadcastVideoStoryOptions, DirectThreadBroadcastVoiceOptions } from '../types';
++import { DirectThreadFeedResponseItemsItem } from '../responses';
+ export declare class DirectThreadEntity extends Entity {
+     threadId: string;
+     userIds: string[];
+     deleteItem(itemId: string | number): Promise<import("..").StatusResponse>;
+-    broadcastText(text: string, skipLinkCheck?: boolean): Promise<import("..").DirectThreadRepositoryBroadcastResponseRootObject | import("..").DirectThreadRepositoryBroadcastResponsePayload>;
++    broadcastText(text: string, reply_to_message?: DirectThreadFeedResponseItemsItem, skipLinkCheck?: boolean): Promise<import("..").DirectThreadRepositoryBroadcastResponseRootObject | import("..").DirectThreadRepositoryBroadcastResponsePayload>;
+     broadcastReel(options: DirectThreadBroadcastReelOptions): Promise<import("..").DirectThreadRepositoryBroadcastResponseRootObject | import("..").DirectThreadRepositoryBroadcastResponsePayload>;
+     broadcastUserStory(options: DirectThreadBroadcastReelOptions): Promise<import("..").DirectThreadRepositoryBroadcastResponseRootObject | import("..").DirectThreadRepositoryBroadcastResponsePayload>;
+     broadcastProfile(id: number | string): Promise<import("..").DirectThreadRepositoryBroadcastResponseRootObject | import("..").DirectThreadRepositoryBroadcastResponsePayload>;
+diff --git a/node_modules/instagram-private-api/dist/entities/direct-thread.entity.js b/node_modules/instagram-private-api/dist/entities/direct-thread.entity.js
+index 42ec5a0..2a26afe 100644
+--- a/node_modules/instagram-private-api/dist/entities/direct-thread.entity.js
++++ b/node_modules/instagram-private-api/dist/entities/direct-thread.entity.js
+@@ -17,18 +17,22 @@ class DirectThreadEntity extends entity_1.Entity {
+         }
+         return this.client.directThread.deleteItem(this.threadId, itemId);
+     }
+-    async broadcastText(text, skipLinkCheck) {
++    async broadcastText(text, reply_to_message, skipLinkCheck) {
+         if (!skipLinkCheck) {
+             const urls = text.match(require('url-regex-safe')({ strict: false }));
+             if (urls instanceof Array) {
+                 return this.broadcastLink(text, urls);
+             }
+         }
++        let form = { text };
++        if (reply_to_message) {
++            form.replied_to_action_source = 'swipe';
++            form.replied_to_item_id = reply_to_message.item_id;
++            form.replied_to_client_context = reply_to_message.client_context;
++        }
+         return await this.broadcast({
+             item: 'text',
+-            form: {
+-                text,
+-            },
++            form: form,
+         });
+     }
+     async broadcastReel(options) {

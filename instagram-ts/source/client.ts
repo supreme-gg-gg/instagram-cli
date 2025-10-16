@@ -7,6 +7,7 @@ import {
 	IgLoginTwoFactorRequiredError,
 	type DirectInboxFeedResponseThreadsItem,
 	type DirectInboxFeedResponseUsersItem,
+	type DirectThreadFeedResponseItemsItem,
 	type AccountRepositoryLoginErrorResponseTwoFactorInfo,
 } from 'instagram-private-api';
 import {
@@ -467,6 +468,25 @@ export class InstagramClient extends EventEmitter {
 			await this.ig.entity.directThread(threadId).broadcastText(text);
 		} catch (error) {
 			console.error('Failed to send message:', error);
+			throw error;
+		}
+	}
+
+	public async sendReply(
+		threadId: string,
+		text: string,
+		replyToMessage: Message,
+	): Promise<void> {
+		try {
+			await this.ig.entity
+				.directThread(threadId)
+				// The APi only requires item_id and client_context which are already present
+				.broadcastText(
+					text,
+					replyToMessage as unknown as DirectThreadFeedResponseItemsItem,
+				);
+		} catch (error) {
+			console.error('Failed to send reply:', error);
 			throw error;
 		}
 	}

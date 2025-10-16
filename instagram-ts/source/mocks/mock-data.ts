@@ -131,6 +131,13 @@ export const mockMessages: Message[] = [
 			{emoji: '👍', senderId: 'user2'},
 			{emoji: '😊', senderId: 'user2'},
 		],
+		repliedTo: {
+			id: 'msg2',
+			userId: 'user2',
+			username: 'bob_johnson',
+			text: 'I might be, what do you have in mind?',
+			itemType: 'text',
+		},
 	},
 	{
 		id: 'msg2',
