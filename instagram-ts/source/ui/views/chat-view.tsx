@@ -35,6 +35,9 @@ export default function ChatView() {
 		undefined,
 	);
 
+	// Calculate available height for messages (total height minus status bar and input area)
+	const messageAreaHeight = Math.max(1, height - 8);
+
 	// Effect to clear system messages after a delay
 	useEffect(() => {
 		if (systemMessage) {
@@ -106,6 +109,22 @@ export default function ChatView() {
 					...prev,
 					messages: [...prev.messages, message],
 				}));
+
+				// If scrollview is at bottom, scroll to bottom on new messages
+				// Otherwise, the use might be reading older messages so just update state
+				if (scrollViewRef.current) {
+					const offset = scrollViewRef.current.getScrollOffset();
+					const {height: contentHeight} =
+						scrollViewRef.current.getContentSize();
+					const isAtBottom = offset >= contentHeight - messageAreaHeight;
+
+					if (isAtBottom) {
+						// Small delay to allow message to render before scrolling
+						setTimeout(() => {
+							scrollViewRef.current?.scrollToEnd(false);
+						}, 100);
+					}
+				}
 			}
 		};
 
@@ -114,7 +133,7 @@ export default function ChatView() {
 		return () => {
 			client.off('message', handleMessage);
 		};
-	}, [client, chatState.currentThread?.id]);
+	}, [client, chatState.currentThread?.id, height, messageAreaHeight]);
 
 	// Polling effect for messages when realtime client is disconnected
 	useEffect(() => {
@@ -367,9 +386,6 @@ export default function ChatView() {
 				<ThreadList threads={chatState.threads} onSelect={handleThreadSelect} />
 			);
 		}
-
-		// Calculate available height for messages (total height minus status bar and input area)
-		const messageAreaHeight = Math.max(1, height - 8);
 
 		return (
 			<Box flexDirection="column" height="100%">

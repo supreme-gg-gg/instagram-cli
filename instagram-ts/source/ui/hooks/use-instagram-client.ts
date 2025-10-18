@@ -86,7 +86,7 @@ export function useInstagramClient(
 		};
 
 		void initializeClient();
-	}, [usernameArgument]);
+	}, [usernameArgument, options.realtime]);
 
 	return {client, isLoading, error};
 }

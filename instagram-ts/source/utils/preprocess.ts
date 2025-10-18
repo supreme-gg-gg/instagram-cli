@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileTypeFromFile} from 'file-type';
 import type {InstagramClient} from '../client.js';
+import {resolveUserPath} from './path-utils.js';
 
 type PreprocessContext = {
 	readonly client: InstagramClient;
@@ -30,15 +31,20 @@ export async function preprocessMessage(
 	// eslint-disable-next-line unicorn/prefer-string-replace-all
 	processedText = processedText.replace(/:(\w+):/g, '🧂');
 
-	// 2. File Path Handling: Find #<path.ext> patterns
-	const filePathRegex = /#(\S+\.\w+)/g;
+	// 2. File Path Handling: Find #<path> patterns with file indicators
+	const filePathRegex = /#([^\s#]*[./~][^\s#]*)/g;
 	const matches = [...processedText.matchAll(filePathRegex)];
 
 	for (const match of matches) {
-		const filePath = match[1];
-		if (!filePath) continue;
+		const rawFilePath = match[1];
+		if (!rawFilePath) continue;
 
-		const absolutePath = path.resolve(filePath);
+		const filePath = rawFilePath
+			.replace(/^["'(<]+/, '')
+			.replace(/[)"'>.,!?]*$/, '');
+		if (filePath.length === 0) continue;
+
+		const absolutePath = resolveUserPath(filePath);
 
 		try {
 			// eslint-disable-next-line no-await-in-loop
@@ -48,7 +54,7 @@ export async function preprocessMessage(
 				// It's an image, upload it and remove the tag from the text
 				// eslint-disable-next-line no-await-in-loop
 				await context.client.sendPhoto(context.threadId, absolutePath);
-				processedText = processedText.replace(match[0], ''); // Remove the @<path> part
+				processedText = processedText.replace(match[0], ''); // Remove the #<path> part
 			} else {
 				// Assume it could be a text file if not identified as a known binary type that isn't an image.
 				// We'll read it and check for binary content.
