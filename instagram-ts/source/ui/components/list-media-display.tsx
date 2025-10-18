@@ -7,6 +7,7 @@ import {
 	type FeedInstance,
 	type MediaCandidate,
 } from '../../types/instagram.js';
+import {createContextualLogger} from '../../utils/logger.js';
 import AltScreen from './alt-screen.js';
 import FullScreen from './full-screen.js';
 
@@ -20,6 +21,8 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
 	const {exit} = useApp();
 	const {stdout} = useStdout();
+
+	const logger = createContextualLogger('ListMediaView');
 
 	const posts = feed.posts || [];
 
@@ -45,10 +48,10 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 					await open(imageUrl);
 				} catch {
 					// TODO: change this when logging is implemented
-					// console.error('Failed to open image URL:', error);
+					// logger.error('Failed to open image URL:', error);
 				}
 			} else {
-				console.error('No image URL available for this item.');
+				logger.error('No image URL available for this item.');
 			}
 		} else if (activePost.media_type === 2) {
 			// If media is a video, open the video URL
@@ -58,10 +61,10 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 					await open(videoUrl);
 				} catch {
 					// TODO: change this when logging is implemented
-					// console.error('Failed to open video URL:', error);
+					// logger.error('Failed to open video URL:', error);
 				}
 			} else {
-				console.error('No video URL available for this item.');
+				logger.error('No video URL available for this item.');
 			}
 		} else if (activePost.carousel_media) {
 			// If media is a carousel, open the URL of the selected carousel item
@@ -75,12 +78,12 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 						await open(carouselUrl);
 					} catch {
 						// TODO: change this when logging is implemented
-						// console.error('Failed to open carousel item URL:', error);
+						// logger.error('Failed to open carousel item URL:', error);
 					}
 				}
 			}
 		} else {
-			console.error('Unsupported media type or no media available.');
+			logger.error('Unsupported media type or no media available.');
 		}
 	};
 

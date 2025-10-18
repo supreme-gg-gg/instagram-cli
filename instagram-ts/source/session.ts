@@ -1,12 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {ConfigManager} from './config.js';
+import {createContextualLogger} from './utils/logger.js';
 
 export type SerializedState = Record<string, any>;
 
 export class SessionManager {
 	private username: string | undefined;
 	private readonly configManager: ConfigManager;
+	private readonly logger = createContextualLogger('SessionManager');
 
 	constructor(username?: string) {
 		this.configManager = ConfigManager.getInstance();
@@ -43,7 +45,7 @@ export class SessionManager {
 				'utf8',
 			);
 		} catch (error) {
-			console.error('Error saving session:', error);
+			this.logger.error('Error saving session:', error);
 			throw error;
 		}
 	}
@@ -67,7 +69,7 @@ export class SessionManager {
 			const sessionData = fs.readFileSync(sessionPath, 'utf8');
 			return JSON.parse(sessionData) as SerializedState;
 		} catch (error) {
-			console.error('Error loading session:', error);
+			this.logger.error('Error loading session:', error);
 			return undefined;
 		}
 	}
@@ -80,7 +82,7 @@ export class SessionManager {
 		} catch (error) {
 			// Session file doesn't exist, which is fine
 			if ((error as any).code !== 'ENOENT') {
-				console.error('Error deleting session:', error);
+				this.logger.error('Error deleting session:', error);
 				throw error;
 			}
 		}

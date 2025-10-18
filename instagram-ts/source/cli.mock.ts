@@ -1,5 +1,9 @@
 import meow from 'meow';
+import {initializeLogger} from './utils/logger.js';
 import {run} from './app.mock.js';
+
+// Initialize logger as early as possible
+await initializeLogger();
 
 const cli = meow(
 	`

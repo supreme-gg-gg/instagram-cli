@@ -21,6 +21,7 @@ import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
 import type {Thread, Message, User} from './types/instagram.js';
 import {parseMessageItem} from './utils/message-parser.js';
+import {createContextualLogger} from './utils/logger.js';
 
 export type LoginResult = {
 	success: boolean;
@@ -60,7 +61,8 @@ export class InstagramClient extends EventEmitter {
 				}
 			} catch {}
 		} catch (error) {
-			console.error('Error during session cleanup:', error);
+			const logger = createContextualLogger('cleanupSessions');
+			logger.error('Error during session cleanup', error);
 			throw error;
 		}
 	}
@@ -87,7 +89,8 @@ export class InstagramClient extends EventEmitter {
 				} catch {}
 			}
 		} catch (error) {
-			console.error('Error during cache cleanup:', error);
+			const logger = createContextualLogger('cleanupCache');
+			logger.error('Error during cache cleanup', error);
 			throw error;
 		}
 	}
@@ -100,6 +103,7 @@ export class InstagramClient extends EventEmitter {
 	private readonly configManager: ConfigManager;
 	private username: string | undefined = undefined;
 	private readonly userCache = new Map<string, string>();
+	private readonly logger = createContextualLogger('InstagramClient');
 
 	constructor(username?: string) {
 		super();
@@ -184,7 +188,7 @@ export class InstagramClient extends EventEmitter {
 				return {success: false, checkpointError: error};
 			}
 
-			console.error('Login failed:', error);
+			this.logger.error('Login failed', error);
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Unknown login error',
@@ -217,7 +221,7 @@ export class InstagramClient extends EventEmitter {
 
 			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
-			console.error('2FA Login failed:', error);
+			this.logger.error('2FA Login failed', error);
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Unknown 2FA error',
@@ -244,7 +248,7 @@ export class InstagramClient extends EventEmitter {
 
 			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
-			console.error('Sending challenge code failed:', error);
+			this.logger.error('Sending challenge code failed', error);
 			return {
 				success: false,
 				error:
@@ -305,7 +309,7 @@ export class InstagramClient extends EventEmitter {
 				return {success: false, checkpointError: error};
 			}
 
-			console.error('Failed to login with session:', error);
+			this.logger.error('Failed to login with session', error);
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Unknown session error',
@@ -328,7 +332,7 @@ export class InstagramClient extends EventEmitter {
 				await this.configManager.set('login.currentUsername', undefined);
 			}
 		} catch (error) {
-			console.error('Error during logout:', error);
+			this.logger.error('Error during logout', error);
 			throw error;
 		}
 	}
@@ -360,7 +364,7 @@ export class InstagramClient extends EventEmitter {
 			await this.configManager.set('login.currentUsername', username);
 			this.username = username;
 		} catch (error) {
-			console.error('Error during switchUser:', error);
+			this.logger.error('Error during switchUser', error);
 			throw error;
 		}
 	}
@@ -388,7 +392,7 @@ export class InstagramClient extends EventEmitter {
 				isVerified: user.is_verified,
 			};
 		} catch (error) {
-			console.error('Failed to get current user:', error);
+			this.logger.error('Failed to get current user', error);
 			return undefined;
 		}
 	}
@@ -418,7 +422,7 @@ export class InstagramClient extends EventEmitter {
 				unread: Boolean(thread.has_newer),
 			}));
 		} catch (error) {
-			console.error('Failed to fetch threads:', error);
+			this.logger.error('Failed to fetch threads', error);
 			throw error;
 		}
 	}
@@ -449,25 +453,26 @@ export class InstagramClient extends EventEmitter {
 				cursor: thread.cursor,
 			};
 		} catch (error) {
-			console.error('Failed to fetch messages:', error);
+			this.logger.error('Failed to fetch messages', error);
 			throw error;
 		}
 	}
 
 	public async sendMessage(threadId: string, text: string): Promise<void> {
-		try {
-			if (this.realtimeStatus === 'connected' && this.realtime) {
-				await this.realtime.direct?.sendText({threadId, text});
+		if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
+			try {
+				await this.realtime.direct.sendText({threadId, text});
 				return;
+			} catch {
+				this.logger.warn('MQTT sendMessage failed, falling back to API.');
 			}
-		} catch (error) {
-			console.warn('MQTT sendMessage failed, falling back to API.', error);
 		}
 
+		// Fallback to API if MQTT not available, failed, or not ready
 		try {
 			await this.ig.entity.directThread(threadId).broadcastText(text);
 		} catch (error) {
-			console.error('Failed to send message:', error);
+			this.logger.error('Failed to send message', error);
 			throw error;
 		}
 	}
@@ -486,7 +491,7 @@ export class InstagramClient extends EventEmitter {
 					replyToMessage as unknown as DirectThreadFeedResponseItemsItem,
 				);
 		} catch (error) {
-			console.error('Failed to send reply:', error);
+			this.logger.error('Failed to send reply', error);
 			throw error;
 		}
 	}
@@ -505,7 +510,7 @@ export class InstagramClient extends EventEmitter {
 					reactionStatus: 'created',
 				});
 			} catch (error) {
-				console.warn('MQTT sendReaction failed.', error);
+				this.logger.warn('MQTT sendReaction failed.');
 				throw error;
 			}
 		} else {
@@ -520,7 +525,7 @@ export class InstagramClient extends EventEmitter {
 				file: fileBuffer,
 			});
 		} catch (error) {
-			console.error('Failed to send photo:', error);
+			this.logger.error('Failed to send photo', error);
 			throw error;
 		}
 	}
@@ -532,7 +537,7 @@ export class InstagramClient extends EventEmitter {
 				video: fileBuffer,
 			});
 		} catch (error) {
-			console.error('Failed to send video:', error);
+			this.logger.error('Failed to send video', error);
 			throw error;
 		}
 	}
@@ -544,7 +549,7 @@ export class InstagramClient extends EventEmitter {
 		try {
 			await this.ig.entity.directThread(threadId).deleteItem(messageId);
 		} catch (error) {
-			console.error('Failed to unsend message:', error);
+			this.logger.error('Failed to unsend message', error);
 			throw error;
 		}
 	}
@@ -559,7 +564,7 @@ export class InstagramClient extends EventEmitter {
 		this.realtime = withRealtime(this.ig).realtime;
 
 		this.realtime.on('error', error => {
-			console.error('Realtime Error:', error);
+			this.logger.error('Realtime Error', error);
 			this.setRealtimeStatus('error');
 			this.emit('error', error);
 		});
@@ -615,7 +620,7 @@ export class InstagramClient extends EventEmitter {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			await this.sessionManager.saveSession(serialized);
 		} catch (error) {
-			console.error('Error saving session state:', error);
+			this.logger.error('Error saving session state', error);
 		}
 	}
 
