@@ -57,7 +57,7 @@ export default function Feed({args}: Properties) {
 		};
 
 		void fetchFeed();
-	}, [client]);
+	}, [client, logger]);
 
 	if (isLoading) {
 		return <Alert variant="info">Fetching Instagram feed...</Alert>;

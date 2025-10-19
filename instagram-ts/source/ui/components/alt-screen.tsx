@@ -26,6 +26,7 @@ async function write(content: string, stdout: NodeJS.WriteStream) {
  * };
  * ```
  */
+// eslint-disable-next-line @typescript-eslint/promise-function-async
 function AltScreen(properties: {children: React.ReactNode}) {
 	const {exit} = useApp();
 	const {stdout} = useStdout();

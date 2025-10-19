@@ -56,7 +56,7 @@ type Props = {
  * A scrollable container component that supports both vertical and horizontal scrolling.
  * Uses negative margins to position content within a clipped viewport.
  */
-const ScrollView = forwardRef(
+const ScrollView = forwardRef<ScrollViewRef | undefined, Props>(
 	(
 		{
 			width,
@@ -67,7 +67,7 @@ const ScrollView = forwardRef(
 			onScrollToStart,
 			onScrollToEnd,
 		}: Props,
-		ref: React.Ref<ScrollViewRef>,
+		ref: React.Ref<ScrollViewRef | undefined>,
 	) => {
 		// eslint-disable-next-line @typescript-eslint/ban-types
 		const containerRef = useRef<DOMElement | null>(null);

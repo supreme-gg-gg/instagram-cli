@@ -7,7 +7,7 @@ export type ChatCommandContext = {
 	readonly chatState: ChatState;
 	readonly setChatState: React.Dispatch<React.SetStateAction<ChatState>>;
 	readonly height: number;
-	readonly scrollViewRef: React.RefObject<ScrollViewRef>;
+	readonly scrollViewRef: React.RefObject<ScrollViewRef | undefined>;
 };
 
 // Handler will return a system message when needed, or void otherwise

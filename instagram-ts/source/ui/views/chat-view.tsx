@@ -18,7 +18,7 @@ export default function ChatView() {
 	const {exit} = useApp();
 	const client = useClient();
 	const {height, width} = useScreenSize();
-	const scrollViewRef = useRef<ScrollViewRef>(null);
+	const scrollViewRef = useRef<ScrollViewRef | undefined>(undefined);
 
 	const [chatState, setChatState] = useState<ChatState>({
 		threads: [],
