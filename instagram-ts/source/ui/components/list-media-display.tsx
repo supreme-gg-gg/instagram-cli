@@ -1,7 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import {Box, Text, useInput, useApp, useStdout} from 'ink';
 import open from 'open';
-import Image from 'ink-picture';
+import Image, {type ImageProtocolName} from 'ink-picture';
 import {
 	type Post,
 	type FeedInstance,
@@ -13,7 +13,7 @@ import FullScreen from './full-screen.js';
 
 type Properties = {
 	readonly feed: FeedInstance;
-	readonly protocol?: string;
+	readonly protocol?: ImageProtocolName;
 };
 
 export default function ListMediaDisplay({feed, protocol}: Properties) {
@@ -201,6 +201,7 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 														posts[selectedIndex]?.caption?.text ??
 														`Post by ${posts[selectedIndex]?.user?.username}`
 													}
+													// When protocol is undefined, the component will use "auto" by default
 													protocol={protocol}
 												/>
 											</Box>
