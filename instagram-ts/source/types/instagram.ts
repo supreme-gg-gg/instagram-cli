@@ -3,6 +3,14 @@ export type Reaction = {
 	senderId: string;
 };
 
+export type ReactionEvent = {
+	threadId: string;
+	itemId: string;
+	userId: string;
+	emoji: string;
+	timestamp: Date;
+};
+
 export type Link = {
 	url: string;
 	text: string;

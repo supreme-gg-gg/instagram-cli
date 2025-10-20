@@ -1,6 +1,11 @@
 import {type DirectThreadFeedResponseItemsItem} from 'instagram-private-api';
 import type {MessageSyncMessage} from 'instagram_mqtt';
-import type {Message, Reaction, RepliedToMessage} from '../types/instagram.js';
+import type {
+	Message,
+	Reaction,
+	ReactionEvent,
+	RepliedToMessage,
+} from '../types/instagram.js';
 
 // Chat is this real? Yes, this is real I love monkey patching
 // (this has been verified using the API response, the instagram-private-api type is outdated)
@@ -209,5 +214,60 @@ export function parseMessageItem(
 				text: `[Unsupported Type: ${item.item_type}]`,
 			};
 		}
+	}
+}
+
+// More monkey patching!
+type CreateReactionEventMessage = {
+	path: string;
+	op: 'add' | 'replace' | string;
+	thread_id: string;
+	emoji: string;
+	super_react_type?: 'none';
+	timestamp: Date;
+};
+
+// When a user reacts to a message, Instagram may also send another realtime event like "user reacted emoji to your message".
+// This has nothing to do with the actual reaction on the message itself, and contains almost no useful information.
+// I suspect it's just tech debt / convenience event for Instagram to show a pretty unread message preview in their official app.
+/**
+ * A standalone helper to parse reaction events from mqtt realtime data.
+ * @param wrapper The raw event wrapper from realtime.on('message').
+ * @returns A structured `ReactionEvent` object or undefined if parsing fails.
+ */
+//
+export function parseReactionEvent(
+	message: CreateReactionEventMessage,
+): ReactionEvent | undefined {
+	try {
+		if (!message?.path || !message.thread_id) {
+			return undefined;
+		}
+
+		// Parse the path: /direct_v2/threads/{thread_id}/items/{item_id}/reactions/likes/{user_id}
+		const pathMatch =
+			/\/direct_v2\/threads\/([^/]+)\/items\/([^/]+)\/reactions\/(?:likes|emojis)\/([^/]+)/.exec(
+				message.path,
+			);
+
+		if (!pathMatch) {
+			return undefined;
+		}
+
+		const [, threadId, itemId, userId] = pathMatch;
+
+		if (!threadId || !itemId || !userId) {
+			return undefined;
+		}
+
+		return {
+			threadId,
+			itemId,
+			userId,
+			emoji: message.emoji || '❤',
+			timestamp: message.timestamp,
+		};
+	} catch {
+		return undefined;
 	}
 }

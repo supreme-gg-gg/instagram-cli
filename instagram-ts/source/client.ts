@@ -20,7 +20,7 @@ import {
 import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
 import type {Thread, Message, User} from './types/instagram.js';
-import {parseMessageItem} from './utils/message-parser.js';
+import {parseMessageItem, parseReactionEvent} from './utils/message-parser.js';
 import {createContextualLogger} from './utils/logger.js';
 
 export type LoginResult = {
@@ -573,11 +573,34 @@ export class InstagramClient extends EventEmitter {
 			this.setRealtimeStatus('disconnected');
 		});
 
-		this.realtime.on('message', wrapper => {
+		this.realtime.on('message', (wrapper: any) => {
+			this.logger.debug(`Received MQTT "message": ${JSON.stringify(wrapper)}`);
+			// Handle reaction events
+			if (
+				wrapper.delta_type === 'deltaCreateReaction' &&
+				wrapper.message?.action_type !== 'action_log'
+			) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				const reactionData = parseReactionEvent(wrapper.message);
+				if (reactionData) {
+					this.emit('reaction', reactionData);
+				} else {
+					this.logger.warn(
+						`Failed to parse realtime reaction event: ${JSON.stringify(wrapper)}`,
+					);
+				}
+
+				return;
+			}
+
+			// Handle regular message events
 			// ThreadId must exist otherwise it's not possible to identify where this event belongs
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const threadId =
-				wrapper.message.thread_id ?? wrapper.message.thread_v2_id;
+				wrapper?.message?.thread_id ?? wrapper?.message?.thread_v2_id;
 			if (!threadId) return;
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const parsedMessage = parseMessageItem(wrapper.message, threadId, {
 				userCache: this.userCache,
 				currentUserId: this.ig.state.cookieUserId,

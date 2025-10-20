@@ -1,7 +1,12 @@
 import React, {useState, useEffect, useRef} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
 import {TerminalInfoProvider} from 'ink-picture';
-import type {Thread, ChatState, Message} from '../../types/instagram.js';
+import type {
+	Thread,
+	ChatState,
+	Message,
+	ReactionEvent,
+} from '../../types/instagram.js';
 import type {RealtimeStatus} from '../../client.js';
 import MessageList from '../components/message-list.js';
 import InputBox from '../components/input-box.js';
@@ -134,6 +139,60 @@ export default function ChatView() {
 			client.off('message', handleMessage);
 		};
 	}, [client, chatState.currentThread?.id, height, messageAreaHeight]);
+
+	// Effect for reaction events
+	useEffect(() => {
+		if (!client) return;
+
+		const handleReaction = (reactionEvent: ReactionEvent) => {
+			// Only process reactions for the current thread
+			if (reactionEvent.threadId !== chatState.currentThread?.id) {
+				return;
+			}
+
+			setChatState(prev => {
+				const updatedMessages = prev.messages.map(message => {
+					// Find the message that matches the item_id
+					if (message.item_id === reactionEvent.itemId) {
+						// Add the new reaction to the message
+						const existingReactions = message.reactions ?? [];
+
+						// Check if this exact reaction already exists (same user, same emoji)
+						const reactionExists = existingReactions.some(
+							r =>
+								r.senderId === reactionEvent.userId &&
+								r.emoji === reactionEvent.emoji,
+						);
+
+						if (reactionExists) {
+							return message; // Don't add duplicate
+						}
+
+						return {
+							...message,
+							reactions: [
+								...existingReactions,
+								{
+									emoji: reactionEvent.emoji,
+									senderId: reactionEvent.userId,
+								},
+							],
+						};
+					}
+
+					return message;
+				});
+
+				return {...prev, messages: updatedMessages};
+			});
+		};
+
+		client.on('reaction', handleReaction);
+
+		return () => {
+			client.off('reaction', handleReaction);
+		};
+	}, [client, chatState.currentThread?.id]);
 
 	// Polling effect for messages when realtime client is disconnected
 	useEffect(() => {
