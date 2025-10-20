@@ -30,21 +30,22 @@ async function write(content: string, stdout: NodeJS.WriteStream) {
 function AltScreen(properties: {children: React.ReactNode}) {
 	const {exit} = useApp();
 	const {stdout} = useStdout();
+	const enterAltScreen = async () => {
+		await write('\u001B[?1049h', stdout); // Enter alternate buffer
+	};
+
+	const leaveAltScreen = async () => {
+		await write('\u001B[?1049l', stdout); // Exit alternate buffer
+		exit();
+	};
+
 	useEffect(() => {
-		const enterAltScreen = async () => {
-			await write('\u001B[?1049h', stdout); // Enter alternate buffer
-		};
-
-		const leaveAltScreen = async () => {
-			await write('\u001B[?1049l', stdout); // Exit alternate buffer
-			exit();
-		};
-
-		void enterAltScreen();
 		return () => {
 			void leaveAltScreen();
 		};
 	}, [exit, stdout]);
+
+	void enterAltScreen();
 	return properties.children;
 }
 
