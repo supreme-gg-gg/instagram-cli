@@ -6,8 +6,8 @@ Thank you for contributing to instagram-cli, and welcome to the force against br
 
 This repository contains **two separate clients** for Instagram:
 
-- **Python Client** (`instagram/` folder) - Stable, production-ready
-- **TypeScript Client** (`instagram-ts/` folder) - Modern, React-based UI
+- **Python Client** (`instagram/` folder)
+- **TypeScript Client** (`instagram-ts/` folder)
 
 Choose the client you want to work on based on your preferences and the feature you're implementing.
 
