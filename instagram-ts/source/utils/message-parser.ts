@@ -1,16 +1,53 @@
 import {type DirectThreadFeedResponseItemsItem} from 'instagram-private-api';
-import type {MessageSyncMessage} from 'instagram_mqtt';
-import type {Message, Reaction, RepliedToMessage} from '../types/instagram.js';
+import {MessageSyncMessageTypes, type MessageSyncMessage} from 'instagram_mqtt';
+import type {
+	Message,
+	Reaction,
+	ReactionEvent,
+	RepliedToMessage,
+} from '../types/instagram.js';
+
+/**
+ * Roses are red,
+ * All the types are wrong.,
+ * So I monkey patch,
+ * And refactoring will take long.
+ */
+
+// We remove the item_type field to redefine it with proper type discrimination
+type ThreadBaseItem = Omit<DirectThreadFeedResponseItemsItem, 'item_type'>;
 
 // Chat is this real? Yes, this is real I love monkey patching
 // (this has been verified using the API response, the instagram-private-api type is outdated)
 // Note that thread_id may not exist here unlike MessageSyncMessage because you request a threadId already when calling this API
-type RealChatItem = DirectThreadFeedResponseItemsItem & {
+type ThreadMessageItem = ThreadBaseItem & {
+	item_type: Exclude<
+		MessageSyncMessageTypes,
+		MessageSyncMessageTypes.ActionLog
+	>;
 	media: MessageSyncMessage['media'];
 	reactions: MessageSyncMessage['reactions'];
 	// This type is NOT defined on either API or MQTT and is extended by monkey patching
 	replied_to_message?: RawRepliedToMessage;
 };
+
+type ActionLogItem = ThreadBaseItem & {
+	item_type: MessageSyncMessageTypes.ActionLog;
+	action_log: {
+		description: string;
+		bold: [unknown];
+		text_attributes: [unknown];
+		text_parts: [
+			{
+				text: string;
+			},
+		];
+		is_reaction_log: true;
+	};
+	hide_in_thread: 1 | 0;
+};
+
+type RealChatItem = ThreadMessageItem | ActionLogItem;
 
 type RawRepliedToMessage = {
 	item_id: string;
@@ -25,6 +62,17 @@ type RawRepliedToMessage = {
 export type MessageParsingContext = {
 	userCache: Map<string, string>;
 	currentUserId: string;
+};
+
+/**
+ * Options to configure message parsing behavior.
+ */
+export type MessageParsingOptions = {
+	isPreview: boolean;
+};
+
+const defaultParsingOptions: MessageParsingOptions = {
+	isPreview: false,
 };
 
 /**
@@ -84,6 +132,7 @@ function parseReactions(
  * A shared parser for message items from any source (API or Realtime).
  * @param item The raw message item object, likely MessageSyncMessage type from realtime
  * @param context The context needed for parsing (e.g., user cache).
+ * @param options Parsing options and configuration.
  * @returns A structured `Message` object or undefined if parsing fails.
  *
  * @note MessageSyncMessage is the well-typed interface from MQTT library
@@ -91,16 +140,20 @@ function parseReactions(
  *       but it must be cast to any because entries like media are not defined on the type
  */
 export function parseMessageItem(
-	item: MessageSyncMessage | RealChatItem,
+	item: RealChatItem,
 	threadId: string,
 	context: MessageParsingContext,
+	options: MessageParsingOptions = defaultParsingOptions,
 ): Message | undefined {
 	if (!item.item_id) return undefined;
 
 	const userId = item.user_id.toString();
 	const timestamp = new Date(Number(item.timestamp) / 1000);
 
-	const repliedToMessage = (item as RealChatItem).replied_to_message;
+	const repliedToMessage =
+		item.item_type === MessageSyncMessageTypes.ActionLog
+			? undefined
+			: item.replied_to_message;
 	const repliedTo: RepliedToMessage | undefined = repliedToMessage
 		? {
 				id: repliedToMessage.item_id,
@@ -126,7 +179,9 @@ export function parseMessageItem(
 		),
 		isOutgoing: userId === context.currentUserId,
 		threadId,
-		reactions: item.reactions ? parseReactions(item.reactions) : undefined,
+		reactions: (item as ThreadMessageItem).reactions
+			? parseReactions((item as ThreadMessageItem).reactions)
+			: undefined,
 		repliedTo,
 		item_id: item.item_id,
 		// Requires type assertion because the field is not defined on MQTT message
@@ -135,11 +190,11 @@ export function parseMessageItem(
 	};
 
 	switch (item.item_type) {
-		case 'text': {
+		case MessageSyncMessageTypes.Text: {
 			return {...baseMessage, itemType: 'text', text: item.text ?? ''};
 		}
 
-		case 'media': {
+		case MessageSyncMessageTypes.Media: {
 			const {media} = item;
 			if (!media) {
 				return {
@@ -164,7 +219,7 @@ export function parseMessageItem(
 			};
 		}
 
-		case 'link': {
+		case MessageSyncMessageTypes.Link: {
 			if (!item.text) {
 				return {
 					...baseMessage,
@@ -183,7 +238,7 @@ export function parseMessageItem(
 			};
 		}
 
-		case 'like': {
+		case MessageSyncMessageTypes.Like: {
 			return {
 				...baseMessage,
 				itemType: 'placeholder',
@@ -192,14 +247,26 @@ export function parseMessageItem(
 		}
 
 		// In the future we will add media share for posts support, see issue #142
-		case 'raven_media':
-		case 'media_share':
-		case 'reel_share': {
+		case MessageSyncMessageTypes.RavenMedia:
+		case MessageSyncMessageTypes.MediaShare:
+		case MessageSyncMessageTypes.ReelShare: {
 			return {
 				...baseMessage,
 				itemType: 'placeholder',
 				text: `[Instagram CLI successfully blocked a brainrot]`,
 			};
+		}
+
+		case MessageSyncMessageTypes.ActionLog: {
+			if (options.isPreview || item.hide_in_thread === 0) {
+				return {
+					...baseMessage,
+					itemType: 'placeholder',
+					text: item.action_log.description,
+				};
+			}
+
+			return undefined;
 		}
 
 		default: {
@@ -209,5 +276,60 @@ export function parseMessageItem(
 				text: `[Unsupported Type: ${item.item_type}]`,
 			};
 		}
+	}
+}
+
+// More monkey patching!
+type CreateReactionEventMessage = {
+	path: string;
+	op: 'add' | 'replace' | string;
+	thread_id: string;
+	emoji: string;
+	super_react_type?: 'none';
+	timestamp: Date;
+};
+
+// When a user reacts to a message, Instagram may also send another realtime event like "user reacted emoji to your message".
+// This has nothing to do with the actual reaction on the message itself, and contains almost no useful information.
+// I suspect it's just tech debt / convenience event for Instagram to show a pretty unread message preview in their official app.
+/**
+ * A standalone helper to parse reaction events from mqtt realtime data.
+ * @param wrapper The raw event wrapper from realtime.on('message').
+ * @returns A structured `ReactionEvent` object or undefined if parsing fails.
+ */
+//
+export function parseReactionEvent(
+	message: CreateReactionEventMessage,
+): ReactionEvent | undefined {
+	try {
+		if (!message?.path || !message.thread_id) {
+			return undefined;
+		}
+
+		// Parse the path: /direct_v2/threads/{thread_id}/items/{item_id}/reactions/likes/{user_id}
+		const pathMatch =
+			/\/direct_v2\/threads\/([^/]+)\/items\/([^/]+)\/reactions\/(?:likes|emojis)\/([^/]+)/.exec(
+				message.path,
+			);
+
+		if (!pathMatch) {
+			return undefined;
+		}
+
+		const [, threadId, itemId, userId] = pathMatch;
+
+		if (!threadId || !itemId || !userId) {
+			return undefined;
+		}
+
+		return {
+			threadId,
+			itemId,
+			userId,
+			emoji: message.emoji || '❤',
+			timestamp: message.timestamp,
+		};
+	} catch {
+		return undefined;
 	}
 }

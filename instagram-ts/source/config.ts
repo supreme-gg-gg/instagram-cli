@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import yaml from 'js-yaml';
+import {createContextualLogger} from './utils/logger.js';
 
 type LoginConfig = {
 	defaultUsername?: string;
@@ -11,10 +12,6 @@ type LoginConfig = {
 type ChatConfig = {
 	layout: string;
 	colors: boolean;
-};
-
-type SchedulingConfig = {
-	defaultScheduleDuration: string;
 };
 
 type PrivacyConfig = {
@@ -42,7 +39,6 @@ type Config = {
 	language: string;
 	login: LoginConfig;
 	chat: ChatConfig;
-	scheduling: SchedulingConfig;
 	privacy: PrivacyConfig;
 	feed: FeedConfig;
 	image: ImageConfig;
@@ -60,9 +56,6 @@ const DEFAULT_CONFIG: Config = {
 	chat: {
 		layout: 'compact',
 		colors: true,
-	},
-	scheduling: {
-		defaultScheduleDuration: '01:00', // 1 hour
 	},
 	privacy: {
 		invisibleMode: false,
@@ -93,6 +86,7 @@ export class ConfigManager {
 	private config: Config;
 	private readonly configDir: string;
 	private readonly configFile: string;
+	private readonly logger = createContextualLogger('ConfigManager');
 
 	private constructor() {
 		this.configDir = DEFAULT_CONFIG.advanced.dataDir;
@@ -167,7 +161,7 @@ export class ConfigManager {
 				await this.saveConfig();
 			}
 		} catch (error) {
-			console.error('Error loading config:', error);
+			this.logger.error('Error loading config:', error);
 			this.config = {...DEFAULT_CONFIG};
 		}
 	}
@@ -181,7 +175,6 @@ export class ConfigManager {
 			...loadedConfig,
 			login: {...defaultConfig.login, ...loadedConfig.login},
 			chat: {...defaultConfig.chat, ...loadedConfig.chat},
-			scheduling: {...defaultConfig.scheduling, ...loadedConfig.scheduling},
 			privacy: {...defaultConfig.privacy, ...loadedConfig.privacy},
 			feed: {...defaultConfig.feed, ...loadedConfig.feed},
 			image: {...defaultConfig.image, ...loadedConfig.image},
@@ -196,7 +189,7 @@ export class ConfigManager {
 			const yamlContent = yaml.dump(this.config);
 			await fs.writeFile(this.configFile, yamlContent, 'utf8');
 		} catch (error) {
-			console.error('Error saving config:', error);
+			this.logger.error('Error saving config:', error);
 		}
 	}
 }

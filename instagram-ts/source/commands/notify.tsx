@@ -6,6 +6,7 @@ import {Alert} from '@inkjs/ui';
 import {type NewsRepositoryInboxResponseRootObject} from 'instagram-private-api';
 import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 import {formatUsernamesInText} from '../utils/notifications.js';
+import {createContextualLogger} from '../utils/logger.js';
 
 export const args = zod.tuple([
 	zod
@@ -28,6 +29,7 @@ export default function Notify({args}: Properties) {
 	const [notifications, setNotifications] = React.useState<
 		NewsRepositoryInboxResponseRootObject | undefined
 	>(undefined);
+	const logger = createContextualLogger('NotifyView');
 
 	React.useEffect(() => {
 		const fetchNotifications = async () => {
@@ -40,7 +42,7 @@ export default function Notify({args}: Properties) {
 				setNotifications(newsInbox);
 			} catch (error_) {
 				// SetError(`Notification error: ${err instanceof Error ? err.message : String(err)}`);
-				console.error(
+				logger.error(
 					`Notification error: ${
 						error_ instanceof Error ? error_.message : String(error_)
 					}`,

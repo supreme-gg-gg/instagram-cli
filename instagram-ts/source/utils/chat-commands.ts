@@ -7,7 +7,7 @@ export type ChatCommandContext = {
 	readonly chatState: ChatState;
 	readonly setChatState: React.Dispatch<React.SetStateAction<ChatState>>;
 	readonly height: number;
-	readonly scrollViewRef: React.RefObject<ScrollViewRef>;
+	readonly scrollViewRef: React.RefObject<ScrollViewRef | undefined>;
 };
 
 // Handler will return a system message when needed, or void otherwise
@@ -126,9 +126,14 @@ export const chatCommands: Record<string, ChatCommand> = {
 		description:
 			'Upload a photo or video to the current thread. Usage: :upload <path>',
 		async handler(arguments_, {client, chatState}) {
-			const [path] = arguments_;
+			let [path] = arguments_;
 			if (!path) {
 				return 'Usage: :upload <path-to-file>';
+			}
+
+			// Remove '#' prefix if present (from autocomplete)
+			if (path.startsWith('#')) {
+				path = path.slice(1);
 			}
 
 			const lowerPath = path.toLowerCase();

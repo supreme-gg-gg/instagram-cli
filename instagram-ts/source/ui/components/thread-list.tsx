@@ -91,6 +91,7 @@ export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 						flexDirection="column"
 						marginTop={isFirstItem ? 1 : 0}
 						marginBottom={isLastItem ? 0 : 1}
+						flexShrink={0}
 					>
 						<ThreadItem
 							thread={thread}

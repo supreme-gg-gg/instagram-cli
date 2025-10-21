@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import os from 'node:os';
 import {chatCommands} from './chat-commands.js';
+import {expandTilde} from './path-utils.js';
 
 export type CommandSuggestion = {
 	readonly name: string;
@@ -25,19 +25,6 @@ export function getCommandSuggestions(
 }
 
 /**
- * Expands a path starting with '~/' to an absolute path.
- * @param filePath The path to expand.
- * @returns The expanded path.
- */
-function expandTilde(filePath: string): string {
-	if (filePath.startsWith('~/')) {
-		return path.join(os.homedir(), filePath.slice(2));
-	}
-
-	return filePath;
-}
-
-/**
  * Provides file path suggestions for autocomplete.
  * @param query The partial path input by the user.
  * @returns A promise that resolves to an array of matching file/directory paths.
@@ -57,13 +44,20 @@ export async function getFilePathSuggestions(query: string): Promise<string[]> {
 			: path.basename(resolvedQueryPath);
 
 		const entries = await fs.readdir(searchDir, {withFileTypes: true});
+		const lowerCasePrefix = filterPrefix.toLowerCase();
+		const includeHidden =
+			filterPrefix.startsWith('.') ||
+			query.startsWith('.') ||
+			filterPrefix === '';
 
 		const suggestions = entries
-			.filter(
-				entry =>
-					!entry.name.startsWith('.') &&
-					entry.name.toLowerCase().startsWith(filterPrefix.toLowerCase()),
-			)
+			.filter(entry => {
+				if (!includeHidden && entry.name.startsWith('.')) {
+					return false;
+				}
+
+				return entry.name.toLowerCase().startsWith(lowerCasePrefix);
+			})
 			.map(entry => {
 				const base = isQueryDirectory
 					? query
