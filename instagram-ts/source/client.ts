@@ -697,10 +697,17 @@ export class InstagramClient extends EventEmitter {
 			return undefined;
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		return parseMessageItem(lastItem as any, thread.thread_id, {
-			userCache: this.userCache,
-			currentUserId: this.ig.state.cookieUserId,
-		});
+		return parseMessageItem(
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			lastItem as any,
+			thread.thread_id,
+			{
+				userCache: this.userCache,
+				currentUserId: this.ig.state.cookieUserId,
+			},
+			{
+				isPreview: true,
+			},
+		);
 	}
 }
