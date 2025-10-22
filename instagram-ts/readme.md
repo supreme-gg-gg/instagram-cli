@@ -1,6 +1,6 @@
 # Instagram CLI
 
-Welcome to the TypeScript client of the Instagram CLI project. The Typescript client is a successor to the original Python client, built with a modern React-based UI using Ink, with features like image rendering in terminal, checking feed, and using MQTT protocol for messaging to significantly reduce latency and account flags.
+Welcome to the TypeScript client of the Instagram CLI project. The Typescript client is a successor to the original Python client, built with a modern React-based UI using [Ink](https://github.com/vadimdemedes/ink), with features like image rendering in terminal, checking feed, and using Instagram's native [MQTT protocol](https://mqtt.org/) for messaging to significantly reduce latency and account flags.
 
 Full documentation with demo video is [on our GitHub](https://github.com/supreme-gg-gg/instagram-cli).
 

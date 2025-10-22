@@ -153,6 +153,8 @@ Once you're done with your changes:
 
 ### 7. Releases and Versioning
 
+You don't need to worry about changing version numbers; maintainers will handle that during the release process.
+
 Releases are created manually through GitHub's release page. We use different tag conventions for each client:
 
 - **Python Client**: Use `v1.4.2`, `v1.5.0`, etc.
