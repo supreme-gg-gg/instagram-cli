@@ -3,6 +3,7 @@ import path from 'node:path';
 import {fileTypeFromFile} from 'file-type';
 import type {InstagramClient} from '../client.js';
 import {resolveUserPath} from './path-utils.js';
+import {emojiMap} from './emoji.js';
 
 type PreprocessContext = {
 	readonly client: InstagramClient;
@@ -29,7 +30,9 @@ export async function preprocessMessage(
 
 	// 1. Emoji Handling: Replace :emoji_name: with a placeholder
 	// eslint-disable-next-line unicorn/prefer-string-replace-all
-	processedText = processedText.replace(/:(\w+):/g, '🧂');
+	processedText = processedText.replace(/:(\w+):/g, (_, emojiName) => {
+		return emojiMap[emojiName] ?? `:${emojiName}:`;
+	});
 
 	// 2. File Path Handling: Find #<path> patterns with file indicators
 	const filePathRegex = /#([^\s#]*[./~][^\s#]*)/g;
