@@ -8,7 +8,8 @@
 		"module": "nodenext",
 		"moduleResolution": "node16",
 		"allowImportingTsExtensions": false,
-		"resolveJsonModule": true
+		"resolveJsonModule": true,
+		"typeRoots": ["./source/types", "./node_modules/@types"]
 	},
 	"include": ["source"],
 	"ts-node": {
