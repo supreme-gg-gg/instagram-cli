@@ -5,7 +5,8 @@ name: Build and Publish TypeScript Package to NPM
 on:
   push:
     tags:
-      - "ts-v*.*.*"
+      # Only match formal releases (ts-v1.0.4), not beta/alpha (ts-v1.0.4-beta)
+      - "ts-v[0-9]+.[0-9]+.[0-9]+"
   release:
     types: [published]
 

@@ -1,17 +1,20 @@
 # Instagram CLI
 
-The ultimate weapon against brainrot. Shown experimentally to effectively reduce screentime.
+The ultimate weapon against brainrot. The fastest, lightest, and most portable Instagram client.
 
+$$
+\text{Instagram}_{\text{CLI}} = \lim_{\text{screen time} \to 0} \text{Productivity} \to \infty
+$$
+
+[![npm](https://img.shields.io/npm/v/@i7m/instagram-cli?style=flat-square)](https://www.npmjs.com/package/@i7m/instagram-cli)
+[![downloads](https://img.shields.io/npm/dm/@i7m/instagram-cli?style=flat-square)](https://www.npmjs.com/package/@i7m/instagram-cli)
 ![PyPI](https://img.shields.io/pypi/v/instagram-cli)
 [![PyPI Downloads](https://static.pepy.tech/badge/instagram-cli)](https://pepy.tech/projects/instagram-cli)
 ![Python](https://img.shields.io/pypi/pyversions/instagram-cli)
 [![MIT license](https://img.shields.io/github/license/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)
 
-<!-- ![PyPI - Downloads](https://img.shields.io/pypi/dm/instagram-cli) -->
-<!-- ![LOC](https://tokei.rs/b1/github/supreme-gg-gg/instagram-cli?category=code) -->
-
-https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb
+https://github.com/user-attachments/assets/3dd65afe-b0d7-4554-9b3c-1e37111ae27d
 
 > [!WARNING]
 > This project is not affiliated with, authorized, or endorsed by Instagram. This is an independent and unofficial project. Using it might violate Meta's Terms of Service. Use at your own risk.
@@ -20,17 +23,32 @@ https://github.com/user-attachments/assets/e9206e14-8141-49b2-8e2c-17c76402e3cb
 
 - We transform Instagram from a brainrot hell into productivity tool
 - We allow you to focus on meaningful conversations
-- We celebrate the art and simplicity of terminal UI
-- We extend Instagram with powerful plugins like latex, chat summarisation
+- We celebrate the art and simplicity of **terminal UI (TUI)**
 
 > [!TIP]
 > Use Instagram with 100% keyboard control - no mouse clicks or touchscreen taps needed! Perfect for developers and Linux users who love staying on the keyboard 🤣
 
-### Need a break and have some brainrot?
+## Typescript Client
 
-Want to watch Instagram Reels right from your terminal? Check out [reels-cli](https://github.com/notMarkMP1/reels-cli). It’s a great way to enjoy some light entertainment without leaving your keyboard. (Not affiliated and not maintained by us, but highly recommended for terminal fans.)
+We recommend using the TypeScript client whenever possible. It is more secure, performant, feature-rich, actively developed, and works on all platforms including Windows.
+
+```bash
+npm install -g @i7m/instagram-cli
+```
+
+For other installation methods, please refer to the [TypeScript Client Documentation](./instagram-ts/DEVELOPMENT.md).
+
+### Key Features
+
+- Full support for Windows, Linux, and macOS, modern React-based UI
+- Developer-friendly shortcuts, viewing feed and chatting, in-terminal image rendering
+- Leverages realtime MQTT-based protocol used by Instagram app for instant notifications and chat
+- Highly performant and much faster than your GUI browser or touchscreen app
+- Works well in all terminal emulators, **including VSCode Integrated Terminal**
 
 ## Python Client
+
+> The Python client is the original implementation of `instagram-cli`.
 
 The simplest way to get started is to install the package from PyPI if you have Python installed:
 
@@ -38,172 +56,77 @@ The simplest way to get started is to install the package from PyPI if you have 
 pip install instagram-cli
 ```
 
-If you do not have Python installed, you can download and install it from the [official website](https://www.python.org/downloads/).
-
-### Installation from Source
-
-```bash
-git clone https://github.com/supreme-gg-gg/instagram-cli.git
-cd instagram-cli
-pip install .
-```
-
-> [!NOTE] The Python client is no longer maintained for Windows due to incompatibilities between the `curses` and `windows-curses` libraries. We recommend using WSL / Docker, or better, just use the TypeScript client on Windows.
-
-## Typescript Client (Public Beta)
-
-Requires Node.js to be installed.
-
-```bash
-npm install -g @i7m/instagram-cli@beta
-```
-
-The new client brings additional features like modern UI redesign, image rendering in terminal, checking feed, and using MQTT protocol for messaging to significantly reduce latency and account flags.
-
-Alternatively, you can install a development release by following the instruction [in this readme](./instagram-ts/readme.md).
+Note that Python links to the `instagram` command, while TypeScript links to `instagram-cli`.
 
 > [!CAUTION]
-> We do not recommend using the TypeScript and Python client simultaneously with the same account to reduce the risk of account bans. We recommend using the TypeScript client when possible.
+> We do not recommend using the TypeScript and Python client simultaneously with the same account to reduce the risk of account bans. We recommend using the TypeScript client when possible since it is much less likely to trigger Instagram's anti-bot mechanisms.
+
+### Key Features
+
+- Classic `curses`-based terminal UI, works well on Linux and macOS, nostalgic UNIX vibes...
+- Extends Instagram with powerful plugins like LaTeX rendering, chat summarisation (e.g. Ollama)
+
+For more information about the Python client, please refer to the [Python Client Documentation](./instagram/README.md). **The following documentation is for the Typescript client only.**
 
 ## Commands
 
 The following commands will be available after installing the package:
 
 ```bash
-instagram                                  # display title art
-instagram --help                           # view available commands
+instagram-cli                                  # display title art
+instagram-cli --help                           # view available commands
 
 # Authentication
-instagram auth login -u                    # login with username and password
-instagram auth logout                      # logout and removes session
+instagram-cli auth login --username            # login with username and password
+instagram-cli auth logout                      # logout and removes session
 
-# Chat Features
-instagram chat start                       # start chat interface
-instagram chat search -u <username>        # search and open chat by username
-instagram chat search -t <text>           # search and open chat by chat title
+# Core features
+instagram-cli chat                             # start chat interface
+instagram-cli feed                             # view posts from people you follow
+instagram-cli notify                           # view notifications (inbox, followers, mentions)
 
-# Utility Commands
-instagram notify                           # view notifications (inbox, followers, mentions)
-instagram schedule ls                      # view scheduled messages
-instagram schedule cancel <index>          # cancel scheduled message
-instagram stats --days <last_n_days>       # view usage analytics (default: 14 days)
-instagram config --get --set --edit        # manage custom configuration
-instagram cleanup -t                       # cleanup media and session cache files
+# Modify configuration
+instagram-cli config                           # lists all config
+instagram-cli config <key> <value>             # set config key to value
+instagram-cli config edit                      # open config file in editor
 ```
 
-## Chat
+## Chat Commands
 
-The chat interface is the main feature of this package. It allows you to interact with your Instagram chats in a terminal-based interface.
+Inside the chat interface and after selecting a thread, you can navigate all interface with 100% keyboard support. When messaging, the following commands are available:
 
-In the chat list page, use arrow keys (or 'j', 'k') + Enter to select a chat. You can also search for user by username using @user_name + Enter.
+```bash
+:help
+:select # select first before unsend or react
+:react <emoji>
+:unsend
+:upload <path-to-image-or-video>
+:k # go up
+:K # go to top
+:j # go down
+:J # go to bottom
+```
+
+> [!TIP]
+> You can quickly include text files or images in a message by using `#` followed by the file path. For example, `#path/to/file.txt` or `#path/to/image.png`.
+> Use `tab` and `enter` to autocomplete file paths.
+
+### Configuration
+
+You can view and modify configuration with `instagram-cli config`. The configuration file is located at `~/.instagram-cli/config.ts.yaml`. The following are common configuration options:
+
+| Key            | Type   | Default     | Description                                                                                                 |
+| -------------- | ------ | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| image.protocol | string | "halfBlock" | Protocol for rendering images. Options: "ascii", "halfBlock", "braille", "kitty", "iterm2", "sixel", or "". |
+| feed.feedType  | string | "list"      | Layout of feed display. Options: "timeline", "list", "".                                                    |
 
 > [!NOTE]
-> All searches in the package uses a custom fuzzy matching based on ratcliff/obershelp similarity algorithm. This means chat search and emoji search will be more flexible and forgiving.
-
-After entering the chat page, you can type messages as usual and send them with Enter. You can also use chat commands to supercharge your chat experience.
-
-> [!TIP]
-> Press Enter in the middle of a message to insert a line break, and at the very end to send it.
-
-### Chat Commands
-
-All chat commands have the following syntax:
-
-```bash
-:command <args> <long-args>
-```
-
-> [!IMPORTANT]
-> Long arguments should have special enclosures such as `"..."` for strings with spaces and `$...$` for LaTeX code.
-
-- `:help`: view available commands
-- `:quit`: quit the application
-- `:back`: back to chat menu for selecting chat
-- `:reply`: reply mode to select and reply to messages
-- `:scrollup`or `:k`: scroll up in chat messages
-- `:scrolldown` or `:j`: scroll down in chat messages
-- `:schedule <time> "<message>"`: schedule a message, see [scheduling messages](#scheduling-messages)
-- `:delay <seconds> "<message>"`: delay sending the message, similar as schedule
-- `:cancel`: cancel the latest scheduled/delayed message
-- `:upload`: upload media using the file navigator
-- `:upload <path?>`: upload media (photo or video) directly from path
-- `:config <key?>=<value?>`: an in-chat version of `instagram config`
-- `:view <index>`: view and download media at index or open URL directly in browser
-- `:latex $<expr>$`: render and send LaTeX code as image, see [latex](#latex)
-- `:summarize <depth?>`: generate a summary of chat history using an LLM, see [chat summarization](#chat-summarization)
-
-### Emoji
-
-Text with emoji syntax will be rendered as emoji. For example,
-
-`This is an emoji :thumbsup:`
-
-will be rendered as
-
-`This is an emoji 👍`
-
-> [!TIP]
-> This does not have to be an exact match with the emoji name. For example, `:thumbsup:` can also be written as `:thumbs_up:`.
-
-### LaTeX
-
-We support LaTeX rendering and sending as images in the chat. For example,
-
-`:latex $\frac{a}{b} + c = d$`
-
-![sample1](https://github.com/supreme-gg-gg/instagram-cli/blob/main/resource/latex_sample_1.png?raw=true)
-
-```bash
-:latex $\left( \begin{bmatrix} a & b \\ c & d \end{bmatrix} \cdot \begin{bmatrix} e & f \\ g & h \end{bmatrix} \right) + \begin{bmatrix} i & j \\ k & l \end{bmatrix}^{-1} \times \left( \int_0^1 x^2 \, dx \right) + \begin{bmatrix} \sin(\theta) & \cos(\theta) \\ \tan(\phi) & \ln(\psi) \end{bmatrix}$
-```
-
-![sample2](https://github.com/supreme-gg-gg/instagram-cli/blob/main/resource/latex_sample.png?raw=true)
-
-Please note that the LaTeX code **_MUST_** be enclosed in `$` symbols.
-
-You can choose to render with [online API](https://latex.codecogs.com) (default) or local LaTeX installation such as TeX Live, MiKTeX, etc. You can set the rendering method with `instagram config --set latex_rendering_method <online|local>`.
-
-### Chat Summarization
-
-You can generate a summary of the chat history using the `:summarize` command. This will create a concise summary of the conversation, highlighting key points and important information.
-
-Local LLMs are first-class citizens here, allowing for maximum privacy and flexibility. All you need is a local LLM inferencing server like [Ollama](https://ollama.com/), [LM Studio](https://lmstudio.ai/). You will need to specify `llm.endpoint` (OpenAI-compatible) and `llm.model` in the config. For example, for Ollama, this would likely be `http://localhost:11434/v1/`.
-
-> [!IMPORTANT]
-> You are responsible for setting up the LLM server and ensuring that you have the right model pulled. You can configure the endpoint and model using the `instagram config` command, e.g. `instagram config --set llm.endpoint <URL>` and `instagram config --set llm.model <MODEL_NAME>`.
-
-Once inside a chat conversation, you can summarize the chat history using:
-
-```plaintext
-:summarize
-```
-
-This will process all messages fetched in the current chat.
-
-To limit (or expand) the summarization to the `n` most recent messages:
-
-```plaintext
-:summarize n
-```
-
-You can also turn on streaming mode with `instagram config --set llm.stream True` to see the summary being generated in real-time.
-
-> [!TIP]
-> If you don't mind giving your data to AI companies, you may set the `llama.endpoint` and `llm.model` configs to a remote endpoint, e.g. `https://api.openai.com/v1/`, `gpt-5`.
-
-### Scheduling Messages
-
-You can schedule messages to be sent at a later time. The syntax is as follows:
-
-```bash
-:schedule <Optional[Y-m-d] HH:MM> "<message>"
-```
-
-If the date is not provided, the message will be scheduled for the current day. Input format must be either YYYY-MM-DD HH:MM or HH:MM. **The time must be in 24-hour format, otherwise you might run into warnings for scheduling messages in the past.**
-
-> [!IMPORTANT]
-> If you exit the app, the scheduled messages will not be sent but will be restored when you open the app again. You will be prompted by a notification to decide whether to send the scheduled messages or not. We might include system background service in the future to send scheduled messages even when the app is closed.
+> We automatically select the best image protocol based on your terminal. If you experience issues with image rendering, try changing the `image.protocol` setting. Make sure this is supported by your terminal (e.g. `sixel` and `iterm2` protocols won't work in Kitty).
 
 ## Contributing
 
-We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to get started, create issues, and submit pull requests.
+We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to get started, create issues, and submit pull requests. It is very important that you follow these instructions because we manage two different clients in the same repository.
+
+### Commitment to Open Source
+
+Maintainers behind `instagram-cli` are committed to contributing to the open source community behind frameworks that empower terminal applications, such as `ink`. This includes direct contributions and our sister projects -- [Ink Picture, Ink-native image component](https://github.com/endernoke/ink-picture) and [Wax, Ink routing framework](https://github.com/endernoke/wax).

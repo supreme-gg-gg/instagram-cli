@@ -1,8 +1,10 @@
 # Development
 
-The TypeScript Client is contained in the `instagram-ts` folder. For all of the following commands, you should first `cd` into the `instagram-ts` directory.
+The TypeScript Client is contained in the `instagram-ts` folder. For all of the following commands, you should first `cd` into the `instagram-ts` directory. Important design decisions are documented in `designs/`.
 
 ## Getting Started
+
+If you do not have Node.js installed, you can download and install it from the [official website](https://nodejs.org/). We recommend using Node.js version 20 or above. We recommend using `nvm` to manage your Node.js versions, see [nvm-sh/nvm](https://github.com/nvm-sh/nvm).
 
 To get started, you need to install the dependencies:
 
@@ -34,29 +36,29 @@ npm run start -- <command>
 Basically replace `instagram` with `npm run start`, for example:
 
 ```bash
-npm run start auth login
-npm run start chat
+npm run start -- auth login
+npm run start -- chat
 ```
 
 ## Install
 
-> DO NOT DO THIS DURING DEV
+This will link the `instagram-cli` executable to your global `node_modules`, so you can run `instagram-cli` from anywhere. If you have it installed from NPM, this will override it.
 
 ```bash
-npm install --global instagram-ts
+npm link
 ```
 
 ## Notes
 
 ### Pastel
 
-- We use `pastel` for building CLI commands
+- We use [pastel](https://github.com/vadimdemedes/pastel) for building CLI commands
 - `pastel` supports `tsx` for each commands, so you can just render UI directly in there
 - Read pastel docs for how to group commands, how to use `zod`, etc.
 
 ## Ink
 
-- We use `ink` for building UI
+- We use [ink](https://github.com/vadimdemedes/ink) for building UI
 - We use existing `@inkjs/ui` components for UI such as alert, text input, loading, etc.
 
 ## Structure

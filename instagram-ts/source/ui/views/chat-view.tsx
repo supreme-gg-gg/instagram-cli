@@ -1,7 +1,12 @@
 import React, {useState, useEffect, useRef} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
 import {TerminalInfoProvider} from 'ink-picture';
-import type {Thread, ChatState, Message} from '../../types/instagram.js';
+import type {
+	Thread,
+	ChatState,
+	Message,
+	ReactionEvent,
+} from '../../types/instagram.js';
 import type {RealtimeStatus} from '../../client.js';
 import MessageList from '../components/message-list.js';
 import InputBox from '../components/input-box.js';
@@ -18,7 +23,7 @@ export default function ChatView() {
 	const {exit} = useApp();
 	const client = useClient();
 	const {height, width} = useScreenSize();
-	const scrollViewRef = useRef<ScrollViewRef>(null);
+	const scrollViewRef = useRef<ScrollViewRef | undefined>(undefined);
 
 	const [chatState, setChatState] = useState<ChatState>({
 		threads: [],
@@ -34,6 +39,9 @@ export default function ChatView() {
 	const [systemMessage, setSystemMessage] = useState<string | undefined>(
 		undefined,
 	);
+
+	// Calculate available height for messages (total height minus status bar and input area)
+	const messageAreaHeight = Math.max(1, height - 8);
 
 	// Effect to clear system messages after a delay
 	useEffect(() => {
@@ -106,6 +114,22 @@ export default function ChatView() {
 					...prev,
 					messages: [...prev.messages, message],
 				}));
+
+				// If scrollview is at bottom, scroll to bottom on new messages
+				// Otherwise, the use might be reading older messages so just update state
+				if (scrollViewRef.current) {
+					const offset = scrollViewRef.current.getScrollOffset();
+					const {height: contentHeight} =
+						scrollViewRef.current.getContentSize();
+					const isAtBottom = offset >= contentHeight - messageAreaHeight;
+
+					if (isAtBottom) {
+						// Small delay to allow message to render before scrolling
+						setTimeout(() => {
+							scrollViewRef.current?.scrollToEnd(false);
+						}, 100);
+					}
+				}
 			}
 		};
 
@@ -113,6 +137,60 @@ export default function ChatView() {
 
 		return () => {
 			client.off('message', handleMessage);
+		};
+	}, [client, chatState.currentThread?.id, height, messageAreaHeight]);
+
+	// Effect for reaction events
+	useEffect(() => {
+		if (!client) return;
+
+		const handleReaction = (reactionEvent: ReactionEvent) => {
+			// Only process reactions for the current thread
+			if (reactionEvent.threadId !== chatState.currentThread?.id) {
+				return;
+			}
+
+			setChatState(prev => {
+				const updatedMessages = prev.messages.map(message => {
+					// Find the message that matches the item_id
+					if (message.item_id === reactionEvent.itemId) {
+						// Add the new reaction to the message
+						const existingReactions = message.reactions ?? [];
+
+						// Check if this exact reaction already exists (same user, same emoji)
+						const reactionExists = existingReactions.some(
+							r =>
+								r.senderId === reactionEvent.userId &&
+								r.emoji === reactionEvent.emoji,
+						);
+
+						if (reactionExists) {
+							return message; // Don't add duplicate
+						}
+
+						return {
+							...message,
+							reactions: [
+								...existingReactions,
+								{
+									emoji: reactionEvent.emoji,
+									senderId: reactionEvent.userId,
+								},
+							],
+						};
+					}
+
+					return message;
+				});
+
+				return {...prev, messages: updatedMessages};
+			});
+		};
+
+		client.on('reaction', handleReaction);
+
+		return () => {
+			client.off('reaction', handleReaction);
 		};
 	}, [client, chatState.currentThread?.id]);
 
@@ -272,14 +350,17 @@ export default function ChatView() {
 	const handleSendMessage = async (text: string) => {
 		if (!client || !chatState.currentThread) return;
 
-		const {isCommand, systemMessage: cmdSystemMessage} =
-			await parseAndDispatchChatCommand(text, {
-				client,
-				chatState,
-				setChatState,
-				height,
-				scrollViewRef,
-			});
+		const {
+			isCommand,
+			systemMessage: cmdSystemMessage,
+			processedText,
+		} = await parseAndDispatchChatCommand(text, {
+			client,
+			chatState,
+			setChatState,
+			height,
+			scrollViewRef,
+		});
 
 		if (cmdSystemMessage) {
 			setSystemMessage(cmdSystemMessage);
@@ -290,13 +371,15 @@ export default function ChatView() {
 		}
 
 		try {
-			const processedText = await preprocessMessage(text, {
+			// Use processedText if available (e.g., when '::' was stripped), otherwise use original text
+			const textToProcess = processedText ?? text;
+			const finalText = await preprocessMessage(textToProcess, {
 				client,
 				threadId: chatState.currentThread.id,
 			});
 
-			if (processedText) {
-				await client.sendMessage(chatState.currentThread.id, processedText);
+			if (finalText) {
+				await client.sendMessage(chatState.currentThread.id, finalText);
 
 				// Scroll to bottom after sending a message
 				// Timeout to ensure message is rendered before scrolling
@@ -367,9 +450,6 @@ export default function ChatView() {
 				<ThreadList threads={chatState.threads} onSelect={handleThreadSelect} />
 			);
 		}
-
-		// Calculate available height for messages (total height minus status bar and input area)
-		const messageAreaHeight = Math.max(1, height - 8);
 
 		return (
 			<Box flexDirection="column" height="100%">

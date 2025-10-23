@@ -93,6 +93,15 @@ export default function MessageList({
 			<Box flexShrink={0} flexDirection="column" flexGrow={1}>
 				{messages.map((message, index) => {
 					const isSelected = selectedMessageIndex === index;
+
+					const reactionCounts: Record<string, number> = {};
+					if (message.reactions) {
+						for (const reaction of message.reactions) {
+							reactionCounts[reaction.emoji] =
+								(reactionCounts[reaction.emoji] ?? 0) + 1;
+						}
+					}
+
 					return (
 						<Box
 							key={message.id}
@@ -110,14 +119,36 @@ export default function MessageList({
 								<Text dimColor>{formatTime(message.timestamp)}</Text>
 							</Box>
 							<Box flexDirection="column">
+								{message.repliedTo && (
+									<Box
+										flexDirection="column"
+										borderLeftColor="gray"
+										paddingLeft={1}
+										marginBottom={1}
+									>
+										<Text dimColor>
+											Replying to <Text bold>{message.repliedTo.username}</Text>
+										</Text>
+										<Text dimColor>
+											{message.repliedTo.itemType === 'text'
+												? `"${message.repliedTo.text?.slice(0, 40) ?? ''}${
+														message.repliedTo.text &&
+														message.repliedTo.text.length > 40
+															? '...'
+															: ''
+													}"`
+												: `[A ${message.repliedTo.itemType}]`}
+										</Text>
+									</Box>
+								)}
 								{renderMessageContent(message)}
 								{message.reactions && message.reactions.length > 0 && (
-									<Box borderStyle="round" borderColor="gray" paddingX={1}>
-										<Text color="gray">
-											{[...new Set(message.reactions.map(r => r.emoji))].join(
-												' ',
-											)}
-										</Text>
+									<Box rowGap={1}>
+										{Object.entries(reactionCounts).map(([emoji, count]) => (
+											<Text key={emoji}>
+												{emoji} <Text dimColor>{count}</Text>
+											</Text>
+										))}
 									</Box>
 								)}
 							</Box>

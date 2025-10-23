@@ -1,11 +1,11 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import Image from 'ink-picture';
+import Image, {type ImageProtocolName} from 'ink-picture';
 import {type FeedInstance} from '../../types/instagram.js';
 
 type Properties = {
 	readonly feed: FeedInstance;
-	readonly protocol?: string;
+	readonly protocol?: ImageProtocolName;
 };
 
 export default function TimelineMediaDisplay({feed, protocol}: Properties) {

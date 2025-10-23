@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {TerminalInfoProvider} from 'ink-picture';
+import {TerminalInfoProvider, type ImageProtocolName} from 'ink-picture';
 import {type FeedInstance} from '../../types/instagram.js';
 import TimelineMediaDisplay from '../components/timeline-media-display.js';
 import ListMediaDisplay from '../components/list-media-display.js';
@@ -21,11 +21,17 @@ export default function MediaView({feed}: {readonly feed: FeedInstance}) {
 
 	return feedType === 'timeline' ? (
 		<TerminalInfoProvider>
-			<TimelineMediaDisplay feed={feed} protocol={imageProtocol} />
+			<TimelineMediaDisplay
+				feed={feed}
+				protocol={imageProtocol as ImageProtocolName}
+			/>
 		</TerminalInfoProvider>
 	) : (
 		<TerminalInfoProvider>
-			<ListMediaDisplay feed={feed} protocol={imageProtocol} />
+			<ListMediaDisplay
+				feed={feed}
+				protocol={imageProtocol as ImageProtocolName}
+			/>
 		</TerminalInfoProvider>
 	);
 }

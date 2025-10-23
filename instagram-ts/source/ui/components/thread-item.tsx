@@ -52,20 +52,19 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProperties) {
 
 	return (
 		<Box
-			borderStyle={isSelected ? 'bold' : 'single'}
-			borderColor={isSelected ? 'cyan' : 'gray'}
 			paddingX={1}
-			height={lastMessageText ? 4 : 2}
+			paddingY={0}
 			width="100%"
 			flexDirection="column"
-			justifyContent="space-around"
+			borderStyle={isSelected ? 'round' : undefined}
+			borderColor={isSelected ? 'cyan' : undefined}
 		>
 			{/* Top Row: Title, Unread, Time */}
 			<Box justifyContent="space-between">
 				<Box flexShrink={1} marginRight={2}>
 					<Text
 						bold={isSelected}
-						color={isSelected ? 'blue' : undefined}
+						color={isSelected ? 'cyan' : undefined}
 						wrap="truncate"
 					>
 						{thread.title}
@@ -74,7 +73,7 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProperties) {
 				<Box>
 					{thread.unread && (
 						<Text bold color="green">
-							(Unread){' '}
+							●{' '}
 						</Text>
 					)}
 					<Text dimColor>{formatTime(thread.lastActivity)}</Text>
@@ -82,11 +81,13 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProperties) {
 			</Box>
 
 			{/* Bottom Row: Last Message */}
-			<Box>
-				<Text dimColor wrap="truncate">
-					{lastMessageText}
-				</Text>
-			</Box>
+			{lastMessageText && (
+				<Box>
+					<Text dimColor wrap="truncate">
+						{lastMessageText}
+					</Text>
+				</Box>
+			)}
 		</Box>
 	);
 }

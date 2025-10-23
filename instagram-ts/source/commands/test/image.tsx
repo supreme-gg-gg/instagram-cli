@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import Image, {TerminalInfoProvider} from 'ink-picture';
+import Image, {TerminalInfoProvider, type ImageProtocolName} from 'ink-picture';
 import {Text, Box} from 'ink';
 import zod from 'zod';
 import {argument} from 'pastel';
@@ -57,7 +57,7 @@ export default function TestImage(properties: Properties) {
 								<Image
 									src={source}
 									alt={`Test Image ${index + 1}`}
-									protocol={properties.args[0]}
+									protocol={properties.args[0] as ImageProtocolName}
 								/>
 							</Box>
 						))}
@@ -75,7 +75,7 @@ export default function TestImage(properties: Properties) {
 								<Image
 									src={source}
 									alt={`Test Image ${index + 4}`}
-									protocol={properties.args[0]}
+									protocol={properties.args[0] as ImageProtocolName}
 								/>
 							</Box>
 						))}

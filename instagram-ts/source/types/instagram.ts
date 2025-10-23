@@ -3,9 +3,26 @@ export type Reaction = {
 	senderId: string;
 };
 
+export type ReactionEvent = {
+	threadId: string;
+	itemId: string;
+	userId: string;
+	emoji: string;
+	timestamp: Date;
+};
+
 export type Link = {
 	url: string;
 	text: string;
+};
+
+// IMPORTANT: This field is neglected by both the API and MQTT, but apparently exists on both!
+export type RepliedToMessage = {
+	id: string;
+	userId: string;
+	username: string;
+	text?: string;
+	itemType: string;
 };
 
 export type Message =
@@ -22,6 +39,9 @@ type BaseMessage = {
 	isOutgoing: boolean;
 	threadId: string;
 	reactions?: Reaction[];
+	repliedTo?: RepliedToMessage;
+	item_id?: string;
+	client_context?: string;
 };
 
 export type TextMessage = {

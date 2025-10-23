@@ -6,8 +6,8 @@ Thank you for contributing to instagram-cli, and welcome to the force against br
 
 This repository contains **two separate clients** for Instagram:
 
-- **Python Client** (`instagram/` folder) - Stable, production-ready
-- **TypeScript Client** (`instagram-ts/` folder) - Modern, React-based UI
+- **Python Client** (`instagram/` folder)
+- **TypeScript Client** (`instagram-ts/` folder)
 
 Choose the client you want to work on based on your preferences and the feature you're implementing.
 
@@ -152,6 +152,8 @@ Once you're done with your changes:
 - Your PR will be reviewed, and maintainers may request changes.
 
 ### 7. Releases and Versioning
+
+You don't need to worry about changing version numbers; maintainers will handle that during the release process.
 
 Releases are created manually through GitHub's release page. We use different tag conventions for each client:
 

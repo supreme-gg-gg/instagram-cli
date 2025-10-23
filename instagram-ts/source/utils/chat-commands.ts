@@ -1,13 +1,14 @@
 import type {InstagramClient} from '../client.js';
 import type {ChatState} from '../types/instagram.js';
 import type {ScrollViewRef} from '../ui/components/scroll-view.js';
+import {preprocessMessage} from './preprocess.js';
 
 export type ChatCommandContext = {
 	readonly client: InstagramClient;
 	readonly chatState: ChatState;
 	readonly setChatState: React.Dispatch<React.SetStateAction<ChatState>>;
 	readonly height: number;
-	readonly scrollViewRef: React.RefObject<ScrollViewRef>;
+	readonly scrollViewRef: React.RefObject<ScrollViewRef | undefined>;
 };
 
 // Handler will return a system message when needed, or void otherwise
@@ -22,19 +23,6 @@ export type ChatCommand = {
 };
 
 export const chatCommands: Record<string, ChatCommand> = {
-	help: {
-		description: 'Show available commands. Usage: :help',
-		handler() {
-			return 'Available commands: :help, :select, :react, :unsend, :upload, :k, :j';
-		},
-	},
-	echo: {
-		description:
-			'Prints the given arguments back as a system message. Usage: :echo [text]',
-		handler(arguments_) {
-			return arguments_.join(' ');
-		},
-	},
 	select: {
 		description:
 			'Enter message selection mode to react or unsend. Usage: :select',
@@ -49,6 +37,55 @@ export const chatCommands: Record<string, ChatCommand> = {
 				selectedMessageIndex: previous.messages.length - 1,
 			}));
 			return 'Entered selection mode. Use j/k to navigate.';
+		},
+	},
+	reply: {
+		description: 'Reply to the selected message. Usage: :reply [text]',
+		async handler(
+			arguments_,
+			{client, chatState, setChatState, scrollViewRef},
+		) {
+			const text = arguments_.join(' ');
+			if (!text) {
+				return 'Usage: :reply <text>';
+			}
+
+			if (chatState.selectedMessageIndex === undefined) {
+				return 'Usage: :select to enter selection mode first.';
+			}
+
+			const messageToReplyTo =
+				chatState.messages[chatState.selectedMessageIndex];
+			if (!messageToReplyTo || !chatState.currentThread) {
+				return;
+			}
+
+			// Preprocess the reply text to handle emojis and file references
+			const processedText = await preprocessMessage(text, {
+				client,
+				threadId: chatState.currentThread.id,
+			});
+
+			if (processedText) {
+				await client.sendReply(
+					chatState.currentThread.id,
+					processedText,
+					messageToReplyTo,
+				);
+			}
+
+			// Scroll to bottom after sending a reply
+			if (scrollViewRef.current) {
+				scrollViewRef.current.scrollToEnd(true);
+			}
+
+			setChatState(previous => ({
+				...previous,
+				selectedMessageIndex: undefined,
+			}));
+
+			// eslint-disable-next-line no-useless-return
+			return;
 		},
 	},
 	react: {
@@ -85,9 +122,14 @@ export const chatCommands: Record<string, ChatCommand> = {
 		description:
 			'Upload a photo or video to the current thread. Usage: :upload <path>',
 		async handler(arguments_, {client, chatState}) {
-			const [path] = arguments_;
+			let [path] = arguments_;
 			if (!path) {
 				return 'Usage: :upload <path-to-file>';
+			}
+
+			// Remove '#' prefix if present (from autocomplete)
+			if (path.startsWith('#')) {
+				path = path.slice(1);
 			}
 
 			const lowerPath = path.toLowerCase();
@@ -202,14 +244,23 @@ export const chatCommands: Record<string, ChatCommand> = {
 export async function parseAndDispatchChatCommand(
 	text: string,
 	context: ChatCommandContext,
-): Promise<{isCommand: boolean; systemMessage: string | undefined}> {
+): Promise<{
+	isCommand: boolean;
+	systemMessage: string | undefined;
+	processedText?: string;
+}> {
 	if (!text.startsWith(':')) {
 		return {isCommand: false, systemMessage: undefined};
 	}
 
-	// Allow sending a literal ':' by checking if the text starts with '::'
+	// Allow sending a literal ':' by escaping with '::'
+	// Convert '::text' to ':text' and treat as a regular message
 	if (text.startsWith('::')) {
-		return {isCommand: false, systemMessage: undefined};
+		return {
+			isCommand: false,
+			systemMessage: undefined,
+			processedText: text.slice(1), // Strip one ':'
+		};
 	}
 
 	const [cmd, ...arguments_] = text.slice(1).split(/\s+/);

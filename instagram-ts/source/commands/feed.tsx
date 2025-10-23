@@ -5,6 +5,7 @@ import {argument} from 'pastel';
 import {type FeedInstance} from '../types/instagram.js';
 import MediaView from '../ui/views/media-view.js';
 import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
+import {createContextualLogger} from '../utils/logger.js';
 
 export const args = zod.tuple([
 	zod
@@ -27,6 +28,7 @@ export default function Feed({args}: Properties) {
 		realtime: false,
 	});
 	const [feed, setFeed] = React.useState<FeedInstance>({posts: []});
+	const logger = createContextualLogger('FeedCommand');
 
 	React.useEffect(() => {
 		const fetchFeed = async () => {
@@ -46,7 +48,7 @@ export default function Feed({args}: Properties) {
 				}
 			} catch (error_) {
 				// SetError(`Feed error: ${err instanceof Error ? err.message : String(err)}`);
-				console.error(
+				logger.error(
 					`Feed error: ${
 						error_ instanceof Error ? error_.message : String(error_)
 					}`,
@@ -55,7 +57,7 @@ export default function Feed({args}: Properties) {
 		};
 
 		void fetchFeed();
-	}, [client]);
+	}, [client, logger]);
 
 	if (isLoading) {
 		return <Alert variant="info">Fetching Instagram feed...</Alert>;

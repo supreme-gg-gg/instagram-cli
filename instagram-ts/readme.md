@@ -1,15 +1,19 @@
 # Instagram CLI
 
-Welcome to the TypeScript client of the Instagram CLI project. The Typescript client is a successor to the original Python client, built with a modern React-based UI using Ink, with features like image rendering in terminal, checking feed, and using MQTT protocol for messaging to significantly reduce latency and account flags.
+Welcome to the TypeScript client of the Instagram CLI project. The Typescript client is a successor to the original Python client, built with a modern React-based UI using [Ink](https://github.com/vadimdemedes/ink), with features like image rendering in terminal, checking feed, and using Instagram's native [MQTT protocol](https://mqtt.org/) for messaging to significantly reduce latency and account flags.
 
-The original python client can be found [on our GitHub](https://github.com/supreme-gg-gg/instagram-cli)
+Full documentation with demo video is [on our GitHub](https://github.com/supreme-gg-gg/instagram-cli).
 
 > [!NOTE]
 > Typescript client is current in Public Beta. While we have tested it extensively, there may still be some bugs. Please report them [on our issues page](https://github.com/supreme-gg-gg/instagram-cli/issues).
 
-We are the ultimate weapon against brainrot, so that you can focus on meaningful conversations without distractions.
+## Key Features
 
-We celebrate the art and simplicity of terminal UI, while contributing to the Ink open source ecosystem so that everyone can build amazing terminal apps! Checkout [ink-picture](https://github.com/endernoke/ink-picture), our sister-project for displaying images in the terminal.
+- Full support for Windows, Linux, and macOS, with modern React-based UI
+- Developer-friendly shortcuts, viewing feed and chatting, in-terminal image rendering
+- Leverages realtime MQTT-based protocol used by Instagram app for instant notifications and chat
+- Highly performant and much faster than your GUI browser or touchscreen app
+- Works well in all terminal emulators, **including VSCode Integrated Terminal**
 
 ## Usage
 
@@ -64,7 +68,15 @@ You can navigate all interface with 100% keyboard support. When messaging, the f
 
 ### Configuration
 
-You can view and modify configuration with `instagram-cli config`. The configuration file is located at `~/.instagram-cli/config.ts.yaml`.
+You can view and modify configuration with `instagram-cli config`. The configuration file is located at `~/.instagram-cli/config.ts.yaml`. The following are common configuration options:
+
+| Key            | Type   | Default     | Description                                                                                                 |
+| -------------- | ------ | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| image.protocol | string | "halfblock" | Protocol for rendering images. Options: "ascii", "halfblock", "braille", "kitty", "iterm2", "sixel", or "". |
+| feed.feedType  | string | "list"      | Layout of feed display. Options: "timeline", "list", "".                                                    |
+
+> [!NOTE]
+> We automatically select the best image protocol based on your terminal. If you experience issues with image rendering, try changing the `image.protocol` setting. Make sure this is supported by your terminal (e.g. `kitty` protocol won't work in iTerm2).
 
 ## Design philosophy
 
@@ -75,3 +87,11 @@ You can view and modify configuration with `instagram-cli config`. The configura
 3. Convenience, quick access to essential features, open anywhere even in VSCode Integrated Terminals, super fast startup (no browser)
 
 4. Developer-first, open source, extensible, and keyboard-first
+
+## Contributing
+
+We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to get started, create issues, and submit pull requests. It is very important that you follow these instructions because we manage two different clients in the same repository.
+
+### Commitment to Open Source
+
+Maintainers behind `instagram-cli` are committed to contributing to the open source community behind frameworks that empower terminal applications, such as `ink`. This includes direct contributions and our sister projects -- [Ink Picture, Ink-native image component](https://github.com/endernoke/ink-picture) and [Wax, Ink routing framework](https://github.com/endernoke/wax).
