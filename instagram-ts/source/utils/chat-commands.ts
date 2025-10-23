@@ -22,19 +22,6 @@ export type ChatCommand = {
 };
 
 export const chatCommands: Record<string, ChatCommand> = {
-	help: {
-		description: 'Show available commands. Usage: :help',
-		handler() {
-			return 'Available commands: :help, :select, :reply, :react, :unsend, :upload, :k, :j';
-		},
-	},
-	echo: {
-		description:
-			'Prints the given arguments back as a system message. Usage: :echo [text]',
-		handler(arguments_) {
-			return arguments_.join(' ');
-		},
-	},
 	select: {
 		description:
 			'Enter message selection mode to react or unsend. Usage: :select',
