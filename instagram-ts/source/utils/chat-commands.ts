@@ -1,6 +1,7 @@
 import type {InstagramClient} from '../client.js';
 import type {ChatState} from '../types/instagram.js';
 import type {ScrollViewRef} from '../ui/components/scroll-view.js';
+import {preprocessMessage} from './preprocess.js';
 
 export type ChatCommandContext = {
 	readonly client: InstagramClient;
@@ -59,11 +60,19 @@ export const chatCommands: Record<string, ChatCommand> = {
 				return;
 			}
 
-			await client.sendReply(
-				chatState.currentThread.id,
-				text,
-				messageToReplyTo,
-			);
+			// Preprocess the reply text to handle emojis and file references
+			const processedText = await preprocessMessage(text, {
+				client,
+				threadId: chatState.currentThread.id,
+			});
+
+			if (processedText) {
+				await client.sendReply(
+					chatState.currentThread.id,
+					processedText,
+					messageToReplyTo,
+				);
+			}
 
 			// Scroll to bottom after sending a reply
 			if (scrollViewRef.current) {
@@ -235,14 +244,23 @@ export const chatCommands: Record<string, ChatCommand> = {
 export async function parseAndDispatchChatCommand(
 	text: string,
 	context: ChatCommandContext,
-): Promise<{isCommand: boolean; systemMessage: string | undefined}> {
+): Promise<{
+	isCommand: boolean;
+	systemMessage: string | undefined;
+	processedText?: string;
+}> {
 	if (!text.startsWith(':')) {
 		return {isCommand: false, systemMessage: undefined};
 	}
 
-	// Allow sending a literal ':' by checking if the text starts with '::'
+	// Allow sending a literal ':' by escaping with '::'
+	// Convert '::text' to ':text' and treat as a regular message
 	if (text.startsWith('::')) {
-		return {isCommand: false, systemMessage: undefined};
+		return {
+			isCommand: false,
+			systemMessage: undefined,
+			processedText: text.slice(1), // Strip one ':'
+		};
 	}
 
 	const [cmd, ...arguments_] = text.slice(1).split(/\s+/);

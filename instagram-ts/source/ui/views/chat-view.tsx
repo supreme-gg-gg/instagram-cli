@@ -350,14 +350,17 @@ export default function ChatView() {
 	const handleSendMessage = async (text: string) => {
 		if (!client || !chatState.currentThread) return;
 
-		const {isCommand, systemMessage: cmdSystemMessage} =
-			await parseAndDispatchChatCommand(text, {
-				client,
-				chatState,
-				setChatState,
-				height,
-				scrollViewRef,
-			});
+		const {
+			isCommand,
+			systemMessage: cmdSystemMessage,
+			processedText,
+		} = await parseAndDispatchChatCommand(text, {
+			client,
+			chatState,
+			setChatState,
+			height,
+			scrollViewRef,
+		});
 
 		if (cmdSystemMessage) {
 			setSystemMessage(cmdSystemMessage);
@@ -368,13 +371,15 @@ export default function ChatView() {
 		}
 
 		try {
-			const processedText = await preprocessMessage(text, {
+			// Use processedText if available (e.g., when '::' was stripped), otherwise use original text
+			const textToProcess = processedText ?? text;
+			const finalText = await preprocessMessage(textToProcess, {
 				client,
 				threadId: chatState.currentThread.id,
 			});
 
-			if (processedText) {
-				await client.sendMessage(chatState.currentThread.id, processedText);
+			if (finalText) {
+				await client.sendMessage(chatState.currentThread.id, finalText);
 
 				// Scroll to bottom after sending a message
 				// Timeout to ensure message is rendered before scrolling
