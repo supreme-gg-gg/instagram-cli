@@ -8,15 +8,15 @@ All errors, warnings, and important messages in the Instagram CLI are now logged
 
 All logs are stored in: `~/.instagram-cli/logs/`
 
-Each session creates a new log file with the naming pattern: `session-YYYY-MM-DD_HH-MM-SS_RANDOM.log`
+Each session creates a new log file with the naming pattern: `session-YYYY-MM-DD_HH-MM-SS.log`
 
-Example log file: `~/.instagram-cli/logs/session-2025-10-18_14-30-45-123abc.log`
+Example log file: `~/.instagram-cli/logs/session-2025-10-18_14-30-45.log`
 
 ## Log File Format
 
 Each log entry contains:
 
-- **Timestamp**: ISO format (e.g., `2025-10-18T14:30:45.123Z`)
+- **Timestamp**: ISO format (e.g., `2025-10-18T14:30:45`)
 - **Log Level**: `ERROR`, `WARN`, `INFO`, or `DEBUG`
 - **Context**: The module/function where the error occurred (e.g., `[InstagramClient]`)
 - **Message**: Human-readable error message
