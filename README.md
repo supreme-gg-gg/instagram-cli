@@ -79,6 +79,8 @@ instagram-cli --help                           # view available commands
 # Authentication
 instagram-cli auth login --username            # login with username and password
 instagram-cli auth logout                      # logout and removes session
+instagram-cli auth switch <username>           # switch to another saved account
+instagram-cli auth whoami                      # display current default user
 
 # Core features
 instagram-cli chat                             # start chat interface
@@ -91,16 +93,26 @@ instagram-cli config <key> <value>             # set config key to value
 instagram-cli config edit                      # open config file in editor
 ```
 
+> [!TIP]
+> You can easily manage multiple accounts with Instagram CLI!
+> Your login for each account will be saved **locally** and you can switch between them or run a certain command with a specific account using the `--username` flag.
+
 ## Chat Commands
 
 Inside the chat interface and after selecting a thread, you can navigate all interface with 100% keyboard support. When messaging, the following commands are available:
 
 ```bash
-:help
-:select # select first before unsend or react
+# Select messages to perform actions
+:select
 :react <emoji>
+:reply <text>
 :unsend
+
+# Media Handling
 :upload <path-to-image-or-video>
+# Download command coming soon...
+
+# Navigation
 :k # go up
 :K # go to top
 :j # go down
@@ -109,7 +121,7 @@ Inside the chat interface and after selecting a thread, you can navigate all int
 
 > [!TIP]
 > You can quickly include text files or images in a message by using `#` followed by the file path. For example, `#path/to/file.txt` or `#path/to/image.png`.
-> Use `tab` and `enter` to autocomplete file paths.
+> Use `tab` and `enter` to autocomplete file paths. You can include emojis in messages with `:emoji_name:` e.g. `:thumbsup:` = 👍 (with fuzzy matching).
 
 ### Configuration
 
