@@ -101,8 +101,7 @@ class Logger {
 			.replaceAll(/[:.]/g, '-')
 			.split('T')[1]
 			?.split('-')[0];
-		const randomStr = Math.random().toString(36).slice(2, 8);
-		return `${dateStr}_${timeStr}_${randomStr}`;
+		return `${dateStr}_${timeStr}`;
 	}
 
 	private formatLogEntry(entry: LogEntry): string {

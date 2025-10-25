@@ -21,7 +21,7 @@ export default function Index() {
 			</Gradient>
 			<Text color="green">The end of brainrot and doomscrolling is here.</Text>
 			<Text color="blue">
-				Type &#39;instagram --help&#39; to see available commands.
+				Type &#39;instagram-cli --help&#39; to see available commands.
 			</Text>
 			<Text color="yellow">
 				Pro Tip: Use vim-motion (&#39;k&#39;, &#39;j&#39;) to navigate chats and

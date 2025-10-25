@@ -182,7 +182,7 @@ export default function Login({options}: Properties) {
 	if (mode === 'error') {
 		return (
 			<Box>
-				<Alert variant="error">{message}</Alert>;
+				<Alert variant="error">{message}</Alert>
 			</Box>
 		);
 	}
