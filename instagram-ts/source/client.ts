@@ -554,6 +554,19 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
+	public async markMessageAsSeen(threadId: string, itemId: string): Promise<void> {
+		if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
+			try {
+				await this.realtime.direct.markAsSeen({threadId: threadId,  itemId: itemId});
+				return;
+			} catch {
+				this.logger.warn('MQTT sendMessage Failed');
+			}
+		} else {
+			throw new Error('Real-time client not connected. Cannot send reaction.');
+		}
+	}
+
 	private setRealtimeStatus(status: RealtimeStatus) {
 		this.realtimeStatus = status;
 		this.emit('realtimeStatus', status);

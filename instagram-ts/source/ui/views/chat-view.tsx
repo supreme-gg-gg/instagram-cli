@@ -108,7 +108,7 @@ export default function ChatView() {
 	useEffect(() => {
 		if (!client) return;
 
-		const handleMessage = (message: Message) => {
+		const handleMessage = async (message: Message) => {
 			if (message.threadId === chatState.currentThread?.id) {
 				setChatState(prev => ({
 					...prev,
@@ -130,6 +130,9 @@ export default function ChatView() {
 						}, 100);
 					}
 				}
+
+				// Mark message as seen, when the user is viewing the thread
+				await client.markMessageAsSeen(message.threadId, message.id);
 			}
 		};
 
