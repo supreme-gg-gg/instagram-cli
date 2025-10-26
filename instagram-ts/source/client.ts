@@ -437,7 +437,6 @@ export class InstagramClient extends EventEmitter {
 				oldest_cursor: cursor ?? '',
 			});
 			const items = await thread.items();
-
 			const messages = items
 				.map(item =>
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -447,6 +446,11 @@ export class InstagramClient extends EventEmitter {
 					}),
 				)
 				.filter((message): message is Message => message !== undefined);
+			
+			// Mark messages as seen
+			messages.forEach(message => {
+				this.ig.entity.directThread(threadId).markItemSeen(message.id);
+			});
 
 			return {
 				messages: messages.reverse(),
@@ -585,6 +589,20 @@ export class InstagramClient extends EventEmitter {
 		this.realtime.on('close', () => {
 			this.setRealtimeStatus('disconnected');
 		});
+
+		this.realtime.on('directStatus', (wrapper: any) => {
+			this.logger.info(
+				`Received MQTT "directStatus": ${JSON.stringify(wrapper)}`,
+			);
+		});
+
+		
+		this.realtime.on('threadUpdate', (wrapper: any) => {
+			this.logger.info(
+				`Received MQTT "directStatus": ${JSON.stringify(wrapper)}`,
+			);
+		});
+
 
 		this.realtime.on('message', (wrapper: any) => {
 			this.logger.debug(`Received MQTT "message": ${JSON.stringify(wrapper)}`);
