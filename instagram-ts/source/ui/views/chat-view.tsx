@@ -6,6 +6,7 @@ import type {
 	ChatState,
 	Message,
 	ReactionEvent,
+	SeenEvent,
 } from '../../types/instagram.js';
 import type {RealtimeStatus} from '../../client.js';
 import MessageList from '../components/message-list.js';
@@ -32,6 +33,7 @@ export default function ChatView() {
 		currentThread: undefined,
 		selectedMessageIndex: undefined,
 		isSelectionMode: false,
+		recipientAlreadyRead: false,
 	});
 	const [currentView, setCurrentView] = useState<'threads' | 'chat'>('threads');
 	const [realtimeStatus, setRealtimeStatus] =
@@ -130,9 +132,6 @@ export default function ChatView() {
 						}, 100);
 					}
 				}
-
-				// Mark message as seen, when the user is viewing the thread
-				await client.markMessageAsSeen(message.threadId, message.id);
 			}
 		};
 
@@ -142,6 +141,23 @@ export default function ChatView() {
 			client.off('message', handleMessage);
 		};
 	}, [client, chatState.currentThread?.id, height, messageAreaHeight]);
+
+	// Effect for threadseen events
+	useEffect(() => {
+		
+		const handleThreadSeen = (seenEvent: SeenEvent) => {
+			// Only process seen events for the current thread
+			if (seenEvent.threadId === chatState.currentThread?.id) {
+				setChatState(previous => ({...previous, recipientAlreadyRead: true}));
+			}
+		}
+		client.on('threadSeen', handleThreadSeen);
+
+		return () => {
+			client.off('threadSeen', handleThreadSeen);
+		};
+		
+	}, [client, chatState.currentThread?.id]);
 
 	// Effect for reaction events
 	useEffect(() => {
@@ -330,6 +346,7 @@ export default function ChatView() {
 			currentThread: thread,
 			loading: true,
 			messages: [],
+			recipientAlreadyRead: false,
 		}));
 
 		try {
@@ -391,6 +408,9 @@ export default function ChatView() {
 						scrollViewRef.current.scrollToEnd(false);
 					}
 				}, 1000);
+				
+				// Clear recipient read status on new message sent
+				setChatState(previous => ({...previous, recipientAlreadyRead: false}));
 
 				return () => {
 					clearTimeout(timeout);
@@ -470,6 +490,7 @@ export default function ChatView() {
 							currentThread={chatState.currentThread}
 							selectedMessageIndex={chatState.selectedMessageIndex}
 						/>
+
 					</ScrollView>
 				) : (
 					<Box
@@ -481,6 +502,11 @@ export default function ChatView() {
 						<Text>Loading messages...</Text>
 					</Box>
 				)}
+				{chatState.recipientAlreadyRead && 
+					<Box>
+						<Text dimColor>{"Seen just now"}</Text>
+					</Box>
+				}
 				<Box flexShrink={0} flexDirection="column">
 					{systemMessage && (
 						<Box marginTop={1}>

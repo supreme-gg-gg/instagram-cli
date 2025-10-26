@@ -20,7 +20,7 @@ import {
 import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
 import type {Thread, Message, User} from './types/instagram.js';
-import {parseMessageItem, parseReactionEvent} from './utils/message-parser.js';
+import {parseMessageItem, parseReactionEvent, parseSeenEvent} from './utils/message-parser.js';
 import {createContextualLogger} from './utils/logger.js';
 
 export type LoginResult = {
@@ -437,7 +437,6 @@ export class InstagramClient extends EventEmitter {
 				oldest_cursor: cursor ?? '',
 			});
 			const items = await thread.items();
-
 			const messages = items
 				.map(item =>
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -447,6 +446,11 @@ export class InstagramClient extends EventEmitter {
 					}),
 				)
 				.filter((message): message is Message => message !== undefined);
+			
+			// Mark messages as seen
+			messages.forEach(message => {
+				this.ig.entity.directThread(threadId).markItemSeen(message.id);
+			});
 
 			return {
 				messages: messages.reverse(),
@@ -554,19 +558,6 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
-	public async markMessageAsSeen(threadId: string, itemId: string): Promise<void> {
-		if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
-			try {
-				await this.realtime.direct.markAsSeen({threadId: threadId,  itemId: itemId});
-				return;
-			} catch {
-				this.logger.warn('MQTT sendMessage Failed');
-			}
-		} else {
-			throw new Error('Real-time client not connected. Cannot send reaction.');
-		}
-	}
-
 	private setRealtimeStatus(status: RealtimeStatus) {
 		this.realtimeStatus = status;
 		this.emit('realtimeStatus', status);
@@ -587,6 +578,7 @@ export class InstagramClient extends EventEmitter {
 		});
 
 		this.realtime.on('message', (wrapper: any) => {
+			this.logger.debug(`Bruno MQTT "message"`);
 			this.logger.debug(`Received MQTT "message": ${JSON.stringify(wrapper)}`);
 			// Handle reaction events
 			if (
@@ -598,29 +590,39 @@ export class InstagramClient extends EventEmitter {
 				if (reactionData) {
 					this.emit('reaction', reactionData);
 				} else {
-					this.logger.warn(
+					this.logger.warn(	
 						`Failed to parse realtime reaction event: ${JSON.stringify(wrapper)}`,
 					);
 				}
 
 				return;
+			} else if (wrapper.delta_type === 'deltaNewMessage') { 
+
+				// Handle regular message events
+				// ThreadId must exist otherwise it's not possible to identify where this event belongs
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const threadId =
+					wrapper?.message?.thread_id ?? wrapper?.message?.thread_v2_id;
+				if (!threadId) return;
+
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				const parsedMessage = parseMessageItem(wrapper.message, threadId, {
+					userCache: this.userCache,
+					currentUserId: this.ig.state.cookieUserId,
+				});
+				if (parsedMessage) {
+					this.emit('message', parsedMessage);
+				}
+			} else if (wrapper.delta_type === 'deltaReadReceipt') {
+				// Handle read receipt events
+				const seenData = parseSeenEvent(wrapper.message);
+				const currentUserId = this.ig.state.cookieUserId;
+				if (seenData?.threadId && seenData?.userId && currentUserId !== seenData.userId) {
+					this.logger.debug(`threadSenn": ${JSON.stringify(seenData)}`);
+					this.emit('threadSeen', seenData);
+				}
 			}
 
-			// Handle regular message events
-			// ThreadId must exist otherwise it's not possible to identify where this event belongs
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const threadId =
-				wrapper?.message?.thread_id ?? wrapper?.message?.thread_v2_id;
-			if (!threadId) return;
-
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			const parsedMessage = parseMessageItem(wrapper.message, threadId, {
-				userCache: this.userCache,
-				currentUserId: this.ig.state.cookieUserId,
-			});
-			if (parsedMessage) {
-				this.emit('message', parsedMessage);
-			}
 		});
 
 		await this.realtime.connect({

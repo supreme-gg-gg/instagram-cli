@@ -11,6 +11,13 @@ export type ReactionEvent = {
 	timestamp: Date;
 };
 
+export type SeenEvent = {
+	threadId: string;
+	userId: string;
+	itemId: string,
+	timestamp: Date;
+};
+
 export type Link = {
 	url: string;
 	text: string;
@@ -101,6 +108,7 @@ export type ChatState = {
 	messageCursor?: string;
 	selectedMessageIndex: number | undefined;
 	isSelectionMode: boolean;
+	recipientAlreadyRead: boolean;
 };
 
 export type AuthState = {

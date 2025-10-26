@@ -5,6 +5,7 @@ import type {
 	Reaction,
 	ReactionEvent,
 	RepliedToMessage,
+	SeenEvent,
 } from '../types/instagram.js';
 
 /**
@@ -127,6 +128,7 @@ function parseReactions(
 
 	return parsed.length > 0 ? parsed : undefined;
 }
+
 
 /**
  * A shared parser for message items from any source (API or Realtime).
@@ -333,3 +335,52 @@ export function parseReactionEvent(
 		return undefined;
 	}
 }
+
+type SeenEventMessage = {
+	path: string;
+	op: 'add' | 'replace' | string;
+	thread_id: string;
+	item_id: string;
+	client_context?: 'none';
+	timestamp: Date;
+	created_at: Date;
+	ssh_seen_state?: any;
+	disappearing_messages_seen_state?: any;
+};
+
+export function parseSeenEvent(
+	seenEvent: SeenEventMessage
+): SeenEvent | undefined {  	
+	try {
+		if (!seenEvent?.path || !seenEvent.thread_id) {
+			return undefined;
+		}
+
+		// Parse the path: /direct_v2/threads/{thread_id}/participants/{user_id}/has_seen
+		const pathMatch =
+			/\/direct_v2\/threads\/([^/]+)\/participants\/([^/]+)\/has_seen/.exec(
+				seenEvent.path,
+			);
+		
+		if (!pathMatch) {
+			return undefined;
+		}
+
+		const [, threadId, userId] = pathMatch;
+
+		if (!threadId || !userId) {
+			return undefined;
+		}
+
+		return { 
+			threadId,
+			userId,
+			itemId: seenEvent.item_id,
+			timestamp: seenEvent.timestamp,
+		}
+
+	} catch {
+		return undefined;
+	}
+}
+
