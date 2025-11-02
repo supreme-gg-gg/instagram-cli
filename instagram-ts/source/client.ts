@@ -577,7 +577,6 @@ export class InstagramClient extends EventEmitter {
 		});
 
 		this.realtime.on('message', (wrapper: any) => {
-			this.logger.debug(`Bruno MQTT "message"`);
 			this.logger.debug(`Received MQTT "message": ${JSON.stringify(wrapper)}`);
 			// Handle reaction events
 			if (
@@ -617,7 +616,6 @@ export class InstagramClient extends EventEmitter {
 				const seenData = parseSeenEvent(wrapper.message);
 				const currentUserId = this.ig.state.cookieUserId;
 				if (seenData?.threadId && seenData?.userId && currentUserId !== seenData.userId) {
-					this.logger.debug(`threadSenn": ${JSON.stringify(seenData)}`);
 					this.emit('threadSeen', seenData);
 				}
 			}
