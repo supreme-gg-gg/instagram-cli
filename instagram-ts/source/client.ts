@@ -577,6 +577,20 @@ export class InstagramClient extends EventEmitter {
 			this.setRealtimeStatus('disconnected');
 		});
 
+		this.realtime.on('directStatus', (wrapper: any) => {
+			this.logger.info(
+				`Received MQTT "directStatus": ${JSON.stringify(wrapper)}`,
+			);
+		});
+
+		
+		this.realtime.on('threadUpdate', (wrapper: any) => {
+			this.logger.info(
+				`Received MQTT "directStatus": ${JSON.stringify(wrapper)}`,
+			);
+		});
+
+
 		this.realtime.on('message', (wrapper: any) => {
 			this.logger.debug(`Bruno MQTT "message"`);
 			this.logger.debug(`Received MQTT "message": ${JSON.stringify(wrapper)}`);

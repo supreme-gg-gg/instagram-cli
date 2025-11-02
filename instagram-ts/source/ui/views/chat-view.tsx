@@ -110,7 +110,7 @@ export default function ChatView() {
 	useEffect(() => {
 		if (!client) return;
 
-		const handleMessage = async (message: Message) => {
+		const handleMessage = (message: Message) => {
 			if (message.threadId === chatState.currentThread?.id) {
 				setChatState(prev => ({
 					...prev,
