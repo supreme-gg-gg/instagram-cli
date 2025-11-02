@@ -447,10 +447,9 @@ export class InstagramClient extends EventEmitter {
 				)
 				.filter((message): message is Message => message !== undefined);
 			
-			// Mark messages as seen
-			messages.forEach(message => {
-				this.ig.entity.directThread(threadId).markItemSeen(message.id);
-			});
+			// Mark thread as seen, marking the most recent message as seen
+			if (messages[0]?.id)
+				this.ig.entity.directThread(threadId).markItemSeen(messages[0].id);
 
 			return {
 				messages: messages.reverse(),
