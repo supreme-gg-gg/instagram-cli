@@ -115,6 +115,7 @@ export default function ChatView() {
 				setChatState(prev => ({
 					...prev,
 					messages: [...prev.messages, message],
+					recipientAlreadyRead: false,
 				}));
 
 				// If scrollview is at bottom, scroll to bottom on new messages
