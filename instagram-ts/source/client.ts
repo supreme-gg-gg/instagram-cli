@@ -20,7 +20,11 @@ import {
 import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
 import type {Thread, Message, User} from './types/instagram.js';
-import {parseMessageItem, parseReactionEvent, parseSeenEvent} from './utils/message-parser.js';
+import {
+	parseMessageItem,
+	parseReactionEvent,
+	parseSeenEvent,
+} from './utils/message-parser.js';
 import {createContextualLogger} from './utils/logger.js';
 
 export type LoginResult = {
@@ -446,10 +450,6 @@ export class InstagramClient extends EventEmitter {
 					}),
 				)
 				.filter((message): message is Message => message !== undefined);
-			
-			// Mark thread as seen, marking the most recent message as seen
-			if (messages[0]?.id)
-				this.ig.entity.directThread(threadId).markItemSeen(messages[0].id);
 
 			return {
 				messages: messages.reverse(),
@@ -457,6 +457,25 @@ export class InstagramClient extends EventEmitter {
 			};
 		} catch (error) {
 			this.logger.error('Failed to fetch messages', error);
+			throw error;
+		}
+	}
+
+	public async markItemAsSeen(threadId: string, itemId: string): Promise<void> {
+		if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
+			try {
+				await this.realtime.direct.markAsSeen({threadId, itemId});
+				return;
+			} catch {
+				this.logger.warn('MQTT mark as seen failed, falling back to API.');
+			}
+		}
+
+		// Fallback to API if MQTT not available, failed, or not ready
+		try {
+			await this.ig.entity.directThread(threadId).markItemSeen(itemId);
+		} catch (error) {
+			this.logger.error('Failed to mark item as seen', error);
 			throw error;
 		}
 	}
@@ -588,14 +607,13 @@ export class InstagramClient extends EventEmitter {
 				if (reactionData) {
 					this.emit('reaction', reactionData);
 				} else {
-					this.logger.warn(	
+					this.logger.warn(
 						`Failed to parse realtime reaction event: ${JSON.stringify(wrapper)}`,
 					);
 				}
 
 				return;
-			} else if (wrapper.delta_type === 'deltaNewMessage') { 
-
+			} else if (wrapper.delta_type === 'deltaNewMessage') {
 				// Handle regular message events
 				// ThreadId must exist otherwise it's not possible to identify where this event belongs
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -615,11 +633,14 @@ export class InstagramClient extends EventEmitter {
 				// Handle read receipt events
 				const seenData = parseSeenEvent(wrapper.message);
 				const currentUserId = this.ig.state.cookieUserId;
-				if (seenData?.threadId && seenData?.userId && currentUserId !== seenData.userId) {
+				if (
+					seenData?.threadId &&
+					seenData?.userId &&
+					currentUserId !== seenData.userId
+				) {
 					this.emit('threadSeen', seenData);
 				}
 			}
-
 		});
 
 		await this.realtime.connect({

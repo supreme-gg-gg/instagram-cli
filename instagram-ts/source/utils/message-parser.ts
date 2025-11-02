@@ -129,7 +129,6 @@ function parseReactions(
 	return parsed.length > 0 ? parsed : undefined;
 }
 
-
 /**
  * A shared parser for message items from any source (API or Realtime).
  * @param item The raw message item object, likely MessageSyncMessage type from realtime
@@ -349,8 +348,8 @@ type SeenEventMessage = {
 };
 
 export function parseSeenEvent(
-	seenEvent: SeenEventMessage
-): SeenEvent | undefined {  	
+	seenEvent: SeenEventMessage,
+): SeenEvent | undefined {
 	try {
 		if (!seenEvent?.path || !seenEvent.thread_id) {
 			return undefined;
@@ -361,7 +360,7 @@ export function parseSeenEvent(
 			/\/direct_v2\/threads\/([^/]+)\/participants\/([^/]+)\/has_seen/.exec(
 				seenEvent.path,
 			);
-		
+
 		if (!pathMatch) {
 			return undefined;
 		}
@@ -372,15 +371,13 @@ export function parseSeenEvent(
 			return undefined;
 		}
 
-		return { 
+		return {
 			threadId,
 			userId,
 			itemId: seenEvent.item_id,
 			timestamp: seenEvent.timestamp,
-		}
-
+		};
 	} catch {
 		return undefined;
 	}
 }
-

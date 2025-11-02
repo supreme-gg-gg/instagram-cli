@@ -133,6 +133,9 @@ export default function ChatView() {
 						}, 100);
 					}
 				}
+
+				// Mark item as seen
+				client.markItemAsSeen(chatState.currentThread.id, message.id);
 			}
 		};
 
@@ -145,19 +148,17 @@ export default function ChatView() {
 
 	// Effect for threadseen events
 	useEffect(() => {
-		
 		const handleThreadSeen = (seenEvent: SeenEvent) => {
 			// Only process seen events for the current thread
 			if (seenEvent.threadId === chatState.currentThread?.id) {
 				setChatState(previous => ({...previous, recipientAlreadyRead: true}));
 			}
-		}
+		};
 		client.on('threadSeen', handleThreadSeen);
 
 		return () => {
 			client.off('threadSeen', handleThreadSeen);
 		};
-		
 	}, [client, chatState.currentThread?.id]);
 
 	// Effect for reaction events
@@ -352,12 +353,20 @@ export default function ChatView() {
 
 		try {
 			const {messages, cursor} = await client.getMessages(thread.id);
+
 			setChatState(previous => ({
 				...previous,
 				messages,
 				loading: false,
 				messageCursor: cursor,
 			}));
+
+			// Mark thread as seen
+			const lastMessage = messages[messages.length - 1];
+
+			if (lastMessage?.id) {
+				await client.markItemAsSeen(thread.id, lastMessage.id);
+			}
 		} catch (error) {
 			setChatState(previous => ({
 				...previous,
@@ -409,7 +418,7 @@ export default function ChatView() {
 						scrollViewRef.current.scrollToEnd(false);
 					}
 				}, 1000);
-				
+
 				// Clear recipient read status on new message sent
 				setChatState(previous => ({...previous, recipientAlreadyRead: false}));
 
@@ -491,7 +500,6 @@ export default function ChatView() {
 							currentThread={chatState.currentThread}
 							selectedMessageIndex={chatState.selectedMessageIndex}
 						/>
-
 					</ScrollView>
 				) : (
 					<Box
@@ -503,11 +511,11 @@ export default function ChatView() {
 						<Text>Loading messages...</Text>
 					</Box>
 				)}
-				{chatState.recipientAlreadyRead && 
+				{chatState.recipientAlreadyRead && (
 					<Box>
-						<Text dimColor>{"Seen just now"}</Text>
+						<Text dimColor>{'Seen just now'}</Text>
 					</Box>
-				}
+				)}
 				<Box flexShrink={0} flexDirection="column">
 					{systemMessage && (
 						<Box marginTop={1}>

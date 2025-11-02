@@ -14,7 +14,7 @@ export type ReactionEvent = {
 export type SeenEvent = {
 	threadId: string;
 	userId: string;
-	itemId: string,
+	itemId: string;
 	timestamp: Date;
 };
 
