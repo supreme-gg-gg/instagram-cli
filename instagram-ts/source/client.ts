@@ -19,7 +19,7 @@ import {
 } from 'instagram_mqtt';
 import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
-import type {Thread, Message, User, SeenEvent} from './types/instagram.js';
+import type {Thread, Message, User} from './types/instagram.js';
 import {
 	parseMessageItem,
 	parseReactionEvent,
