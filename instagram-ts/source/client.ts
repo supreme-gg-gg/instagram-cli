@@ -459,14 +459,14 @@ export class InstagramClient extends EventEmitter {
 	}
 
 	public async sendMessage(threadId: string, text: string): Promise<void> {
-		if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
-			try {
-				await this.realtime.direct.sendText({threadId, text});
-				return;
-			} catch {
-				this.logger.warn('MQTT sendMessage failed, falling back to API.');
-			}
-		}
+		// if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
+		// 	try {
+		// 		await this.realtime.direct.sendText({threadId, text});
+		// 		return;
+		// 	} catch {
+		// 		this.logger.warn('MQTT sendMessage failed, falling back to API.');
+		// 	}
+		// }
 
 		// Fallback to API if MQTT not available, failed, or not ready
 		try {

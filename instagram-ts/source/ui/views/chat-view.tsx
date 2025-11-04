@@ -54,7 +54,6 @@ export default function ChatView() {
 			};
 		}
 
-		// eslint-disable-next-line no-useless-return
 		return;
 	}, [systemMessage]);
 
@@ -399,7 +398,6 @@ export default function ChatView() {
 			setSystemMessage(errorMessage);
 		}
 
-		// eslint-disable-next-line no-useless-return
 		return;
 	};
 
