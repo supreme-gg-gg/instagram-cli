@@ -95,3 +95,7 @@ We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBU
 ### Commitment to Open Source
 
 Maintainers behind `instagram-cli` are committed to contributing to the open source community behind frameworks that empower terminal applications, such as `ink`. This includes direct contributions and our sister projects -- [Ink Picture, Ink-native image component](https://github.com/endernoke/ink-picture) and [Wax, Ink routing framework](https://github.com/endernoke/wax).
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=supreme-gg-gg/instagram-cli&type=date&legend=top-left)](https://www.star-history.com/#supreme-gg-gg/instagram-cli&type=date&legend=top-left)
