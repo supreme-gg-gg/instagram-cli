@@ -363,7 +363,7 @@ export default function ChatView() {
 			}));
 
 			// Mark thread as seen
-			const lastMessage = messages.at(messages.length - 1);
+			const lastMessage = messages.at(-1);
 
 			if (lastMessage?.id) {
 				await client.markItemAsSeen(thread.id, lastMessage.id);
@@ -514,7 +514,7 @@ export default function ChatView() {
 				)}
 				chatState.recipientAlreadyRead && (
 				<Box>
-					<Text dimColor>{'Seen just now'}</Text>
+					<Text dimColor>Seen just now</Text>
 				</Box>
 				)
 				<Box flexShrink={0} flexDirection="column">

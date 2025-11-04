@@ -19,7 +19,7 @@ import {
 } from 'instagram_mqtt';
 import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
-import type {Thread, Message, User} from './types/instagram.js';
+import type {Thread, Message, User, SeenEvent} from './types/instagram.js';
 import {
 	parseMessageItem,
 	parseReactionEvent,
@@ -629,9 +629,8 @@ export class InstagramClient extends EventEmitter {
 				}
 			} else if (wrapper.delta_type === 'deltaReadReceipt') {
 				// Handle read receipt events
-				const seenData = parseSeenEvent(wrapper.message);
-
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				const seenData = parseSeenEvent(wrapper.message);
 				const currentUserId = this.ig.state.cookieUserId;
 				if (
 					seenData?.threadId &&
