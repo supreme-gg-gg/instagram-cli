@@ -104,7 +104,9 @@
 			"@typescript-eslint/no-empty-function": "off",
 			"react/no-array-index-key": "off",
 			"react/require-default-props": "off",
-			"unicorn/prevent-abbreviations": "off"
+			"unicorn/prevent-abbreviations": "off",
+			"capitalized-comments": "off",
+			"no-useless-return": "off"
 		}
 	},
 	"prettier": "@vdemedes/prettier-config"

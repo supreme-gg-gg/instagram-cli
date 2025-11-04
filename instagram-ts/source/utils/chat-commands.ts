@@ -84,7 +84,6 @@ export const chatCommands: Record<string, ChatCommand> = {
 				selectedMessageIndex: undefined,
 			}));
 
-			// eslint-disable-next-line no-useless-return
 			return;
 		},
 	},
@@ -114,7 +113,6 @@ export const chatCommands: Record<string, ChatCommand> = {
 				selectedMessageIndex: undefined,
 			}));
 
-			// eslint-disable-next-line no-useless-return
 			return;
 		},
 	},
@@ -180,7 +178,6 @@ export const chatCommands: Record<string, ChatCommand> = {
 				messages: previous.messages.filter(m => m.id !== messageToUnsend.id),
 				selectedMessageIndex: undefined,
 			}));
-			// eslint-disable-next-line no-useless-return
 			return;
 		},
 	},
@@ -194,7 +191,6 @@ export const chatCommands: Record<string, ChatCommand> = {
 			const scrollAmount = Math.max(1, height * 0.75);
 			scrollViewRef.current.scrollTo(curr => curr - scrollAmount);
 
-			// eslint-disable-next-line no-useless-return
 			return;
 		},
 	},
@@ -209,7 +205,6 @@ export const chatCommands: Record<string, ChatCommand> = {
 
 			scrollViewRef.current.scrollTo(curr => curr + scrollAmount);
 
-			// eslint-disable-next-line no-useless-return
 			return;
 		},
 	},
@@ -222,7 +217,6 @@ export const chatCommands: Record<string, ChatCommand> = {
 
 			scrollViewRef.current.scrollToStart(false); // Don't load earlier messages
 
-			// eslint-disable-next-line no-useless-return
 			return;
 		},
 	},
@@ -235,7 +229,6 @@ export const chatCommands: Record<string, ChatCommand> = {
 
 			scrollViewRef.current.scrollToEnd(false); // Don't show scroll to bottom message
 
-			// eslint-disable-next-line no-useless-return
 			return;
 		},
 	},
