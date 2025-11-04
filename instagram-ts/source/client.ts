@@ -20,7 +20,11 @@ import {
 import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
 import type {Thread, Message, User} from './types/instagram.js';
-import {parseMessageItem, parseReactionEvent} from './utils/message-parser.js';
+import {
+	parseMessageItem,
+	parseReactionEvent,
+	parseSeenEvent,
+} from './utils/message-parser.js';
 import {createContextualLogger} from './utils/logger.js';
 
 export type LoginResult = {
@@ -437,7 +441,6 @@ export class InstagramClient extends EventEmitter {
 				oldest_cursor: cursor ?? '',
 			});
 			const items = await thread.items();
-
 			const messages = items
 				.map(item =>
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -454,6 +457,25 @@ export class InstagramClient extends EventEmitter {
 			};
 		} catch (error) {
 			this.logger.error('Failed to fetch messages', error);
+			throw error;
+		}
+	}
+
+	public async markItemAsSeen(threadId: string, itemId: string): Promise<void> {
+		if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
+			try {
+				await this.realtime.direct.markAsSeen({threadId, itemId});
+				return;
+			} catch {
+				this.logger.warn('MQTT mark as seen failed, falling back to API.');
+			}
+		}
+
+		// Fallback to API if MQTT not available, failed, or not ready
+		try {
+			await this.ig.entity.directThread(threadId).markItemSeen(itemId);
+		} catch (error) {
+			this.logger.error('Failed to mark item as seen', error);
 			throw error;
 		}
 	}
@@ -589,24 +611,34 @@ export class InstagramClient extends EventEmitter {
 						`Failed to parse realtime reaction event: ${JSON.stringify(wrapper)}`,
 					);
 				}
+			} else if (wrapper.delta_type === 'deltaNewMessage') {
+				// Handle regular message events
+				// ThreadId must exist otherwise it's not possible to identify where this event belongs
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const threadId =
+					wrapper?.message?.thread_id ?? wrapper?.message?.thread_v2_id;
+				if (!threadId) return;
 
-				return;
-			}
-
-			// Handle regular message events
-			// ThreadId must exist otherwise it's not possible to identify where this event belongs
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const threadId =
-				wrapper?.message?.thread_id ?? wrapper?.message?.thread_v2_id;
-			if (!threadId) return;
-
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			const parsedMessage = parseMessageItem(wrapper.message, threadId, {
-				userCache: this.userCache,
-				currentUserId: this.ig.state.cookieUserId,
-			});
-			if (parsedMessage) {
-				this.emit('message', parsedMessage);
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				const parsedMessage = parseMessageItem(wrapper.message, threadId, {
+					userCache: this.userCache,
+					currentUserId: this.ig.state.cookieUserId,
+				});
+				if (parsedMessage) {
+					this.emit('message', parsedMessage);
+				}
+			} else if (wrapper.delta_type === 'deltaReadReceipt') {
+				// Handle read receipt events
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				const seenData = parseSeenEvent(wrapper.message);
+				const currentUserId = this.ig.state.cookieUserId;
+				if (
+					seenData?.threadId &&
+					seenData?.userId &&
+					currentUserId !== seenData.userId
+				) {
+					this.emit('threadSeen', seenData);
+				}
 			}
 		});
 

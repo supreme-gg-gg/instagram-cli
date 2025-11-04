@@ -6,6 +6,7 @@ import type {
 	ChatState,
 	Message,
 	ReactionEvent,
+	SeenEvent,
 } from '../../types/instagram.js';
 import type {RealtimeStatus} from '../../client.js';
 import MessageList from '../components/message-list.js';
@@ -32,6 +33,7 @@ export default function ChatView() {
 		currentThread: undefined,
 		selectedMessageIndex: undefined,
 		isSelectionMode: false,
+		recipientAlreadyRead: false,
 	});
 	const [currentView, setCurrentView] = useState<'threads' | 'chat'>('threads');
 	const [realtimeStatus, setRealtimeStatus] =
@@ -107,11 +109,12 @@ export default function ChatView() {
 	useEffect(() => {
 		if (!client) return;
 
-		const handleMessage = (message: Message) => {
+		const handleMessage = async (message: Message) => {
 			if (message.threadId === chatState.currentThread?.id) {
 				setChatState(prev => ({
 					...prev,
 					messages: [...prev.messages, message],
+					recipientAlreadyRead: false,
 				}));
 
 				// If scrollview is at bottom, scroll to bottom on new messages
@@ -129,6 +132,9 @@ export default function ChatView() {
 						}, 100);
 					}
 				}
+
+				// Mark item as seen
+				await client.markItemAsSeen(chatState.currentThread.id, message.id);
 			}
 		};
 
@@ -138,6 +144,22 @@ export default function ChatView() {
 			client.off('message', handleMessage);
 		};
 	}, [client, chatState.currentThread?.id, height, messageAreaHeight]);
+
+	// Effect for threadseen events
+	useEffect(() => {
+		const handleThreadSeen = (seenEvent: SeenEvent) => {
+			// Only process seen events for the current thread
+			if (seenEvent.threadId === chatState.currentThread?.id) {
+				setChatState(previous => ({...previous, recipientAlreadyRead: true}));
+			}
+		};
+
+		client.on('threadSeen', handleThreadSeen);
+
+		return () => {
+			client.off('threadSeen', handleThreadSeen);
+		};
+	}, [client, chatState.currentThread?.id]);
 
 	// Effect for reaction events
 	useEffect(() => {
@@ -326,16 +348,25 @@ export default function ChatView() {
 			currentThread: thread,
 			loading: true,
 			messages: [],
+			recipientAlreadyRead: false,
 		}));
 
 		try {
 			const {messages, cursor} = await client.getMessages(thread.id);
+
 			setChatState(previous => ({
 				...previous,
 				messages,
 				loading: false,
 				messageCursor: cursor,
 			}));
+
+			// Mark thread as seen
+			const lastMessage = messages.at(-1);
+
+			if (lastMessage?.id) {
+				await client.markItemAsSeen(thread.id, lastMessage.id);
+			}
 		} catch (error) {
 			setChatState(previous => ({
 				...previous,
@@ -387,6 +418,9 @@ export default function ChatView() {
 						scrollViewRef.current.scrollToEnd(false);
 					}
 				}, 1000);
+
+				// Clear recipient read status on new message sent
+				setChatState(previous => ({...previous, recipientAlreadyRead: false}));
 
 				return () => {
 					clearTimeout(timeout);
@@ -476,6 +510,11 @@ export default function ChatView() {
 						<Text>Loading messages...</Text>
 					</Box>
 				)}
+				chatState.recipientAlreadyRead && (
+				<Box>
+					<Text dimColor>Seen just now</Text>
+				</Box>
+				)
 				<Box flexShrink={0} flexDirection="column">
 					{systemMessage && (
 						<Box marginTop={1}>
