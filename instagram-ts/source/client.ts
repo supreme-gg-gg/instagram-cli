@@ -611,8 +611,6 @@ export class InstagramClient extends EventEmitter {
 						`Failed to parse realtime reaction event: ${JSON.stringify(wrapper)}`,
 					);
 				}
-
-				return;
 			} else if (wrapper.delta_type === 'deltaNewMessage') {
 				// Handle regular message events
 				// ThreadId must exist otherwise it's not possible to identify where this event belongs
@@ -632,6 +630,8 @@ export class InstagramClient extends EventEmitter {
 			} else if (wrapper.delta_type === 'deltaReadReceipt') {
 				// Handle read receipt events
 				const seenData = parseSeenEvent(wrapper.message);
+
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				const currentUserId = this.ig.state.cookieUserId;
 				if (
 					seenData?.threadId &&

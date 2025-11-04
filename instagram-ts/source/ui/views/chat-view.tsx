@@ -110,7 +110,7 @@ export default function ChatView() {
 	useEffect(() => {
 		if (!client) return;
 
-		const handleMessage = (message: Message) => {
+		const handleMessage = async (message: Message) => {
 			if (message.threadId === chatState.currentThread?.id) {
 				setChatState(prev => ({
 					...prev,
@@ -135,7 +135,7 @@ export default function ChatView() {
 				}
 
 				// Mark item as seen
-				client.markItemAsSeen(chatState.currentThread.id, message.id);
+				await client.markItemAsSeen(chatState.currentThread.id, message.id);
 			}
 		};
 
@@ -154,6 +154,7 @@ export default function ChatView() {
 				setChatState(previous => ({...previous, recipientAlreadyRead: true}));
 			}
 		};
+
 		client.on('threadSeen', handleThreadSeen);
 
 		return () => {
@@ -362,7 +363,7 @@ export default function ChatView() {
 			}));
 
 			// Mark thread as seen
-			const lastMessage = messages[messages.length - 1];
+			const lastMessage = messages.at(messages.length - 1);
 
 			if (lastMessage?.id) {
 				await client.markItemAsSeen(thread.id, lastMessage.id);
@@ -511,11 +512,11 @@ export default function ChatView() {
 						<Text>Loading messages...</Text>
 					</Box>
 				)}
-				{chatState.recipientAlreadyRead && (
-					<Box>
-						<Text dimColor>{'Seen just now'}</Text>
-					</Box>
-				)}
+				chatState.recipientAlreadyRead && (
+				<Box>
+					<Text dimColor>{'Seen just now'}</Text>
+				</Box>
+				)
 				<Box flexShrink={0} flexDirection="column">
 					{systemMessage && (
 						<Box marginTop={1}>
