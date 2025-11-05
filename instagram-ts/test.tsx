@@ -3,6 +3,13 @@ import test, {type ExecutionContext} from 'ava';
 import {render} from 'ink-testing-library';
 import Index from './source/commands/index.js';
 import {AppMock} from './source/app.mock.js';
+import {mockThreads, mockMessages} from './source/mocks/mock-data.js';
+
+const delay = async (ms: number): Promise<void> => {
+	return new Promise(resolve => {
+		setTimeout(resolve, ms);
+	});
+};
 
 test('sanity check', (t: ExecutionContext) => {
 	const {lastFrame} = render(<Index />);
@@ -20,4 +27,29 @@ test('renders feed view', (t: ExecutionContext) => {
 	const {lastFrame} = render(<AppMock view="feed" />);
 
 	t.not(lastFrame(), undefined);
+});
+
+test('chat view displays messages when thread is selected', async (t: ExecutionContext) => {
+	const {lastFrame, stdin} = render(<AppMock view="chat" />);
+
+	await delay(500);
+
+	// Verify threads are displayed
+	let output = lastFrame();
+	t.truthy(output, 'Frame should render threads');
+	t.true(
+		output!.includes(mockThreads[0]!.title),
+		'Thread should be visible before selection',
+	);
+
+	// Select first thread by pressing Enter
+	stdin.write('\r');
+
+	await delay(500);
+
+	output = lastFrame();
+	t.truthy(output, 'Frame should render after thread selection');
+	const firstMessage = mockMessages[0]!;
+	const messageText = firstMessage.itemType === 'text' ? firstMessage.text : '';
+	t.true(output!.includes(messageText), 'First message should be visible');
 });
