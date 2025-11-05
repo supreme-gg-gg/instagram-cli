@@ -461,22 +461,25 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
-	public async markItemAsSeen(threadId: string, itemId: string): Promise<void> {
-		if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
-			try {
-				await this.realtime.direct.markAsSeen({threadId, itemId});
-				return;
-			} catch {
-				this.logger.warn('MQTT mark as seen failed, falling back to API.');
-			}
-		}
-
-		// Fallback to API if MQTT not available, failed, or not ready
+	public async markThreadAsSeen(
+		threadId: string,
+		itemId: string,
+	): Promise<void> {
 		try {
 			await this.ig.entity.directThread(threadId).markItemSeen(itemId);
 		} catch (error) {
 			this.logger.error('Failed to mark item as seen', error);
 			throw error;
+		}
+	}
+
+	public async markItemAsSeen(threadId: string, itemId: string): Promise<void> {
+		if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
+			try {
+				await this.realtime.direct.markAsSeen({threadId, itemId});
+			} catch {
+				this.logger.warn('MQTT mark as seen failed, falling back to API.');
+			}
 		}
 	}
 

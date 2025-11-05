@@ -365,7 +365,7 @@ export default function ChatView() {
 			const lastMessage = messages.at(-1);
 
 			if (lastMessage?.id) {
-				await client.markItemAsSeen(thread.id, lastMessage.id);
+				await client.markThreadAsSeen(thread.id, lastMessage.id);
 			}
 		} catch (error) {
 			setChatState(previous => ({
@@ -510,11 +510,11 @@ export default function ChatView() {
 						<Text>Loading messages...</Text>
 					</Box>
 				)}
-				chatState.recipientAlreadyRead && (
-				<Box>
-					<Text dimColor>Seen just now</Text>
-				</Box>
-				)
+				{chatState.recipientAlreadyRead && (
+					<Box>
+						<Text dimColor>Seen just now</Text>
+					</Box>
+				)}
 				<Box flexShrink={0} flexDirection="column">
 					{systemMessage && (
 						<Box marginTop={1}>
