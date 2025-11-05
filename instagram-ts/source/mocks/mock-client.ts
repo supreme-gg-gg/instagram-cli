@@ -244,9 +244,25 @@ class MockClient extends EventEmitter {
 		console.log(`Mock: Unsent message ${messageId} from thread ${threadId}`);
 	}
 
+	async markThreadAsSeen(threadId: string): Promise<void> {
+		// Simulate marking a thread as seen
+		await new Promise(resolve => {
+			setTimeout(resolve, 50);
+		});
+		console.log(`Mock: Marked thread ${threadId} as seen`);
+	}
+
+	async markItemAsSeen(threadId: string, itemId: string): Promise<void> {
+		// Simulate marking a message as seen
+		await new Promise(resolve => {
+			setTimeout(resolve, 50);
+		});
+		console.log(`Mock: Marked item ${itemId} as seen in thread ${threadId}`);
+	}
+
 	async getCurrentUser(): Promise<User | undefined> {
 		return {
-			pk: 'current_user',
+			pk: 'current_user_id',
 			username: 'mock_user',
 			fullName: 'Mock User',
 			profilePicUrl: 'https://via.placeholder.com/150',
