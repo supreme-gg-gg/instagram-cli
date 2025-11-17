@@ -1,4 +1,4 @@
-import {useEffect, type default as React} from 'react';
+import {useEffect, useCallback, type default as React} from 'react';
 import {useApp, useStdout} from 'ink';
 
 async function write(content: string, stdout: NodeJS.WriteStream) {
@@ -30,20 +30,20 @@ async function write(content: string, stdout: NodeJS.WriteStream) {
 function AltScreen(properties: {children: React.ReactNode}) {
 	const {exit} = useApp();
 	const {stdout} = useStdout();
-	const enterAltScreen = async () => {
+	const enterAltScreen = useCallback(async () => {
 		await write('\u001B[?1049h', stdout); // Enter alternate buffer
-	};
+	}, [stdout]);
 
-	const leaveAltScreen = async () => {
+	const leaveAltScreen = useCallback(async () => {
 		await write('\u001B[?1049l', stdout); // Exit alternate buffer
 		exit();
-	};
+	}, [exit, stdout]);
 
 	useEffect(() => {
 		return () => {
 			void leaveAltScreen();
 		};
-	}, [exit, stdout]);
+	}, [exit, enterAltScreen, leaveAltScreen]);
 
 	void enterAltScreen();
 	return properties.children;

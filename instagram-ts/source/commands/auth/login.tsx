@@ -7,6 +7,9 @@ import {type AccountRepositoryLoginErrorResponseTwoFactorInfo} from 'instagram-p
 import LoginForm from '../../ui/components/login-form.js';
 import {InstagramClient} from '../../client.js';
 import {ConfigManager} from '../../config.js';
+import {createContextualLogger} from '../../utils/logger.js';
+
+const logger = createContextualLogger('LoginCommand');
 
 export const options = zod.object({
 	username: zod
@@ -46,6 +49,7 @@ export default function Login({options}: Properties) {
 	const handleLoginSubmit = async (username: string, password: string) => {
 		if (!client) return;
 
+		logger.info(`Login attempt for user: ${username}`);
 		setMessage(`Logging in as @${username}...`);
 		try {
 			const result = await client.login(username, password, {
@@ -55,12 +59,14 @@ export default function Login({options}: Properties) {
 				setMessage(`Logged in as @${result.username}`);
 				setMode('success');
 			} else if (result.twoFactorInfo) {
+				logger.info('2FA required for login');
 				setTwoFactorInfo(result.twoFactorInfo);
 				const {totp_two_factor_on} = result.twoFactorInfo;
 				const verificationMethod = totp_two_factor_on ? 'TOTP' : 'SMS';
 				setMessage(`Enter code received via ${verificationMethod}`);
 				setMode('2fa');
 			} else if (result.checkpointError) {
+				logger.warn('Checkpoint challenge required');
 				setMessage('Challenge required. Requesting code...');
 				await client.startChallenge();
 				setMessage('A code has been sent to you. Please enter it below.');

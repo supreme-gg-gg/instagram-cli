@@ -45,6 +45,7 @@
 	],
 	"dependencies": {
 		"@inkjs/ui": "^2.0.0",
+		"debug": "^4.4.3",
 		"emoji-name-map": "^2.0.3",
 		"file-type": "^21.0.0",
 		"fuse.js": "^7.1.0",
@@ -70,6 +71,7 @@
 	},
 	"devDependencies": {
 		"@sindresorhus/tsconfig": "^3.0.1",
+		"@types/debug": "^4.1.12",
 		"@types/js-yaml": "^4.0.9",
 		"@types/react": "^19.2.0",
 		"@vdemedes/prettier-config": "^2.0.1",

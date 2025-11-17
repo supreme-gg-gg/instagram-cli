@@ -51,7 +51,7 @@ export default function Notify({args}: Properties) {
 		};
 
 		void fetchNotifications();
-	}, [client]);
+	}, [client, logger]);
 
 	if (isLoading || !notifications) {
 		return <Alert variant="info">Fetching Instagram notifications...</Alert>;

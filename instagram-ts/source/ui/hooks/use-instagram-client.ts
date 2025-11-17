@@ -2,6 +2,9 @@ import {useState, useEffect} from 'react';
 import {InstagramClient} from '../../client.js';
 import {ConfigManager} from '../../config.js';
 import {SessionManager} from '../../session.js';
+import {createContextualLogger} from '../../utils/logger.js';
+
+const logger = createContextualLogger('useInstagramClient');
 
 type UseInstagramClientResult = {
 	client: InstagramClient | undefined;
@@ -24,6 +27,7 @@ export function useInstagramClient(
 	useEffect(() => {
 		const initializeClient = async () => {
 			try {
+				logger.info('Initializing Instagram client');
 				const config = ConfigManager.getInstance();
 				await config.initialize();
 
@@ -42,6 +46,7 @@ export function useInstagramClient(
 
 				const sessionManager = new SessionManager(targetUsername);
 				const sessionExists = await sessionManager.sessionExists();
+				logger.debug(`Session exists for ${targetUsername}: ${sessionExists}`);
 
 				if (!sessionExists) {
 					setError(
@@ -75,7 +80,9 @@ export function useInstagramClient(
 
 				setClient(instagramClient);
 				setIsLoading(false);
+				logger.info(`Client initialized successfully for ${targetUsername}`);
 			} catch (error_) {
+				logger.error('Failed to initialize client', error_);
 				setError(
 					`Failed to initialize Instagram client: ${
 						error_ instanceof Error ? error_.message : String(error_)

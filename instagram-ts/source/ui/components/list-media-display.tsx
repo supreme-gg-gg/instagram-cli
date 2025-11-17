@@ -46,9 +46,8 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 			if (imageUrl) {
 				try {
 					await open(imageUrl);
-				} catch {
-					// TODO: change this when logging is implemented
-					// logger.error('Failed to open image URL:', error);
+				} catch (error) {
+					logger.error('Failed to open image URL:', error);
 				}
 			} else {
 				logger.error('No image URL available for this item.');
@@ -59,9 +58,8 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 			if (videoUrl) {
 				try {
 					await open(videoUrl);
-				} catch {
-					// TODO: change this when logging is implemented
-					// logger.error('Failed to open video URL:', error);
+				} catch (error) {
+					logger.error('Failed to open video URL:', error);
 				}
 			} else {
 				logger.error('No video URL available for this item.');
@@ -76,9 +74,8 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 				if (carouselUrl) {
 					try {
 						await open(carouselUrl);
-					} catch {
-						// TODO: change this when logging is implemented
-						// logger.error('Failed to open carousel item URL:', error);
+					} catch (error) {
+						logger.error('Failed to open carousel item URL:', error);
 					}
 				}
 			}
