@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import process from 'node:process';
+import nodeUtil from 'node:util';
+import debugModule from 'debug';
 
 type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
@@ -18,6 +21,7 @@ class Logger {
 	private readonly sessionId: string;
 	private readonly logBuffer: LogEntry[] = [];
 	private isInitialized = false;
+	private debugHookInstalled = false;
 
 	constructor() {
 		this.logsDir = path.join(os.homedir(), '.instagram-cli', 'logs');
@@ -33,6 +37,12 @@ class Logger {
 		try {
 			await fs.promises.mkdir(this.logsDir, {recursive: true});
 			this.isInitialized = true;
+
+			// Install debug library hook to redirect output to log file
+			this.installDebugHook();
+
+			// Log initialization
+			this.info('Logger initialized', 'Logger');
 		} catch (error) {
 			// Fallback: if we can't create logs dir, at least warn to console
 			console.error(
@@ -91,6 +101,47 @@ class Logger {
 	async flush(): Promise<void> {
 		// All writes are already async, so this is mainly for cleanup
 		// Can be used to ensure all pending writes are complete
+	}
+
+	/**
+	 * Installs a hook to redirect debug library output to the log file.
+	 * This ensures that API logs from instagram-private-api are captured.
+	 */
+	private installDebugHook(): void {
+		if (this.debugHookInstalled) {
+			return;
+		}
+
+		try {
+			// Override the debug library's log function to write to our log file
+			// instead of stderr. This captures all debug output including ig:* namespaces
+			debugModule.log = (...args: any[]) => {
+				this.debug(
+					nodeUtil.formatWithOptions(
+						// @ts-expect-error Monkey patching
+						debugModule.inspectOpts,
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+						...args,
+					) + '\n',
+				);
+			};
+
+			// Enable debug output for instagram API if DEBUG env var is set
+			// Or enable it by default for better logging coverage
+			const debugEnv = process.env['DEBUG'];
+			if (debugEnv) {
+				debugModule.enable(debugEnv);
+			} else {
+				// Enable all ig:* namespaces by default for comprehensive API logging
+				debugModule.enable('ig:*');
+			}
+
+			this.debugHookInstalled = true;
+		} catch {
+			// If debug module is not available, just continue without it
+			// This is a graceful fallback
+			this.warn('Failed to install debug hook, API logging disabled', 'Logger');
+		}
 	}
 
 	private generateSessionId(): string {

@@ -2,7 +2,9 @@
 
 ## Overview
 
-All errors, warnings, and important messages in the Instagram CLI are now logged to files instead of being written to console. This is necessary because the CLI controls stdout/stdin for the terminal UI.
+All errors, warnings, and important messages in the Instagram CLI are logged to files instead of being written to console. This is necessary because the CLI controls stdout/stdin for the terminal UI.
+
+The logging system also **automatically captures all API network requests** made by the `instagram-private-api` library by integrating with the `debug` library, providing comprehensive visibility into both application logic and Instagram API interactions.
 
 ## Log Location
 
@@ -18,21 +20,61 @@ Each log entry contains:
 
 - **Timestamp**: ISO format (e.g., `2025-10-18T14:30:45`)
 - **Log Level**: `ERROR`, `WARN`, `INFO`, or `DEBUG`
-- **Context**: The module/function where the error occurred (e.g., `[InstagramClient]`)
-- **Message**: Human-readable error message
+- **Context**: The module/function where the log originated (e.g., `[InstagramClient]`, `[ig-api]`)
+- **Message**: Human-readable log message
 - **Stack trace** (for errors only): Full error stack trace for debugging
+
+### Log Contexts
+
+- **Application logs**: Context names like `InstagramClient`, `SessionManager`, `LoginCommand`, etc.
+- **API logs**: Context `[ig-api]` for all network requests made by `instagram-private-api`
 
 Example log file content:
 
 ```log
-2025-10-18T14:30:45.123Z ERROR [InstagramClient]: Failed to fetch threads
+2025-10-18T14:30:45.123Z INFO [Logger]: Logger initialized
+2025-10-18T14:30:45.234Z INFO [useInstagramClient]: Initializing Instagram client
+2025-10-18T14:30:45.345Z DEBUG [ig-api]: ig:http POST https://i.instagram.com/api/v1/direct_v2/threads/
+2025-10-18T14:30:45.456Z ERROR [InstagramClient]: Failed to fetch threads
 Error: Network timeout
     at InstagramClient.getThreads
     ...
 
 2025-10-18T14:30:50.456Z WARN [InstagramClient]: MQTT sendMessage failed
-2025-10-18T14:30:55.789Z INFO [AuthFlow]: User logged in successfully
+2025-10-18T14:30:55.789Z INFO [LoginCommand]: Login successful for user: example_user
 ```
+
+## Instagram API Logging
+
+The logging system automatically integrates with the `debug` library used by `instagram-private-api` to capture all network requests and API interactions.
+
+### How It Works
+
+1. By default, all API logs (namespace `ig:*`) are enabled automatically
+2. API logs are redirected from stderr to the log file
+3. You can still use the `DEBUG` environment variable to customize which namespaces are logged
+
+### Customizing API Logging
+
+To enable only specific debug namespaces:
+
+```bash
+DEBUG=ig:http instagram-cli chat
+```
+
+To disable API logging entirely:
+
+```bash
+DEBUG= instagram-cli chat
+```
+
+To enable all debug output including other libraries:
+
+```bash
+DEBUG=* instagram-cli chat
+```
+
+**Note**: By default, if `DEBUG` is not set, the logger enables `ig:*` automatically to provide comprehensive API logging.
 
 ## Using the Logger in Code
 
@@ -132,6 +174,8 @@ ls ~/.instagram-cli/logs/session-2025-10-18_*.log
    - `warn`: Fallbacks, retries, or degraded functionality
    - `info`: Important state changes or user actions
    - `debug`: Detailed execution flow (for debugging)
+4. **Review logs regularly**: Check logs when debugging issues or investigating unexpected behavior
+5. **API logging**: The `ig-api` context logs are automatically enabled and provide detailed network request information
 
 ## Example
 

@@ -4,6 +4,9 @@ import {fileTypeFromFile} from 'file-type';
 import type {InstagramClient} from '../client.js';
 import {resolveUserPath} from './path-utils.js';
 import {getEmojiByName} from './emoji.js';
+import {createContextualLogger} from './logger.js';
+
+const logger = createContextualLogger('preprocessMessage');
 
 type PreprocessContext = {
 	readonly client: InstagramClient;
@@ -47,11 +50,15 @@ export async function preprocessMessage(
 		try {
 			// eslint-disable-next-line no-await-in-loop
 			const fileType = await fileTypeFromFile(absolutePath);
+			logger.debug(
+				`Processing file: ${absolutePath}, type: ${fileType?.mime ?? 'text'}`,
+			);
 
 			if (fileType?.mime.startsWith('image/')) {
 				// It's an image, upload it and remove the tag from the text
 				// eslint-disable-next-line no-await-in-loop
 				await context.client.sendPhoto(context.threadId, absolutePath);
+				logger.info(`Uploaded image: ${path.basename(absolutePath)}`);
 				processedText = processedText.replace(match[0], ''); // Remove the #<path> part
 			} else {
 				// Assume it could be a text file if not identified as a known binary type that isn't an image.
@@ -71,10 +78,14 @@ export async function preprocessMessage(
 					absolutePath,
 				)} ---\n${content}`;
 				textContents.push(formattedContent);
+				logger.info(`Embedded text file: ${path.basename(absolutePath)}`);
 			}
-		} catch {
+		} catch (error) {
 			// If any file operation fails (e.g., file not found, permission denied),
 			// leave the @<path> in the message as-is for the user to see the error.
+			logger.warn(
+				`Failed to process file ${absolutePath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			);
 		}
 	}
 

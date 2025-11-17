@@ -2,6 +2,9 @@ import type {InstagramClient} from '../client.js';
 import type {ChatState} from '../types/instagram.js';
 import type {ScrollViewRef} from '../ui/components/scroll-view.js';
 import {preprocessMessage} from './preprocess.js';
+import {createContextualLogger} from './logger.js';
+
+const logger = createContextualLogger('ChatCommands');
 
 export type ChatCommandContext = {
 	readonly client: InstagramClient;
@@ -261,6 +264,7 @@ export async function parseAndDispatchChatCommand(
 	let systemMessage: string | undefined;
 
 	if (command) {
+		logger.debug(`Executing chat command: ${cmd}`);
 		try {
 			const result = await command.handler(arguments_, context);
 			if (typeof result === 'string') {
@@ -269,6 +273,7 @@ export async function parseAndDispatchChatCommand(
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : 'An unknown error occurred';
+			logger.error(`Command :${cmd} failed: ${errorMessage}`, error);
 			systemMessage = `Error in command :${cmd}: ${errorMessage}`;
 		}
 	} else {
