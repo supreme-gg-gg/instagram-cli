@@ -423,7 +423,8 @@ export class InstagramClient extends EventEmitter {
 				users: this.getThreadUsers(thread),
 				lastMessage: this.getLastMessage(thread),
 				lastActivity: new Date(Number(thread.last_activity_at) / 1000),
-				unread: Boolean(thread.has_newer),
+				// This field is not documented but appears to indicate unread status
+				unread: (thread as any).read_state === 1,
 			}));
 		} catch (error) {
 			this.logger.error('Failed to fetch threads', error);

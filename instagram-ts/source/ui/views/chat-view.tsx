@@ -110,6 +110,7 @@ export default function ChatView() {
 		if (!client) return;
 
 		const handleMessage = async (message: Message) => {
+			// for current thread, append to message list and handle view changes
 			if (message.threadId === chatState.currentThread?.id) {
 				setChatState(prev => ({
 					...prev,
@@ -135,7 +136,44 @@ export default function ChatView() {
 
 				// Mark item as seen
 				await client.markItemAsSeen(chatState.currentThread.id, message.id);
+				return;
 			}
+
+			// if not current thread, update the global thread list to 1. show unread status 2. update last message preview
+			setChatState(prev => {
+				const threadIndex = prev.threads.findIndex(
+					thread => thread.id === message.threadId,
+				);
+				if (threadIndex === -1) {
+					return prev; // Thread not found, no update
+				}
+
+				const updatedThreads = [...prev.threads];
+				const threadToUpdate = updatedThreads[threadIndex]!;
+
+				// Update last message and unread status
+				const updatedThread = {
+					...threadToUpdate,
+					lastActivity: message.timestamp,
+					lastMessage: message,
+					unread: true,
+				};
+
+				updatedThreads[threadIndex] = updatedThread;
+
+				// Move the updated thread to the top of the list
+				// This is more efficient than sorting the entire list
+				updatedThreads.splice(threadIndex, 1);
+				updatedThreads.unshift(updatedThread);
+
+				// Show notification for background message
+				setSystemMessage('Someone else sent you a message!');
+
+				return {
+					...prev,
+					threads: updatedThreads,
+				};
+			});
 		};
 
 		client.on('message', handleMessage);
@@ -225,6 +263,7 @@ export default function ChatView() {
 			}
 
 			try {
+				// polling always fetches messages in current thread
 				const {messages: latestMessages} = await client.getMessages(
 					chatState.currentThread.id,
 				);
@@ -365,6 +404,8 @@ export default function ChatView() {
 			const lastMessage = messages.at(-1);
 
 			if (lastMessage?.id) {
+				// Mark as read in local and remote states
+				thread.unread = false;
 				await client.markThreadAsSeen(thread.id, lastMessage.id);
 			}
 		} catch (error) {
