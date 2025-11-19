@@ -24,12 +24,13 @@ type Properties = {
 	readonly args: zod.infer<typeof args>;
 };
 
+const logger = createContextualLogger('NotifyView');
+
 export default function Notify({args}: Properties) {
 	const {client, isLoading, error} = useInstagramClient(args[0]);
 	const [notifications, setNotifications] = React.useState<
 		NewsRepositoryInboxResponseRootObject | undefined
 	>(undefined);
-	const logger = createContextualLogger('NotifyView');
 
 	React.useEffect(() => {
 		const fetchNotifications = async () => {
@@ -51,7 +52,7 @@ export default function Notify({args}: Properties) {
 		};
 
 		void fetchNotifications();
-	}, [client, logger]);
+	}, [client]);
 
 	if (isLoading || !notifications) {
 		return <Alert variant="info">Fetching Instagram notifications...</Alert>;

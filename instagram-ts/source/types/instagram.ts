@@ -158,8 +158,35 @@ export type FeedInstance = {
 	posts: Post[];
 };
 
+export type Story = {
+	id: string;
+	user: {
+		pk: number;
+		username: string;
+		profilePicUrl?: string;
+	};
+	caption?: {
+		text: string;
+	};
+	image_versions2?: {
+		candidates: MediaCandidate[];
+	};
+	video_versions?: Array<{
+		url: string;
+		width: number;
+		height: number;
+	}>;
+	taken_at: number;
+	media_type: number; // 1 for image, 2 for video
+};
+
 export type MediaCandidate = {
 	url: string;
 	width: number;
 	height: number;
+};
+
+export type StoryReel = {
+	user: Story['user'];
+	stories: Story[];
 };

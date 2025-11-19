@@ -271,6 +271,15 @@ export function parseMessageItem(
 		}
 
 		default: {
+			// clip seems to be a new type that is not documented and is the same as brainrot / reels
+			if ((item.item_type as any) === 'clip') {
+				return {
+					...baseMessage,
+					itemType: 'placeholder',
+					text: `[Instagram CLI successfully blocked a brainrot]`,
+				};
+			}
+
 			return {
 				...baseMessage,
 				itemType: 'placeholder',

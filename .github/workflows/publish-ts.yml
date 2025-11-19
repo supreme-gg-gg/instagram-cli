@@ -1,6 +1,6 @@
 # This workflow will publish the TypeScript package to NPM when a tag matching ts-v*.*.* is pushed
 
-name: Build and Publish TypeScript Package to NPM
+name: Build and Publish TypeScript Package
 
 on:
   push:

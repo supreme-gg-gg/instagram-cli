@@ -20,6 +20,8 @@ Run the mock app:
 ```bash
 npm run build
 npm run start:mock  # this will run cli.mock.js instead of cli.js
+npm run start:mock -- --feed  # to test the media feed view
+npm run start:mock -- --story  # to test the story view
 ```
 
 ### Manual View Testing

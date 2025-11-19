@@ -2,7 +2,7 @@ import React from 'react';
 import test, {type ExecutionContext} from 'ava';
 import {render} from 'ink-testing-library';
 import Index from './source/commands/index.js';
-import {AppMock} from './source/app.mock.js';
+import {AppMock} from './source/mocks/app.mock.js';
 import {mockThreads, mockMessages} from './source/mocks/mock-data.js';
 
 const delay = async (ms: number): Promise<void> => {
@@ -29,10 +29,16 @@ test('renders feed view', (t: ExecutionContext) => {
 	t.not(lastFrame(), undefined);
 });
 
+test('renders stories view', (t: ExecutionContext) => {
+	const {lastFrame} = render(<AppMock view="story" />);
+
+	t.not(lastFrame(), undefined);
+});
+
 test('chat view displays messages when thread is selected', async (t: ExecutionContext) => {
 	const {lastFrame, stdin} = render(<AppMock view="chat" />);
 
-	await delay(500);
+	await delay(1000);
 
 	// Verify threads are displayed
 	let output = lastFrame();

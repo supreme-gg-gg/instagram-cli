@@ -21,12 +21,12 @@ https://github.com/user-attachments/assets/3dd65afe-b0d7-4554-9b3c-1e37111ae27d
 
 ## What does it do?
 
-- We transform Instagram from a brainrot hell into productivity tool
-- We allow you to focus on meaningful conversations
-- We celebrate the art and simplicity of **terminal UI (TUI)**
+Empower yourself to become a 10x Instagrammer by minimizing distractions, enabling 100% keyboard control, and accessing it from any terminal — whether in your VSCode editor or your Linux server.
 
-> [!TIP]
-> Use Instagram with 100% keyboard control - no mouse clicks or touchscreen taps needed! Perfect for developers and Linux users who love staying on the keyboard 🤣
+- Chat with your friends without falling into endless brainrot
+- Stay updated & connected without being exploited for your attention
+- Focus on meaningful conversations and be productive
+- Celebrate the art and simplicity of **terminal UI (TUI)**
 
 ## Typescript Client
 
@@ -41,7 +41,7 @@ For other installation methods, please refer to the [TypeScript Client Documenta
 ### Key Features
 
 - Full support for Windows, Linux, and macOS, modern React-based UI
-- Developer-friendly shortcuts, viewing feed and chatting, in-terminal image rendering
+- Developer-friendly shortcuts, viewing feed and stories, in-terminal image rendering
 - Leverages realtime MQTT-based protocol used by Instagram app for instant notifications and chat
 - Highly performant and much faster than your GUI browser or touchscreen app
 - Works well in all terminal emulators, **including VSCode Integrated Terminal**
@@ -49,8 +49,6 @@ For other installation methods, please refer to the [TypeScript Client Documenta
 ## Python Client
 
 > The Python client is the original implementation of `instagram-cli`.
-
-The simplest way to get started is to install the package from PyPI if you have Python installed:
 
 ```bash
 pip install instagram-cli
@@ -85,6 +83,7 @@ instagram-cli auth whoami                      # display current default user
 # Core features
 instagram-cli chat                             # start chat interface
 instagram-cli feed                             # view posts from people you follow
+instagram-cli stories                          # view stories from people you follow
 instagram-cli notify                           # view notifications (inbox, followers, mentions)
 
 # Modify configuration
@@ -95,7 +94,7 @@ instagram-cli config edit                      # open config file in editor
 
 > [!TIP]
 > You can easily manage multiple accounts with Instagram CLI!
-> Your login for each account will be saved **locally** and you can switch between them or run a certain command with a specific account using the `--username` flag.
+> Your login for each account will be saved **locally** and you can switch between them using the `instagram-cli auth switch <username>` command or run a certain command with a specific account using the `--username` flag.
 
 ## Chat Commands
 
@@ -137,8 +136,12 @@ You can view and modify configuration with `instagram-cli config`. The configura
 
 ## Contributing
 
-We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to get started, create issues, and submit pull requests. It is very important that you follow these instructions because we manage two different clients in the same repository.
+We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to get started, create issues, and submit pull requests. It is very important that you follow these instructions because we manage two different clients in the same repository. _Instagram CLI is NOT meant to be used for bot-behaviours, we will not accept contributions that add such features._
 
 ### Commitment to Open Source
 
 Maintainers behind `instagram-cli` are committed to contributing to the open source community behind frameworks that empower terminal applications, such as `ink`. This includes direct contributions and our sister projects -- [Ink Picture, Ink-native image component](https://github.com/endernoke/ink-picture) and [Wax, Ink routing framework](https://github.com/endernoke/wax).
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=supreme-gg-gg/instagram-cli&type=date&legend=top-left)](https://www.star-history.com/#supreme-gg-gg/instagram-cli&type=date&legend=top-left)

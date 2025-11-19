@@ -20,4 +20,10 @@ const app = new Pastel({
 	description: package_?.packageJson.description,
 });
 
-await app.run();
+try {
+	await app.run();
+} catch (error: unknown) {
+	console.error(error);
+	// eslint-disable-next-line n/prefer-global/process
+	process.exit(1);
+}

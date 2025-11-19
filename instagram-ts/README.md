@@ -1,6 +1,6 @@
 # Instagram CLI
 
-Welcome to the TypeScript client of the Instagram CLI project. The Typescript client is a successor to the original Python client, built with a modern React-based UI using [Ink](https://github.com/vadimdemedes/ink), with features like image rendering in terminal, checking feed, and using Instagram's native [MQTT protocol](https://mqtt.org/) for messaging to significantly reduce latency and account flags.
+Welcome to the TypeScript client of the Instagram CLI project. The Typescript client is a successor to the original Python client, built with a modern React-based UI using [Ink](https://github.com/vadimdemedes/ink), with features like image rendering in terminal, checking feed and stories, and using Instagram's native [MQTT protocol](https://mqtt.org/) for messaging to significantly reduce latency and account flags.
 
 Full documentation with demo video is [on our GitHub](https://github.com/supreme-gg-gg/instagram-cli).
 
@@ -10,7 +10,7 @@ Full documentation with demo video is [on our GitHub](https://github.com/supreme
 ## Key Features
 
 - Full support for Windows, Linux, and macOS, with modern React-based UI
-- Developer-friendly shortcuts, viewing feed and chatting, in-terminal image rendering
+- Developer-friendly shortcuts, viewing feed, stories, and chatting, in-terminal image rendering
 - Leverages realtime MQTT-based protocol used by Instagram app for instant notifications and chat
 - Highly performant and much faster than your GUI browser or touchscreen app
 - Works well in all terminal emulators, **including VSCode Integrated Terminal**
@@ -38,6 +38,7 @@ instagram-cli auth logout                      # logout and removes session
 # Core features
 instagram-cli chat                             # start chat interface
 instagram-cli feed                             # view posts from people you follow
+instagram-cli stories                          # view stories from people you follow
 instagram-cli notify                           # view notifications (inbox, followers, mentions)
 
 # Modify configuration
