@@ -694,7 +694,7 @@ export class InstagramClient extends EventEmitter {
 	 * Marks a batch of stories as seen.
 	 * @param stories - An array of story items from the same user to be marked as seen.
 	 */
-	public async markStoryAsSeen(stories: Story[]): Promise<void> {
+	public async markStoriesAsSeen(stories: Story[]): Promise<void> {
 		if (stories.length === 0) {
 			return;
 		}

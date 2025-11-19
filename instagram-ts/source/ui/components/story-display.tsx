@@ -82,6 +82,7 @@ export default function StoryDisplay({
 	const [searchQuery, setSearchQuery] = useState('');
 	const [searchError, setSearchError] = useState<string | undefined>();
 	const [combinedReels, setCombinedReels] = useState<StoryReel[]>(initialReels);
+	const [seenStories, setSeenStories] = useState(new Set<string>());
 
 	const {exit} = useApp();
 	const {stdout} = useStdout();
@@ -102,6 +103,22 @@ export default function StoryDisplay({
 			}
 		}
 	}, [selectedIndex, combinedReels, loadMore]);
+
+	useEffect(() => {
+		if (currentStory && client && !seenStories.has(currentStory.id)) {
+			const markSeen = async () => {
+				try {
+					await client.markStoriesAsSeen([currentStory]);
+					setSeenStories(prev => new Set(prev).add(currentStory.id));
+					logger.debug(`Marked story ${currentStory.id} as seen.`);
+				} catch (error) {
+					logger.error('Failed to mark story as seen:', error);
+				}
+			};
+
+			void markSeen();
+		}
+	}, [currentStory, client, seenStories]);
 
 	// Helper function to get current image based on selection
 	const getCurrentImage = (story: Story): MediaCandidate | undefined => {
