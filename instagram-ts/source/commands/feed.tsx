@@ -23,12 +23,13 @@ type Properties = {
 	readonly args: zod.infer<typeof args>;
 };
 
+const logger = createContextualLogger('FeedCommand');
+
 export default function Feed({args}: Properties) {
 	const {client, isLoading, error} = useInstagramClient(args[0], {
 		realtime: false,
 	});
 	const [feed, setFeed] = React.useState<FeedInstance>({posts: []});
-	const logger = createContextualLogger('FeedCommand');
 
 	React.useEffect(() => {
 		const fetchFeed = async () => {
@@ -57,7 +58,7 @@ export default function Feed({args}: Properties) {
 		};
 
 		void fetchFeed();
-	}, [client, logger]);
+	}, [client]);
 
 	if (isLoading) {
 		return <Alert variant="info">Fetching Instagram feed...</Alert>;

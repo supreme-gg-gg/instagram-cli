@@ -16,13 +16,13 @@ type Properties = {
 	readonly protocol?: ImageProtocolName;
 };
 
+const logger = createContextualLogger('ListMediaView');
+
 export default function ListMediaDisplay({feed, protocol}: Properties) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
 	const {exit} = useApp();
 	const {stdout} = useStdout();
-
-	const logger = createContextualLogger('ListMediaView');
 
 	const posts = feed.posts || [];
 
