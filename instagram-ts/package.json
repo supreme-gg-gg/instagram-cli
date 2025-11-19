@@ -32,10 +32,11 @@
 	"scripts": {
 		"format": "prettier --write .",
 		"build": "tsc",
+		"clean": "rm -rf dist",
 		"lint-check": "prettier --check . && xo",
 		"dev": "tsc --watch",
 		"start": "node dist/cli.js",
-		"start:mock": "node dist/cli.mock.js",
+		"start:mock": "node dist/mocks/cli.mock.js",
 		"pretest": "tsc",
 		"test": "prettier --check . && xo && ava",
 		"postinstall": "patch-package"

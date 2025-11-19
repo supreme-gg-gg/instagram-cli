@@ -1,11 +1,18 @@
 import {EventEmitter} from 'node:events';
 import type {InstagramClient, LoginResult, RealtimeStatus} from '../client.js';
-import type {Thread, Message, User} from '../types/instagram.js';
+import type {
+	Thread,
+	Message,
+	User,
+	Story,
+	StoryReel,
+} from '../types/instagram.js';
 import {
 	mockThreads,
 	mockMessages,
 	generateThread,
 	mockUsers,
+	mockStories,
 } from './mock-data.js';
 
 // eslint-disable-next-line unicorn/prefer-event-target
@@ -268,6 +275,66 @@ class MockClient extends EventEmitter {
 			profilePicUrl: 'https://via.placeholder.com/150',
 			isVerified: false,
 		};
+	}
+
+	async getReelsTray(): Promise<StoryReel[]> {
+		// Simulate network delay
+		await new Promise(resolve => {
+			setTimeout(resolve, 100);
+		});
+
+		const usersWithStories = new Map<number, User>();
+		for (const story of mockStories) {
+			if (story.user && !usersWithStories.has(story.user.pk)) {
+				usersWithStories.set(story.user.pk, story.user as unknown as User);
+			}
+		}
+
+		return [...usersWithStories.values()].map(user => ({
+			user: {
+				...user,
+				pk: typeof user.pk === 'string' ? Number(user.pk) : user.pk,
+			},
+			stories: [],
+		}));
+	}
+
+	async getStoriesForUser(
+		userId?: number | string,
+		username?: string,
+	): Promise<Story[]> {
+		// Find all stories for the given user
+		let userStories: Story[] = [];
+		if (username) {
+			userStories = mockStories.filter(story => {
+				return story.user?.username === username;
+			});
+		} else if (userId) {
+			const userIdNum = typeof userId === 'string' ? Number(userId) : userId;
+			userStories = mockStories.filter(story => {
+				return story.user?.pk === userIdNum;
+			});
+		}
+
+		// Simulate network delay
+		await new Promise(resolve => {
+			setTimeout(resolve, 50);
+		});
+
+		return userStories;
+	}
+
+	async markStoryAsSeen(stories: Story[]): Promise<void> {
+		// Simulate marking stories as seen
+		await new Promise(resolve => {
+			setTimeout(resolve, 50);
+		});
+		const username = stories[0]?.user?.username;
+		if (username) {
+			console.log(
+				`Mock: Marked ${stories.length} stories as seen for user ${username}`,
+			);
+		}
 	}
 
 	// Login methods

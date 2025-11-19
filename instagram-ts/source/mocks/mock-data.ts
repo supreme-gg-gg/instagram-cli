@@ -5,6 +5,7 @@ import type {
 	Post,
 	FeedInstance,
 	Reaction,
+	Story,
 } from '../types/instagram.js';
 
 // Mock users
@@ -314,6 +315,152 @@ export const mockEmojis = [
 	'🎊',
 	'💕',
 	'🌟',
+];
+
+// Mock stories grouped by user for generator pattern testing
+const storyImages: string[] = [
+	'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
+	'https://www.math.hkust.edu.hk/~masyleung/Teaching/CAS/MATLAB/image/images/cameraman.jpg',
+	'https://upload.wikimedia.org/wikipedia/en/thumb/7/7d/Lenna_%28test_image%29.png/500px-Lenna_%28test_image%29.png',
+];
+
+export const mockStories: Story[] = [
+	// Alice's stories
+	{
+		id: 'story1',
+		user: {
+			pk: 1001,
+			username: 'alice_smith',
+			profilePicUrl: storyImages[0]!,
+		},
+		caption: {
+			text: 'Morning vibes ☀️',
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[0]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: Date.now() - 60_000 * 60 * 1,
+		media_type: 1,
+	},
+	{
+		id: 'story1b',
+		user: {
+			pk: 1001,
+			username: 'alice_smith',
+			profilePicUrl: storyImages[0]!,
+		},
+		caption: {
+			text: 'Afternoon walk 🚶',
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[0]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: Date.now() - 60_000 * 30,
+		media_type: 1,
+	},
+	// Bob's stories
+	{
+		id: 'story2',
+		user: {
+			pk: 1002,
+			username: 'bob_johnson',
+			profilePicUrl: storyImages[1]!,
+		},
+		caption: {
+			text: 'Coding session 💻',
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[1]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: Date.now() - 60_000 * 60 * 2,
+		media_type: 1,
+	},
+	// Charlie's stories
+	{
+		id: 'story3',
+		user: {
+			pk: 1003,
+			username: 'charlie_brown',
+			profilePicUrl: storyImages[2]!,
+		},
+		caption: {
+			text: 'Coffee break ☕',
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[2]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: Date.now() - 60_000 * 90,
+		media_type: 1,
+	},
+	// Diana's stories
+	{
+		id: 'story4',
+		user: {
+			pk: 1004,
+			username: 'diana_prince',
+			profilePicUrl: storyImages[0]!,
+		},
+		caption: {
+			text: 'Weekend plans 🎉',
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[0]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: Date.now() - 60_000 * 120,
+		media_type: 1,
+	},
+	{
+		id: 'story4b',
+		user: {
+			pk: 1004,
+			username: 'diana_prince',
+			profilePicUrl: storyImages[0]!,
+		},
+		caption: {
+			text: 'Fun times 😄',
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[0]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: Date.now() - 60_000 * 100,
+		media_type: 1,
+	},
 ];
 
 // Helper functions to generate more data
