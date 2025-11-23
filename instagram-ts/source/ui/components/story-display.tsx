@@ -286,7 +286,6 @@ export default function StoryDisplay({
 							)}
 
 							{(() => {
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 								const mentions: ReelMention[] =
 									currentStory?.reel_mentions ?? [];
 
