@@ -29,7 +29,6 @@ export default function registerProperties(
 	);
 
 	if (newKeys.length > 0) {
-		console.log(`New properties found: ${newKeys.join(', ')}`);
 		registeredProperties.push(...newKeys);
 		fs.writeFileSync(filePath, JSON.stringify(registeredProperties, null, 2));
 	}

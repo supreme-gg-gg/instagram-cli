@@ -897,8 +897,20 @@ export class InstagramClient extends EventEmitter {
 				username: item.user.username,
 				profilePicUrl: item.user.profile_pic_url,
 			},
-			// Note: caption is often null in the API response and may need to be removed
-			caption: item.caption ? {text: item.caption} : undefined,
+			// We validated that this field exists on the returned object
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+			reel_mentions: (item as any).reel_mentions?.map((mention: any) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const {user} = mention;
+				return {
+					user: {
+						pk: user.pk as number,
+						username: user.username as string,
+						full_name: user.full_name as string,
+						profile_pic_url: user.profile_pic_url as string,
+					},
+				};
+			}),
 			image_versions2: item.image_versions2,
 			video_versions: item.video_versions,
 		};

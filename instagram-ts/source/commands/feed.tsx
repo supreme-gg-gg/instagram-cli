@@ -30,6 +30,7 @@ export default function Feed({args}: Properties) {
 		realtime: false,
 	});
 	const [feed, setFeed] = React.useState<FeedInstance>({posts: []});
+	const [feedError, setFeedError] = React.useState<string | undefined>();
 
 	React.useEffect(() => {
 		const fetchFeed = async () => {
@@ -48,12 +49,10 @@ export default function Feed({args}: Properties) {
 					setFeed({posts: items});
 				}
 			} catch (error_) {
-				// SetError(`Feed error: ${err instanceof Error ? err.message : String(err)}`);
-				logger.error(
-					`Feed error: ${
-						error_ instanceof Error ? error_.message : String(error_)
-					}`,
-				);
+				const errorMessage =
+					error_ instanceof Error ? error_.message : String(error_);
+				logger.error(`Feed error: ${errorMessage}`);
+				setFeedError(`Failed to fetch feed: ${errorMessage}`);
 			}
 		};
 
@@ -66,6 +65,10 @@ export default function Feed({args}: Properties) {
 
 	if (error) {
 		return <Alert variant="error">{error}</Alert>;
+	}
+
+	if (feedError) {
+		return <Alert variant="error">{feedError}</Alert>;
 	}
 
 	return <MediaView feed={feed} />;

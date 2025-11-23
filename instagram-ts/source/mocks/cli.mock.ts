@@ -33,8 +33,7 @@ const view = cli.flags.feed ? 'feed' : cli.flags.story ? 'story' : 'chat';
 
 try {
 	await run(view);
-} catch (error: unknown) {
-	console.error(error);
+} catch {
 	// eslint-disable-next-line n/prefer-global/process, unicorn/no-process-exit
 	process.exit(1);
 }

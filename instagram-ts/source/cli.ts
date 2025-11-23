@@ -22,8 +22,7 @@ const app = new Pastel({
 
 try {
 	await app.run();
-} catch (error: unknown) {
-	console.error(error);
+} catch {
 	// eslint-disable-next-line n/prefer-global/process
 	process.exit(1);
 }

@@ -158,6 +158,15 @@ export type FeedInstance = {
 	posts: Post[];
 };
 
+export type ReelMention = {
+	user: {
+		pk: number;
+		username: string;
+		full_name: string;
+		profile_pic_url: string;
+	};
+};
+
 export type Story = {
 	id: string;
 	user: {
@@ -165,9 +174,7 @@ export type Story = {
 		username: string;
 		profilePicUrl?: string;
 	};
-	caption?: {
-		text: string;
-	};
+	reel_mentions?: ReelMention[];
 	image_versions2?: {
 		candidates: MediaCandidate[];
 	};
