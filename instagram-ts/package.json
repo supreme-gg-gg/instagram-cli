@@ -109,7 +109,9 @@
 			"react/require-default-props": "off",
 			"unicorn/prevent-abbreviations": "off",
 			"capitalized-comments": "off",
-			"no-useless-return": "off"
+			"no-useless-return": "off",
+			"no-console": "warn",
+			"promise/prefer-await-to-then": "off"
 		}
 	},
 	"prettier": "@vdemedes/prettier-config"
