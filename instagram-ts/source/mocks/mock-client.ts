@@ -7,6 +7,7 @@ import type {
 	Story,
 	StoryReel,
 } from '../types/instagram.js';
+import {createContextualLogger} from '../utils/logger.js';
 import {
 	mockThreads,
 	mockMessages,
@@ -15,15 +16,17 @@ import {
 	mockStories,
 } from './mock-data.js';
 
+const logger = createContextualLogger('MockClient');
+
 // eslint-disable-next-line unicorn/prefer-event-target
 class MockClient extends EventEmitter {
 	// Static cleanup methods
 	static async cleanupSessions(): Promise<void> {
-		console.log('Mock: Sessions cleaned up');
+		logger.info('Mock: Sessions cleaned up');
 	}
 
 	static async cleanupCache(): Promise<void> {
-		console.log('Mock: Cache cleaned up');
+		logger.info('Mock: Cache cleaned up');
 	}
 
 	private readonly sentMessages: Message[] = [];
@@ -124,7 +127,7 @@ class MockClient extends EventEmitter {
 			setTimeout(resolve, 50);
 		});
 
-		console.log(
+		logger.info(
 			`Mock: Added reaction ${emoji} to message ${itemId} in thread ${threadId}`,
 		);
 	}
@@ -248,7 +251,7 @@ class MockClient extends EventEmitter {
 		await new Promise(resolve => {
 			setTimeout(resolve, 100);
 		});
-		console.log(`Mock: Unsent message ${messageId} from thread ${threadId}`);
+		logger.info(`Mock: Unsent message ${messageId} from thread ${threadId}`);
 	}
 
 	async markThreadAsSeen(threadId: string): Promise<void> {
@@ -256,7 +259,7 @@ class MockClient extends EventEmitter {
 		await new Promise(resolve => {
 			setTimeout(resolve, 50);
 		});
-		console.log(`Mock: Marked thread ${threadId} as seen`);
+		logger.info(`Mock: Marked thread ${threadId} as seen`);
 	}
 
 	async markItemAsSeen(threadId: string, itemId: string): Promise<void> {
@@ -264,7 +267,7 @@ class MockClient extends EventEmitter {
 		await new Promise(resolve => {
 			setTimeout(resolve, 50);
 		});
-		console.log(`Mock: Marked item ${itemId} as seen in thread ${threadId}`);
+		logger.info(`Mock: Marked item ${itemId} as seen in thread ${threadId}`);
 	}
 
 	async getCurrentUser(): Promise<User | undefined> {
@@ -310,6 +313,7 @@ class MockClient extends EventEmitter {
 				return story.user?.username === username;
 			});
 		} else if (userId) {
+			logger.info(`Mock: Getting stories for user ${userId}`);
 			const userIdNum = typeof userId === 'string' ? Number(userId) : userId;
 			userStories = mockStories.filter(story => {
 				return story.user?.pk === userIdNum;
@@ -324,14 +328,14 @@ class MockClient extends EventEmitter {
 		return userStories;
 	}
 
-	async markStoryAsSeen(stories: Story[]): Promise<void> {
+	async markStoriesAsSeen(stories: Story[]): Promise<void> {
 		// Simulate marking stories as seen
 		await new Promise(resolve => {
 			setTimeout(resolve, 50);
 		});
 		const username = stories[0]?.user?.username;
 		if (username) {
-			console.log(
+			logger.info(
 				`Mock: Marked ${stories.length} stories as seen for user ${username}`,
 			);
 		}
@@ -364,7 +368,7 @@ class MockClient extends EventEmitter {
 		await new Promise(resolve => {
 			setTimeout(resolve, 200);
 		});
-		console.log('Mock: Challenge started');
+		logger.info('Mock: Challenge started');
 	}
 
 	async sendChallengeCode(_code: string): Promise<LoginResult> {
@@ -388,18 +392,18 @@ class MockClient extends EventEmitter {
 		await new Promise(resolve => {
 			setTimeout(resolve, 100);
 		});
-		console.log('Mock: Logged out');
+		logger.info('Mock: Logged out');
 	}
 
 	async shutdown(): Promise<void> {
-		console.log('Mock: Client shutdown');
+		logger.info('Mock: Client shutdown');
 	}
 
 	async switchUser(username: string): Promise<void> {
 		await new Promise(resolve => {
 			setTimeout(resolve, 100);
 		});
-		console.log(`Mock: Switched to user ${username}`);
+		logger.info(`Mock: Switched to user ${username}`);
 	}
 
 	getUsername(): string | undefined {

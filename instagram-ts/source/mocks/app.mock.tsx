@@ -1,66 +1,41 @@
-import React, {useState, useEffect, useCallback} from 'react';
-import {render, Box, Text} from 'ink';
+import React from 'react';
+import {render, Box} from 'ink';
+import {Alert} from '@inkjs/ui';
 import {ClientContext} from '../ui/context/client-context.js';
 import {ConfigManager} from '../config.js';
 import {initializeLogger} from '../utils/logger.js';
-import type {StoryReel} from '../types/instagram.js';
 import ChatView from '../ui/views/chat-view.js';
 import MediaView from '../ui/views/media-view.js';
 import StoryView from '../ui/views/story-view.js';
 import AltScreen from '../ui/components/alt-screen.js';
+import {useStories} from '../ui/hooks/use-stories.js';
+import {useInstagramClient as useMockInstagramClient} from './use-instagram-client.mock.js';
 import {mockClient, mockFeed} from './index.js';
 
+/**
+ * Mock wrapper for Stories view that uses the real useStories hook
+ * with a mock client. This ensures all hook logic (including pre-fetching)
+ * is tested with mock data.
+ */
 function MockStoryWrapper() {
-	const [reels, setReels] = useState<StoryReel[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-
-	const loadMore = useCallback(
-		async (index: number) => {
-			const reelToLoad = reels[index];
-			if (reelToLoad && reelToLoad.stories.length === 0) {
-				const stories = await mockClient.getStoriesForUser(reelToLoad.user.pk);
-				setReels(currentReels => {
-					const newReels = [...currentReels];
-					const currentReel = newReels[index];
-					if (currentReel) {
-						currentReel.stories = stories;
-					}
-
-					return newReels;
-				});
-			}
-		},
-		[reels],
+	// Use the REAL useStories hook with the MOCK client hook
+	const {reels, isLoading, error, loadMore, client} = useStories(
+		useMockInstagramClient,
 	);
 
-	useEffect(() => {
-		const fetchInitialReels = async () => {
-			setIsLoading(true);
-			const initialReels = await mockClient.getReelsTray();
-			if (initialReels.length > 0) {
-				const firstReel = initialReels[0];
-				if (firstReel) {
-					const stories = await mockClient.getStoriesForUser(firstReel.user.pk);
-					firstReel.stories = stories;
-				}
-			}
-
-			setReels(initialReels);
-			setIsLoading(false);
-		};
-
-		void fetchInitialReels();
-	}, []);
-
 	if (isLoading) {
-		return (
-			<Box>
-				<Text>Loading stories...</Text>
-			</Box>
-		);
+		return <Alert variant="info">Fetching Instagram stories...</Alert>;
 	}
 
-	return <StoryView reels={reels} loadMore={loadMore} client={mockClient} />;
+	if (error) {
+		return <Alert variant="error">{error}</Alert>;
+	}
+
+	if (reels.length === 0 && !isLoading) {
+		return <Alert variant="info">No stories to display.</Alert>;
+	}
+
+	return <StoryView reels={reels} loadMore={loadMore} client={client} />;
 }
 
 export function AppMock({view}: {readonly view: 'chat' | 'feed' | 'story'}) {

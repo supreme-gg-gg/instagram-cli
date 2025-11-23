@@ -324,6 +324,8 @@ const storyImages: string[] = [
 	'https://upload.wikimedia.org/wikipedia/en/thumb/7/7d/Lenna_%28test_image%29.png/500px-Lenna_%28test_image%29.png',
 ];
 
+const timestamp = Date.now();
+
 export const mockStories: Story[] = [
 	// Alice's stories
 	{
@@ -333,9 +335,6 @@ export const mockStories: Story[] = [
 			username: 'alice_smith',
 			profilePicUrl: storyImages[0]!,
 		},
-		caption: {
-			text: 'Morning vibes ☀️',
-		},
 		image_versions2: {
 			candidates: [
 				{
@@ -345,8 +344,26 @@ export const mockStories: Story[] = [
 				},
 			],
 		},
-		taken_at: Date.now() - 60_000 * 60 * 1,
+		taken_at: timestamp,
 		media_type: 1,
+		reel_mentions: [
+			{
+				user: {
+					username: 'bob_johnson',
+					pk: 1002,
+					full_name: 'Bob Johnson',
+					profile_pic_url: storyImages[1]!,
+				},
+			},
+			{
+				user: {
+					username: 'charlie_brown',
+					pk: 1003,
+					full_name: 'Charlie Brown',
+					profile_pic_url: storyImages[2]!,
+				},
+			},
+		],
 	},
 	{
 		id: 'story1b',
@@ -355,9 +372,6 @@ export const mockStories: Story[] = [
 			username: 'alice_smith',
 			profilePicUrl: storyImages[0]!,
 		},
-		caption: {
-			text: 'Afternoon walk 🚶',
-		},
 		image_versions2: {
 			candidates: [
 				{
@@ -367,7 +381,7 @@ export const mockStories: Story[] = [
 				},
 			],
 		},
-		taken_at: Date.now() - 60_000 * 30,
+		taken_at: timestamp,
 		media_type: 1,
 	},
 	// Bob's stories
@@ -378,9 +392,6 @@ export const mockStories: Story[] = [
 			username: 'bob_johnson',
 			profilePicUrl: storyImages[1]!,
 		},
-		caption: {
-			text: 'Coding session 💻',
-		},
 		image_versions2: {
 			candidates: [
 				{
@@ -390,7 +401,7 @@ export const mockStories: Story[] = [
 				},
 			],
 		},
-		taken_at: Date.now() - 60_000 * 60 * 2,
+		taken_at: timestamp,
 		media_type: 1,
 	},
 	// Charlie's stories
@@ -401,9 +412,6 @@ export const mockStories: Story[] = [
 			username: 'charlie_brown',
 			profilePicUrl: storyImages[2]!,
 		},
-		caption: {
-			text: 'Coffee break ☕',
-		},
 		image_versions2: {
 			candidates: [
 				{
@@ -413,7 +421,7 @@ export const mockStories: Story[] = [
 				},
 			],
 		},
-		taken_at: Date.now() - 60_000 * 90,
+		taken_at: timestamp,
 		media_type: 1,
 	},
 	// Diana's stories
@@ -424,9 +432,6 @@ export const mockStories: Story[] = [
 			username: 'diana_prince',
 			profilePicUrl: storyImages[0]!,
 		},
-		caption: {
-			text: 'Weekend plans 🎉',
-		},
 		image_versions2: {
 			candidates: [
 				{
@@ -436,8 +441,18 @@ export const mockStories: Story[] = [
 				},
 			],
 		},
-		taken_at: Date.now() - 60_000 * 120,
+		taken_at: timestamp,
 		media_type: 1,
+		reel_mentions: [
+			{
+				user: {
+					username: 'alice_smith',
+					pk: 1001,
+					full_name: 'Alice Smith',
+					profile_pic_url: storyImages[0]!,
+				},
+			},
+		],
 	},
 	{
 		id: 'story4b',
@@ -446,9 +461,6 @@ export const mockStories: Story[] = [
 			username: 'diana_prince',
 			profilePicUrl: storyImages[0]!,
 		},
-		caption: {
-			text: 'Fun times 😄',
-		},
 		image_versions2: {
 			candidates: [
 				{
@@ -458,7 +470,7 @@ export const mockStories: Story[] = [
 				},
 			],
 		},
-		taken_at: Date.now() - 60_000 * 100,
+		taken_at: timestamp,
 		media_type: 1,
 	},
 ];
