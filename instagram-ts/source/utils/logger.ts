@@ -43,13 +43,7 @@ class Logger {
 
 			// Log initialization
 			this.info('Logger initialized', 'Logger');
-		} catch (error) {
-			// Fallback: if we can't create logs dir, at least warn to console
-			console.error(
-				'Failed to initialize logger:',
-				error instanceof Error ? error.message : 'Unknown error',
-			);
-		}
+		} catch {}
 	}
 
 	error(message: string, context?: string, error?: Error | unknown): void {

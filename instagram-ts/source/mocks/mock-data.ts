@@ -5,6 +5,7 @@ import type {
 	Post,
 	FeedInstance,
 	Reaction,
+	Story,
 } from '../types/instagram.js';
 
 // Mock users
@@ -314,6 +315,164 @@ export const mockEmojis = [
 	'🎊',
 	'💕',
 	'🌟',
+];
+
+// Mock stories grouped by user for generator pattern testing
+const storyImages: string[] = [
+	'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
+	'https://www.math.hkust.edu.hk/~masyleung/Teaching/CAS/MATLAB/image/images/cameraman.jpg',
+	'https://upload.wikimedia.org/wikipedia/en/thumb/7/7d/Lenna_%28test_image%29.png/500px-Lenna_%28test_image%29.png',
+];
+
+const timestamp = Date.now();
+
+export const mockStories: Story[] = [
+	// Alice's stories
+	{
+		id: 'story1',
+		user: {
+			pk: 1001,
+			username: 'alice_smith',
+			profilePicUrl: storyImages[0]!,
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[0]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: timestamp,
+		media_type: 1,
+		reel_mentions: [
+			{
+				user: {
+					username: 'bob_johnson',
+					pk: 1002,
+					full_name: 'Bob Johnson',
+					profile_pic_url: storyImages[1]!,
+				},
+			},
+			{
+				user: {
+					username: 'charlie_brown',
+					pk: 1003,
+					full_name: 'Charlie Brown',
+					profile_pic_url: storyImages[2]!,
+				},
+			},
+		],
+	},
+	{
+		id: 'story1b',
+		user: {
+			pk: 1001,
+			username: 'alice_smith',
+			profilePicUrl: storyImages[0]!,
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[0]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: timestamp,
+		media_type: 1,
+	},
+	// Bob's stories
+	{
+		id: 'story2',
+		user: {
+			pk: 1002,
+			username: 'bob_johnson',
+			profilePicUrl: storyImages[1]!,
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[1]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: timestamp,
+		media_type: 1,
+	},
+	// Charlie's stories
+	{
+		id: 'story3',
+		user: {
+			pk: 1003,
+			username: 'charlie_brown',
+			profilePicUrl: storyImages[2]!,
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[2]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: timestamp,
+		media_type: 1,
+	},
+	// Diana's stories
+	{
+		id: 'story4',
+		user: {
+			pk: 1004,
+			username: 'diana_prince',
+			profilePicUrl: storyImages[0]!,
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[0]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: timestamp,
+		media_type: 1,
+		reel_mentions: [
+			{
+				user: {
+					username: 'alice_smith',
+					pk: 1001,
+					full_name: 'Alice Smith',
+					profile_pic_url: storyImages[0]!,
+				},
+			},
+		],
+	},
+	{
+		id: 'story4b',
+		user: {
+			pk: 1004,
+			username: 'diana_prince',
+			profilePicUrl: storyImages[0]!,
+		},
+		image_versions2: {
+			candidates: [
+				{
+					url: storyImages[0]!,
+					width: 1080,
+					height: 1920,
+				},
+			],
+		},
+		taken_at: timestamp,
+		media_type: 1,
+	},
 ];
 
 // Helper functions to generate more data

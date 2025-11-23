@@ -1,33 +1,32 @@
-import React, {useState, useEffect} from 'react';
-import {Box, Text, useInput, useApp, useStdout} from 'ink';
+import React, {useState, useEffect, useMemo} from 'react';
+import {Box, Text, useInput, useApp} from 'ink';
 import open from 'open';
-import Image, {type ImageProtocolName} from 'ink-picture';
+import {type ImageProtocolName} from 'ink-picture';
 import {
 	type Post,
 	type FeedInstance,
 	type MediaCandidate,
 } from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
-import AltScreen from './alt-screen.js';
-import FullScreen from './full-screen.js';
+import SplitView from './split-view.js';
+import MediaPane from './media-pane.js';
 
 type Properties = {
 	readonly feed: FeedInstance;
 	readonly protocol?: ImageProtocolName;
 };
 
+const logger = createContextualLogger('ListMediaView');
+
 export default function ListMediaDisplay({feed, protocol}: Properties) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
 	const {exit} = useApp();
-	const {stdout} = useStdout();
-
-	const logger = createContextualLogger('ListMediaView');
 
 	const posts = feed.posts || [];
 
-	// Helper function to get current image based on selection and carousel index
-	const getCurrentImage = (): MediaCandidate | undefined => {
+	// Memoized current image based on selection and carousel index
+	const currentImage = useMemo((): MediaCandidate | undefined => {
 		const currentPost = posts[selectedIndex];
 		if (!currentPost) return undefined;
 
@@ -37,7 +36,7 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 		}
 
 		return currentPost.image_versions2?.candidates?.[0] ?? undefined;
-	};
+	}, [posts, selectedIndex, carouselIndex]);
 
 	const openMediaUrl = async (activePost: Post) => {
 		if (activePost.media_type === 1) {
@@ -123,167 +122,80 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 		setCarouselIndex(0);
 	}, [selectedIndex]);
 
-	const currentImage = getCurrentImage();
-	const dynamicImageSize = currentImage
-		? calculateDynamicPostMediaSize(
-				currentImage.width,
-				currentImage.height,
-				stdout.columns,
-				stdout.rows,
-			)
-		: undefined;
+	const currentPost = posts[selectedIndex];
 
-	return (
-		<AltScreen>
-			<FullScreen>
-				<Box flexDirection="column" height="100%" width="100%">
-					<Box flexDirection="row" gap={2} flexGrow={1}>
-						{/* Users list */}
-						<Box
-							flexDirection="column"
-							borderStyle="round"
-							paddingX={1}
-							width={30}
-							flexShrink={0}
-							height="100%"
-						>
-							<Text color="cyan">📜 Feed</Text>
-							<Box height={1} />
-							{posts.map((item, index) => (
-								<Text
-									key={item.id}
-									color={index === selectedIndex ? 'blue' : undefined}
-									wrap="truncate"
-								>
-									{index === selectedIndex ? '➜ ' : '   '}
-									{item.user?.username || 'Unknown'}
-								</Text>
-							))}
-						</Box>
+	const sidebarContent = (
+		<>
+			{posts.map((item, index) => (
+				<Text
+					key={item.id}
+					color={index === selectedIndex ? 'blue' : undefined}
+					wrap="truncate"
+				>
+					{index === selectedIndex ? '➜ ' : '   '}
+					{item.user?.username || 'Unknown'}
+				</Text>
+			))}
+		</>
+	);
 
-						{/* Right panel */}
-						<Box
-							flexDirection="column"
-							borderStyle="round"
-							padding={1}
-							flexGrow={1}
-							height="100%"
-							overflow="hidden"
-						>
-							{posts.length === 0 ? (
-								<Box flexGrow={1} justifyContent="center" alignItems="center">
-									<Text>⏳ Loading posts...</Text>
-								</Box>
-							) : (
-								<Box flexDirection="row" flexGrow={1} overflow="hidden" gap={1}>
-									{/* Media display */}
-									<Box
-										flexDirection="column"
-										flexGrow={1}
-										overflow="hidden"
-										alignItems="center"
-										justifyContent="flex-start"
-										width="50%"
-									>
-										{posts[selectedIndex] && getCurrentImage() ? (
-											<Box
-												borderStyle="round"
-												borderColor="cyan"
-												width={dynamicImageSize!.width + 2}
-												height={dynamicImageSize!.height + 2}
-											>
-												<Image
-													src={getCurrentImage()!.url}
-													alt={
-														posts[selectedIndex]?.caption?.text ??
-														`Post by ${posts[selectedIndex]?.user?.username}`
-													}
-													// When protocol is undefined, the component will use "auto" by default
-													protocol={protocol}
-												/>
-											</Box>
-										) : (
-											<Text color="yellow">⏳ Loading media...</Text>
-										)}
+	const mainContent =
+		posts.length === 0 ? (
+			<Box flexGrow={1} justifyContent="center" alignItems="center">
+				<Text>⏳ Loading posts...</Text>
+			</Box>
+		) : (
+			<Box flexDirection="row" flexGrow={1} overflow="hidden" gap={1}>
+				<MediaPane
+					imageUrl={currentImage?.url}
+					altText={
+						currentPost?.caption?.text ??
+						`Post by ${currentPost?.user?.username}`
+					}
+					protocol={protocol}
+					mediaType={currentPost?.media_type}
+					isLoading={!currentPost}
+					originalWidth={currentImage?.width}
+					originalHeight={currentImage?.height}
+					carouselIndex={carouselIndex}
+					carouselCount={currentPost?.carousel_media_count ?? 0}
+				/>
 
-										<Text>
-											{posts[selectedIndex]?.media_type === 2 ? '▶ Video' : ''}
-										</Text>
-										<Text color="gray">
-											{posts[selectedIndex]?.carousel_media_count
-												? `Carousel ${carouselIndex + 1} of ${
-														posts[selectedIndex].carousel_media_count
-													}`
-												: ''}
-										</Text>
-									</Box>
-
-									{/* Caption and stats */}
-									<Box
-										flexDirection="column"
-										width="50%"
-										paddingRight={3}
-										overflow="hidden"
-										justifyContent="flex-start"
-									>
-										<Box flexDirection="row" marginBottom={1}>
-											<Text color="green">
-												👤{' '}
-												{posts[selectedIndex]?.user?.username ?? 'Unknown user'}
-											</Text>
-											{posts[selectedIndex]?.taken_at && (
-												<Text color="gray">
-													{' ('}
-													{new Date(
-														posts[selectedIndex].taken_at * 1000,
-													).toLocaleString()}
-													)
-												</Text>
-											)}
-										</Box>
-										<Text wrap="wrap">
-											{posts[selectedIndex]?.caption?.text ?? 'No caption'}
-										</Text>
-
-										<Box flexDirection="row" marginTop={1}>
-											<Text>♡ {posts[selectedIndex]?.like_count ?? 0} </Text>
-											<Text>🗨 {posts[selectedIndex]?.comment_count ?? 0}</Text>
-										</Box>
-									</Box>
-								</Box>
-							)}
-						</Box>
-					</Box>
-
-					{/* Footer */}
-					<Box marginTop={1}>
-						<Text dimColor>
-							j/k: navigate through posts, h/l: navigate through carousel, o:
-							open in browser, Esc: quit
+				{/* Caption and stats */}
+				<Box
+					flexDirection="column"
+					width="50%"
+					paddingRight={3}
+					overflow="hidden"
+					justifyContent="flex-start"
+				>
+					<Box flexDirection="row" marginBottom={1}>
+						<Text color="green">
+							👤 {currentPost?.user?.username ?? 'Unknown user'}
 						</Text>
+						{currentPost?.taken_at && (
+							<Text color="gray">
+								{' ('}
+								{new Date(currentPost.taken_at * 1000).toLocaleString()})
+							</Text>
+						)}
+					</Box>
+					<Text wrap="wrap">{currentPost?.caption?.text ?? 'No caption'}</Text>
+
+					<Box flexDirection="row" marginTop={1}>
+						<Text>♡ {currentPost?.like_count ?? 0} </Text>
+						<Text>🗨 {currentPost?.comment_count ?? 0}</Text>
 					</Box>
 				</Box>
-			</FullScreen>
-		</AltScreen>
+			</Box>
+		);
+
+	return (
+		<SplitView
+			sidebarTitle="📜 Feed"
+			sidebarContent={sidebarContent}
+			mainContent={mainContent}
+			footerText="j/k: navigate through posts, h/l: navigate through carousel, o: open in browser, Esc: quit"
+		/>
 	);
-}
-
-function calculateDynamicPostMediaSize(
-	imageWidth: number,
-	imageHeight: number,
-	termWidth: number,
-	termHeight: number,
-): {width: number; height: number} {
-	let width = Math.min(Math.floor(termWidth / 3), 80);
-
-	const aspectRatio = imageWidth / imageHeight;
-
-	if (aspectRatio < 0.8) {
-		width = Math.floor(width * 0.7);
-	} else if (aspectRatio > 1.5) {
-		width = Math.floor(width * 1.1);
-	}
-
-	const height = Math.max(termHeight, Math.floor((width / aspectRatio) * 0.5));
-	return {width, height};
 }

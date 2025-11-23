@@ -2,15 +2,20 @@ name: TypeScript linting and e2e tests
 
 # Only triggers on changes to the TypeScript codebase
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "instagram-ts/**"
   pull_request:
     branches:
-      - ts-migration/main-
       - main
     paths:
       - "instagram-ts/**"
 
 jobs:
   format:
+    name: Lint and Test TypeScript Client
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

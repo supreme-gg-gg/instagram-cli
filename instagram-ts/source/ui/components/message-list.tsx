@@ -2,7 +2,7 @@ import React from 'react';
 import {Box, Text} from 'ink';
 import Image from 'ink-picture';
 import type {Message, Thread} from '../../types/instagram.js';
-import {ConfigManager} from '../../config.js';
+import {useImageProtocol} from '../hooks/use-image-protocol.js';
 
 type MessageListProperties = {
 	readonly messages: Message[];
@@ -15,10 +15,7 @@ export default function MessageList({
 	currentThread,
 	selectedMessageIndex,
 }: MessageListProperties) {
-	const imageProtocol = ConfigManager.getInstance().get(
-		'image.protocol',
-		'ascii',
-	);
+	const imageProtocol = useImageProtocol();
 
 	const formatTime = (date: Date) => {
 		return date.toLocaleTimeString('en-US', {

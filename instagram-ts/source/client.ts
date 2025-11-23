@@ -9,6 +9,8 @@ import {
 	type DirectInboxFeedResponseUsersItem,
 	type DirectThreadFeedResponseItemsItem,
 	type AccountRepositoryLoginErrorResponseTwoFactorInfo,
+	type UserStoryFeedResponseItemsItem,
+	type ReelsTrayFeedResponseTrayItem,
 } from 'instagram-private-api';
 import {
 	withRealtime,
@@ -19,7 +21,13 @@ import {
 } from 'instagram_mqtt';
 import {SessionManager} from './session.js';
 import {ConfigManager} from './config.js';
-import type {Thread, Message, User} from './types/instagram.js';
+import type {
+	Thread,
+	Message,
+	User,
+	Story,
+	StoryReel,
+} from './types/instagram.js';
 import {
 	parseMessageItem,
 	parseReactionEvent,
@@ -108,6 +116,10 @@ export class InstagramClient extends EventEmitter {
 	private username: string | undefined = undefined;
 	private readonly userCache = new Map<string, string>();
 	private readonly logger = createContextualLogger('InstagramClient');
+
+	// Caching for user stories
+	private readonly loadedStoriesMap = new Map<number, Story[]>();
+	private hasInitializedReelsTray = false;
 
 	constructor(username?: string) {
 		super();
@@ -580,6 +592,127 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
+	/**
+	 * Fetches the reels tray, which contains a list of users who have active stories.
+	 *
+	 * @returns A promise that resolves to an array of `StoryReel` objects, each with user info but an empty `stories` array.
+	 */
+	public async getReelsTray(): Promise<StoryReel[]> {
+		try {
+			const ig = this.getInstagramClient();
+			// If first time, use cold_start (not documented, this is a guess...)
+			const reelsTrayFeed = ig.feed.reelsTray(
+				this.hasInitializedReelsTray ? 'pull_to_refresh' : 'cold_start',
+			);
+			const reelsTrayItems = await reelsTrayFeed.items();
+			this.hasInitializedReelsTray = true;
+
+			if (!Array.isArray(reelsTrayItems) || reelsTrayItems.length === 0) {
+				this.logger.warn('No users with active stories found in reels tray.');
+				return [];
+			}
+
+			this.logger.info(
+				`Found ${reelsTrayItems.length} users with active stories.`,
+			);
+
+			const storyReels: StoryReel[] = reelsTrayItems
+				.filter(
+					(item): item is ReelsTrayFeedResponseTrayItem =>
+						item.user !== undefined,
+				)
+				.map(item => ({
+					user: {
+						pk: item.user.pk,
+						username: item.user.username ?? `User_${item.user.pk}`,
+						profilePicUrl: item.user.profile_pic_url,
+					},
+					stories: [], // Stories will be lazy-loaded
+				}));
+
+			return storyReels;
+		} catch (error) {
+			this.logger.error('Failed to fetch reels tray', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Fetch stories for a specific user by ID (with caching).
+	 *
+	 * @param userId - The user ID to fetch stories for
+	 * @param userName - If provided, search for the user id by username first
+	 * @returns A promise that resolves to an array of Story objects
+	 */
+	public async getStoriesForUser(
+		userId?: number | string,
+		userName?: string,
+	): Promise<Story[]> {
+		try {
+			// If username is provided, resolve to user ID first
+			if (userName) {
+				const userInfo = await this.ig.user.searchExact(userName);
+				userId = userInfo.pk;
+			}
+
+			if (!userId) {
+				throw new Error('Either userId or userName must be provided');
+			}
+
+			const userIdNum = typeof userId === 'string' ? Number(userId) : userId;
+
+			// Return cached stories if available
+			if (this.loadedStoriesMap.has(userIdNum)) {
+				this.logger.debug(`Returning cached stories for user ${userId}`);
+				const cachedStories = this.loadedStoriesMap.get(userIdNum);
+				return cachedStories ?? [];
+			}
+
+			const ig = this.getInstagramClient();
+			const userStoryFeed = ig.feed.userStory(userIdNum);
+			const storyItems = await userStoryFeed.items();
+
+			const stories: Story[] = (Array.isArray(storyItems) ? storyItems : [])
+				.map(item => this.mapStoryItem(item))
+				.filter((s): s is Story => s !== undefined);
+
+			// Cache the stories
+			this.loadedStoriesMap.set(userIdNum, stories);
+
+			this.logger.debug(
+				`Fetched and cached ${stories.length} stories for user ${userId}`,
+			);
+
+			return stories;
+		} catch (error) {
+			this.logger.error(`Failed to fetch stories for user ${userId}:`, error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Marks a batch of stories as seen.
+	 * @param stories - An array of story items from the same user to be marked as seen.
+	 */
+	public async markStoriesAsSeen(stories: Story[]): Promise<void> {
+		if (stories.length === 0) {
+			return;
+		}
+
+		try {
+			// See example code, this refers to source user ID and time taken
+			await this.ig.story.seen(stories);
+			this.logger.debug(
+				`Marked ${stories.length} stories as seen for user ${stories[0]?.user?.pk}`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Failed to mark stories as seen for user ${stories[0]?.user?.pk}`,
+				error,
+			);
+		}
+	}
+
 	private setRealtimeStatus(status: RealtimeStatus) {
 		this.realtimeStatus = status;
 		this.emit('realtimeStatus', status);
@@ -745,5 +878,41 @@ export class InstagramClient extends EventEmitter {
 				isPreview: true,
 			},
 		);
+	}
+
+	private mapStoryItem(
+		item: UserStoryFeedResponseItemsItem,
+	): Story | undefined {
+		if (!item?.user) {
+			// item.user can be missing on some story items
+			return undefined;
+		}
+
+		return {
+			id: item.id,
+			media_type: item.media_type,
+			taken_at: item.taken_at,
+			user: {
+				pk: item.user.pk,
+				username: item.user.username,
+				profilePicUrl: item.user.profile_pic_url,
+			},
+			// We validated that this field exists on the returned object
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+			reel_mentions: (item as any).reel_mentions?.map((mention: any) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const {user} = mention;
+				return {
+					user: {
+						pk: user.pk as number,
+						username: user.username as string,
+						full_name: user.full_name as string,
+						profile_pic_url: user.profile_pic_url as string,
+					},
+				};
+			}),
+			image_versions2: item.image_versions2,
+			video_versions: item.video_versions,
+		};
 	}
 }
