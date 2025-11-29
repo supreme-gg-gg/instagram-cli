@@ -249,7 +249,7 @@ export function parseMessageItem(
 					itemType: 'link',
 					link: {
 						text: item.link.text,
-						url: item.link.link_context.link_url,
+						url: parseInstagramRedirectUrl(item.link.link_context.link_url),
 					},
 				};
 			}
@@ -375,6 +375,28 @@ export function parseReactionEvent(
 	} catch {
 		return undefined;
 	}
+}
+
+/**
+ * Parses an Instagram redirect link to extract the original URL.
+ * This is to better protect privacy by avoiding Instagram's potential redirect tracking.
+ * @param url The Instagram redirect URL.
+ * @returns The original URL if found, otherwise the input URL.
+ */
+function parseInstagramRedirectUrl(url: string): string {
+	try {
+		const urlObj = new URL(url);
+		if (urlObj.hostname === 'l.instagram.com' && urlObj.searchParams.has('u')) {
+			const originalUrl = urlObj.searchParams.get('u');
+			if (originalUrl) {
+				return decodeURIComponent(originalUrl);
+			}
+		}
+	} catch {
+		// Ignore errors and return the original URL
+	}
+
+	return url;
 }
 
 type SeenEventMessage = {
