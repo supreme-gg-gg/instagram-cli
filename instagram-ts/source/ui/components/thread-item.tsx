@@ -36,10 +36,15 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProperties) {
 				return '[Media]';
 			}
 
+			case 'link': {
+				return message.link.text;
+			}
+
 			case 'placeholder': {
 				return message.text;
 			}
 
+			// eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
 			default: {
 				return '[Unsupported Message]';
 			}
@@ -84,7 +89,7 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProperties) {
 			{lastMessageText && (
 				<Box>
 					<Text dimColor wrap="truncate">
-						{lastMessageText}
+						{lastMessageText.replaceAll(/[\n\r]+/g, ' ')}
 					</Text>
 				</Box>
 			)}
