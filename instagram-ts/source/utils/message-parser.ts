@@ -21,15 +21,34 @@ type ThreadBaseItem = Omit<DirectThreadFeedResponseItemsItem, 'item_type'>;
 // Chat is this real? Yes, this is real I love monkey patching
 // (this has been verified using the API response, the instagram-private-api type is outdated)
 // Note that thread_id may not exist here unlike MessageSyncMessage because you request a threadId already when calling this API
-type ThreadMessageItem = ThreadBaseItem & {
-	item_type: Exclude<
-		MessageSyncMessageTypes,
-		MessageSyncMessageTypes.ActionLog
-	>;
+type ThreadGenericMessageItem = ThreadBaseItem & {
 	media: MessageSyncMessage['media'];
 	reactions: MessageSyncMessage['reactions'];
 	// This type is NOT defined on either API or MQTT and is extended by monkey patching
 	replied_to_message?: RawRepliedToMessage;
+};
+
+type ThreadCommonMessageItem = ThreadGenericMessageItem & {
+	item_type: Exclude<
+		MessageSyncMessageTypes,
+		MessageSyncMessageTypes.ActionLog | MessageSyncMessageTypes.Link
+	>;
+};
+
+type RealLinkMessageItem = ThreadGenericMessageItem & {
+	item_type: MessageSyncMessageTypes.Link;
+	link?: {
+		text: string;
+		link_context: {
+			link_url: string;
+			link_title: string;
+			link_summary: string;
+			link_image_url: string;
+		};
+		mutation_token: string;
+		client_context: string;
+	};
+	text?: string;
 };
 
 type ActionLogItem = ThreadBaseItem & {
@@ -48,7 +67,10 @@ type ActionLogItem = ThreadBaseItem & {
 	hide_in_thread: 1 | 0;
 };
 
-type RealChatItem = ThreadMessageItem | ActionLogItem;
+type RealChatItem =
+	| ThreadCommonMessageItem
+	| RealLinkMessageItem
+	| ActionLogItem;
 
 type RawRepliedToMessage = {
 	item_id: string;
@@ -180,8 +202,8 @@ export function parseMessageItem(
 		),
 		isOutgoing: userId === context.currentUserId,
 		threadId,
-		reactions: (item as ThreadMessageItem).reactions
-			? parseReactions((item as ThreadMessageItem).reactions)
+		reactions: (item as ThreadGenericMessageItem).reactions
+			? parseReactions((item as ThreadGenericMessageItem).reactions)
 			: undefined,
 		repliedTo,
 		item_id: item.item_id,
@@ -221,21 +243,32 @@ export function parseMessageItem(
 		}
 
 		case MessageSyncMessageTypes.Link: {
-			if (!item.text) {
+			if (item.link) {
 				return {
 					...baseMessage,
-					itemType: 'placeholder',
-					text: '[Sent a link]',
+					itemType: 'link',
+					link: {
+						text: item.link.text,
+						url: item.link.link_context.link_url,
+					},
+				};
+			}
+
+			if (item.text) {
+				return {
+					...baseMessage,
+					itemType: 'link',
+					link: {
+						text: item.text,
+						url: item.text,
+					},
 				};
 			}
 
 			return {
 				...baseMessage,
-				itemType: 'link',
-				link: {
-					text: item.text,
-					url: item.text,
-				},
+				itemType: 'placeholder',
+				text: '[Sent a link]',
 			};
 		}
 
