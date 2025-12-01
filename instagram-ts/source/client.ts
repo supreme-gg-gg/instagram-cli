@@ -27,6 +27,8 @@ import type {
 	User,
 	Story,
 	StoryReel,
+	LiveBroadcast,
+	LiveGuest,
 } from './types/instagram.js';
 import {
 	parseMessageItem,
@@ -914,5 +916,237 @@ export class InstagramClient extends EventEmitter {
 			image_versions2: item.image_versions2,
 			video_versions: item.video_versions,
 		};
+	}
+
+	/**
+	 * Creates a new live broadcast on Instagram.
+	 * This uses Instagram's private mobile API to create a live stream.
+	 *
+	 * Note: The exact endpoint and parameters may need adjustment based on
+	 * Instagram's current API structure. This implementation is based on
+	 * reverse-engineered endpoints from Instagram's mobile app.
+	 *
+	 * @param previewWidth - Preview width (default: 720)
+	 * @param previewHeight - Preview height (default: 1280)
+	 * @returns A promise that resolves to a LiveBroadcast object with broadcast details
+	 * @throws Error if the API call fails or the response format is unexpected
+	 */
+	public async createLiveBroadcast(
+		previewWidth: number = 720,
+		previewHeight: number = 1280,
+	): Promise<LiveBroadcast> {
+		try {
+			// Use the request client to make authenticated API calls
+			// Note: The exact API format may vary depending on instagram-private-api version
+			// If this fails, the endpoint or request format may need adjustment
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			const response = await this.ig.request.send({
+				url: '/api/v1/live/create/',
+				method: 'POST',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				form: this.ig.request.sign({
+					preview_width: previewWidth,
+					preview_height: previewHeight,
+					broadcast_message: '',
+					internal_only: false,
+				}),
+			});
+
+			// Validate response structure
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (!response || !response.body || !response.body.broadcast) {
+				throw new Error(
+					'Invalid response from Instagram API: missing broadcast data',
+				);
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+			const broadcast = response.body.broadcast;
+
+			return {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				broadcastId: broadcast.id,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				broadcastMessage: broadcast.broadcast_message || '',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				rtmpStreamUrl: broadcast.rtmp_stream_url,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				streamKey: broadcast.stream_key,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				viewerCount: broadcast.viewer_count || 0,
+				status: 'created',
+				createdAt: new Date(),
+			};
+		} catch (error) {
+			this.logger.error('Failed to create live broadcast', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Starts a live broadcast.
+	 *
+	 * @param broadcastId - The ID of the broadcast to start
+	 * @returns A promise that resolves when the broadcast is started
+	 */
+	public async startLiveBroadcast(broadcastId: string): Promise<void> {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			await this.ig.request.send({
+				url: `/api/v1/live/${broadcastId}/start/`,
+				method: 'POST',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				form: this.ig.request.sign({}),
+			});
+		} catch (error) {
+			this.logger.error('Failed to start live broadcast', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Ends a live broadcast.
+	 *
+	 * @param broadcastId - The ID of the broadcast to end
+	 * @returns A promise that resolves when the broadcast is ended
+	 */
+	public async endLiveBroadcast(broadcastId: string): Promise<void> {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			await this.ig.request.send({
+				url: `/api/v1/live/${broadcastId}/end_broadcast/`,
+				method: 'POST',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				form: this.ig.request.sign({}),
+			});
+		} catch (error) {
+			this.logger.error('Failed to end live broadcast', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Gets the current status of a live broadcast.
+	 *
+	 * @param broadcastId - The ID of the broadcast
+	 * @returns A promise that resolves to the broadcast status
+	 */
+	public async getLiveBroadcastStatus(
+		broadcastId: string,
+	): Promise<LiveBroadcast> {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			const response = await this.ig.request.send({
+				url: `/api/v1/live/${broadcastId}/info/`,
+				method: 'GET',
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+			const broadcast = response.body.broadcast;
+
+			return {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				broadcastId: broadcast.id,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				broadcastMessage: broadcast.broadcast_message || '',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				rtmpStreamUrl: broadcast.rtmp_stream_url || '',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				streamKey: broadcast.stream_key || '',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				viewerCount: broadcast.viewer_count || 0,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				status: broadcast.broadcast_status === 'active' ? 'started' : 'ended',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				createdAt: new Date(broadcast.created_at * 1000),
+			};
+		} catch (error) {
+			this.logger.error('Failed to get live broadcast status', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Invites a guest to join the live broadcast.
+	 * This enables collaborative live streaming where multiple users can participate.
+	 *
+	 * @param broadcastId - The ID of the broadcast
+	 * @param userId - The Instagram user ID of the guest to invite
+	 * @returns A promise that resolves when the invitation is sent
+	 */
+	public async inviteGuestToLive(
+		broadcastId: string,
+		userId: string,
+	): Promise<void> {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			await this.ig.request.send({
+				url: `/api/v1/live/${broadcastId}/invite_guest/`,
+				method: 'POST',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				form: this.ig.request.sign({
+					guest_id: userId,
+				}),
+			});
+		} catch (error) {
+			this.logger.error('Failed to invite guest to live broadcast', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Removes a guest from the live broadcast.
+	 *
+	 * @param broadcastId - The ID of the broadcast
+	 * @param userId - The Instagram user ID of the guest to remove
+	 * @returns A promise that resolves when the guest is removed
+	 */
+	public async removeGuestFromLive(
+		broadcastId: string,
+		userId: string,
+	): Promise<void> {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			await this.ig.request.send({
+				url: `/api/v1/live/${broadcastId}/remove_guest/`,
+				method: 'POST',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				form: this.ig.request.sign({
+					guest_id: userId,
+				}),
+			});
+		} catch (error) {
+			this.logger.error('Failed to remove guest from live broadcast', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Gets the list of guests in a live broadcast.
+	 *
+	 * @param broadcastId - The ID of the broadcast
+	 * @returns A promise that resolves to an array of LiveGuest objects
+	 */
+	public async getLiveGuests(broadcastId: string): Promise<LiveGuest[]> {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			const response = await this.ig.request.send({
+				url: `/api/v1/live/${broadcastId}/get_guest_list/`,
+				method: 'GET',
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+			const guests = response.body.guests || [];
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			return guests.map((guest: any) => ({
+				userId: guest.user_id.toString(),
+				username: guest.username || '',
+				status: guest.status || 'invited',
+			}));
+		} catch (error) {
+			this.logger.error('Failed to get live guests', error);
+			throw error;
+		}
 	}
 }

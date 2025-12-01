@@ -197,3 +197,19 @@ export type StoryReel = {
 	user: Story['user'];
 	stories: Story[];
 };
+
+export type LiveBroadcast = {
+	broadcastId: string;
+	broadcastMessage: string;
+	rtmpStreamUrl: string;
+	streamKey: string;
+	viewerCount: number;
+	status: 'created' | 'started' | 'ended';
+	createdAt: Date;
+};
+
+export type LiveGuest = {
+	userId: string;
+	username: string;
+	status: 'invited' | 'joined' | 'left';
+};
