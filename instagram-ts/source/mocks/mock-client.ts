@@ -6,6 +6,8 @@ import type {
 	User,
 	Story,
 	StoryReel,
+	LiveBroadcast,
+	LiveGuest,
 } from '../types/instagram.js';
 import {createContextualLogger} from '../utils/logger.js';
 import {
@@ -35,6 +37,11 @@ class MockClient extends EventEmitter {
 		string,
 		Array<{emoji: string; senderId: string}>
 	>();
+
+	// Live streaming mock state
+	private mockBroadcastId = `mock_broadcast_${Date.now()}`;
+	private mockViewerCount = 0;
+	private mockGuests: LiveGuest[] = [];
 
 	private get realtimeStatus(): RealtimeStatus {
 		return 'disconnected';
@@ -412,6 +419,128 @@ class MockClient extends EventEmitter {
 
 	getRealtimeStatus(): RealtimeStatus {
 		return this.realtimeStatus;
+	}
+
+	// Live streaming mock methods
+	async createLiveBroadcast(
+		_previewWidth = 720,
+		_previewHeight = 1280,
+	): Promise<LiveBroadcast> {
+		// Simulate network delay
+		await new Promise(resolve => {
+			setTimeout(resolve, 500);
+		});
+
+		this.mockBroadcastId = `mock_broadcast_${Date.now()}`;
+		this.mockViewerCount = 0;
+		this.mockGuests = [];
+
+		const broadcast: LiveBroadcast = {
+			broadcastId: this.mockBroadcastId,
+			broadcastMessage: '',
+			rtmpStreamUrl: 'rtmp://live-upload.instagram.com:80/rtmp/',
+			streamKey: 'mock_stream_key_12345',
+			viewerCount: 0,
+			status: 'created',
+			createdAt: new Date(),
+		};
+
+		logger.info(`Mock: Created live broadcast ${broadcast.broadcastId}`);
+		return broadcast;
+	}
+
+	async startLiveBroadcast(broadcastId: string): Promise<void> {
+		await new Promise(resolve => {
+			setTimeout(resolve, 500);
+		});
+
+		if (broadcastId !== this.mockBroadcastId) {
+			throw new Error('Invalid broadcast ID');
+		}
+
+		logger.info(`Mock: Started live broadcast ${broadcastId}`);
+	}
+
+	async endLiveBroadcast(broadcastId: string): Promise<void> {
+		await new Promise(resolve => {
+			setTimeout(resolve, 500);
+		});
+
+		if (broadcastId !== this.mockBroadcastId) {
+			throw new Error('Invalid broadcast ID');
+		}
+
+		logger.info(`Mock: Ended live broadcast ${broadcastId}`);
+	}
+
+	async getLiveBroadcastStatus(broadcastId: string): Promise<LiveBroadcast> {
+		await new Promise(resolve => {
+			setTimeout(resolve, 200);
+		});
+
+		if (broadcastId !== this.mockBroadcastId) {
+			throw new Error('Invalid broadcast ID');
+		}
+
+		// Simulate increasing viewer count
+		this.mockViewerCount += Math.floor(Math.random() * 5);
+
+		return {
+			broadcastId: this.mockBroadcastId,
+			broadcastMessage: '',
+			rtmpStreamUrl: 'rtmp://live-upload.instagram.com:80/rtmp/',
+			streamKey: 'mock_stream_key_12345',
+			viewerCount: this.mockViewerCount,
+			status: 'started',
+			createdAt: new Date(),
+		};
+	}
+
+	async inviteGuestToLive(broadcastId: string, userId: string): Promise<void> {
+		await new Promise(resolve => {
+			setTimeout(resolve, 300);
+		});
+
+		if (broadcastId !== this.mockBroadcastId) {
+			throw new Error('Invalid broadcast ID');
+		}
+
+		const guest: LiveGuest = {
+			userId,
+			username: `guest_${userId.slice(0, 8)}`,
+			status: 'invited',
+		};
+
+		this.mockGuests.push(guest);
+		logger.info(`Mock: Invited guest ${userId} to broadcast`);
+	}
+
+	async removeGuestFromLive(
+		broadcastId: string,
+		userId: string,
+	): Promise<void> {
+		await new Promise(resolve => {
+			setTimeout(resolve, 300);
+		});
+
+		if (broadcastId !== this.mockBroadcastId) {
+			throw new Error('Invalid broadcast ID');
+		}
+
+		this.mockGuests = this.mockGuests.filter(g => g.userId !== userId);
+		logger.info(`Mock: Removed guest ${userId} from broadcast`);
+	}
+
+	async getLiveGuests(broadcastId: string): Promise<LiveGuest[]> {
+		await new Promise(resolve => {
+			setTimeout(resolve, 200);
+		});
+
+		if (broadcastId !== this.mockBroadcastId) {
+			throw new Error('Invalid broadcast ID');
+		}
+
+		return [...this.mockGuests];
 	}
 }
 

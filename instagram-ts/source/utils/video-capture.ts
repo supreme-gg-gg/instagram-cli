@@ -35,9 +35,12 @@ export function captureVideoFromCamera(
 	} = options;
 
 	// Determine input based on platform
-	const isMac = process.platform === 'darwin';
-	const isWindows = process.platform === 'win32';
-	const isLinux = process.platform === 'linux';
+	// eslint-disable-next-line n/prefer-global/process
+	const isMac = globalThis.process.platform === 'darwin';
+	// eslint-disable-next-line n/prefer-global/process
+	const isWindows = globalThis.process.platform === 'win32';
+	// eslint-disable-next-line n/prefer-global/process
+	const isLinux = globalThis.process.platform === 'linux';
 
 	let inputDevice = '';
 	if (isMac) {
@@ -110,8 +113,8 @@ export function captureVideoFromCamera(
 
 	const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
 
-	ffmpegProcess.stderr?.on('data', (data: Buffer) => {
-		const output = data.toString();
+	ffmpegProcess.stderr?.on('data', (data: Uint8Array) => {
+		const output = Buffer.from(data).toString();
 		// ffmpeg outputs to stderr by default
 		logger.debug(`ffmpeg: ${output}`);
 	});
@@ -121,6 +124,14 @@ export function captureVideoFromCamera(
 		throw new Error(
 			'ffmpeg not found. Please install ffmpeg to use video capture.',
 		);
+	});
+
+	ffmpegProcess.on('exit', (code, signal) => {
+		if (code !== 0 && code !== null) {
+			logger.error(
+				`ffmpeg process exited with code ${code} and signal ${signal}`,
+			);
+		}
 	});
 
 	const stop = () => {
@@ -152,9 +163,12 @@ export function streamToRtmp(
 	const fullRtmpUrl = `${rtmpUrl}/${streamKey}`;
 
 	// Determine input based on platform
-	const isMac = process.platform === 'darwin';
-	const isWindows = process.platform === 'win32';
-	const isLinux = process.platform === 'linux';
+	// eslint-disable-next-line n/prefer-global/process
+	const isMac = globalThis.process.platform === 'darwin';
+	// eslint-disable-next-line n/prefer-global/process
+	const isWindows = globalThis.process.platform === 'win32';
+	// eslint-disable-next-line n/prefer-global/process
+	const isLinux = globalThis.process.platform === 'linux';
 
 	let inputDevice = '';
 	if (isMac) {
@@ -233,8 +247,8 @@ export function streamToRtmp(
 
 	const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
 
-	ffmpegProcess.stderr?.on('data', (data: Buffer) => {
-		const output = data.toString();
+	ffmpegProcess.stderr?.on('data', (data: Uint8Array) => {
+		const output = Buffer.from(data).toString();
 		logger.debug(`ffmpeg: ${output}`);
 	});
 
@@ -243,6 +257,14 @@ export function streamToRtmp(
 		throw new Error(
 			'ffmpeg not found. Please install ffmpeg to use video streaming.',
 		);
+	});
+
+	ffmpegProcess.on('exit', (code, signal) => {
+		if (code !== 0 && code !== null) {
+			logger.error(
+				`ffmpeg process exited with code ${code} and signal ${signal}`,
+			);
+		}
 	});
 
 	const stop = () => {

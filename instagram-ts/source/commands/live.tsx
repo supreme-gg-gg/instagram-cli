@@ -7,6 +7,7 @@ import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 import {createContextualLogger} from '../utils/logger.js';
 import type {LiveBroadcast, LiveGuest} from '../types/instagram.js';
 import {streamToRtmp} from '../utils/video-capture.js';
+import {mockClient} from '../mocks/index.js';
 
 export const args = zod.tuple([
 	zod
@@ -40,6 +41,11 @@ export const options = zod.object({
 		.optional()
 		.default(30)
 		.describe('Frames per second (default: 30)'),
+	demo: zod
+		.boolean()
+		.optional()
+		.default(false)
+		.describe('Demo mode: Test the feature without requiring 1000+ followers'),
 });
 
 type Properties = {
@@ -50,22 +56,32 @@ type Properties = {
 const logger = createContextualLogger('LiveCommand');
 
 export default function Live({args, options: opts}: Properties) {
-	const {client, isLoading, error} = useInstagramClient(args[0], {
+	const {
+		client: realClient,
+		isLoading,
+		error,
+	} = useInstagramClient(args[0], {
 		realtime: false,
 	});
+
+	// Use mock client in demo mode
+	const client = opts.demo ? mockClient : realClient;
 
 	const [broadcast, setBroadcast] = React.useState<LiveBroadcast | undefined>();
 	const [guests, setGuests] = React.useState<LiveGuest[]>([]);
 	const [streamError, setStreamError] = React.useState<string | undefined>();
 	const [isStreaming, setIsStreaming] = React.useState(false);
-	const [streamProcess, setStreamProcess] = React.useState<{
-		stop: () => void;
-	} | null>(null);
+	const [streamProcess, setStreamProcess] = React.useState<
+		| {
+				stop: () => void;
+		  }
+		| undefined
+	>(undefined);
 
 	// Handle keyboard input
 	useInput((input, key) => {
 		if (key.escape || (key.ctrl && input === 'c')) {
-			handleEndStream();
+			void handleEndStream();
 		} else if (input === 'i' && broadcast) {
 			// Invite guest - prompt for username
 			// This is a simplified version; in a full implementation,
@@ -74,9 +90,9 @@ export default function Live({args, options: opts}: Properties) {
 				'Guest invitation feature - use the inviteGuestToLive method',
 			);
 		} else if (input === 's' && broadcast && !isStreaming) {
-			handleStartStream();
+			void handleStartStream();
 		} else if (input === 'e' && broadcast && isStreaming) {
-			handleEndStream();
+			void handleEndStream();
 		}
 	});
 
@@ -110,20 +126,27 @@ export default function Live({args, options: opts}: Properties) {
 			logger.info('Starting live broadcast...');
 			await client.startLiveBroadcast(broadcast.broadcastId);
 
-			// Start streaming video to RTMP
-			logger.info('Starting video stream from camera...');
-			const stream = streamToRtmp(
-				broadcast.rtmpStreamUrl,
-				broadcast.streamKey,
-				{
-					device: opts.device,
-					width: opts.width,
-					height: opts.height,
-					fps: opts.fps,
-				},
-			);
+			// Only start actual video streaming if not in demo mode
+			if (opts.demo) {
+				logger.info('Demo mode: Video streaming simulated');
+			} else {
+				// Start streaming video to RTMP
+				logger.info('Starting video stream from camera...');
+				const stream = streamToRtmp(
+					broadcast.rtmpStreamUrl,
+					broadcast.streamKey,
+					{
+						device: opts.device,
+						width: opts.width,
+						height: opts.height,
+						fps: opts.fps,
+					},
+				);
 
-			setStreamProcess(stream);
+				setStreamProcess(stream);
+				logger.info('Video stream started');
+			}
+
 			setIsStreaming(true);
 
 			// Update broadcast status
@@ -150,7 +173,7 @@ export default function Live({args, options: opts}: Properties) {
 			// Stop video stream
 			if (streamProcess) {
 				streamProcess.stop();
-				setStreamProcess(null);
+				setStreamProcess(undefined);
 			}
 
 			// End broadcast on Instagram
@@ -185,8 +208,10 @@ export default function Live({args, options: opts}: Properties) {
 			return;
 		}
 
+		let errorCount = 0;
+		const maxErrors = 3; // Stop polling after 3 consecutive errors
+
 		// Use Node.js global setInterval
-		// eslint-disable-next-line n/prefer-global/clear-interval
 		const interval = globalThis.setInterval(async () => {
 			try {
 				const status = await client.getLiveBroadcastStatus(
@@ -197,13 +222,27 @@ export default function Live({args, options: opts}: Properties) {
 				// Refresh guest list
 				const updatedGuests = await client.getLiveGuests(broadcast.broadcastId);
 				setGuests(updatedGuests);
+
+				// Reset error count on success
+				errorCount = 0;
 			} catch (error_) {
+				errorCount++;
 				logger.error('Failed to update broadcast status', error_);
+
+				// Stop polling after persistent errors
+				if (errorCount >= maxErrors) {
+					logger.warn(
+						'Stopping status polling due to persistent errors. Please check your connection.',
+					);
+					setStreamError(
+						'Status updates stopped due to persistent errors. The stream may still be active.',
+					);
+					globalThis.clearInterval(interval);
+				}
 			}
 		}, 5000); // Update every 5 seconds
 
 		return () => {
-			// eslint-disable-next-line n/prefer-global/clear-interval
 			globalThis.clearInterval(interval);
 		};
 	}, [client, broadcast, isStreaming]);
@@ -214,6 +253,7 @@ export default function Live({args, options: opts}: Properties) {
 			if (streamProcess) {
 				streamProcess.stop();
 			}
+
 			if (client && broadcast && isStreaming) {
 				void client.endLiveBroadcast(broadcast.broadcastId).catch(() => {
 					// Ignore errors during cleanup
@@ -240,8 +280,15 @@ export default function Live({args, options: opts}: Properties) {
 
 	return (
 		<Box flexDirection="column" padding={1}>
+			{opts.demo && (
+				<Box marginBottom={1}>
+					<Text bold color="yellow">
+						🎭 DEMO MODE - No real streaming, testing UI only
+					</Text>
+				</Box>
+			)}
 			<Box flexDirection="column" marginBottom={1}>
-				<Text color="green" bold>
+				<Text bold color="green">
 					🔴 Live Stream Status
 				</Text>
 				<Text>
@@ -270,22 +317,26 @@ export default function Live({args, options: opts}: Properties) {
 
 			{broadcast.status === 'created' && (
 				<Box flexDirection="column" marginTop={1}>
-					<Text color="yellow">Press 's' to start streaming</Text>
-					<Text color="gray">Press 'Esc' or 'Ctrl+C' to cancel</Text>
+					<Text color="yellow">Press &#39;s&#39; to start streaming</Text>
+					<Text color="gray">
+						Press &#39;Esc&#39; or &#39;Ctrl+C&#39; to cancel
+					</Text>
 				</Box>
 			)}
 
 			{broadcast.status === 'started' && (
 				<Box flexDirection="column" marginTop={1}>
 					<Text color="green">✅ Streaming live!</Text>
-					<Text color="gray">Press 'e' to end stream</Text>
-					<Text color="gray">Press 'Esc' or 'Ctrl+C' to end stream</Text>
+					<Text color="gray">Press &#39;e&#39; to end stream</Text>
+					<Text color="gray">
+						Press &#39;Esc&#39; or &#39;Ctrl+C&#39; to end stream
+					</Text>
 				</Box>
 			)}
 
 			{guests.length > 0 && (
 				<Box flexDirection="column" marginTop={1}>
-					<Text color="blue" bold>
+					<Text bold color="blue">
 						Guests ({guests.length}):
 					</Text>
 					{guests.map(guest => (
@@ -297,10 +348,15 @@ export default function Live({args, options: opts}: Properties) {
 			)}
 
 			<Box flexDirection="column" marginTop={2}>
-				<Text color="gray" dimColor>
-					Note: This uses Instagram's private mobile API. Make sure ffmpeg is
-					installed for video capture.
+				<Text dimColor color="gray">
+					Note: This uses Instagram&#39;s private mobile API. Make sure ffmpeg
+					is installed for video capture.
 				</Text>
+				<Box marginTop={1}>
+					<Text dimColor color="yellow">
+						⚠️ Live streaming requires a public account with 1000+ followers.
+					</Text>
+				</Box>
 			</Box>
 		</Box>
 	);
