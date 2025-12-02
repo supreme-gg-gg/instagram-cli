@@ -93,7 +93,6 @@ export default function StoryDisplay({
 				.markStoriesAsSeen([currentStory])
 				.then(() => {
 					seenStories.current.add(currentStory.id);
-					logger.debug(`Marked story ${currentStory.id} as seen.`);
 				})
 				.catch((error: unknown) => {
 					logger.error('Failed to mark story as seen:', error);

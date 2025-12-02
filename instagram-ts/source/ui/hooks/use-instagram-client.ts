@@ -27,7 +27,6 @@ export function useInstagramClient(
 	useEffect(() => {
 		const initializeClient = async () => {
 			try {
-				logger.info('Initializing Instagram client');
 				const config = ConfigManager.getInstance();
 				await config.initialize();
 
@@ -46,7 +45,6 @@ export function useInstagramClient(
 
 				const sessionManager = new SessionManager(targetUsername);
 				const sessionExists = await sessionManager.sessionExists();
-				logger.debug(`Session exists for ${targetUsername}: ${sessionExists}`);
 
 				if (!sessionExists) {
 					setError(
@@ -80,7 +78,6 @@ export function useInstagramClient(
 
 				setClient(instagramClient);
 				setIsLoading(false);
-				logger.info(`Client initialized successfully for ${targetUsername}`);
 			} catch (error_) {
 				logger.error('Failed to initialize client', error_);
 				setError(
