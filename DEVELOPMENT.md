@@ -1,7 +1,5 @@
 # Development
 
-The TypeScript Client is contained in the `instagram-ts` folder. For all of the following commands, you should first `cd` into the `instagram-ts` directory. Important design decisions are documented in `designs/`.
-
 ## Getting Started
 
 If you do not have Node.js installed, you can download and install it from the [official website](https://nodejs.org/). We recommend using Node.js version 20 or above. We recommend using `nvm` to manage your Node.js versions, see [nvm-sh/nvm](https://github.com/nvm-sh/nvm).
@@ -9,10 +7,10 @@ If you do not have Node.js installed, you can download and install it from the [
 To get started, you need to install the dependencies:
 
 ```bash
-npm install
+npm ci
 ```
 
-We no longer use `lint-staged` and `husky`. We have migrated to `pre-commit` for both Python and TypeScript. This happens automatically as you commit.
+We are using `lint-staged` and `husky` for pre-commit hooks to ensure code quality for TypeScript. They are setup automatically when you run `npm ci`.
 
 If linter and formatter is not run automatically, you can run it manually with:
 
@@ -64,7 +62,7 @@ npm link
 ## Structure
 
 ```plaintext
-instagram-ts/source/
+source/
 ├── cli.ts              # Main CLI entry point (meow)
 ├── client.ts           # Unified Instagram API client (all IG logic)
 ├── config.ts           # YAML-based config management

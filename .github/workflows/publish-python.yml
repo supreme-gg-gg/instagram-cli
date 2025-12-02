@@ -11,10 +11,10 @@ name: Build and Publish Python Package
 on:
   push:
     tags:
-      - "v*.*.*"
-      - "!ts-v*.*.*"
-  release:
-    types: [published]
+      - 'v*.*.*'
+      - '!ts-v*.*.*'
+  # release:
+  #   types: [published]
   workflow_dispatch:
 
 permissions:
@@ -33,9 +33,10 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: '3.x'
 
       - name: Build release distributions
+        working-directory: instagram-py
         run: |
           # NOTE: put your own distribution build steps here.
           python -m pip install build
@@ -45,7 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-dists
-          path: dist/
+          path: instagram-py/dist/
 
   pypi-publish:
     runs-on: ubuntu-latest
@@ -71,7 +72,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-dists
-          path: dist/
+          path: instagram-py/dist/
 
       - name: Publish release distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

@@ -6,8 +6,8 @@ Thank you for contributing to instagram-cli, and welcome to the force against br
 
 This repository contains **two separate clients** for Instagram:
 
-- **Python Client** (`instagram/` folder)
-- **TypeScript Client** (`instagram-ts/` folder)
+- **Python Client** (`instagram-py/` folder)
+- **TypeScript Client** (`./source` folder in root)
 
 Choose the client you want to work on based on your preferences and the feature you're implementing.
 
@@ -15,40 +15,12 @@ The team is primarily focused on actively developing the TypeScript client. Howe
 
 ## Getting Started
 
-### Python Client Development
-
-To get started with the Python client, clone the repository:
-
-```bash
-git clone https://github.com/supreme-gg-gg/instagram-cli.git
-cd instagram-cli
-```
-
-Create a virtual environment to isolate your dependencies:
-
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-```
-
-To create a development build:
-
-```bash
-pip install -e .
-```
-
 ### TypeScript Client Development
-
-For the TypeScript client, navigate to the TypeScript directory:
-
-```bash
-cd instagram-ts
-```
 
 Install dependencies:
 
 ```bash
-npm install
+npm ci
 ```
 
 To build and run during development:
@@ -69,6 +41,34 @@ npm run start auth login
 npm run start chat
 ```
 
+### Python Client Development
+
+To get started with the Python client, clone the repository:
+
+```bash
+git clone https://github.com/supreme-gg-gg/instagram-cli.git
+cd instagram-cli
+```
+
+**You need to cd into the `instagram-py` directory for Python client development:**
+
+```bash
+cd instagram-py
+```
+
+Create a virtual environment to isolate your dependencies:
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+```
+
+To create a development build:
+
+```bash
+pip install -e .
+```
+
 ## Code Quality and Pre-commit Hooks
 
 We use pre-commit hooks for both Python and TypeScript. To set up:
@@ -82,19 +82,19 @@ This automatically formats and lints your code when you commit.
 
 ### Manual Code Quality Checks
 
-**Python:**
-
-```bash
-ruff check .
-ruff format .
-```
-
 **TypeScript:**
 
 ```bash
 cd instagram-ts
 npm run format
 npm run lint-check
+```
+
+**Python:**
+
+```bash
+ruff check .
+ruff format .
 ```
 
 ## How to Contribute

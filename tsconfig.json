@@ -9,9 +9,9 @@
 		"moduleResolution": "node16",
 		"allowImportingTsExtensions": false,
 		"resolveJsonModule": true,
-		"typeRoots": ["./source/types", "./node_modules/@types"]
+		"typeRoots": ["./source/types", "node_modules/@types"]
 	},
-	"include": ["source"],
+	"include": ["./source"],
 	"ts-node": {
 		"transpileOnly": true,
 		"files": true,
