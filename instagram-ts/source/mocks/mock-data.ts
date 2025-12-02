@@ -233,6 +233,19 @@ export const mockMessages: Message[] = [
 		},
 		// No reactions for this message
 	},
+	{
+		id: 'msg8',
+		timestamp: new Date(Date.now() - 60_000 * 3), // 3 minutes ago
+		userId: 'user2',
+		username: 'bob_johnson',
+		isOutgoing: false,
+		threadId: 'thread1',
+		itemType: 'link',
+		link: {
+			text: 'Interesting read about privacy',
+			url: 'https://example.com/privacy',
+		},
+	},
 ];
 
 // Mock threads
