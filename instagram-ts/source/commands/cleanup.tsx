@@ -12,7 +12,8 @@ export const args = zod.tuple([
 		.describe(
 			argument({
 				name: 'type',
-				description: 'Type of cleanup: sessions, cache, or all (default: all)',
+				description:
+					'Type of cleanup: sessions, cache, logs, or all (default: all)',
 			}),
 		),
 ]);
@@ -39,6 +40,11 @@ export default function Cleanup({args}: Properties) {
 				if (cleanupType === 'all' || cleanupType === 'cache') {
 					await InstagramClient.cleanupCache();
 					output += '✅ Cache cleaned up\n';
+				}
+
+				if (cleanupType === 'all' || cleanupType === 'logs') {
+					await InstagramClient.cleanupLogs();
+					output += '✅ Logs cleaned up\n';
 				}
 
 				output += '✅ Cleanup complete';

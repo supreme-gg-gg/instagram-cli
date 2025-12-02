@@ -3,6 +3,7 @@ import type {ChatState} from '../types/instagram.js';
 import type {ScrollViewRef} from '../ui/components/scroll-view.js';
 import {preprocessMessage} from './preprocess.js';
 import {createContextualLogger} from './logger.js';
+import {getEmojiByName} from './emoji.js';
 
 const logger = createContextualLogger('ChatCommands');
 
@@ -48,13 +49,13 @@ export const chatCommands: Record<string, ChatCommand> = {
 			arguments_,
 			{client, chatState, setChatState, scrollViewRef},
 		) {
+			if (chatState.selectedMessageIndex === undefined) {
+				return 'Usage: select message to reply to first with :select command.';
+			}
+
 			const text = arguments_.join(' ');
 			if (!text) {
 				return 'Usage: :reply <text>';
-			}
-
-			if (chatState.selectedMessageIndex === undefined) {
-				return 'Usage: :select to enter selection mode first.';
 			}
 
 			const messageToReplyTo =
@@ -91,9 +92,10 @@ export const chatCommands: Record<string, ChatCommand> = {
 		},
 	},
 	react: {
-		description: 'React to the selected message. Usage: :react [emoji]',
+		description:
+			'React to the selected message. Usage: :react [emoji|:emoji_name:]',
 		async handler(arguments_, {client, chatState, setChatState}) {
-			const [emoji = '❤️'] = arguments_;
+			let [emojiInput = '❤️'] = arguments_;
 
 			if (chatState.selectedMessageIndex === undefined) {
 				return 'Usage: :select to enter selection mode first.';
@@ -105,10 +107,21 @@ export const chatCommands: Record<string, ChatCommand> = {
 				return;
 			}
 
+			// Check if input is in :emoji_name: format and convert it
+			if (emojiInput.startsWith(':') && emojiInput.endsWith(':')) {
+				const emojiName = emojiInput.slice(1, -1);
+				const convertedEmoji = getEmojiByName(emojiName);
+				if (convertedEmoji) {
+					emojiInput = convertedEmoji;
+				} else {
+					return `Unknown emoji name: ${emojiName}`;
+				}
+			}
+
 			await client.sendReaction(
 				chatState.currentThread.id,
 				messageToReactTo.id,
-				emoji,
+				emojiInput,
 			);
 
 			setChatState(previous => ({

@@ -4,6 +4,7 @@ import os from 'node:os';
 import process from 'node:process';
 import nodeUtil from 'node:util';
 import debugModule from 'debug';
+import {ConfigManager} from '../config.js';
 
 type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
@@ -16,14 +17,15 @@ type LogEntry = {
 };
 
 class Logger {
-	private readonly logFilePath: string;
-	private readonly logsDir: string;
+	private logFilePath: string;
+	private logsDir: string;
 	private readonly sessionId: string;
 	private readonly logBuffer: LogEntry[] = [];
 	private isInitialized = false;
 	private debugHookInstalled = false;
 
 	constructor() {
+		// Initialize with default path; will be updated in initialize()
 		this.logsDir = path.join(os.homedir(), '.instagram-cli', 'logs');
 		this.sessionId = this.generateSessionId();
 		this.logFilePath = path.join(this.logsDir, `session-${this.sessionId}.log`);
@@ -35,6 +37,19 @@ class Logger {
 		}
 
 		try {
+			// Get logs directory from config
+			const configManager = ConfigManager.getInstance();
+			await configManager.initialize();
+			const configuredLogsDir = configManager.get('advanced.logsDir');
+			if (configuredLogsDir) {
+				this.logsDir = configuredLogsDir;
+				// Update logFilePath with the configured logs directory
+				this.logFilePath = path.join(
+					this.logsDir,
+					`session-${this.sessionId}.log`,
+				);
+			}
+
 			await fs.promises.mkdir(this.logsDir, {recursive: true});
 			this.isInitialized = true;
 

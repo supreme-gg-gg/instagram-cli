@@ -33,6 +33,7 @@ type AdvancedConfig = {
 	cacheDir: string;
 	mediaDir: string;
 	generatedDir: string;
+	logsDir: string;
 };
 
 type Config = {
@@ -67,6 +68,7 @@ const DEFAULT_CONFIG: Config = {
 		cacheDir: path.join(DEFAULT_DATA_DIR, 'cache'),
 		mediaDir: path.join(DEFAULT_DATA_DIR, 'media'),
 		generatedDir: path.join(DEFAULT_DATA_DIR, 'generated'),
+		logsDir: path.join(DEFAULT_DATA_DIR, 'logs'),
 	},
 	feed: {
 		feedType: 'list',
