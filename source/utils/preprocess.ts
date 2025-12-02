@@ -83,9 +83,9 @@ export async function preprocessMessage(
 		} catch (error) {
 			// If any file operation fails (e.g., file not found, permission denied),
 			// leave the @<path> in the message as-is for the user to see the error.
-			logger.warn(
-				`Failed to process file ${absolutePath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-			);
+			const errorMessage =
+				error instanceof Error ? error.message : 'Unknown error';
+			logger.warn(`Failed to process file ${absolutePath}: ${errorMessage}`);
 		}
 	}
 

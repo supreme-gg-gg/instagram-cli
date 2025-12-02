@@ -88,7 +88,7 @@
 	},
 	"ava": {
 		"files": [
-			"test.tsx"
+			"tests/**"
 		],
 		"extensions": {
 			"ts": "module",

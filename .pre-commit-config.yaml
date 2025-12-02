@@ -17,7 +17,7 @@ repos:
     hooks:
       - id: prettier
         files: '^instagram-ts/.*\.(ts|tsx|js|jsx|json|md)$'
-        exclude: "^instagram-ts/(node_modules|dist)/"
+        exclude: '^instagram-ts/(node_modules|dist)/'
 
   # TypeScript linting via local execution (since xo config is in package.json)
   - repo: local
@@ -27,7 +27,7 @@ repos:
         entry: bash -c 'cd instagram-ts && npm run lint-check'
         language: system
         files: '^instagram-ts/.*\.(ts|tsx)$'
-        exclude: "^instagram-ts/(node_modules|dist)/"
+        exclude: '^instagram-ts/(node_modules|dist)/'
         pass_filenames: false
 
   # Generic tools
