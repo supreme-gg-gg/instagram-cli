@@ -26,6 +26,7 @@ Empower yourself to become a 10x Instagrammer by minimizing distractions, enabli
 - Chat with your friends without falling into endless brainrot
 - Stay updated & connected without being exploited for your attention
 - Focus on meaningful conversations and be productive
+- Full keyboard navigation and shortcuts, no mouse, no touchscreens
 - Celebrate the art and simplicity of **terminal UI (TUI)**
 
 ## Typescript Client
@@ -103,7 +104,7 @@ Inside the chat interface and after selecting a thread, you can navigate all int
 ```bash
 # Select messages to perform actions
 :select
-:react <emoji>
+:react <emoji | :emoji_name:>
 :reply <text>
 :unsend
 
@@ -138,9 +139,16 @@ You can view and modify configuration with `instagram-cli config`. The configura
 
 We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to get started, create issues, and submit pull requests. It is very important that you follow these instructions because we manage two different clients in the same repository. _Instagram CLI is NOT meant to be used for bot-behaviours, we will not accept contributions that add such features._
 
-### Commitment to Open Source
+## Reporting Issues
 
-Maintainers behind `instagram-cli` are committed to contributing to the open source community behind frameworks that empower terminal applications, such as `ink`. This includes direct contributions and our sister projects -- [Ink Picture, Ink-native image component](https://github.com/endernoke/ink-picture) and [Wax, Ink routing framework](https://github.com/endernoke/wax).
+Occasionally, Instagram may update their API or protocols which can cause certain features to break. If you encounter any issues, please report them on our [GitHub Issues page](https://github.com/supreme-gg-gg/instagram-cli/issues). Make sure to attach the relevant log files located at `~/.instagram-cli/logs/` to help us diagnose and fix the problem quickly.
+
+### Sister projects
+
+We contributed the following extensions to the Ink ecosystem for building Terminal UI apps:
+
+- [Ink Picture, Ink-native image component](https://github.com/endernoke/ink-picture)
+- [Wax, Ink routing framework](https://github.com/endernoke/wax).
 
 ## Star History
 

@@ -21,4 +21,11 @@ export async function cleanup(deleteAll = false): Promise<void> {
 
 	// Clean up all cache directories
 	await InstagramClient.cleanupCache();
+
+	// Clean up logs directory
+	try {
+		await InstagramClient.cleanupLogs();
+	} catch {
+		// Logs directory might not exist
+	}
 }

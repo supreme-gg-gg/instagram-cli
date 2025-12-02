@@ -107,6 +107,25 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
+	public static async cleanupLogs(): Promise<void> {
+		try {
+			const configManager = ConfigManager.getInstance();
+			await configManager.initialize();
+
+			const logsDirectory = configManager.get('advanced.logsDir');
+			try {
+				const files = fs.readdirSync(logsDirectory);
+				for (const file of files) {
+					fs.unlinkSync(join(logsDirectory, file));
+				}
+			} catch {}
+		} catch (error) {
+			const logger = createContextualLogger('cleanupLogs');
+			logger.error('Error during logs cleanup', error);
+			throw error;
+		}
+	}
+
 	private readonly ig: IgApiClientExt;
 	private realtime: RealtimeClient | undefined;
 	private realtimeStatus: RealtimeStatus = 'disconnected';
