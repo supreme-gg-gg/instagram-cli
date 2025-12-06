@@ -34,6 +34,7 @@
 		"build": "tsc",
 		"clean": "rm -rf dist",
 		"lint-check": "prettier --check . && xo",
+		"prepare": "husky install",
 		"dev": "tsc --watch",
 		"start": "node dist/cli.js",
 		"start:mock": "node dist/mocks/cli.mock.js",
@@ -81,6 +82,8 @@
 		"eslint-config-xo-react": "0.27.0",
 		"eslint-plugin-react": "^7.37.5",
 		"eslint-plugin-react-hooks": "^5.0.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.2.7",
 		"prettier": "^3.3.3",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.0.3",
@@ -114,5 +117,9 @@
 			"promise/prefer-await-to-then": "off"
 		}
 	},
-	"prettier": "@vdemedes/prettier-config"
+	"prettier": "@vdemedes/prettier-config",
+	"lint-staged": {
+		"!(instagram-py)/**/*.{ts,tsx,js,jsx,json,md}": "prettier --write",
+		"!(instagram-py)/**/*.{ts,tsx}": "xo --fix"
+	}
 }
