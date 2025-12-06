@@ -10,7 +10,7 @@ authors = [
     { name = "Jet Chiang", email = "jetjiang.ez@gmail.com" },
     { name = "James Zheng", email = "endernoke@gmail.com" }
 ]
-license = { text = "MIT" }
+license = "MIT"
 keywords = [
     "instagram",
     "cli",
@@ -37,7 +37,6 @@ dependencies = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: POSIX :: Linux",
@@ -70,3 +69,9 @@ exclude = ["tests*"]
 
 [tool.setuptools.dynamic]
 readme = {file = "README.md"}
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+    "ruff>=0.14.8",
+]

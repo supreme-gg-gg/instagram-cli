@@ -1,4 +1,4 @@
-import emojiData from 'unicode-emoji-json' with {type: 'json'};
+import emojiData from 'unicode-emoji-json/data-by-emoji.json' with {type: 'json'};
 import EmojiNameMap from 'emoji-name-map';
 import Fuse from 'fuse.js';
 

@@ -5,7 +5,12 @@
 
 version: 2
 updates:
-  - package-ecosystem: "pip" # See documentation for possible values
-    directory: "./requirements.txt" # Location of package manifests
+  - package-ecosystem: 'pip' # See documentation for possible values
+    directory: './instagram-py' # Location of package manifests
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
+
+  - package-ecosystem: 'npm'
+    directory: '/' # Location of package manifests
+    schedule:
+      interval: 'weekly'

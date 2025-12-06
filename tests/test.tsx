@@ -1,9 +1,9 @@
 import React from 'react';
 import test, {type ExecutionContext} from 'ava';
 import {render} from 'ink-testing-library';
-import Index from './source/commands/index.js';
-import {AppMock} from './source/mocks/app.mock.js';
-import {mockThreads, mockMessages} from './source/mocks/mock-data.js';
+import Index from '../source/commands/index.js';
+import {AppMock} from '../source/mocks/app.mock.js';
+import {mockThreads, mockMessages} from '../source/mocks/mock-data.js';
 
 const delay = async (ms: number): Promise<void> => {
 	return new Promise(resolve => {
