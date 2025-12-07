@@ -5,13 +5,11 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "instagram-ts/**"
+    paths: ['source/**', 'tests/**']
   pull_request:
     branches:
       - main
-    paths:
-      - "instagram-ts/**"
+    paths: ['source/**', 'tests/**']
 
 jobs:
   format:
@@ -24,17 +22,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "20"
+          node-version: '20'
 
       - name: Install TS dependencies
-        working-directory: instagram-ts
         run: |
           npm ci
 
       - name: Run Prettier check
-        working-directory: instagram-ts
         run: npx prettier --check .
 
       - name: Run xo + tests
-        working-directory: instagram-ts
         run: npm test

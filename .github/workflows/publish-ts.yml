@@ -6,9 +6,10 @@ on:
   push:
     tags:
       # Only match formal releases (ts-v1.0.4), not beta/alpha (ts-v1.0.4-beta)
-      - "ts-v[0-9]+.[0-9]+.[0-9]+"
-  release:
-    types: [published]
+      - 'ts-v[0-9]+.[0-9]+.[0-9]+'
+  # Removed release trigger to avoid duplication
+  # release:
+  #   types: [published]
   workflow_dispatch:
 
 permissions:
@@ -28,18 +29,16 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
-          registry-url: "https://registry.npmjs.org"
-          scope: "@i7m"
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+          scope: '@i7m'
 
       - name: Update npm
         # Ensure npm 11.5.1 or later for trusted publishing
         run: npm install -g npm@latest
 
       - name: Install dependencies and build
-        working-directory: ./instagram-ts
         run: npm ci && npm run build
 
       - name: Publish to NPM
-        working-directory: ./instagram-ts
         run: npm publish --access public
