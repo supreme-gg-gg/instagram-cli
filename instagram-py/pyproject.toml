@@ -25,7 +25,7 @@ dependencies = [
     "typer==0.12.5",
     "art>=6.5",
     "pydantic>=2.10.1",
-    "instagrapi==2.1.5",
+    "instagrapi==2.2.1",
     "pyyaml>=6.0.2",
     "pillow>=11.2.1",
     "emoji>=2.14.1",
