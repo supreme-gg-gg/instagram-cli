@@ -22,7 +22,7 @@ keywords = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "typer==0.12.5",
+    "typer==0.20.0",
     "art>=6.5",
     "pydantic>=2.10.1",
     "instagrapi==2.1.5",
