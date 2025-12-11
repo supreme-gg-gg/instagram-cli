@@ -9,8 +9,17 @@ updates:
     directory: './instagram-py' # Location of package manifests
     schedule:
       interval: 'weekly'
+    # Group all updates into a single pull request
+    groups:
+      dependencies:
+        patterns:
+          - '*'
 
   - package-ecosystem: 'npm'
-    directory: '/' # Location of package manifests
+    directory: '/'
     schedule:
       interval: 'weekly'
+    groups:
+      dependencies:
+        patterns:
+          - '*'

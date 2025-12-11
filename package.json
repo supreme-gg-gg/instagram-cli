@@ -34,7 +34,7 @@
 		"build": "tsc",
 		"clean": "rm -rf dist",
 		"lint-check": "prettier --check . && xo",
-		"prepare": "husky install",
+		"prepare": "husky",
 		"dev": "tsc --watch",
 		"start": "node dist/cli.js",
 		"start:mock": "node dist/mocks/cli.mock.js",
