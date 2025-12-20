@@ -31,7 +31,7 @@ export function useInstagramClient(
 				await config.initialize();
 
 				let targetUsername = usernameArgument;
-				targetUsername ||=
+				targetUsername ??=
 					config.get('login.currentUsername') ??
 					config.get('login.defaultUsername');
 

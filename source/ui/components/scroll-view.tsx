@@ -69,7 +69,7 @@ const ScrollView = forwardRef<ScrollViewRef | undefined, Props>(
 		}: Props,
 		ref: React.Ref<ScrollViewRef | undefined>,
 	) => {
-		// eslint-disable-next-line @typescript-eslint/ban-types
+		// eslint-disable-next-line @typescript-eslint/no-restricted-types
 		const containerRef = useRef<DOMElement | null>(null);
 		const [offset, setOffset] = useState<number>(0);
 		const contentSize = useContentSize(containerRef);

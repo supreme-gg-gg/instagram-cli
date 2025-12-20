@@ -15,7 +15,9 @@ type SwitchExhaustivenessCheckOptions = [
 ];
 
 const xoConfig: FlatXoConfig = {
-	prettier: 'compat',
+	prettier: true,
+	semicolon: true,
+	space: false,
 	react: true,
 	rules: {
 		'react/prop-types': 'off',
