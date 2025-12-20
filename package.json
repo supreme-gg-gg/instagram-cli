@@ -79,15 +79,15 @@
 		"@vdemedes/prettier-config": "^2.0.1",
 		"ava": "^5.3.1",
 		"chalk": "^5.2.0",
-		"eslint-config-xo-react": "0.27.0",
+		"eslint-config-xo-react": "^0.29.0",
 		"eslint-plugin-react": "^7.37.5",
-		"eslint-plugin-react-hooks": "^5.0.0",
+		"eslint-plugin-react-hooks": "^7.0.1",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.2.7",
 		"prettier": "^3.3.3",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.0.3",
-		"xo": "^0.60.0"
+		"xo": "^1.2.3"
 	},
 	"ava": {
 		"files": [
@@ -100,22 +100,6 @@
 		"nodeArguments": [
 			"--loader=ts-node/esm"
 		]
-	},
-	"xo": {
-		"extends": "xo-react",
-		"prettier": true,
-		"rules": {
-			"react/prop-types": "off",
-			"@typescript-eslint/naming-convention": "off",
-			"@typescript-eslint/no-empty-function": "off",
-			"react/no-array-index-key": "off",
-			"react/require-default-props": "off",
-			"unicorn/prevent-abbreviations": "off",
-			"capitalized-comments": "off",
-			"no-useless-return": "off",
-			"no-console": "warn",
-			"promise/prefer-await-to-then": "off"
-		}
 	},
 	"prettier": "@vdemedes/prettier-config",
 	"lint-staged": {
