@@ -14,9 +14,9 @@ export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 	const [viewportSize, setViewportSize] = useState(10);
 
 	// Type null is required for these refs to work
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	const containerReference = useRef<DOMElement | null>(null);
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	const itemReference = useRef<DOMElement | null>(null);
 
 	// Measure container and item height to determine viewport size

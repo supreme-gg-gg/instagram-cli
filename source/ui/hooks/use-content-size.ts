@@ -90,7 +90,7 @@ export const measureContentSize = (node: DOMElement): ContentSize => {
  * @returns The current content size {width, height}
  */
 const useContentSize = (
-	// eslint-disable-next-line @typescript-eslint/ban-types
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	containerRef: React.RefObject<DOMElement | null>,
 ): ContentSize => {
 	const [contentSize, setContentSize] = useState<ContentSize>({

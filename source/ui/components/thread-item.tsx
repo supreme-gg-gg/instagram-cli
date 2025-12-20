@@ -44,7 +44,6 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProperties) {
 				return message.text;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
 			default: {
 				return '[Unsupported Message]';
 			}

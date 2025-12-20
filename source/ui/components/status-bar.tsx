@@ -4,11 +4,11 @@ import type {Thread} from '../../types/instagram.js';
 import type {RealtimeStatus} from '../../client.js';
 
 type StatusBarProperties = {
-	readonly isLoading?: boolean;
+	readonly isLoading: boolean;
 	readonly error?: string;
-	readonly currentView?: 'threads' | 'chat';
+	readonly currentView: 'threads' | 'chat';
 	readonly currentThread?: Thread;
-	readonly realtimeStatus?: RealtimeStatus;
+	readonly realtimeStatus: RealtimeStatus;
 };
 
 export default function StatusBar({

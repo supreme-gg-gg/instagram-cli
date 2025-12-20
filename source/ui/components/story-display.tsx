@@ -77,7 +77,7 @@ export default function StoryDisplay({
 	useEffect(() => {
 		if (selectedIndex >= 0 && selectedIndex < combinedReels.length) {
 			const reel = combinedReels[selectedIndex];
-			if (reel && reel.stories.length === 0) {
+			if (reel?.stories.length === 0) {
 				loadMore(selectedIndex);
 			}
 		}

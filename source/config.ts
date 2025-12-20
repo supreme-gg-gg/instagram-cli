@@ -156,7 +156,6 @@ export class ConfigManager {
 
 			if (configExists) {
 				const configData = await fs.readFile(this.configFile, 'utf8');
-				// eslint-disable-next-line import/no-named-as-default-member
 				const loadedConfig = yaml.load(configData) as Partial<Config>;
 				this.config = this.mergeConfig(DEFAULT_CONFIG, loadedConfig);
 			} else {
@@ -187,7 +186,6 @@ export class ConfigManager {
 	private async saveConfig(): Promise<void> {
 		try {
 			await fs.mkdir(this.configDir, {recursive: true});
-			// eslint-disable-next-line import/no-named-as-default-member
 			const yamlContent = yaml.dump(this.config);
 			await fs.writeFile(this.configFile, yamlContent, 'utf8');
 		} catch (error) {

@@ -23,3 +23,7 @@ updates:
       dependencies:
         patterns:
           - '*'
+    # ava 6 breaks tests
+    ignore:
+      - dependency-name: 'ava'
+        update-types: ['version-update:semver-major']
