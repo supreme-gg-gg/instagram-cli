@@ -547,7 +547,6 @@ export default function ChatView() {
 		if (currentView === 'threads') {
 			return (
 				<ThreadList
-					isLoadingMore={chatState.loadingMoreThreads}
 					threads={chatState.threads}
 					onScrollToBottom={handleLoadMoreThreads}
 					onSelect={handleThreadSelect}
@@ -619,13 +618,17 @@ export default function ChatView() {
 					</Box>
 
 					<Box>
-						<Text dimColor>
-							{currentView === 'threads'
-								? 'j/k: navigate, Enter: select, Esc: quit'
-								: chatState.isSelectionMode
-									? 'j/k: navigate messages, Enter: confirm, Esc: exit selection'
-									: 'Esc: back to threads, Ctrl+C: quit'}
-						</Text>
+						{currentView === 'threads' && chatState.loadingMoreThreads ? (
+							<Text color="yellow">Loading more threads...</Text>
+						) : (
+							<Text dimColor>
+								{currentView === 'threads'
+									? 'j/k: navigate, Enter: select, Esc: quit'
+									: chatState.isSelectionMode
+										? 'j/k: navigate messages, Enter: confirm, Esc: exit selection'
+										: 'Esc: back to threads, Ctrl+C: quit'}
+							</Text>
+						)}
 					</Box>
 				</Box>
 			</TerminalInfoProvider>

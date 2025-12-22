@@ -39,6 +39,10 @@ class MockClient extends EventEmitter {
 	async getThreads(
 		loadMore = false,
 	): Promise<{threads: Thread[]; hasMore: boolean}> {
+		// Simulate network delay
+		await new Promise(resolve => {
+			setTimeout(resolve, 1000);
+		});
 		const threads_per_page = 20;
 		if (!loadMore) {
 			this.threadsPage = 0;
