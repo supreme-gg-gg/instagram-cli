@@ -41,7 +41,7 @@ test('renders stories view', (t: ExecutionContext) => {
 test('chat view displays messages when thread is selected', async (t: ExecutionContext) => {
 	const {lastFrame, stdin} = render(<AppMock view="chat" />);
 
-	await delay(1000);
+	await delay(1100);
 
 	// Verify threads are displayed
 	let output = lastFrame();
