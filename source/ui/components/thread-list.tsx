@@ -6,9 +6,14 @@ import ThreadItem from './thread-item.js';
 type ThreadListProperties = {
 	readonly threads: Thread[];
 	readonly onSelect: (thread: Thread) => void;
+	readonly onScrollToBottom?: () => void;
 };
 
-export default function ThreadList({threads, onSelect}: ThreadListProperties) {
+export default function ThreadList({
+	threads,
+	onSelect,
+	onScrollToBottom,
+}: ThreadListProperties) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const [viewportSize, setViewportSize] = useState(10);
@@ -16,24 +21,20 @@ export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 	// Type null is required for these refs to work
 	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	const containerReference = useRef<DOMElement | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-restricted-types
-	const itemReference = useRef<DOMElement | null>(null);
+	// Item height is constant because content is always truncated to fit the height
+	const itemHeight = 4;
 
 	// Measure container and item height to determine viewport size
 	useEffect(() => {
 		// We only need to measure if there are threads to display
-		if (containerReference.current && itemReference.current) {
+		if (containerReference.current) {
 			const containerHeight = measureElement(containerReference.current).height;
-			const itemHeight = measureElement(itemReference.current).height;
 
-			// Ensure itemHeight is not zero to avoid division by zero errors
-			if (itemHeight > 0) {
-				const newViewportSize = Math.max(
-					1,
-					Math.floor(containerHeight / itemHeight),
-				);
-				setViewportSize(newViewportSize);
-			}
+			const newViewportSize = Math.max(
+				1,
+				Math.floor(containerHeight / itemHeight),
+			);
+			setViewportSize(newViewportSize);
 		}
 	}, [threads]); // Rerun measurement when the list of threads changes
 
@@ -47,6 +48,11 @@ export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 			// Scroll down if selection moves below the viewport
 			if (newIndex >= scrollOffset + viewportSize) {
 				setScrollOffset(previous => previous + 1);
+			}
+
+			// Trigger load more when reaching the bottom
+			if (newIndex === threads.length - 1 && onScrollToBottom) {
+				onScrollToBottom();
 			}
 		} else if (input === 'k' || key.upArrow) {
 			const newIndex = Math.max(selectedIndex - 1, 0);
@@ -78,8 +84,6 @@ export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 	return (
 		<Box ref={containerReference} flexDirection="column" flexGrow={1}>
 			{visibleThreads.map((thread, index) => {
-				// We need a ref on one item to measure its height
-				const isFirstItem = index === 0;
 				// The actual index in the full threads array
 				const absoluteIndex = scrollOffset + index;
 				const isLastItem = index === visibleThreads.length - 1;
@@ -87,9 +91,7 @@ export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 				return (
 					<Box
 						key={thread.id}
-						ref={isFirstItem ? itemReference : undefined}
 						flexDirection="column"
-						marginTop={isFirstItem ? 1 : 0}
 						marginBottom={isLastItem ? 0 : 1}
 						flexShrink={0}
 					>

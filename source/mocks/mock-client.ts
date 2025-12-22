@@ -8,13 +8,7 @@ import type {
 	StoryReel,
 } from '../types/instagram.js';
 import {createContextualLogger} from '../utils/logger.js';
-import {
-	mockThreads,
-	mockMessages,
-	generateThread,
-	mockUsers,
-	mockStories,
-} from './mock-data.js';
+import {mockMessages, generateThreads, mockStories} from './mock-data.js';
 
 const logger = createContextualLogger('MockClient');
 
@@ -29,6 +23,8 @@ class MockClient extends EventEmitter {
 		logger.info('Mock: Cache cleaned up');
 	}
 
+	private readonly threads: Thread[] = generateThreads(50);
+	private threadsPage = 0;
 	private readonly sentMessages: Message[] = [];
 
 	private readonly sentReactions = new Map<
@@ -40,19 +36,30 @@ class MockClient extends EventEmitter {
 		return 'disconnected';
 	}
 
-	async getThreads(): Promise<Thread[]> {
-		// Add some variety with generated threads
-		const generatedThreads = [
-			generateThread('thread4', 'John Doe', [mockUsers[0]!], true, 1),
-			generateThread('thread5', 'Sarah Wilson', [mockUsers[1]!], false, 3),
-			generateThread('thread6', 'Mike Chen', [mockUsers[2]!], true, 6),
-			generateThread('thread7', 'Lisa Garcia', [mockUsers[3]!], false, 12),
-		];
+	async getThreads(
+		loadMore = false,
+	): Promise<{threads: Thread[]; hasMore: boolean}> {
+		// Simulate network delay
+		await new Promise(resolve => {
+			setTimeout(resolve, 1000);
+		});
+		const threads_per_page = 20;
+		if (!loadMore) {
+			this.threadsPage = 0;
+		}
 
-		return [...mockThreads, ...generatedThreads];
+		const threads = this.threads.slice(
+			this.threadsPage * threads_per_page,
+			(this.threadsPage + 1) * threads_per_page,
+		);
+		const hasMore =
+			(this.threadsPage + 1) * threads_per_page < this.threads.length;
+		this.threadsPage += 1;
+		return {threads, hasMore};
 	}
 
 	async getMessages(
+		// @ts-expect-error: cursor is not used in mock
 		threadId: string,
 		_cursor?: string,
 	): Promise<{
@@ -61,8 +68,10 @@ class MockClient extends EventEmitter {
 	}> {
 		// Filter messages for the specific thread
 		const threadMessages = [
-			...mockMessages.filter(message => message.threadId === threadId),
-			...this.sentMessages.filter(message => message.threadId === threadId),
+			// ...mockMessages.filter(message => message.threadId === threadId),
+			// ...this.sentMessages.filter(message => message.threadId === threadId),
+			...mockMessages,
+			...this.sentMessages,
 		].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
 		// Add mock reactions to messages

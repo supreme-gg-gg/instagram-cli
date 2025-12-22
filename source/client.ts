@@ -140,6 +140,11 @@ export class InstagramClient extends EventEmitter {
 	private readonly loadedStoriesMap = new Map<number, Story[]>();
 	private hasInitializedReelsTray = false;
 
+	// Inbox feed instance for pagination
+	private inboxFeed:
+		| ReturnType<IgApiClientExt['feed']['directInbox']>
+		| undefined = undefined;
+
 	constructor(username?: string) {
 		super();
 		this.ig = new IgApiClientExt();
@@ -432,11 +437,18 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
-	public async getThreads(): Promise<Thread[]> {
+	public async getThreads(
+		loadMore = false,
+	): Promise<{threads: Thread[]; hasMore: boolean}> {
 		try {
-			const inbox = await this.ig.feed.directInbox().items();
+			// Create a new feed for fresh load, or reuse existing for pagination
+			if (!loadMore || !this.inboxFeed) {
+				this.inboxFeed = this.ig.feed.directInbox();
+				this.userCache.clear();
+			}
 
-			this.userCache.clear();
+			const inbox = await this.inboxFeed.items();
+
 			for (const thread of inbox) {
 				if (thread.users) {
 					for (const user of thread.users) {
@@ -448,7 +460,7 @@ export class InstagramClient extends EventEmitter {
 				}
 			}
 
-			return inbox.map(thread => ({
+			const threads = inbox.map(thread => ({
 				id: thread.thread_id,
 				title: this.getThreadTitle(thread),
 				users: this.getThreadUsers(thread),
@@ -457,6 +469,11 @@ export class InstagramClient extends EventEmitter {
 				// This field is not documented but appears to indicate unread status
 				unread: (thread as any).read_state === 1,
 			}));
+
+			return {
+				threads,
+				hasMore: this.inboxFeed.isMoreAvailable(),
+			};
 		} catch (error) {
 			this.logger.error('Failed to fetch threads', error);
 			throw error;

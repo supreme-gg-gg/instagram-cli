@@ -533,29 +533,17 @@ export function generateMessage(
 	};
 }
 
-export function generateThread(
-	id: string,
-	title: string,
-	users: User[],
-	unread = false,
-	hoursAgo = 0,
-): Thread {
-	const lastMessage = generateMessage(
-		`${id}_last`,
-		id,
-		users[0]?.pk ?? 'unknown',
-		users[0]?.username ?? 'unknown',
-		'Last message in this thread',
-		false,
-		hoursAgo * 60,
-	);
+export function generateThreads(count: number): Thread[] {
+	const threads: Thread[] = [];
+	for (let i = 0; i < count; i += mockThreads.length) {
+		threads.push(
+			...mockThreads.map(thread => ({
+				...thread,
+				id: `${thread.id}_copy_${i / mockThreads.length}`,
+				title: `${thread.title} ${i / mockThreads.length + 1}`,
+			})),
+		);
+	}
 
-	return {
-		id,
-		title,
-		users,
-		unread,
-		lastActivity: new Date(Date.now() - 60_000 * 60 * hoursAgo),
-		lastMessage,
-	};
+	return threads.slice(0, count);
 }

@@ -30,6 +30,7 @@ export default function ChatView() {
 		threads: [],
 		messages: [],
 		loading: true,
+		loadingMoreThreads: false,
 		currentThread: undefined,
 		selectedMessageIndex: undefined,
 		isSelectionMode: false,
@@ -66,8 +67,13 @@ export default function ChatView() {
 
 			try {
 				setChatState(previous => ({...previous, loading: true}));
-				const threads = await client.getThreads();
-				setChatState(previous => ({...previous, threads, loading: false}));
+				const {threads, hasMore} = await client.getThreads();
+				setChatState(previous => ({
+					...previous,
+					threads,
+					hasMoreThreads: hasMore,
+					loading: false,
+				}));
 			} catch (error) {
 				const errorMessage =
 					error instanceof Error ? error.message : 'Failed to load threads';
@@ -480,6 +486,26 @@ export default function ChatView() {
 		setSystemMessage('Scrolled to bottom');
 	};
 
+	const handleLoadMoreThreads = async () => {
+		if (!chatState.hasMoreThreads || !client || chatState.loadingMoreThreads) {
+			return;
+		}
+
+		setChatState(previous => ({...previous, loadingMoreThreads: true}));
+		try {
+			const {threads, hasMore} = await client.getThreads(true);
+			setChatState(previous => ({
+				...previous,
+				threads: [...previous.threads, ...threads],
+				loadingMoreThreads: false,
+				hasMoreThreads: hasMore,
+			}));
+		} catch {
+			setChatState(previous => ({...previous, loadingMoreThreads: false}));
+			setSystemMessage('Failed to load more threads.');
+		}
+	};
+
 	const handleOnScrollToTop = async () => {
 		if (!chatState.messageCursor || !client || !chatState.currentThread) {
 			return;
@@ -520,7 +546,11 @@ export default function ChatView() {
 
 		if (currentView === 'threads') {
 			return (
-				<ThreadList threads={chatState.threads} onSelect={handleThreadSelect} />
+				<ThreadList
+					threads={chatState.threads}
+					onScrollToBottom={handleLoadMoreThreads}
+					onSelect={handleThreadSelect}
+				/>
 			);
 		}
 
@@ -588,13 +618,17 @@ export default function ChatView() {
 					</Box>
 
 					<Box>
-						<Text dimColor>
-							{currentView === 'threads'
-								? 'j/k: navigate, Enter: select, Esc: quit'
-								: chatState.isSelectionMode
-									? 'j/k: navigate messages, Enter: confirm, Esc: exit selection'
-									: 'Esc: back to threads, Ctrl+C: quit'}
-						</Text>
+						{currentView === 'threads' && chatState.loadingMoreThreads ? (
+							<Text color="yellow">Loading more threads...</Text>
+						) : (
+							<Text dimColor>
+								{currentView === 'threads'
+									? 'j/k: navigate, Enter: select, Esc: quit'
+									: chatState.isSelectionMode
+										? 'j/k: navigate messages, Enter: confirm, Esc: exit selection'
+										: 'Esc: back to threads, Ctrl+C: quit'}
+							</Text>
+						)}
 					</Box>
 				</Box>
 			</TerminalInfoProvider>
