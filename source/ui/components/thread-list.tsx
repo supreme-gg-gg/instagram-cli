@@ -6,9 +6,16 @@ import ThreadItem from './thread-item.js';
 type ThreadListProperties = {
 	readonly threads: Thread[];
 	readonly onSelect: (thread: Thread) => void;
+	readonly onScrollToBottom?: () => void;
+	readonly isLoadingMore?: boolean;
 };
 
-export default function ThreadList({threads, onSelect}: ThreadListProperties) {
+export default function ThreadList({
+	threads,
+	onSelect,
+	onScrollToBottom,
+	isLoadingMore,
+}: ThreadListProperties) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const [viewportSize, setViewportSize] = useState(10);
@@ -48,6 +55,11 @@ export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 			if (newIndex >= scrollOffset + viewportSize) {
 				setScrollOffset(previous => previous + 1);
 			}
+
+			// Trigger load more when reaching the bottom
+			if (newIndex === threads.length - 1 && onScrollToBottom) {
+				onScrollToBottom();
+			}
 		} else if (input === 'k' || key.upArrow) {
 			const newIndex = Math.max(selectedIndex - 1, 0);
 			setSelectedIndex(newIndex);
@@ -75,6 +87,9 @@ export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 		scrollOffset + viewportSize,
 	);
 
+	// Check if user is at the bottom of the list
+	const isAtBottom = scrollOffset + viewportSize >= threads.length;
+
 	return (
 		<Box ref={containerReference} flexDirection="column" flexGrow={1}>
 			{visibleThreads.map((thread, index) => {
@@ -100,6 +115,11 @@ export default function ThreadList({threads, onSelect}: ThreadListProperties) {
 					</Box>
 				);
 			})}
+			{isLoadingMore && isAtBottom && (
+				<Box justifyContent="center" paddingY={1}>
+					<Text color="yellow">Loading more threads...</Text>
+				</Box>
+			)}
 		</Box>
 	);
 }

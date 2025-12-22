@@ -7,6 +7,6 @@ export {
 	mockFeed,
 	mockPosts,
 	generateMessage,
-	generateThread,
+	generateThreads,
 } from './mock-data.js';
 export type {InstagramClient} from '../client.js';

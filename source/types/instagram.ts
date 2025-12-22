@@ -104,8 +104,10 @@ export type ChatState = {
 	threads: Thread[];
 	messages: Message[];
 	loading: boolean;
+	loadingMoreThreads?: boolean;
 	error?: string;
 	messageCursor?: string;
+	hasMoreThreads?: boolean;
 	selectedMessageIndex: number | undefined;
 	isSelectionMode: boolean;
 	recipientAlreadyRead: boolean;
