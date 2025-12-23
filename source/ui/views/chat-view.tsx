@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
 import {TerminalInfoProvider} from 'ink-picture';
 import type {
@@ -8,7 +8,7 @@ import type {
 	ReactionEvent,
 	SeenEvent,
 } from '../../types/instagram.js';
-import type {RealtimeStatus} from '../../client.js';
+import type {RealtimeStatus, SearchResult} from '../../client.js';
 import MessageList from '../components/message-list.js';
 import InputBox from '../components/input-box.js';
 import StatusBar from '../components/status-bar.js';
@@ -19,8 +19,19 @@ import {parseAndDispatchChatCommand} from '../../utils/chat-commands.js';
 import FullScreen from '../components/full-screen.js';
 import {useScreenSize} from '../hooks/use-screen-size.js';
 import {preprocessMessage} from '../../utils/preprocess.js';
+import SearchInput from '../components/search-input.js';
 
-export default function ChatView() {
+type SearchMode = 'username' | 'title' | undefined;
+
+type ChatViewProps = {
+	readonly initialSearchQuery?: string;
+	readonly initialSearchMode?: SearchMode;
+};
+
+export default function ChatView({
+	initialSearchQuery,
+	initialSearchMode,
+}: ChatViewProps) {
 	const {exit} = useApp();
 	const client = useClient();
 	const {height, width} = useScreenSize();
@@ -43,6 +54,15 @@ export default function ChatView() {
 		undefined,
 	);
 
+	const [searchMode, setSearchMode] = useState<SearchMode>(initialSearchMode);
+	const [searchQuery, setSearchQuery] = useState(initialSearchQuery ?? '');
+	const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+	const [isSearching, setIsSearching] = useState(false);
+	const [isInitialSearchHandled, setIsInitialSearchHandled] = useState<boolean>(
+		!(initialSearchMode && initialSearchQuery),
+	);
+	const searchDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
 	// Calculate available height for messages (total height minus status bar and input area)
 	const messageAreaHeight = Math.max(1, height - 8);
 
@@ -59,6 +79,162 @@ export default function ChatView() {
 
 		return;
 	}, [systemMessage]);
+
+	// Helper to exit search mode
+	const exitSearchMode = useCallback(() => {
+		setSearchMode(undefined);
+		setSearchQuery('');
+		setSearchResults([]);
+	}, []);
+
+	const handleThreadSelect = useCallback(
+		async (thread: Thread) => {
+			if (!client) return;
+
+			if (searchMode) {
+				exitSearchMode();
+			}
+
+			setCurrentView('chat');
+			setChatState(previous => ({
+				...previous,
+				currentThread: thread,
+				loading: true,
+				messages: [],
+				recipientAlreadyRead: false,
+			}));
+
+			try {
+				const {messages, cursor} = await client.getMessages(thread.id);
+
+				setChatState(previous => ({
+					...previous,
+					messages,
+					loading: false,
+					messageCursor: cursor,
+				}));
+
+				// Mark thread as seen
+				const lastMessage = messages.at(-1);
+
+				if (lastMessage?.id) {
+					// Mark as read in local and remote states
+					thread.unread = false;
+					await client.markThreadAsSeen(thread.id, lastMessage.id);
+				}
+			} catch (error) {
+				setChatState(previous => ({
+					...previous,
+					error:
+						error instanceof Error ? error.message : 'Failed to load messages',
+					loading: false,
+				}));
+			}
+		},
+		[client, exitSearchMode, searchMode],
+	);
+
+	// Effect to handle initial search query from CLI
+	useEffect(() => {
+		if (isInitialSearchHandled) {
+			return;
+		}
+
+		const handleInitialSearch = async () => {
+			if (initialSearchMode === 'username' && initialSearchQuery && client) {
+				setSearchMode('username');
+				setSearchQuery(initialSearchQuery);
+				setIsSearching(true);
+				try {
+					const thread =
+						await client.searchThreadByUsername(initialSearchQuery);
+					if (thread) {
+						setSearchResults([{thread, score: 1}]);
+						void handleThreadSelect(thread);
+					}
+				} finally {
+					setIsSearching(false);
+				}
+			} else if (initialSearchMode === 'title' && initialSearchQuery) {
+				setSearchMode('title');
+				setSearchQuery(initialSearchQuery);
+				setIsSearching(true);
+				try {
+					const results = await client.searchThreadsByTitle(
+						initialSearchQuery,
+						{
+							threshold: 0.3,
+							maxResults: 10,
+						},
+					);
+					setSearchResults(results);
+					if (results && results.length > 0 && results[0]!.score > 0.6) {
+						void handleThreadSelect(results[0]!.thread);
+					}
+				} finally {
+					setIsSearching(false);
+				}
+			}
+
+			setIsInitialSearchHandled(true);
+		};
+
+		void handleInitialSearch();
+	}, [
+		client,
+		initialSearchQuery,
+		initialSearchMode,
+		isInitialSearchHandled,
+		handleThreadSelect,
+	]);
+
+	// Effect to debounce search queries in search mode
+	useEffect(() => {
+		if (!isInitialSearchHandled) {
+			return;
+		}
+
+		if (!searchMode || searchQuery.length === 0 || !client) {
+			setSearchResults([]);
+			return;
+		}
+
+		if (searchDebounceRef.current) {
+			clearTimeout(searchDebounceRef.current);
+		}
+
+		setIsSearching(true);
+
+		// Debounce the search
+		searchDebounceRef.current = setTimeout(async () => {
+			try {
+				if (searchMode === 'username') {
+					const thread = await client.searchThreadByUsername(searchQuery);
+					if (thread) {
+						setSearchResults([{thread, score: 1}]);
+					} else {
+						setSearchResults([]);
+					}
+				} else {
+					const results = await client.searchThreadsByTitle(searchQuery, {
+						threshold: 0.3,
+						maxResults: 10,
+					});
+					setSearchResults(results);
+				}
+			} catch {
+				setSystemMessage('Search failed');
+			} finally {
+				setIsSearching(false);
+			}
+		}, 300); // 300ms debounce
+
+		return () => {
+			if (searchDebounceRef.current) {
+				clearTimeout(searchDebounceRef.current);
+			}
+		};
+	}, [client, searchMode, searchQuery, isInitialSearchHandled]);
 
 	// Load threads when client is ready
 	useEffect(() => {
@@ -320,6 +496,11 @@ export default function ChatView() {
 	}, [client, realtimeStatus]);
 
 	useInput((input, key) => {
+		// Don't handle input when in search mode (SearchInput handles it)
+		if (searchMode) {
+			return;
+		}
+
 		if (key.ctrl && input === 'c') {
 			exit();
 			return;
@@ -349,6 +530,21 @@ export default function ChatView() {
 			}
 
 			return;
+		}
+
+		// Search mode activation (only in threads view)
+		if (currentView === 'threads' && !chatState.loading) {
+			if (input === '/') {
+				setSearchMode('title');
+				setSearchQuery('');
+				return;
+			}
+
+			if (input === '@') {
+				setSearchMode('username');
+				setSearchQuery('');
+				return;
+			}
 		}
 
 		if (chatState.isSelectionMode && currentView === 'chat') {
@@ -384,45 +580,20 @@ export default function ChatView() {
 		}
 	});
 
-	const handleThreadSelect = async (thread: Thread) => {
-		if (!client) return;
+	const handleSearchChange = useCallback((value: string) => {
+		setSearchQuery(value);
+	}, []);
 
-		setCurrentView('chat');
-		setChatState(previous => ({
-			...previous,
-			currentThread: thread,
-			loading: true,
-			messages: [],
-			recipientAlreadyRead: false,
-		}));
-
-		try {
-			const {messages, cursor} = await client.getMessages(thread.id);
-
-			setChatState(previous => ({
-				...previous,
-				messages,
-				loading: false,
-				messageCursor: cursor,
-			}));
-
-			// Mark thread as seen
-			const lastMessage = messages.at(-1);
-
-			if (lastMessage?.id) {
-				// Mark as read in local and remote states
-				thread.unread = false;
-				await client.markThreadAsSeen(thread.id, lastMessage.id);
+	const handleSearchSubmit = useCallback(
+		(value: string) => {
+			if (!client || value.trim().length === 0) {
+				exitSearchMode();
+				return;
 			}
-		} catch (error) {
-			setChatState(previous => ({
-				...previous,
-				error:
-					error instanceof Error ? error.message : 'Failed to load messages',
-				loading: false,
-			}));
-		}
-	};
+			// Selection will be handled by ThreadList's onSelect
+		},
+		[client, exitSearchMode],
+	);
 
 	const handleSendMessage = async (text: string) => {
 		if (!client || !chatState.currentThread) return;
@@ -539,39 +710,44 @@ export default function ChatView() {
 					alignItems="center"
 					paddingY={1}
 				>
-					<Text>Loading threads...</Text>
+					<Text>Loading...</Text>
 				</Box>
 			);
 		}
 
 		if (currentView === 'threads') {
+			// Show search results when in search mode, otherwise show all threads
+			const threadsToDisplay =
+				searchMode && searchResults.length > 0
+					? searchResults.map(r => r.thread)
+					: chatState.threads;
+
 			return (
-				<ThreadList
-					threads={chatState.threads}
-					onScrollToBottom={handleLoadMoreThreads}
-					onSelect={handleThreadSelect}
-				/>
+				<Box flexDirection="column" flexGrow={1}>
+					<ThreadList
+						isSearchMode={Boolean(searchMode)}
+						threads={threadsToDisplay}
+						onScrollToBottom={searchMode ? undefined : handleLoadMoreThreads}
+						onSelect={handleThreadSelect}
+					/>
+					{searchMode && (
+						<SearchInput
+							isSearching={isSearching}
+							mode={searchMode}
+							resultCount={searchResults.length}
+							value={searchQuery}
+							onCancel={exitSearchMode}
+							onChange={handleSearchChange}
+							onSubmit={handleSearchSubmit}
+						/>
+					)}
+				</Box>
 			);
 		}
 
 		return (
 			<Box flexDirection="column" height="100%">
-				{!chatState.loading || chatState.messages.length > 0 ? (
-					<ScrollView
-						ref={scrollViewRef}
-						width={width}
-						height={messageAreaHeight}
-						initialScrollPosition="end"
-						onScrollToStart={handleOnScrollToTop}
-						onScrollToEnd={handleOnScrollToBottom}
-					>
-						<MessageList
-							messages={chatState.messages}
-							currentThread={chatState.currentThread}
-							selectedMessageIndex={chatState.selectedMessageIndex}
-						/>
-					</ScrollView>
-				) : (
+				{chatState.loading && chatState.messages.length === 0 ? (
 					<Box
 						flexGrow={1}
 						justifyContent="center"
@@ -580,13 +756,28 @@ export default function ChatView() {
 					>
 						<Text>Loading messages...</Text>
 					</Box>
+				) : (
+					<ScrollView
+						ref={scrollViewRef}
+						height={messageAreaHeight}
+						initialScrollPosition="end"
+						width={width}
+						onScrollToEnd={handleOnScrollToBottom}
+						onScrollToStart={handleOnScrollToTop}
+					>
+						<MessageList
+							currentThread={chatState.currentThread}
+							messages={chatState.messages}
+							selectedMessageIndex={chatState.selectedMessageIndex}
+						/>
+					</ScrollView>
 				)}
 				{chatState.recipientAlreadyRead && (
 					<Box>
 						<Text dimColor>Seen just now</Text>
 					</Box>
 				)}
-				<Box flexShrink={0} flexDirection="column">
+				<Box flexDirection="column" flexShrink={0}>
 					{systemMessage && (
 						<Box marginTop={1}>
 							<Text color="yellow">{systemMessage}</Text>
@@ -601,33 +792,47 @@ export default function ChatView() {
 		);
 	};
 
+	// Get the appropriate help text based on current state
+	const getHelpText = () => {
+		if (searchMode) {
+			return 'Type to search, Enter: select first result, Esc: cancel';
+		}
+
+		if (currentView === 'threads') {
+			return 'j/k: navigate, Enter: select, /: search by title, @: search by username, Esc: quit';
+		}
+
+		if (chatState.isSelectionMode) {
+			return 'j/k: navigate messages, Enter: confirm, Esc: exit selection';
+		}
+
+		return 'Esc: back to threads, Ctrl+C: quit';
+	};
+
 	return (
 		<FullScreen>
 			<TerminalInfoProvider>
 				<Box flexDirection="column" height="100%" width="100%">
 					<StatusBar
-						currentView={currentView}
 						currentThread={chatState.currentThread}
-						isLoading={chatState.loading}
+						currentView={currentView}
 						error={chatState.error}
+						isLoading={chatState.loading}
 						realtimeStatus={realtimeStatus}
+						searchMode={searchMode}
 					/>
 
-					<Box flexGrow={1} flexDirection="column">
+					<Box flexDirection="column" flexGrow={1}>
 						{renderContent()}
 					</Box>
 
 					<Box>
 						{currentView === 'threads' && chatState.loadingMoreThreads ? (
 							<Text color="yellow">Loading more threads...</Text>
+						) : systemMessage ? (
+							<Text color="yellow">{systemMessage}</Text>
 						) : (
-							<Text dimColor>
-								{currentView === 'threads'
-									? 'j/k: navigate, Enter: select, Esc: quit'
-									: chatState.isSelectionMode
-										? 'j/k: navigate messages, Enter: confirm, Esc: exit selection'
-										: 'Esc: back to threads, Ctrl+C: quit'}
-							</Text>
+							<Text dimColor>{getHelpText()}</Text>
 						)}
 					</Box>
 				</Box>

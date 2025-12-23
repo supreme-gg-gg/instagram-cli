@@ -1,7 +1,7 @@
 import React from 'react';
 import {Box} from 'ink';
 import zod from 'zod';
-import {argument} from 'pastel';
+import {argument, option} from 'pastel';
 import {Alert} from '@inkjs/ui';
 import ChatView from '../ui/views/chat-view.js';
 import {ClientContext} from '../ui/context/client-context.js';
@@ -20,11 +20,35 @@ export const args = zod.tuple([
 		),
 ]);
 
+export const options = zod.object({
+	search: zod
+		.string()
+		.optional()
+		.describe(
+			option({
+				alias: 's',
+				description:
+					'Search for a chat by username or title. If a match is found, directly enter the chat.',
+			}),
+		),
+	searchmode: zod
+		.enum(['username', 'title'])
+		.optional()
+		.describe(
+			option({
+				alias: 'm',
+				description:
+					'Specify the search mode when using the --search option. Defaults to username.',
+			}),
+		),
+});
+
 type Properties = {
 	readonly args: zod.infer<typeof args>;
+	readonly options: zod.infer<typeof options>;
 };
 
-export default function Chat({args}: Properties) {
+export default function Chat({args, options}: Properties) {
 	const {client, isLoading, error} = useInstagramClient(args[0]);
 
 	if (isLoading) {
@@ -54,7 +78,10 @@ export default function Chat({args}: Properties) {
 	return (
 		<AltScreen>
 			<ClientContext.Provider value={client}>
-				<ChatView />
+				<ChatView
+					initialSearchQuery={options.search}
+					initialSearchMode={options.searchmode}
+				/>
 			</ClientContext.Provider>
 		</AltScreen>
 	);

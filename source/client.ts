@@ -5,6 +5,7 @@ import {
 	type IgApiClient,
 	IgCheckpointError,
 	IgLoginTwoFactorRequiredError,
+	IgExactUserNotFoundError,
 	type DirectInboxFeedResponseThreadsItem,
 	type DirectInboxFeedResponseUsersItem,
 	type DirectThreadFeedResponseItemsItem,
@@ -12,6 +13,7 @@ import {
 	type UserStoryFeedResponseItemsItem,
 	type ReelsTrayFeedResponseTrayItem,
 } from 'instagram-private-api';
+import Fuse from 'fuse.js';
 import {
 	withRealtime,
 	GraphQLSubscriptions,
@@ -41,6 +43,11 @@ export type LoginResult = {
 	username?: string;
 	checkpointError?: IgCheckpointError;
 	twoFactorInfo?: AccountRepositoryLoginErrorResponseTwoFactorInfo;
+};
+
+export type SearchResult = {
+	thread: Thread;
+	score: number;
 };
 
 export type RealtimeStatus =
@@ -144,6 +151,11 @@ export class InstagramClient extends EventEmitter {
 	private inboxFeed:
 		| ReturnType<IgApiClientExt['feed']['directInbox']>
 		| undefined = undefined;
+
+	// Threads cache for search functionality
+	private threadsCache: Thread[] = [];
+	private threadsCacheTimestamp: number | undefined = undefined;
+	private readonly threadsCacheTTL = 5 * 60 * 1000; // 5 minutes
 
 	constructor(username?: string) {
 		super();
@@ -445,6 +457,9 @@ export class InstagramClient extends EventEmitter {
 			if (!loadMore || !this.inboxFeed) {
 				this.inboxFeed = this.ig.feed.directInbox();
 				this.userCache.clear();
+				// Invalidate threads cache on fresh load
+				this.threadsCache = [];
+				this.threadsCacheTimestamp = undefined;
 			}
 
 			const inbox = await this.inboxFeed.items();
@@ -470,6 +485,22 @@ export class InstagramClient extends EventEmitter {
 				unread: (thread as any).read_state === 1,
 			}));
 
+			// Update threads cache
+			if (loadMore) {
+				// Pagination: append to cache
+				this.threadsCache.push(...threads);
+				this.logger.debug(
+					`Appended ${threads.length} threads to cache. Total: ${this.threadsCache.length}`,
+				);
+			} else {
+				// Fresh load: replace cache
+				this.threadsCache = threads;
+				this.threadsCacheTimestamp = Date.now();
+				this.logger.debug(
+					`Initialized threads cache with ${threads.length} threads`,
+				);
+			}
+
 			return {
 				threads,
 				hasMore: this.inboxFeed.isMoreAvailable(),
@@ -478,6 +509,144 @@ export class InstagramClient extends EventEmitter {
 			this.logger.error('Failed to fetch threads', error);
 			throw error;
 		}
+	}
+
+	/**
+	 * Search for a thread by username (exact match via API).
+	 *
+	 * @param username - The username to search for (without @)
+	 * @returns The thread if found, undefined if not found
+	 */
+	public async searchThreadByUsername(
+		username: string,
+	): Promise<Thread | undefined> {
+		try {
+			const userInfo = await this.ig.user.searchExact(username.toLowerCase());
+			const response = await this.ig.directThread.getByParticipants([
+				userInfo.pk,
+			]);
+
+			if (!response.thread) {
+				return undefined;
+			}
+
+			// Cache user info
+			this.userCache.set(
+				userInfo.pk.toString(),
+				userInfo.username ?? userInfo.full_name ?? `User_${userInfo.pk}`,
+			);
+
+			const {thread} = response;
+			return {
+				id: thread.thread_id,
+				title: this.getThreadTitle(
+					thread as unknown as DirectInboxFeedResponseThreadsItem,
+				),
+				users: this.getThreadUsers(
+					thread as unknown as DirectInboxFeedResponseThreadsItem,
+				),
+				lastMessage: this.getLastMessage(
+					thread as unknown as DirectInboxFeedResponseThreadsItem,
+				),
+				lastActivity: new Date(Number(thread.last_activity_at) / 1000),
+				unread: (thread as any).read_state === 1,
+			};
+		} catch (error) {
+			if (error instanceof IgExactUserNotFoundError) {
+				return undefined;
+			}
+
+			this.logger.error('Failed to search thread by username', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Search threads by title using fuzzy search with Fuse.js.
+	 *
+	 * @param query - The search query for thread titles
+	 * @param options - Search options including threshold and maxResults
+	 * @returns A promise that resolves to an array of SearchResult objects with threads and scores
+	 */
+	public async searchThreadsByTitle(
+		query: string,
+		options?: {threshold?: number; maxResults?: number},
+	): Promise<SearchResult[]> {
+		const {threshold = 0.4, maxResults = 40} = options ?? {};
+		try {
+			// Use cached threads if available and not expired
+			const now = Date.now();
+			let isCacheExpired =
+				this.threadsCache.length === 0 ||
+				!this.threadsCacheTimestamp ||
+				now - this.threadsCacheTimestamp > this.threadsCacheTTL;
+			if (isCacheExpired) {
+				this.threadsCache.length = 0;
+			}
+
+			let hasMore = true;
+			while (this.threadsCache.length < maxResults && hasMore) {
+				// eslint-disable-next-line no-await-in-loop
+				const result = await this.getThreads(!isCacheExpired);
+				hasMore = result.hasMore;
+				isCacheExpired = false; // After first fetch, subsequent fetches are loadMore
+				if (!hasMore) {
+					this.logger.debug('No more threads available to fetch');
+					break;
+				}
+			}
+
+			const fuse = new Fuse(this.threadsCache, {
+				keys: ['title'],
+				threshold, // 0 = perfect match, 1 = no match in Fuse
+				includeScore: true,
+			});
+			const fuseResults = fuse.search(query);
+			const searchResults: SearchResult[] = fuseResults.map(result => ({
+				thread: result.item,
+				score: 1 - (result.score ?? 0), // Invert the score
+			}));
+			return searchResults.slice(0, maxResults);
+		} catch (error) {
+			this.logger.error('Failed to search threads by title', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Search for a thread by username or title with a single query.
+	 *
+	 * First tries exact username match, then falls back to fuzzy title search.
+	 *
+	 * @param query - The search query (username or title)
+	 * @param threshold - Minimum similarity score (0-1) for a match
+	 * @returns The best matching thread, or undefined
+	 */
+	public async searchThread(
+		query: string,
+		threshold = 0.6,
+	): Promise<Thread | undefined> {
+		// First try exact username match
+		try {
+			const threadByUsername = await this.searchThreadByUsername(query);
+			if (threadByUsername) {
+				return threadByUsername;
+			}
+		} catch {
+			// Username search failed, try title search
+		}
+
+		// Fall back to fuzzy title search
+		const results = await this.searchThreadsByTitle(query, {
+			threshold,
+			maxResults: 1,
+		});
+
+		if (results.length > 0 && results[0]!.score >= threshold) {
+			return results[0]!.thread;
+		}
+
+		return undefined;
 	}
 
 	public async getMessages(

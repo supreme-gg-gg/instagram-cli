@@ -7,12 +7,15 @@ type ThreadListProperties = {
 	readonly threads: Thread[];
 	readonly onSelect: (thread: Thread) => void;
 	readonly onScrollToBottom?: () => void;
+	readonly isSearchMode?: boolean;
 };
 
 export default function ThreadList({
 	threads,
 	onSelect,
 	onScrollToBottom,
+	// isSearchMode can be used for future enhancements like showing match scores
+	isSearchMode: _isSearchMode = false,
 }: ThreadListProperties) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
