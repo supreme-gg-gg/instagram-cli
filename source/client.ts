@@ -512,31 +512,136 @@ export class InstagramClient extends EventEmitter {
 	}
 
 	/**
-	 * Search for a thread by username (exact match via API).
+	 * Search for users by username and return them as search results with pending threads.
 	 *
-	 * @param username - The username to search for (without @)
-	 * @returns The thread if found, undefined if not found
+	 * @param username - The username to search for
+	 * @returns An array of SearchResult objects
 	 */
 	public async searchThreadByUsername(
 		username: string,
-	): Promise<Thread | undefined> {
-		try {
-			const userInfo = await this.ig.user.searchExact(username.toLowerCase());
-			const response = await this.ig.directThread.getByParticipants([
-				userInfo.pk,
-			]);
+		{useExact = false}: {useExact?: boolean},
+	): Promise<SearchResult[]> {
+		// First try exact username match if requested
+		if (useExact) {
+			try {
+				const user = await this.ig.user.searchExact(username.toLowerCase());
+				const fullName = user.full_name ? ` (${user.full_name})` : '';
 
-			if (!response.thread) {
-				return undefined;
+				// Cache user info
+				this.userCache.set(
+					user.pk.toString(),
+					user.username ?? user.full_name ?? `User_${user.pk}`,
+				);
+
+				const thread: Thread = {
+					id: `PENDING_${user.pk}`, // Virtual ID
+					title: `${user.username}${fullName}`,
+					users: [
+						{
+							pk: user.pk.toString(),
+							username: user.username,
+							fullName: user.full_name,
+							profilePicUrl: user.profile_pic_url,
+							isVerified: user.is_verified,
+						},
+					],
+					lastMessage: undefined,
+					lastActivity: new Date(),
+					unread: false,
+				};
+
+				return [{thread, score: 1}];
+			} catch (error) {
+				if (!(error instanceof IgExactUserNotFoundError)) {
+					this.logger.error(
+						'Failed to search thread by username (exact)',
+						error,
+					);
+					throw error;
+				}
+				// Fallback to fuzzy search if exact match not found
+			}
+		}
+
+		try {
+			const {users} = await this.ig.user.search(username);
+
+			if (!users || users.length === 0) {
+				return [];
 			}
 
-			// Cache user info
-			this.userCache.set(
-				userInfo.pk.toString(),
-				userInfo.username ?? userInfo.full_name ?? `User_${userInfo.pk}`,
-			);
+			// Map users to "Threads" packaged in SearchResult
+			const results = users.map(user => {
+				const fullName = user.full_name ? ` (${user.full_name})` : '';
 
+				// Cache user info
+				this.userCache.set(
+					user.pk.toString(),
+					user.username ?? user.full_name ?? `User_${user.pk}`,
+				);
+
+				const thread: Thread = {
+					id: `PENDING_${user.pk}`, // Virtual ID
+					title: `${user.username}${fullName}`,
+					users: [
+						{
+							pk: user.pk.toString(),
+							username: user.username,
+							fullName: user.full_name,
+							profilePicUrl: user.profile_pic_url,
+							isVerified: user.is_verified,
+						},
+					],
+					lastMessage: undefined,
+					lastActivity: new Date(),
+					unread: false,
+				};
+
+				let score = 0; // Default score as per request "assign score = 0"
+
+				const friendshipStatus = user.friendship_status;
+				// Rank: Bestie > Following > Others
+				if (friendshipStatus?.is_bestie) {
+					score = 0.3;
+				} else if (friendshipStatus?.following) {
+					score = 0.2;
+				} else {
+					score = 0.1;
+				}
+
+				return {
+					thread,
+					score,
+				};
+			});
+
+			// Sort by score descending
+			return results.sort((a, b) => b.score - a.score);
+		} catch (error) {
+			this.logger.error('Failed to search thread by username (fuzzy)', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Ensures a real thread exists for a user participant.
+	 * Resolves a virtual 'PENDING_pk' ID to a real thread ID.
+	 *
+	 * @param userPk - The user PK to create/find a thread with
+	 * @returns The real Thread object
+	 */
+	public async ensureThread(userPk: string | number): Promise<Thread> {
+		try {
+			// Ensure we pass an array of numbers or an array of strings, not mixed
+			const response = await this.ig.directThread.getByParticipants(
+				typeof userPk === 'number' ? [userPk] : [userPk],
+			);
 			const {thread} = response;
+
+			if (!thread) {
+				throw new Error('Thread not found');
+			}
+
 			return {
 				id: thread.thread_id,
 				title: this.getThreadTitle(
@@ -552,11 +657,7 @@ export class InstagramClient extends EventEmitter {
 				unread: (thread as any).read_state === 1,
 			};
 		} catch (error) {
-			if (error instanceof IgExactUserNotFoundError) {
-				return undefined;
-			}
-
-			this.logger.error('Failed to search thread by username', error);
+			this.logger.error('Failed to ensure thread', error);
 			throw error;
 		}
 	}
@@ -565,14 +666,14 @@ export class InstagramClient extends EventEmitter {
 	 * Search threads by title using fuzzy search with Fuse.js.
 	 *
 	 * @param query - The search query for thread titles
-	 * @param options - Search options including threshold and maxResults
+	 * @param options - Search options including threshold (how similar the title must be) and maxThreadsToSearch (how many threads to search)
 	 * @returns A promise that resolves to an array of SearchResult objects with threads and scores
 	 */
 	public async searchThreadsByTitle(
 		query: string,
-		options?: {threshold?: number; maxResults?: number},
+		options?: {threshold?: number; maxThreadsToSearch?: number},
 	): Promise<SearchResult[]> {
-		const {threshold = 0.4, maxResults = 40} = options ?? {};
+		const {threshold = 0.4, maxThreadsToSearch = 40} = options ?? {};
 		try {
 			// Use cached threads if available and not expired
 			const now = Date.now();
@@ -585,7 +686,7 @@ export class InstagramClient extends EventEmitter {
 			}
 
 			let hasMore = true;
-			while (this.threadsCache.length < maxResults && hasMore) {
+			while (this.threadsCache.length < maxThreadsToSearch && hasMore) {
 				// eslint-disable-next-line no-await-in-loop
 				const result = await this.getThreads(!isCacheExpired);
 				hasMore = result.hasMore;
@@ -606,47 +707,11 @@ export class InstagramClient extends EventEmitter {
 				thread: result.item,
 				score: 1 - (result.score ?? 0), // Invert the score
 			}));
-			return searchResults.slice(0, maxResults);
+			return searchResults.slice(0, maxThreadsToSearch);
 		} catch (error) {
 			this.logger.error('Failed to search threads by title', error);
 			throw error;
 		}
-	}
-
-	/**
-	 * Search for a thread by username or title with a single query.
-	 *
-	 * First tries exact username match, then falls back to fuzzy title search.
-	 *
-	 * @param query - The search query (username or title)
-	 * @param threshold - Minimum similarity score (0-1) for a match
-	 * @returns The best matching thread, or undefined
-	 */
-	public async searchThread(
-		query: string,
-		threshold = 0.6,
-	): Promise<Thread | undefined> {
-		// First try exact username match
-		try {
-			const threadByUsername = await this.searchThreadByUsername(query);
-			if (threadByUsername) {
-				return threadByUsername;
-			}
-		} catch {
-			// Username search failed, try title search
-		}
-
-		// Fall back to fuzzy title search
-		const results = await this.searchThreadsByTitle(query, {
-			threshold,
-			maxResults: 1,
-		});
-
-		if (results.length > 0 && results[0]!.score >= threshold) {
-			return results[0]!.thread;
-		}
-
-		return undefined;
 	}
 
 	public async getMessages(

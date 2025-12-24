@@ -105,7 +105,31 @@ export default function ChatView({
 			}));
 
 			try {
-				const {messages, cursor} = await client.getMessages(thread.id);
+				let threadId = thread.id;
+
+				// Check if this is a pending thread (user selected from search)
+				if (thread.id.startsWith('PENDING_')) {
+					// Extract user PK from virtual ID
+					const userPk = thread.id.replace('PENDING_', '');
+					try {
+						// Ensure thread will resolve the "virtual" thread if it exists
+						const realThread = await client.ensureThread(userPk);
+						threadId = realThread.id;
+						// Update current thread with real details
+						setChatState(previous => ({
+							...previous,
+							currentThread: realThread,
+						}));
+					} catch (error) {
+						throw new Error(
+							`Failed to resolve thread: ${
+								error instanceof Error ? error.message : 'Unknown error'
+							}`,
+						);
+					}
+				}
+
+				const {messages, cursor} = await client.getMessages(threadId);
 
 				setChatState(previous => ({
 					...previous,
@@ -120,7 +144,7 @@ export default function ChatView({
 				if (lastMessage?.id) {
 					// Mark as read in local and remote states
 					thread.unread = false;
-					await client.markThreadAsSeen(thread.id, lastMessage.id);
+					await client.markThreadAsSeen(threadId, lastMessage.id);
 				}
 			} catch (error) {
 				setChatState(previous => ({
@@ -146,11 +170,16 @@ export default function ChatView({
 				setSearchQuery(initialSearchQuery);
 				setIsSearching(true);
 				try {
-					const thread =
-						await client.searchThreadByUsername(initialSearchQuery);
-					if (thread) {
-						setSearchResults([{thread, score: 1}]);
-						void handleThreadSelect(thread);
+					const results = await client.searchThreadByUsername(
+						initialSearchQuery,
+						{
+							useExact: true,
+						},
+					);
+					// Open the first result if it exists, there will ONLY be one result
+					if (results.length > 0 && results[0]) {
+						setSearchResults(results);
+						void handleThreadSelect(results[0].thread);
 					}
 				} finally {
 					setIsSearching(false);
@@ -164,7 +193,7 @@ export default function ChatView({
 						initialSearchQuery,
 						{
 							threshold: 0.3,
-							maxResults: 10,
+							maxThreadsToSearch: 10,
 						},
 					);
 					setSearchResults(results);
@@ -209,16 +238,15 @@ export default function ChatView({
 		searchDebounceRef.current = setTimeout(async () => {
 			try {
 				if (searchMode === 'username') {
-					const thread = await client.searchThreadByUsername(searchQuery);
-					if (thread) {
-						setSearchResults([{thread, score: 1}]);
-					} else {
-						setSearchResults([]);
-					}
+					// Use fuzzy search for UI interactive search
+					const results = await client.searchThreadByUsername(searchQuery, {
+						useExact: false,
+					});
+					setSearchResults(results);
 				} else {
 					const results = await client.searchThreadsByTitle(searchQuery, {
 						threshold: 0.3,
-						maxResults: 10,
+						maxThreadsToSearch: 10,
 					});
 					setSearchResults(results);
 				}

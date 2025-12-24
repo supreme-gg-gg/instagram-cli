@@ -43,7 +43,7 @@ For other installation methods, please refer to the [TypeScript Client Documenta
 
 - Full support for Windows, Linux, and macOS, modern React-based UI
 - Developer-friendly shortcuts, viewing feed and stories, in-terminal image rendering
-- Leverages realtime MQTT-based protocol used by Instagram app for instant notifications and chat
+- Leverages realtime MQTT-based protocol used by Instagram app for messaging
 - Highly performant and much faster than your GUI browser or touchscreen app
 - Works well in all terminal emulators, **including VSCode Integrated Terminal**
 
@@ -82,9 +82,9 @@ instagram-cli auth switch <username>           # switch to another saved account
 instagram-cli auth whoami                      # display current default user
 
 # Core features
-instagram-cli chat                             # start chat interface
+instagram-cli chat -u <username> -t <title>    # start chat interface
 instagram-cli feed                             # view posts from people you follow
-instagram-cli stories                          # view stories from people you follow
+instagram-cli stories                          # view stories from people you follow (BETA)
 instagram-cli notify                           # view notifications (inbox, followers, mentions)
 
 # Modify configuration
