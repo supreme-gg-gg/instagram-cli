@@ -21,24 +21,24 @@ export const args = zod.tuple([
 ]);
 
 export const options = zod.object({
-	search: zod
+	title: zod
 		.string()
 		.optional()
 		.describe(
 			option({
-				alias: 's',
+				alias: 't',
 				description:
-					'Search for a chat by username or title. If a match is found, directly enter the chat.',
+					'Search for a chat by title. If a match is found, directly enter the chat.',
 			}),
 		),
-	searchmode: zod
-		.enum(['username', 'title'])
+	username: zod
+		.string()
 		.optional()
 		.describe(
 			option({
-				alias: 'm',
+				alias: 'u',
 				description:
-					'Specify the search mode when using the --search option. Defaults to username.',
+					'Search for a chat by username. If a match is found, directly enter the chat.',
 			}),
 		),
 });
@@ -75,12 +75,30 @@ export default function Chat({args, options}: Properties) {
 		);
 	}
 
+	if (options.title && options.username) {
+		return (
+			<Box>
+				<Alert variant="error">
+					Cannot use both --title and --username flags simultaneously. Please
+					use only one.
+				</Alert>
+			</Box>
+		);
+	}
+
+	const searchQuery = options.title ?? options.username;
+	const searchMode = options.title
+		? 'title'
+		: options.username
+			? 'username'
+			: undefined;
+
 	return (
 		<AltScreen>
 			<ClientContext.Provider value={client}>
 				<ChatView
-					initialSearchQuery={options.search}
-					initialSearchMode={options.searchmode}
+					initialSearchQuery={searchQuery}
+					initialSearchMode={searchMode}
 				/>
 			</ClientContext.Provider>
 		</AltScreen>
