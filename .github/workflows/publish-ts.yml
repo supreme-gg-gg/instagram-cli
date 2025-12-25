@@ -24,6 +24,9 @@ jobs:
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/ts-v')) ||
       (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'ts-v'))
 
+    environment:
+      name: npm-release
+
     steps:
       - uses: actions/checkout@v4
 
@@ -42,3 +45,47 @@ jobs:
 
       - name: Publish to NPM
         run: npm publish --access public
+
+      - name: Update Homebrew Formula
+        if: success()
+        env:
+          GH_PAT: ${{ secrets.GH_PAT_SECRET }}
+        run: |
+          # Wait a moment for NPM to propagate
+          sleep 30
+
+          VERSION=${GITHUB_REF#refs/tags/ts-v}
+          URL="https://registry.npmjs.org/@i7m/instagram-cli/-/instagram-cli-${VERSION}.tgz"
+
+          # Compute SHA256
+          echo "Fetching tarball from $URL..."
+          SHA256=$(curl -sL "$URL" | sha256sum | awk '{print $1}')
+
+          if [ -z "$SHA256" ]; then
+            echo "Failed to calculate SHA256"
+            exit 1
+          fi
+
+          echo "Calculated SHA256: $SHA256"
+
+          # Setup Tap Repo
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git clone https://$GH_PAT@github.com/supreme-gg-gg/homebrew-tap.git tap-repo
+          cd tap-repo
+
+          FORMULA_PATH="Formula/instagram-cli.rb"
+
+          # Update content
+          sed -i "s|url \".*\"|url \"$URL\"|" "$FORMULA_PATH"
+          sed -i "s|sha256 \".*\"|sha256 \"$SHA256\"|" "$FORMULA_PATH"
+
+          # Commit and Push
+          if git diff --quiet; then
+            echo "No changes to commit"
+          else
+            git add "$FORMULA_PATH"
+            git commit -m "chore: update instagram-cli formula to $VERSION"
+            git push origin main
+          fi
