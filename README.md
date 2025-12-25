@@ -29,9 +29,20 @@ Empower yourself to become a 10x Instagrammer by minimizing distractions, enabli
 - Full keyboard navigation and shortcuts, no mouse, no touchscreens
 - Celebrate the art and simplicity of **terminal UI (TUI)**
 
-## Typescript Client
+## TypeScript Client
 
 We recommend using the TypeScript client whenever possible. It is more secure, performant, feature-rich, actively developed, and works on all platforms including Windows.
+
+### Homebrew (macOS/Linux)
+
+```bash
+brew tap supreme-gg-gg/tap
+brew install instagram-cli
+```
+
+The formula is available [here](https://github.com/supreme-gg-gg/homebrew-tap/blob/main/Formula/instagram-cli.rb).
+
+### NPM
 
 ```bash
 npm install -g @i7m/instagram-cli
