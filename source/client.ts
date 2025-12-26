@@ -6,6 +6,7 @@ import {
 	IgCheckpointError,
 	IgLoginTwoFactorRequiredError,
 	IgExactUserNotFoundError,
+	IgLoginBadPasswordError,
 	type DirectInboxFeedResponseThreadsItem,
 	type DirectInboxFeedResponseUsersItem,
 	type DirectThreadFeedResponseItemsItem,
@@ -43,6 +44,7 @@ export type LoginResult = {
 	username?: string;
 	checkpointError?: IgCheckpointError;
 	twoFactorInfo?: AccountRepositoryLoginErrorResponseTwoFactorInfo;
+	badPassword?: boolean;
 };
 
 export type SearchResult = {
@@ -238,6 +240,13 @@ export class InstagramClient extends EventEmitter {
 
 			if (error instanceof IgCheckpointError) {
 				return {success: false, checkpointError: error};
+			}
+
+			if (error instanceof IgLoginBadPasswordError) {
+				return {
+					success: false,
+					badPassword: true,
+				};
 			}
 
 			this.logger.error('Login failed', error);

@@ -71,6 +71,11 @@ export default function Login({options}: Properties) {
 				await client.startChallenge();
 				setMessage('A code has been sent to you. Please enter it below.');
 				setMode('challenge');
+			} else if (result.badPassword) {
+				setMessage(
+					"You have entered an incorrect username or password. If you're sure your credentials are correct, this might be caused by Instagram's IP blocking system, try again in a few hours.",
+				);
+				setMode('error');
 			} else {
 				setMessage(`Login failed: ${result.error}`);
 				setMode('error');
