@@ -1,5 +1,11 @@
 import {EventEmitter} from 'node:events';
-import type {InstagramClient, LoginResult, RealtimeStatus} from '../client.js';
+import Fuse from 'fuse.js';
+import type {
+	InstagramClient,
+	LoginResult,
+	RealtimeStatus,
+	SearchResult,
+} from '../client.js';
 import type {
 	Thread,
 	Message,
@@ -8,7 +14,12 @@ import type {
 	StoryReel,
 } from '../types/instagram.js';
 import {createContextualLogger} from '../utils/logger.js';
-import {mockMessages, generateThreads, mockStories} from './mock-data.js';
+import {
+	mockMessages,
+	generateThreads,
+	mockStories,
+	mockUsers,
+} from './mock-data.js';
 
 const logger = createContextualLogger('MockClient');
 
@@ -277,6 +288,95 @@ class MockClient extends EventEmitter {
 			setTimeout(resolve, 50);
 		});
 		logger.info(`Mock: Marked item ${itemId} as seen in thread ${threadId}`);
+	}
+
+	async searchThreadByUsername(
+		username: string,
+		_options?: {useExact?: boolean},
+	): Promise<SearchResult[]> {
+		// Simulate network delay
+		await new Promise(resolve => {
+			setTimeout(resolve, 300);
+		});
+
+		const query = username.toLowerCase();
+		const results = mockUsers
+			.filter(
+				user =>
+					user.username.toLowerCase().includes(query) ||
+					user.fullName?.toLowerCase().includes(query),
+			)
+			.map(user => {
+				const fullName = user.fullName ? ` (${user.fullName})` : '';
+				const thread: Thread = {
+					id: `PENDING_${user.pk}`,
+					title: `${user.username}${fullName}`,
+					users: [user],
+					lastActivity: new Date(),
+					unread: false,
+				};
+
+				return {
+					thread,
+					score: 0.5, // Dummy score
+				};
+			});
+
+		return results;
+	}
+
+	async ensureThread(userPk: string | number): Promise<Thread> {
+		const pendingId = `PENDING_${userPk}`;
+		const existingThread = this.threads.find(
+			t => t.id === String(userPk) || t.id === pendingId,
+		);
+
+		if (existingThread) {
+			return existingThread;
+		}
+
+		// Simulate finding user and creating a thread
+		const user = mockUsers.find(u => String(u.pk) === String(userPk));
+		if (!user) {
+			throw new Error('User not found');
+		}
+
+		const newThread: Thread = {
+			id: String(userPk),
+			title: user.fullName || user.username,
+			users: [user],
+			lastActivity: new Date(),
+			unread: false,
+		};
+
+		this.threads.push(newThread);
+		return newThread;
+	}
+
+	async searchThreadsByTitle(
+		query: string,
+		options?: {threshold?: number; maxThreadsToSearch?: number},
+	): Promise<SearchResult[]> {
+		const {threshold = 0.4, maxThreadsToSearch = 40} = options ?? {};
+
+		// Simulate network delay
+		await new Promise(resolve => {
+			setTimeout(resolve, 200);
+		});
+
+		const fuse = new Fuse(this.threads, {
+			keys: ['title'],
+			threshold,
+			includeScore: true,
+		});
+
+		const fuseResults = fuse.search(query);
+		const searchResults: SearchResult[] = fuseResults.map(result => ({
+			thread: result.item,
+			score: 1 - (result.score ?? 0),
+		}));
+
+		return searchResults.slice(0, maxThreadsToSearch);
 	}
 
 	async getCurrentUser(): Promise<User | undefined> {

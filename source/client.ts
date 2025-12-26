@@ -5,6 +5,8 @@ import {
 	type IgApiClient,
 	IgCheckpointError,
 	IgLoginTwoFactorRequiredError,
+	IgExactUserNotFoundError,
+	IgLoginBadPasswordError,
 	type DirectInboxFeedResponseThreadsItem,
 	type DirectInboxFeedResponseUsersItem,
 	type DirectThreadFeedResponseItemsItem,
@@ -12,6 +14,7 @@ import {
 	type UserStoryFeedResponseItemsItem,
 	type ReelsTrayFeedResponseTrayItem,
 } from 'instagram-private-api';
+import Fuse from 'fuse.js';
 import {
 	withRealtime,
 	GraphQLSubscriptions,
@@ -41,6 +44,12 @@ export type LoginResult = {
 	username?: string;
 	checkpointError?: IgCheckpointError;
 	twoFactorInfo?: AccountRepositoryLoginErrorResponseTwoFactorInfo;
+	badPassword?: boolean;
+};
+
+export type SearchResult = {
+	thread: Thread;
+	score: number;
 };
 
 export type RealtimeStatus =
@@ -145,6 +154,11 @@ export class InstagramClient extends EventEmitter {
 		| ReturnType<IgApiClientExt['feed']['directInbox']>
 		| undefined = undefined;
 
+	// Threads cache for search functionality
+	private threadsCache: Thread[] = [];
+	private threadsCacheTimestamp: number | undefined = undefined;
+	private readonly threadsCacheTTL = 5 * 60 * 1000; // 5 minutes
+
 	constructor(username?: string) {
 		super();
 		this.ig = new IgApiClientExt();
@@ -226,6 +240,13 @@ export class InstagramClient extends EventEmitter {
 
 			if (error instanceof IgCheckpointError) {
 				return {success: false, checkpointError: error};
+			}
+
+			if (error instanceof IgLoginBadPasswordError) {
+				return {
+					success: false,
+					badPassword: true,
+				};
 			}
 
 			this.logger.error('Login failed', error);
@@ -445,6 +466,9 @@ export class InstagramClient extends EventEmitter {
 			if (!loadMore || !this.inboxFeed) {
 				this.inboxFeed = this.ig.feed.directInbox();
 				this.userCache.clear();
+				// Invalidate threads cache on fresh load
+				this.threadsCache = [];
+				this.threadsCacheTimestamp = undefined;
 			}
 
 			const inbox = await this.inboxFeed.items();
@@ -470,12 +494,231 @@ export class InstagramClient extends EventEmitter {
 				unread: (thread as any).read_state === 1,
 			}));
 
+			// Update threads cache
+			if (loadMore) {
+				// Pagination: append to cache
+				this.threadsCache.push(...threads);
+				this.logger.debug(
+					`Appended ${threads.length} threads to cache. Total: ${this.threadsCache.length}`,
+				);
+			} else {
+				// Fresh load: replace cache
+				this.threadsCache = threads;
+				this.threadsCacheTimestamp = Date.now();
+				this.logger.debug(
+					`Initialized threads cache with ${threads.length} threads`,
+				);
+			}
+
 			return {
 				threads,
 				hasMore: this.inboxFeed.isMoreAvailable(),
 			};
 		} catch (error) {
 			this.logger.error('Failed to fetch threads', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Search for users by username and return them as search results with pending threads.
+	 *
+	 * @param username - The username to search for
+	 * @returns An array of SearchResult objects
+	 */
+	public async searchThreadByUsername(
+		username: string,
+		{useExact = false}: {useExact?: boolean},
+	): Promise<SearchResult[]> {
+		// First try exact username match if requested
+		if (useExact) {
+			try {
+				const user = await this.ig.user.searchExact(username.toLowerCase());
+				const fullName = user.full_name ? ` (${user.full_name})` : '';
+
+				// Cache user info
+				this.userCache.set(
+					user.pk.toString(),
+					user.username ?? user.full_name ?? `User_${user.pk}`,
+				);
+
+				const thread: Thread = {
+					id: `PENDING_${user.pk}`, // Virtual ID
+					title: `${user.username}${fullName}`,
+					users: [
+						{
+							pk: user.pk.toString(),
+							username: user.username,
+							fullName: user.full_name,
+							profilePicUrl: user.profile_pic_url,
+							isVerified: user.is_verified,
+						},
+					],
+					lastMessage: undefined,
+					lastActivity: new Date(),
+					unread: false,
+				};
+
+				return [{thread, score: 1}];
+			} catch (error) {
+				if (!(error instanceof IgExactUserNotFoundError)) {
+					this.logger.error(
+						'Failed to search thread by username (exact)',
+						error,
+					);
+					throw error;
+				}
+				// Fallback to fuzzy search if exact match not found
+			}
+		}
+
+		try {
+			const {users} = await this.ig.user.search(username);
+
+			if (!users || users.length === 0) {
+				return [];
+			}
+
+			// Map users to "Threads" packaged in SearchResult
+			const results = users.map(user => {
+				const fullName = user.full_name ? ` (${user.full_name})` : '';
+
+				// Cache user info
+				this.userCache.set(
+					user.pk.toString(),
+					user.username ?? user.full_name ?? `User_${user.pk}`,
+				);
+
+				const thread: Thread = {
+					id: `PENDING_${user.pk}`, // Virtual ID
+					title: `${user.username}${fullName}`,
+					users: [
+						{
+							pk: user.pk.toString(),
+							username: user.username,
+							fullName: user.full_name,
+							profilePicUrl: user.profile_pic_url,
+							isVerified: user.is_verified,
+						},
+					],
+					lastMessage: undefined,
+					lastActivity: new Date(),
+					unread: false,
+				};
+
+				let score = 0; // Default score as per request "assign score = 0"
+
+				const friendshipStatus = user.friendship_status;
+				// Rank: Bestie > Following > Others
+				if (friendshipStatus?.is_bestie) {
+					score = 0.3;
+				} else if (friendshipStatus?.following) {
+					score = 0.2;
+				} else {
+					score = 0.1;
+				}
+
+				return {
+					thread,
+					score,
+				};
+			});
+
+			// Sort by score descending
+			return results.sort((a, b) => b.score - a.score);
+		} catch (error) {
+			this.logger.error('Failed to search thread by username (fuzzy)', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Ensures a real thread exists for a user participant.
+	 * Resolves a virtual 'PENDING_pk' ID to a real thread ID.
+	 *
+	 * @param userPk - The user PK to create/find a thread with
+	 * @returns The real Thread object
+	 */
+	public async ensureThread(userPk: string | number): Promise<Thread> {
+		try {
+			// Ensure we pass an array of numbers or an array of strings, not mixed
+			const response = await this.ig.directThread.getByParticipants(
+				typeof userPk === 'number' ? [userPk] : [userPk],
+			);
+			const {thread} = response;
+
+			if (!thread) {
+				throw new Error('Thread not found');
+			}
+
+			return {
+				id: thread.thread_id,
+				title: this.getThreadTitle(
+					thread as unknown as DirectInboxFeedResponseThreadsItem,
+				),
+				users: this.getThreadUsers(
+					thread as unknown as DirectInboxFeedResponseThreadsItem,
+				),
+				lastMessage: this.getLastMessage(
+					thread as unknown as DirectInboxFeedResponseThreadsItem,
+				),
+				lastActivity: new Date(Number(thread.last_activity_at) / 1000),
+				unread: (thread as any).read_state === 1,
+			};
+		} catch (error) {
+			this.logger.error('Failed to ensure thread', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Search threads by title using fuzzy search with Fuse.js.
+	 *
+	 * @param query - The search query for thread titles
+	 * @param options - Search options including threshold (how similar the title must be) and maxThreadsToSearch (how many threads to search)
+	 * @returns A promise that resolves to an array of SearchResult objects with threads and scores
+	 */
+	public async searchThreadsByTitle(
+		query: string,
+		options?: {threshold?: number; maxThreadsToSearch?: number},
+	): Promise<SearchResult[]> {
+		const {threshold = 0.4, maxThreadsToSearch = 40} = options ?? {};
+		try {
+			// Use cached threads if available and not expired
+			const now = Date.now();
+			let isCacheExpired =
+				this.threadsCache.length === 0 ||
+				!this.threadsCacheTimestamp ||
+				now - this.threadsCacheTimestamp > this.threadsCacheTTL;
+			if (isCacheExpired) {
+				this.threadsCache.length = 0;
+			}
+
+			let hasMore = true;
+			while (this.threadsCache.length < maxThreadsToSearch && hasMore) {
+				// eslint-disable-next-line no-await-in-loop
+				const result = await this.getThreads(!isCacheExpired);
+				hasMore = result.hasMore;
+				isCacheExpired = false; // After first fetch, subsequent fetches are loadMore
+				if (!hasMore) {
+					this.logger.debug('No more threads available to fetch');
+					break;
+				}
+			}
+
+			const fuse = new Fuse(this.threadsCache, {
+				keys: ['title'],
+				threshold, // 0 = perfect match, 1 = no match in Fuse
+				includeScore: true,
+			});
+			const fuseResults = fuse.search(query);
+			const searchResults: SearchResult[] = fuseResults.map(result => ({
+				thread: result.item,
+				score: 1 - (result.score ?? 0), // Invert the score
+			}));
+			return searchResults.slice(0, maxThreadsToSearch);
+		} catch (error) {
+			this.logger.error('Failed to search threads by title', error);
 			throw error;
 		}
 	}

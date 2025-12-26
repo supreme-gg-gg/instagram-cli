@@ -1,7 +1,7 @@
 import React from 'react';
 import {Box} from 'ink';
 import zod from 'zod';
-import {argument} from 'pastel';
+import {argument, option} from 'pastel';
 import {Alert} from '@inkjs/ui';
 import ChatView from '../ui/views/chat-view.js';
 import {ClientContext} from '../ui/context/client-context.js';
@@ -20,11 +20,35 @@ export const args = zod.tuple([
 		),
 ]);
 
+export const options = zod.object({
+	title: zod
+		.string()
+		.optional()
+		.describe(
+			option({
+				alias: 't',
+				description:
+					'Search for a chat by title. If a match is found, directly enter the chat.',
+			}),
+		),
+	username: zod
+		.string()
+		.optional()
+		.describe(
+			option({
+				alias: 'u',
+				description:
+					'Search for a chat by username. If a match is found, directly enter the chat.',
+			}),
+		),
+});
+
 type Properties = {
 	readonly args: zod.infer<typeof args>;
+	readonly options: zod.infer<typeof options>;
 };
 
-export default function Chat({args}: Properties) {
+export default function Chat({args, options}: Properties) {
 	const {client, isLoading, error} = useInstagramClient(args[0]);
 
 	if (isLoading) {
@@ -51,10 +75,31 @@ export default function Chat({args}: Properties) {
 		);
 	}
 
+	if (options.title && options.username) {
+		return (
+			<Box>
+				<Alert variant="error">
+					Cannot use both --title and --username flags simultaneously. Please
+					use only one.
+				</Alert>
+			</Box>
+		);
+	}
+
+	const searchQuery = options.title ?? options.username;
+	const searchMode = options.title
+		? 'title'
+		: options.username
+			? 'username'
+			: undefined;
+
 	return (
 		<AltScreen>
 			<ClientContext.Provider value={client}>
-				<ChatView />
+				<ChatView
+					initialSearchQuery={searchQuery}
+					initialSearchMode={searchMode}
+				/>
 			</ClientContext.Provider>
 		</AltScreen>
 	);

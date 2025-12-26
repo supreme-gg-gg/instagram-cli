@@ -9,6 +9,7 @@ type StatusBarProperties = {
 	readonly currentView: 'threads' | 'chat';
 	readonly currentThread?: Thread;
 	readonly realtimeStatus: RealtimeStatus;
+	readonly searchMode?: 'username' | 'title';
 };
 
 export default function StatusBar({
@@ -17,6 +18,7 @@ export default function StatusBar({
 	currentView,
 	currentThread,
 	realtimeStatus,
+	searchMode,
 }: StatusBarProperties) {
 	const getRealtimeIndicator = () => {
 		switch (realtimeStatus) {
@@ -42,6 +44,14 @@ export default function StatusBar({
 		}
 	};
 
+	const getSearchModeIndicator = () => {
+		if (!searchMode) return null;
+
+		const modeText =
+			searchMode === 'username' ? 'Search by @username' : 'Search by title';
+		return <Text color="cyan"> 🔍 {modeText}</Text>;
+	};
+
 	return (
 		<Box paddingX={1} justifyContent="space-between" width="100%">
 			<Box>
@@ -49,6 +59,7 @@ export default function StatusBar({
 					📷 InstagramCLI
 				</Text>
 				{getRealtimeIndicator()}
+				{getSearchModeIndicator()}
 				{currentView === 'chat' && currentThread && (
 					<Text> / Chat with {currentThread.title}</Text>
 				)}
@@ -60,7 +71,11 @@ export default function StatusBar({
 				{error && <Text color="red">Error</Text>}
 				{!isLoading && !error && (
 					<Text color="green">
-						{currentView === 'threads' ? 'Threads' : 'Chat'}
+						{currentView === 'threads'
+							? searchMode
+								? 'Search'
+								: 'Threads'
+							: 'Chat'}
 					</Text>
 				)}
 			</Box>
