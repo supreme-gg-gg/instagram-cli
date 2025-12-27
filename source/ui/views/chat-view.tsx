@@ -173,13 +173,17 @@ export default function ChatView({
 					const results = await client.searchThreadByUsername(
 						initialSearchQuery,
 						{
-							useExact: true,
+							forceExact: true,
 						},
 					);
 					// Open the first result if it exists, there will ONLY be one result
 					if (results.length > 0 && results[0]) {
 						setSearchResults(results);
 						void handleThreadSelect(results[0].thread);
+					} else {
+						const results =
+							await client.searchThreadByUsername(initialSearchQuery);
+						setSearchResults(results);
 					}
 				} finally {
 					setIsSearching(false);
@@ -240,7 +244,7 @@ export default function ChatView({
 				if (searchMode === 'username') {
 					// Use fuzzy search for UI interactive search
 					const results = await client.searchThreadByUsername(searchQuery, {
-						useExact: false,
+						forceExact: false,
 					});
 					setSearchResults(results);
 				} else {

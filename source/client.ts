@@ -574,10 +574,11 @@ export class InstagramClient extends EventEmitter {
 	 */
 	public async searchThreadByUsername(
 		username: string,
-		{useExact = false}: {useExact?: boolean},
+		options?: {forceExact?: boolean},
 	): Promise<SearchResult[]> {
+		const {forceExact = false} = options ?? {};
 		// First try exact username match if requested
-		if (useExact) {
+		if (forceExact) {
 			try {
 				const user = await this.ig.user.searchExact(username.toLowerCase());
 				const fullName = user.full_name ? ` (${user.full_name})` : '';
@@ -614,7 +615,8 @@ export class InstagramClient extends EventEmitter {
 					);
 					throw error;
 				}
-				// Fallback to fuzzy search if exact match not found
+
+				return [];
 			}
 		}
 
