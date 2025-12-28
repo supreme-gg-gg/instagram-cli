@@ -1,9 +1,10 @@
-import React from 'react';
-import {Text} from 'ink';
+import React, {useState, useEffect} from 'react';
+import {Box, Text} from 'ink';
 import zod from 'zod';
 import {argument} from 'pastel';
 import {Alert} from '@inkjs/ui';
 import {InstagramClient} from '../../client.js';
+import {ConfigManager} from '../../config.js';
 
 export const args = zod.tuple([
 	zod
@@ -18,38 +19,63 @@ export const args = zod.tuple([
 ]);
 
 type Properties = {
-	readonly logOutArgs: zod.infer<typeof args>;
+	readonly args: zod.infer<typeof args>;
 };
 
-export default function Logout({logOutArgs}: Properties) {
-	const [result, setResult] = React.useState<string | undefined>(undefined);
-	const [error, setError] = React.useState<string | undefined>(undefined);
+export default function Logout({args}: Properties) {
+	const [message, setMessage] = useState<string | undefined>('Initializing...');
+	const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
+		'loading',
+	);
 
-	React.useEffect(() => {
-		(async () => {
+	useEffect(() => {
+		const run = async () => {
 			try {
-				const username = logOutArgs[0];
-				const client = new InstagramClient(username ?? undefined);
-				await client.logout(username ?? undefined);
+				const config = ConfigManager.getInstance();
+				await config.initialize();
 
-				if (username) {
-					setResult(`✅ Logged out from @${username}`);
-				} else {
-					setResult('✅ Logged out from current session');
+				const username = args[0] ?? config.get('login.currentUsername');
+
+				if (!username) {
+					setMessage('No active session found to logout from.');
+					setStatus('error');
+					return;
 				}
-			} catch (error_) {
-				setError(
+
+				setMessage(`Logging out from @${username}...`);
+				const client = new InstagramClient(username);
+				await client.logout(username);
+
+				setMessage(`Successfully logged out from @${username}`);
+				setStatus('success');
+			} catch (error) {
+				setMessage(
 					`Logout error: ${
-						error_ instanceof Error ? error_.message : String(error_)
+						error instanceof Error ? error.message : String(error)
 					}`,
 				);
+				setStatus('error');
 			}
-		})();
-	}, [logOutArgs]);
+		};
 
-	if (error) {
-		return <Alert variant="error">{error}</Alert>;
+		void run();
+	}, [args]);
+
+	if (status === 'error') {
+		return (
+			<Box>
+				<Alert variant="error">{message}</Alert>
+			</Box>
+		);
 	}
 
-	return <Text>{result ?? 'Logging out...'}</Text>;
+	if (status === 'success') {
+		return (
+			<Box>
+				<Alert variant="success">{message}</Alert>
+			</Box>
+		);
+	}
+
+	return <Text>{message}</Text>;
 }
