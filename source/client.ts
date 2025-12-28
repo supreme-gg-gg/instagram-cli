@@ -159,6 +159,14 @@ export class InstagramClient extends EventEmitter {
 	private threadsCacheTimestamp: number | undefined = undefined;
 	private readonly threadsCacheTTL = 5 * 60 * 1000; // 5 minutes
 
+	private readonly loginFlowStates: {
+		preLoginDone: boolean;
+		postLoginDone: boolean;
+	} = {
+		preLoginDone: false,
+		postLoginDone: false,
+	};
+
 	constructor(username?: string) {
 		super();
 		this.ig = new IgApiClientExt();
@@ -204,7 +212,12 @@ export class InstagramClient extends EventEmitter {
 				await this.saveSessionState();
 			});
 
-			await this.ig.simulate.preLoginFlow();
+			if (!this.loginFlowStates.preLoginDone) {
+				await this.preLoginFlow();
+				// Continue even if preLoginFlow fails
+				this.loginFlowStates.preLoginDone = true;
+			}
+
 			await this.ig.account.login(username, password);
 
 			await this.saveSessionState();
@@ -227,6 +240,12 @@ export class InstagramClient extends EventEmitter {
 						),
 					);
 				}
+			}
+
+			if (!this.loginFlowStates.postLoginDone) {
+				await this.postLoginFlow();
+				// Continue even if postLoginFlow fails
+				this.loginFlowStates.postLoginDone = true;
 			}
 
 			return {success: true, username};
@@ -267,6 +286,12 @@ export class InstagramClient extends EventEmitter {
 		totp_two_factor_on: boolean;
 	}): Promise<LoginResult> {
 		try {
+			if (!this.loginFlowStates.preLoginDone) {
+				await this.preLoginFlow();
+				// Continue even if preLoginFlow fails
+				this.loginFlowStates.preLoginDone = true;
+			}
+
 			const verificationMethod = totp_two_factor_on ? '0' : '1';
 			await this.ig.account.twoFactorLogin({
 				username: this.username!,
@@ -278,6 +303,12 @@ export class InstagramClient extends EventEmitter {
 			await this.saveSessionState();
 			if (this.username) {
 				await this.configManager.set('login.currentUsername', this.username);
+			}
+
+			if (!this.loginFlowStates.postLoginDone) {
+				await this.postLoginFlow();
+				// Continue even if postLoginFlow fails
+				this.loginFlowStates.postLoginDone = true;
 			}
 
 			return {success: true, username: this.username ?? undefined};
@@ -307,6 +338,12 @@ export class InstagramClient extends EventEmitter {
 				}
 			}
 
+			if (!this.loginFlowStates.postLoginDone) {
+				await this.postLoginFlow();
+				// Continue even if postLoginFlow fails
+				this.loginFlowStates.postLoginDone = true;
+			}
+
 			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
 			this.logger.error('Sending challenge code failed', error);
@@ -321,6 +358,9 @@ export class InstagramClient extends EventEmitter {
 	public async loginBySession(options?: {
 		initializeRealtime: boolean;
 	}): Promise<LoginResult> {
+		// No need to perform preLoginFlow here as session login does not require it
+		// This is not verified just a guess based on the purpose of preLoginFlow...
+
 		const sessionOptions = options ?? {initializeRealtime: true};
 		if (!this.sessionManager) {
 			return {success: false, error: 'No session manager initialized'};
@@ -362,6 +402,12 @@ export class InstagramClient extends EventEmitter {
 						),
 					);
 				}
+			}
+
+			if (!this.loginFlowStates.postLoginDone) {
+				await this.postLoginFlow();
+				// Continue even if postLoginFlow fails
+				this.loginFlowStates.postLoginDone = true;
 			}
 
 			return {success: true, username: this.username ?? undefined};
@@ -528,10 +574,11 @@ export class InstagramClient extends EventEmitter {
 	 */
 	public async searchThreadByUsername(
 		username: string,
-		{useExact = false}: {useExact?: boolean},
+		options?: {forceExact?: boolean},
 	): Promise<SearchResult[]> {
+		const {forceExact = false} = options ?? {};
 		// First try exact username match if requested
-		if (useExact) {
+		if (forceExact) {
 			try {
 				const user = await this.ig.user.searchExact(username.toLowerCase());
 				const fullName = user.full_name ? ` (${user.full_name})` : '';
@@ -568,7 +615,8 @@ export class InstagramClient extends EventEmitter {
 					);
 					throw error;
 				}
-				// Fallback to fuzzy search if exact match not found
+
+				return [];
 			}
 		}
 
@@ -1193,5 +1241,38 @@ export class InstagramClient extends EventEmitter {
 			image_versions2: item.image_versions2,
 			video_versions: item.video_versions,
 		};
+	}
+
+	/**
+	 * Emulate app behavior before login.
+	 *
+	 * @remarks This is ported from instagrapi and is NOT the same as client.simulate.preLoginFlow() from instagram-private-api.
+	 *
+	 */
+	private async preLoginFlow(): Promise<boolean> {
+		try {
+			await this.ig.launcher.preLoginSync();
+			return true;
+		} catch (error) {
+			this.logger.error('Pre login flow failed', error);
+			return false;
+		}
+	}
+
+	/**
+	 * Emulate app behavior after login.
+	 *
+	 * @remarks This is ported from instagrapi and is NOT the same as client.simulate.postLoginFlow() from instagram-private-api.
+	 */
+	private async postLoginFlow(): Promise<boolean> {
+		try {
+			await this.ig.feed.reelsTray('cold_start').request();
+			this.hasInitializedReelsTray = true;
+			await this.ig.feed.timeline('cold_start_fetch').request();
+			return true;
+		} catch (error) {
+			this.logger.error('Post login flow failed', error);
+			return false;
+		}
 	}
 }
