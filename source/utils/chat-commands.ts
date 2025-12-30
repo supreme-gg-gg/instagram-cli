@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type {InstagramClient} from '../client.js';
 import type {ChatState, Post} from '../types/instagram.js';
 import type {ScrollViewRef} from '../ui/components/scroll-view.js';
@@ -178,7 +180,7 @@ export const chatCommands: Record<string, ChatCommand> = {
 			const messageToUnsend =
 				chatState.messages[chatState.selectedMessageIndex];
 
-			if (!messageToUnsend?.isOutgoing) {
+			if (!messageToUnsend || !messageToUnsend.isOutgoing) {
 				return 'You can only unsend your own messages.';
 			}
 
@@ -294,7 +296,7 @@ export const chatCommands: Record<string, ChatCommand> = {
 			}
 
 			const message = chatState.messages[chatState.selectedMessageIndex];
-			if (message.itemType !== 'media' || !message.media) {
+			if (!message || message.itemType !== 'media' || !message.media) {
 				return 'Selected message does not contain media.';
 			}
 
@@ -303,11 +305,9 @@ export const chatCommands: Record<string, ChatCommand> = {
 			}
 
 			// Determine default download path if not provided
-			const downloadPath = arguments_[0] || `./downloads/media_${message.id}`;
+			const downloadPath = arguments_[0] ?? `./downloads/media_${message.id}`;
 
 			// Create downloads directory if it doesn't exist
-			const fs = await import('node:fs');
-			const path = await import('node:path');
 			const downloadDir = path.dirname(downloadPath);
 			if (!fs.existsSync(downloadDir)) {
 				fs.mkdirSync(downloadDir, {recursive: true});
