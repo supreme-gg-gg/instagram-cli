@@ -285,6 +285,50 @@ export const chatCommands: Record<string, ChatCommand> = {
 			return;
 		},
 	},
+	download: {
+		description:
+			'Download media from the selected message. Usage: :download [path]',
+		async handler(arguments_, {client, chatState, setChatState}) {
+			if (chatState.selectedMessageIndex === undefined) {
+				return 'Usage: :select to enter selection mode first.';
+			}
+
+			const message = chatState.messages[chatState.selectedMessageIndex];
+			if (message.itemType !== 'media' || !message.media) {
+				return 'Selected message does not contain media.';
+			}
+
+			if (!chatState.currentThread) {
+				return;
+			}
+
+			// Determine default download path if not provided
+			const downloadPath = arguments_[0] || `./downloads/media_${message.id}`;
+
+			// Create downloads directory if it doesn't exist
+			const fs = await import('node:fs');
+			const path = await import('node:path');
+			const downloadDir = path.dirname(downloadPath);
+			if (!fs.existsSync(downloadDir)) {
+				fs.mkdirSync(downloadDir, {recursive: true});
+			}
+
+			try {
+				const downloadedPath = await client.downloadMediaFromMessage(
+					message,
+					downloadPath,
+				);
+				setChatState(previous => ({
+					...previous,
+					selectedMessageIndex: undefined,
+				}));
+				return `Media downloaded to: ${downloadedPath}`;
+			} catch (error) {
+				logger.error('Failed to download media', error);
+				return `Failed to download media: ${error instanceof Error ? error.message : 'Unknown error'}`;
+			}
+		},
+	},
 };
 
 export async function parseAndDispatchChatCommand(
