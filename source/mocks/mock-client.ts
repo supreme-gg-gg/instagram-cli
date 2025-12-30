@@ -1,3 +1,4 @@
+import {extname} from 'node:path';
 import {EventEmitter} from 'node:events';
 import Fuse from 'fuse.js';
 import type {
@@ -280,6 +281,56 @@ class MockClient extends EventEmitter {
 			setTimeout(resolve, 50);
 		});
 		logger.info(`Mock: Marked thread ${threadId} as seen`);
+	}
+
+	async downloadMedia(
+		_mediaId: string,
+		mediaUrl: string,
+		downloadPath: string,
+	): Promise<string> {
+		// Simulate network delay
+		await new Promise(resolve => {
+			setTimeout(resolve, 100);
+		});
+		logger.info(
+			`Mock: Downloading media from ${mediaUrl} to ${downloadPath}...`,
+		);
+		return downloadPath;
+	}
+
+	async downloadMediaFromMessage(
+		message: Message,
+		downloadPath: string,
+	): Promise<string> {
+		if (message.itemType !== 'media' || !message.media) {
+			throw new Error('Message does not contain media');
+		}
+
+		let mediaUrl: string | undefined;
+		let mediaType: 'image' | 'video' | undefined;
+
+		if (message.media.media_type === 2) {
+			mediaType = 'video';
+			mediaUrl = message.media.video_versions?.[0]?.url;
+		} else if (message.media.media_type === 1) {
+			mediaType = 'image';
+			mediaUrl = message.media.image_versions2?.candidates[0]?.url;
+		}
+
+		if (!mediaUrl) {
+			throw new Error('No media URL found in message');
+		}
+
+		let finalDownloadPath = downloadPath;
+		if (mediaType) {
+			const hasExtension = extname(downloadPath) !== '';
+			if (!hasExtension) {
+				const extension = mediaType === 'image' ? '.jpg' : '.mp4';
+				finalDownloadPath = downloadPath + extension;
+			}
+		}
+
+		return this.downloadMedia(message.media.id, mediaUrl, finalDownloadPath);
 	}
 
 	async markItemAsSeen(threadId: string, itemId: string): Promise<void> {
