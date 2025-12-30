@@ -9,9 +9,15 @@
 		"moduleResolution": "node16",
 		"allowImportingTsExtensions": false,
 		"resolveJsonModule": true,
-		"typeRoots": ["./source/types", "node_modules/@types"]
+		"typeRoots": ["./source/types", "node_modules/@types"],
+		"strict": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"allowSyntheticDefaultImports": true,
+		"strictNullChecks": true
 	},
-	"include": ["./source"],
+	"include": ["./source/**/*"],
+	"exclude": ["node_modules", "dist"],
 	"ts-node": {
 		"transpileOnly": true,
 		"files": true,
