@@ -919,6 +919,86 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
+	public async downloadMedia(
+		mediaId: string,
+		mediaUrl: string,
+		downloadPath: string,
+	): Promise<string> {
+		try {
+			const { pipeline } = await import('node:stream');
+			const { promisify } = await import('node:util');
+			const https = await import('node:https');
+			const http = await import('node:http');
+			const fsPromises = await import('node:fs/promises');
+			const url = await import('node:url');
+			
+			const streamPipeline = promisify(pipeline);
+			const parsedUrl = new url.URL(mediaUrl);
+			const client = parsedUrl.protocol === 'https:' ? https : http;
+			
+			return new Promise((resolve, reject) => {
+				const request = client.get(mediaUrl, async (response) => {
+					if (response.statusCode !== 200) {
+						reject(new Error(`Failed to download media: ${response.statusCode} ${response.statusMessage}`));
+						return;
+				}
+				
+				try {
+					await streamPipeline(response, fsPromises.createWriteStream(downloadPath));
+					resolve(downloadPath);
+				} catch (error) {
+					reject(error);
+				}
+			});
+			
+			request.on('error', (error) => {
+				reject(error);
+			});
+			
+			request.end();
+		});
+		} catch (error) {
+			this.logger.error('Failed to download media', error);
+			throw error;
+		}
+	}
+
+	public async downloadMediaFromMessage(
+		message: Message,
+		downloadPath: string,
+	): Promise<string> {
+		if (message.itemType !== 'media' || !message.media) {
+			throw new Error('Message does not contain media');
+		}
+
+		// Determine the best media URL based on media type
+		let mediaUrl: string | undefined;
+		
+		if (message.media.media_type === 2) { // Video
+			if (message.media.video_versions && message.media.video_versions.length > 0) {
+				// Get the highest quality video
+				const highestQuality = message.media.video_versions.reduce((prev, current) => 
+					prev.width * prev.height > current.width * current.height ? prev : current
+				);
+				mediaUrl = highestQuality.url;
+			}
+		} else { // Image or other media
+			if (message.media.image_versions2 && message.media.image_versions2.candidates.length > 0) {
+				// Get the highest quality image
+				const highestQuality = message.media.image_versions2.candidates.reduce((prev, current) => 
+					prev.width * prev.height > current.width * current.height ? prev : current
+				);
+				mediaUrl = highestQuality.url;
+			}
+		}
+
+		if (!mediaUrl) {
+			throw new Error('No media URL found in message');
+		}
+
+		return this.downloadMedia(message.media.id, mediaUrl, downloadPath);
+	}
+
 	/**
 	 * Fetches the reels tray, which contains a list of users who have active stories.
 	 *
