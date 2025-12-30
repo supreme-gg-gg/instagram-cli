@@ -48,7 +48,7 @@ The formula is available [here](https://github.com/supreme-gg-gg/homebrew-tap/bl
 npm install -g @i7m/instagram-cli
 ```
 
-For other installation methods, please refer to the [TypeScript Client Documentation](./instagram-ts/DEVELOPMENT.md).
+For other installation methods, please refer to the [TypeScript Client Documentation](./DEVELOPMENT.md).
 
 ### Key Features
 
@@ -76,7 +76,7 @@ Note that Python links to the `instagram` command, while TypeScript links to `in
 - Classic `curses`-based terminal UI, works well on Linux and macOS, nostalgic UNIX vibes...
 - Extends Instagram with powerful plugins like LaTeX rendering, chat summarisation (e.g. Ollama)
 
-For more information about the Python client, please refer to the [Python Client Documentation](./instagram/README.md). **The following documentation is for the Typescript client only.**
+For more information about the Python client, please refer to the [Python Client Documentation](./instagram-py/README.md). **The following documentation is for the Typescript client only.**
 
 ## Commands
 
