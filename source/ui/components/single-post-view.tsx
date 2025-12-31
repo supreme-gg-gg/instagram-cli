@@ -99,7 +99,7 @@ export default function SinglePostView({post, protocol, onClose}: Properties) {
 	return (
 		<FullScreen>
 			<Box flexDirection="column" height="100%" width="100%">
-				<Box borderStyle="single" borderColor="blue">
+				<Box borderStyle="round" borderColor="blue" paddingX={1}>
 					<Text bold color="blue">
 						Shared post by @{post.user.username}
 					</Text>
@@ -118,9 +118,15 @@ export default function SinglePostView({post, protocol, onClose}: Properties) {
 						carouselCount={carouselCount}
 					/>
 
-					<Box flexDirection="column" justifyContent="flex-start">
-						<Box flexDirection="row">
-							<Text color="green">{post.user.username}</Text>
+					<Box
+						flexDirection="column"
+						width="50%"
+						paddingRight={3}
+						overflow="hidden"
+						justifyContent="flex-start"
+					>
+						<Box flexDirection="row" marginBottom={1}>
+							<Text color="green">👤 {post.user.username}</Text>
 							{post.taken_at && (
 								<Text color="gray">
 									{' ('}
@@ -131,8 +137,8 @@ export default function SinglePostView({post, protocol, onClose}: Properties) {
 						<Text wrap="wrap">{post.caption?.text ?? 'No caption'}</Text>
 
 						<Box flexDirection="row" marginTop={1}>
-							<Text>♡ {post.like_count ?? 0} </Text>
-							<Text>🗨 {post.comment_count ?? 0}</Text>
+							<Text>♡ {post.like_count} </Text>
+							<Text>💬 {post.comment_count}</Text>
 						</Box>
 					</Box>
 				</Box>
