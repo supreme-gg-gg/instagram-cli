@@ -5,6 +5,7 @@ import type {
 	Thread,
 	ChatState,
 	Message,
+	Post,
 	ReactionEvent,
 	SeenEvent,
 } from '../../types/instagram.js';
@@ -20,6 +21,8 @@ import FullScreen from '../components/full-screen.js';
 import {useScreenSize} from '../hooks/use-screen-size.js';
 import {preprocessMessage} from '../../utils/preprocess.js';
 import SearchInput from '../components/search-input.js';
+import SinglePostView from '../components/single-post-view.js';
+import {useImageProtocol} from '../hooks/use-image-protocol.js';
 
 type SearchMode = 'username' | 'title' | undefined;
 
@@ -63,8 +66,22 @@ export default function ChatView({
 	);
 	const searchDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
+	// State for viewing shared posts
+	const [viewingPost, setViewingPost] = useState<Post | undefined>(undefined);
+	const imageProtocol = useImageProtocol();
+
 	// Calculate available height for messages (total height minus status bar and input area)
 	const messageAreaHeight = Math.max(1, height - 8);
+
+	// Handler for viewing media share posts
+	const handleViewMediaShare = useCallback((post: Post) => {
+		setViewingPost(post);
+	}, []);
+
+	// Handler for closing the post view
+	const handleClosePostView = useCallback(() => {
+		setViewingPost(undefined);
+	}, []);
 
 	// Effect to clear system messages after a delay
 	useEffect(() => {
@@ -528,6 +545,10 @@ export default function ChatView({
 	}, [client, realtimeStatus]);
 
 	useInput((input, key) => {
+		if (viewingPost) {
+			return;
+		}
+
 		// Don't handle input when in search mode (SearchInput handles it)
 		if (searchMode) {
 			return;
@@ -640,6 +661,7 @@ export default function ChatView({
 			setChatState,
 			height,
 			scrollViewRef,
+			onViewMediaShare: handleViewMediaShare,
 		});
 
 		if (cmdSystemMessage) {
@@ -840,6 +862,18 @@ export default function ChatView({
 
 		return 'Esc: back to threads, Ctrl+C: quit';
 	};
+
+	if (viewingPost) {
+		return (
+			<TerminalInfoProvider>
+				<SinglePostView
+					post={viewingPost}
+					protocol={imageProtocol}
+					onClose={handleClosePostView}
+				/>
+			</TerminalInfoProvider>
+		);
+	}
 
 	return (
 		<FullScreen>

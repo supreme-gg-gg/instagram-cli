@@ -2,6 +2,7 @@ import {type DirectThreadFeedResponseItemsItem} from 'instagram-private-api';
 import {MessageSyncMessageTypes, type MessageSyncMessage} from 'instagram_mqtt';
 import type {
 	Message,
+	Post,
 	Reaction,
 	ReactionEvent,
 	RepliedToMessage,
@@ -67,10 +68,50 @@ type ActionLogItem = ThreadBaseItem & {
 	hide_in_thread: 1 | 0;
 };
 
+/**
+ * Raw media share payload from Instagram API/MQTT.
+ */
+type RawMediaSharePayload = {
+	media?: RawMediaSharePayload;
+	user?: {
+		pk?: number;
+		id?: number;
+		username?: string;
+		profile_pic_url?: string;
+		profilePicUrl?: string;
+	};
+	id?: string;
+	pk?: number;
+	preview_medias?: RawMediaSharePayload[];
+	carousel_media?: Post['carousel_media'];
+	carousel_media_info?: Post['carousel_media'];
+	carousel_media_v2?: Post['carousel_media'];
+	carousel_media_count?: number;
+	caption?: string | {text: string};
+	image_versions2?: Post['image_versions2'];
+	video_versions?: Post['video_versions'];
+	like_count?: number;
+	comment_count?: number;
+	taken_at?: number;
+	media_type?: number;
+};
+
+/**
+ * MediaShare item type for shared posts (not reels).
+ * The media_share field contains the full post data.
+ */
+type MediaShareItem = ThreadGenericMessageItem & {
+	item_type: MessageSyncMessageTypes.MediaShare;
+	media_share?: RawMediaSharePayload;
+	xma_media_share?: RawMediaSharePayload;
+	direct_media_share?: RawMediaSharePayload;
+};
+
 type RealChatItem =
 	| ThreadCommonMessageItem
 	| RealLinkMessageItem
-	| ActionLogItem;
+	| ActionLogItem
+	| MediaShareItem;
 
 type RawRepliedToMessage = {
 	item_id: string;
@@ -149,6 +190,47 @@ function parseReactions(
 	}
 
 	return parsed.length > 0 ? parsed : undefined;
+}
+
+/**
+ * Try to coerce any media-share-like payload into a Post the UI can render.
+ */
+function normalizeMediaShareToPost(
+	rawMediaShare: RawMediaSharePayload | undefined,
+): Post | undefined {
+	if (!rawMediaShare) return undefined;
+
+	const media = rawMediaShare.media ?? rawMediaShare;
+	const user = media.user ?? rawMediaShare.user;
+	const id = media.id ?? media.pk ?? rawMediaShare.id ?? rawMediaShare.pk;
+
+	if (!id || !user?.username) return undefined;
+
+	const primary = media.preview_medias?.[0] ?? media;
+	const carouselMedia =
+		media.carousel_media ??
+		media.carousel_media_info ??
+		media.carousel_media_v2;
+	const captionText =
+		typeof media.caption === 'string' ? media.caption : media.caption?.text;
+
+	return {
+		id: String(id),
+		user: {
+			pk: Number(user.pk ?? user.id ?? 0),
+			username: user.username,
+			profilePicUrl: user.profile_pic_url ?? user.profilePicUrl,
+		},
+		caption: captionText ? {text: captionText} : undefined,
+		image_versions2: media.image_versions2 ?? primary.image_versions2,
+		like_count: media.like_count ?? 0,
+		comment_count: media.comment_count ?? 0,
+		taken_at: media.taken_at ?? Math.floor(Date.now() / 1000),
+		media_type: media.media_type ?? primary.media_type ?? 1,
+		video_versions: media.video_versions ?? primary.video_versions,
+		carousel_media_count: media.carousel_media_count ?? carouselMedia?.length,
+		carousel_media: carouselMedia,
+	};
 }
 
 /**
@@ -280,9 +362,33 @@ export function parseMessageItem(
 			};
 		}
 
-		// In the future we will add media share for posts support, see issue #142
+		case MessageSyncMessageTypes.MediaShare: {
+			const mediaShareItem = item as MediaShareItem;
+			const mediaShare =
+				mediaShareItem.media_share ??
+				mediaShareItem.xma_media_share ??
+				mediaShareItem.direct_media_share ??
+				(mediaShareItem.media as RawMediaSharePayload | undefined);
+
+			const post = normalizeMediaShareToPost(mediaShare);
+
+			if (!post) {
+				return {
+					...baseMessage,
+					itemType: 'placeholder',
+					text: '[Shared a post]',
+				};
+			}
+
+			return {
+				...baseMessage,
+				itemType: 'media_share',
+				mediaSharePost: post,
+			};
+		}
+
+		// Reels and RavenMedia (disappearing) remain as brainrot blockers
 		case MessageSyncMessageTypes.RavenMedia:
-		case MessageSyncMessageTypes.MediaShare:
 		case MessageSyncMessageTypes.ReelShare: {
 			return {
 				...baseMessage,

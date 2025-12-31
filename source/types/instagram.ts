@@ -36,7 +36,8 @@ export type Message =
 	| TextMessage
 	| MediaMessage
 	| LinkMessage
-	| PlaceholderMessage;
+	| PlaceholderMessage
+	| MediaShareMessage;
 
 type BaseMessage = {
 	id: string;
@@ -69,6 +70,12 @@ export type LinkMessage = {
 export type PlaceholderMessage = {
 	itemType: 'placeholder';
 	text: string;
+} & BaseMessage;
+
+export type MediaShareMessage = {
+	itemType: 'media_share';
+	mediaSharePost: Post;
+	mediaShareIndex?: number;
 } & BaseMessage;
 
 export type MessageMedia = {

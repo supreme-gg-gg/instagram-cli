@@ -1,5 +1,5 @@
 import type {InstagramClient} from '../client.js';
-import type {ChatState} from '../types/instagram.js';
+import type {ChatState, Post} from '../types/instagram.js';
 import type {ScrollViewRef} from '../ui/components/scroll-view.js';
 import {preprocessMessage} from './preprocess.js';
 import {createContextualLogger} from './logger.js';
@@ -13,6 +13,7 @@ export type ChatCommandContext = {
 	readonly setChatState: React.Dispatch<React.SetStateAction<ChatState>>;
 	readonly height: number;
 	readonly scrollViewRef: React.RefObject<ScrollViewRef | undefined>;
+	readonly onViewMediaShare?: (post: Post) => void;
 };
 
 // Handler will return a system message when needed, or void otherwise
@@ -245,6 +246,42 @@ export const chatCommands: Record<string, ChatCommand> = {
 
 			scrollViewRef.current.scrollToEnd(false); // Don't show scroll to bottom message
 
+			return;
+		},
+	},
+	view: {
+		description:
+			'View a shared post in feed view. Usage: :view <index> where index is shown in the message',
+		handler(arguments_, {chatState, onViewMediaShare}) {
+			const [indexStr = '0'] = arguments_;
+			const index = Number.parseInt(indexStr, 10);
+
+			if (Number.isNaN(index) || index < 0) {
+				return 'Invalid index. Please provide a non-negative integer.';
+			}
+
+			const mediaShareMessages = chatState.messages.filter(
+				m => m.itemType === 'media_share',
+			);
+
+			if (mediaShareMessages.length === 0) {
+				return 'No shared posts in this conversation.';
+			}
+
+			if (index >= mediaShareMessages.length) {
+				return `Invalid index. Available indices: 0-${mediaShareMessages.length - 1}`;
+			}
+
+			const targetMessage = mediaShareMessages[index];
+			if (!targetMessage || targetMessage.itemType !== 'media_share') {
+				return 'Failed to find the shared post.';
+			}
+
+			if (!onViewMediaShare) {
+				return 'Media view is not available.';
+			}
+
+			onViewMediaShare(targetMessage.mediaSharePost);
 			return;
 		},
 	},

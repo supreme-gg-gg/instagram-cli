@@ -246,6 +246,72 @@ export const mockMessages: Message[] = [
 			url: 'https://example.com/privacy',
 		},
 	},
+	{
+		id: 'msg9',
+		timestamp: new Date(Date.now() - 60_000 * 2), // 2 minutes ago
+		userId: 'user2',
+		username: 'bob_johnson',
+		isOutgoing: false,
+		threadId: 'thread1',
+		itemType: 'media_share',
+		mediaSharePost: {
+			id: 'shared_post_1',
+			user: {
+				pk: 12_345,
+				username: 'nature_photographer',
+				profilePicUrl: 'https://example.com/profile.jpg',
+			},
+			caption: {
+				text: 'sample caption 1',
+			},
+			image_versions2: {
+				candidates: [
+					{
+						url: 'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
+						width: 1080,
+						height: 1080,
+					},
+				],
+			},
+			like_count: 15_234,
+			comment_count: 342,
+			taken_at: Math.floor(Date.now() / 1000) - 86_400, // 1 day ago
+			media_type: 1,
+		},
+	},
+	{
+		id: 'msg10',
+		timestamp: new Date(Date.now() - 60_000 * 1), // 1 minute ago
+		userId: 'user1',
+		username: 'alice_smith',
+		isOutgoing: true,
+		threadId: 'thread1',
+		itemType: 'media_share',
+		mediaSharePost: {
+			id: 'shared_post_2',
+			user: {
+				pk: 67_890,
+				username: 'tech_news',
+				profilePicUrl: 'https://example.com/tech_profile.jpg',
+			},
+			caption: {
+				text: 'sample caption 2',
+			},
+			image_versions2: {
+				candidates: [
+					{
+						url: 'https://upload.wikimedia.org/wikipedia/en/thumb/7/7d/Lenna_%28test_image%29.png/500px-Lenna_%28test_image%29.png',
+						width: 1200,
+						height: 800,
+					},
+				],
+			},
+			like_count: 89_432,
+			comment_count: 2345,
+			taken_at: Math.floor(Date.now() / 1000) - 43_200, // 12 hours ago
+			media_type: 1,
+		},
+	},
 ];
 
 // Mock threads

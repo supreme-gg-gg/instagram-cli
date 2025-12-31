@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {Box, Text} from 'ink';
 import Image from 'ink-picture';
 import type {Message, Thread} from '../../types/instagram.js';
@@ -24,6 +24,19 @@ export default function MessageList({
 			minute: '2-digit',
 		});
 	};
+
+	const mediaShareIndexMap = useMemo(() => {
+		const map = new Map<string, number>();
+		let i = 0;
+		for (const message of messages) {
+			if (message.itemType === 'media_share') {
+				map.set(message.id, i);
+				i++;
+			}
+		}
+
+		return map;
+	}, [messages]);
 
 	const renderMessageContent = (message: Message) => {
 		switch (message.itemType) {
@@ -56,6 +69,30 @@ export default function MessageList({
 				}
 
 				return <Text dimColor>[Sent an image]</Text>;
+			}
+
+			case 'media_share': {
+				const post = message.mediaSharePost;
+				const index = mediaShareIndexMap.get(message.id) ?? 0;
+
+				return (
+					<Box flexDirection="column">
+						<Text dimColor>
+							[Shared post by{' '}
+							<Text bold color="cyan">
+								@{post.user.username}
+							</Text>
+							]
+						</Text>
+						<Text dimColor>
+							Use{' '}
+							<Text bold color="yellow">
+								:view {index}
+							</Text>{' '}
+							to view this post
+						</Text>
+					</Box>
+				);
 			}
 
 			case 'link': {
