@@ -34,6 +34,7 @@ type AdvancedConfig = {
 	mediaDir: string;
 	generatedDir: string;
 	logsDir: string;
+	downloadDir: string;
 };
 
 type Config = {
@@ -69,6 +70,7 @@ const DEFAULT_CONFIG: Config = {
 		mediaDir: path.join(DEFAULT_DATA_DIR, 'media'),
 		generatedDir: path.join(DEFAULT_DATA_DIR, 'generated'),
 		logsDir: path.join(DEFAULT_DATA_DIR, 'logs'),
+		downloadDir: path.join(DEFAULT_DATA_DIR, 'downloads'),
 	},
 	feed: {
 		feedType: 'list',

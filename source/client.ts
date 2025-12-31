@@ -1,6 +1,10 @@
 import {join} from 'node:path';
 import fs from 'node:fs';
 import {EventEmitter} from 'node:events';
+import {pipeline} from 'node:stream';
+import {promisify} from 'node:util';
+import https from 'node:https';
+import http from 'node:http';
 import {
 	type IgApiClient,
 	IgCheckpointError,
@@ -488,6 +492,10 @@ export class InstagramClient extends EventEmitter {
 		return this.realtimeStatus;
 	}
 
+	public getConfigManager(): ConfigManager {
+		return this.configManager;
+	}
+
 	public async getCurrentUser(): Promise<User | undefined> {
 		try {
 			const user = await this.ig.user.info(this.ig.state.cookieUserId);
@@ -917,6 +925,110 @@ export class InstagramClient extends EventEmitter {
 			this.logger.error('Failed to unsend message', error);
 			throw error;
 		}
+	}
+
+	public async downloadMedia(
+		_mediaId: string,
+		mediaUrl: string,
+		downloadPath: string,
+	): Promise<string> {
+		try {
+			const streamPipeline = promisify(pipeline);
+			const parsedUrl = new URL(mediaUrl);
+			const client = parsedUrl.protocol === 'https:' ? https : http;
+
+			await new Promise<void>((resolve, reject) => {
+				const request = client.get(mediaUrl, async response => {
+					if (response.statusCode !== 200) {
+						reject(
+							new Error(
+								`Failed to download media: ${response.statusCode} ${response.statusMessage}`,
+							),
+						);
+						return;
+					}
+
+					try {
+						await streamPipeline(response, fs.createWriteStream(downloadPath));
+						resolve();
+					} catch (error) {
+						reject(error instanceof Error ? error : new Error(String(error)));
+					}
+				});
+
+				request.on('error', error => {
+					reject(error instanceof Error ? error : new Error(String(error)));
+				});
+
+				request.end();
+			});
+			return downloadPath;
+		} catch (error) {
+			this.logger.error('Failed to download media', error);
+			throw error;
+		}
+	}
+
+	public async downloadMediaFromMessage(
+		message: Message,
+		downloadPath: string,
+	): Promise<string> {
+		if (message.itemType !== 'media' || !message.media) {
+			throw new Error('Message does not contain media');
+		}
+
+		// Determine the best media URL based on media type
+		let mediaUrl: string | undefined;
+
+		if (message.media.media_type === 2) {
+			// Video
+			if (
+				message.media.video_versions &&
+				message.media.video_versions.length > 0
+			) {
+				// Get the highest quality video
+				let highestQuality = message.media.video_versions[0];
+				for (const video of message.media.video_versions) {
+					if (
+						highestQuality &&
+						video.width * video.height >
+							highestQuality.width * highestQuality.height
+					) {
+						highestQuality = video;
+					}
+				}
+
+				mediaUrl = highestQuality?.url;
+			}
+		} else if (message.media.media_type === 1) {
+			// Image
+			if (
+				message.media.image_versions2 &&
+				message.media.image_versions2.candidates.length > 0
+			) {
+				// Get the highest quality image
+				let highestQuality = message.media.image_versions2.candidates[0];
+				for (const image of message.media.image_versions2.candidates) {
+					if (
+						highestQuality &&
+						image.width * image.height >
+							highestQuality.width * highestQuality.height
+					) {
+						highestQuality = image;
+					}
+				}
+
+				mediaUrl = highestQuality?.url;
+			} else {
+				mediaUrl = undefined;
+			}
+		}
+
+		if (!mediaUrl) {
+			throw new Error('No media URL found in message');
+		}
+
+		return this.downloadMedia(message.media.id, mediaUrl, downloadPath);
 	}
 
 	/**

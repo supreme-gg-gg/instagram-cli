@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import React from 'react';
 import test, {type ExecutionContext} from 'ava';
 import {render} from 'ink-testing-library';
