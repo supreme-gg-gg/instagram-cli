@@ -16,7 +16,7 @@
 		"allowSyntheticDefaultImports": true,
 		"strictNullChecks": true
 	},
-	"include": ["./source/**/*"],
+	"include": ["./source/**/*", "./xo.config.ts", "./tests/**/*"],
 	"exclude": ["node_modules", "dist"],
 	"ts-node": {
 		"transpileOnly": true,
