@@ -492,6 +492,10 @@ export class InstagramClient extends EventEmitter {
 		return this.realtimeStatus;
 	}
 
+	public getConfigManager(): ConfigManager {
+		return this.configManager;
+	}
+
 	public async getCurrentUser(): Promise<User | undefined> {
 		try {
 			const user = await this.ig.user.info(this.ig.state.cookieUserId);
@@ -995,11 +999,14 @@ export class InstagramClient extends EventEmitter {
 				}
 
 				mediaUrl = highestQuality?.url;
-			} else if (
+			}
+		} else if (message.media.media_type === 1) {
+			// Image
+			if (
 				message.media.image_versions2 &&
 				message.media.image_versions2.candidates.length > 0
 			) {
-				// Image or other media - Get the highest quality image
+				// Get the highest quality image
 				let highestQuality = message.media.image_versions2.candidates[0];
 				for (const image of message.media.image_versions2.candidates) {
 					if (
@@ -1012,6 +1019,8 @@ export class InstagramClient extends EventEmitter {
 				}
 
 				mediaUrl = highestQuality?.url;
+			} else {
+				mediaUrl = undefined;
 			}
 		}
 

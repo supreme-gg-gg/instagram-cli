@@ -267,8 +267,17 @@ export const chatCommands: Record<string, ChatCommand> = {
 				return;
 			}
 
-			// Determine default download path if not provided
-			const downloadPath = arguments_[0] ?? `./downloads/media_${message.id}`;
+			// Get the config manager instance to access the download directory
+			const configManager = client.getConfigManager();
+			await configManager.initialize();
+
+			// Use CLI argument if provided, otherwise use config value, fallback to default
+			const configDownloadDir = configManager.get('advanced.downloadDir');
+			const defaultDownloadPath = path.join(
+				configDownloadDir,
+				`media_${message.id}`,
+			);
+			const downloadPath = arguments_[0] ?? defaultDownloadPath;
 
 			// Create downloads directory if it doesn't exist
 			const downloadDir = path.dirname(downloadPath);
