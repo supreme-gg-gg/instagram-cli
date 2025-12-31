@@ -1,0 +1,88 @@
+name: instagram-cli
+base: core24
+adopt-info: instagram-cli
+summary: Instagram in the terminal (CLI/TUI)
+description: |
+  instagram-cli is a terminal-based Instagram client built with Typer/curses,
+  using instagrapi under the hood.
+
+grade: stable
+confinement: strict
+
+apps:
+  instagram:
+    command: bin/instagram
+    plugs:
+      - network
+      - home
+      - removable-media
+    environment:
+      # trying to keep app state inside the snap sandbox.
+      HOME: "$SNAP_USER_DATA"
+      XDG_CONFIG_HOME: "$SNAP_USER_DATA/.config"
+      XDG_DATA_HOME: "$SNAP_USER_DATA/.local/share"
+      XDG_CACHE_HOME: "$SNAP_USER_CACHE"
+      PYTHONUNBUFFERED: "1"
+      LANG: "C.UTF-8"
+      LC_ALL: "C.UTF-8"
+
+      # fixing the tkinter import made me go insane :)
+      # ensuring Python can see the staged stdlib + dynload + distro dist-packages.
+      PYTHON_SITE_PACKAGES_PATH: "$SNAP/lib/python3.12/site-packages"
+      PYTHON_APT_PACKAGES_PATH: "$SNAP/usr/lib/python3.12"
+      PYTHON_LIB_DYNLOAD_PATH: "$SNAP/usr/lib/python3.12/lib-dynload"
+
+      # these are the tcl/tk runtime locations (used by tkinter to locate init.tcl etc.).
+      TCL_LIBRARY: "$SNAP/usr/share/tcltk/tcl8.6"
+      TK_LIBRARY: "$SNAP/usr/share/tcltk/tk8.6"
+
+      # prepending required paths here and keeping whatever the launcher already sets via $PYTHONPATH.
+      PYTHONPATH: "$PYTHON_SITE_PACKAGES_PATH:$PYTHON_APT_PACKAGES_PATH:$PYTHON_LIB_DYNLOAD_PATH:$SNAP/usr/lib/python3/dist-packages:$PYTHONPATH"
+
+parts:
+  tk-runtime:
+    plugin: nil
+    stage-packages:
+      - python3-tk
+      - tk
+      - tcl
+
+  instagram-cli:
+    after: [tk-runtime]
+    plugin: python
+    source: .
+    build-packages:
+      - python3-dev
+      - gcc
+      - g++
+      - make
+
+      # pillow build deps (used as fallback if wheels aren't available).
+      - libjpeg-dev
+      - zlib1g-dev
+      - libfreetype6-dev
+      - liblcms2-dev
+      - libopenjp2-7-dev
+      - libtiff-dev
+      - libwebp-dev
+    stage-packages:
+      - ca-certificates
+      - locales
+      - libssl3
+      - libffi8
+    override-build: |
+      set -eu
+      craftctl default
+
+      # Your sources import rich but it may not be declared upstream
+      "$CRAFT_PART_INSTALL/bin/pip" install --no-cache-dir rich
+
+      if [ -f pyproject.toml ]; then
+        ver="$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
+        craftctl set version="$ver"
+      fi
+    prime:
+      - -tests
+      - -**/__pycache__
+      - -**/*.pyc
+      - -**/*.pyo
