@@ -2,6 +2,13 @@ name: instagram-cli
 base: core24
 adopt-info: instagram-cli
 summary: Instagram in the terminal (CLI/TUI)
+title: Instagram CLI
+license: MIT
+contact: https://github.com/supreme-gg-gg/instagram-cli/issues
+source-code: https://github.com/supreme-gg-gg/instagram-cli
+issues: https://github.com/supreme-gg-gg/instagram-cli/issues
+website: https://github.com/supreme-gg-gg/instagram-cli#readme
+
 description: |
   instagram-cli is a terminal-based Instagram client built with Typer/curses,
   using instagrapi under the hood.
