@@ -11,6 +11,7 @@ This documentation provides context for AI coding tools like VSCode, Cursor, Gem
 ## Build & Test Commands
 
 - Install: `npm ci`
+- Development: `npm run dev`
 - Build: `npm run build`
 - Run CLI: `npm run start -- <command>`
 - Tests: `npm test`

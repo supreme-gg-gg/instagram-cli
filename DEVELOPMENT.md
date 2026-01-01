@@ -23,13 +23,16 @@ npm run format # only runs prettier
 npm run lint-check # you should ALWAYS run this before committing if it's not automatic
 ```
 
-### Development Install
+### Development
+
+To run the CLI in development mode:
 
 ```bash
-npm run build
+npm run dev
 ```
 
-To run the CLI:
+This will watch for changes in the source files and rebuild the CLI automatically.
+You will need to restart the CLI manually to see the changes, run it with:
 
 ```bash
 npm run start -- <command>
@@ -51,6 +54,14 @@ npm run start:mock -- --chat | --feed | --story
 ```
 
 Similarly, you should update the mock data when making changes to relevant client endpoints.
+
+### Build
+
+To build for production locally, this will exclude tests and mocks:
+
+```bash
+npm run build
+```
 
 ### Debugging APIs
 
