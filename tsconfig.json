@@ -12,6 +12,7 @@
 		"typeRoots": ["./source/types", "node_modules/@types"]
 	},
 	"include": ["./source"],
+	"exclude": ["node_modules", "dist"],
 	"ts-node": {
 		"transpileOnly": true,
 		"files": true,
