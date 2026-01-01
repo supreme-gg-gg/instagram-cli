@@ -14,7 +14,11 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"allowSyntheticDefaultImports": true,
-		"strictNullChecks": true
+		"strictNullChecks": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true
 	},
 	"include": ["./source/**/*", "./xo.config.ts", "./tests/**/*"],
 	"exclude": ["node_modules", "dist"],

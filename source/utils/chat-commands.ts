@@ -318,8 +318,13 @@ export const chatCommands: Record<string, ChatCommand> = {
 
 			// Create downloads directory if it doesn't exist
 			const downloadDir = path.dirname(downloadPath);
-			if (!fs.existsSync(downloadDir)) {
-				fs.mkdirSync(downloadDir, {recursive: true});
+			try {
+				if (!fs.existsSync(downloadDir)) {
+					fs.mkdirSync(downloadDir, {recursive: true});
+				}
+			} catch (error) {
+				logger.error('Failed to create download directory', error);
+				return `Failed to create download directory: ${error instanceof Error ? error.message : 'Unknown error'}`;
 			}
 
 			try {

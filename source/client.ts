@@ -1,4 +1,4 @@
-import {join} from 'node:path';
+import {join, extname} from 'node:path';
 import fs from 'node:fs';
 import {EventEmitter} from 'node:events';
 import {pipeline} from 'node:stream';
@@ -979,9 +979,11 @@ export class InstagramClient extends EventEmitter {
 
 		// Determine the best media URL based on media type
 		let mediaUrl: string | undefined;
+		let mediaType: 'image' | 'video' | undefined;
 
 		if (message.media.media_type === 2) {
 			// Video
+			mediaType = 'video';
 			if (
 				message.media.video_versions &&
 				message.media.video_versions.length > 0
@@ -1002,6 +1004,7 @@ export class InstagramClient extends EventEmitter {
 			}
 		} else if (message.media.media_type === 1) {
 			// Image
+			mediaType = 'image';
 			if (
 				message.media.image_versions2 &&
 				message.media.image_versions2.candidates.length > 0
@@ -1019,16 +1022,62 @@ export class InstagramClient extends EventEmitter {
 				}
 
 				mediaUrl = highestQuality?.url;
-			} else {
-				mediaUrl = undefined;
 			}
+		}
+
+		// For other media types, try to find available media URLs
+		// This handles cases like carousels or other media types
+		if (
+			message.media.video_versions &&
+			message.media.video_versions.length > 0
+		) {
+			mediaType = 'video';
+			let highestQuality = message.media.video_versions[0];
+			for (const video of message.media.video_versions) {
+				if (
+					highestQuality &&
+					video.width * video.height >
+						highestQuality.width * highestQuality.height
+				) {
+					highestQuality = video;
+				}
+			}
+
+			mediaUrl = highestQuality?.url;
+		} else if (
+			message.media.image_versions2 &&
+			message.media.image_versions2.candidates.length > 0
+		) {
+			mediaType = 'image';
+			let highestQuality = message.media.image_versions2.candidates[0];
+			for (const image of message.media.image_versions2.candidates) {
+				if (
+					highestQuality &&
+					image.width * image.height >
+						highestQuality.width * highestQuality.height
+				) {
+					highestQuality = image;
+				}
+			}
+
+			mediaUrl = highestQuality?.url;
 		}
 
 		if (!mediaUrl) {
 			throw new Error('No media URL found in message');
 		}
 
-		return this.downloadMedia(message.media.id, mediaUrl, downloadPath);
+		// If the download path has no extension, add the appropriate one based on media type
+		let finalDownloadPath = downloadPath;
+		if (mediaType) {
+			const hasExtension = extname(downloadPath) !== '';
+			if (!hasExtension) {
+				const extension = mediaType === 'image' ? '.jpg' : '.mp4';
+				finalDownloadPath = downloadPath + extension;
+			}
+		}
+
+		return this.downloadMedia(message.media.id, mediaUrl, finalDownloadPath);
 	}
 
 	/**
