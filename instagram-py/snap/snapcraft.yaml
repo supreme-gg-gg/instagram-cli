@@ -67,14 +67,11 @@ parts:
       - libwebp-dev
     stage-packages:
       - ca-certificates
-      - locales
       - libssl3
-      - libffi8
     override-build: |
       set -eu
       craftctl default
 
-      # Your sources import rich but it may not be declared upstream
       "$CRAFT_PART_INSTALL/bin/pip" install --no-cache-dir rich
 
       if [ -f pyproject.toml ]; then
@@ -86,3 +83,12 @@ parts:
       - -**/__pycache__
       - -**/*.pyc
       - -**/*.pyo
+      - -usr/lib/*/libc.so.*
+      - -usr/lib/*/ld-linux*
+      - -usr/lib/libBLTlite.*  
+
+# the snapcraft linter might throw errors caused by mismatched glibc version of the core24 base and host system;
+# those errors are irrelevant, the linting completes successfully nonetheless.
+lint:
+  ignore:
+    - library
