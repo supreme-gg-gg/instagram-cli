@@ -36,6 +36,10 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProperties) {
 				return '[Media]';
 			}
 
+			case 'media_share': {
+				return `[Shared post by @${message.mediaSharePost.user.username}]`;
+			}
+
 			case 'link': {
 				return message.link.text;
 			}
