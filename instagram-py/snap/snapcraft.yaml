@@ -17,7 +17,7 @@ grade: stable
 confinement: strict
 
 apps:
-  instagram:
+  instagram-cli:
     command: bin/instagram
     plugs:
       - network
