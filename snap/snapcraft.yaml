@@ -1,0 +1,66 @@
+name: instagram-cli
+base: core22
+version: "1.4.0"
+summary: Instagram in the terminal (CLI/TUI)
+title: Instagram CLI
+license: MIT
+contact: https://github.com/supreme-gg-gg/instagram-cli/issues
+source-code: https://github.com/supreme-gg-gg/instagram-cli
+issues: https://github.com/supreme-gg-gg/instagram-cli/issues
+website: https://github.com/supreme-gg-gg/instagram-cli#readme
+
+description: |
+  instagram-cli is a terminal-based Instagram client built with TypeScript and Node.js,
+  using React Ink for the user interface and powered by instagram-private-api.
+
+grade: stable
+confinement: strict
+
+apps:
+  instagram-cli:
+    command: bin/instagram-cli
+    plugs: [network, home]
+    environment:
+      HOME: $SNAP_USER_DATA
+      XDG_CONFIG_HOME: $SNAP_USER_DATA
+      XDG_DATA_HOME: $SNAP_USER_DATA
+
+parts:
+  # provide Node at runtime inside the snap (ends up at $SNAP/bin/node)
+  node-runtime:
+    plugin: nil
+    stage-snaps:
+      - node/20/stable
+
+  instagram-cli:
+    plugin: npm
+    after: [node-runtime]
+
+    # source is the npm tarball (keeps the build reproducible).
+    source: https://registry.npmjs.org/@i7m/instagram-cli/-/instagram-cli-1.4.0.tgz
+    source-type: tar
+
+    # ensure npm exists during build so override-build can run it
+    build-snaps:
+      - node/20/stable
+
+    override-build: |
+      set -eux
+
+      export CI=1
+      export HUSKY=0
+
+      # install from the published tarball,
+      # and not run lifecycle scripts.
+      npm install -g \
+        --prefix "$CRAFT_PART_INSTALL" \
+        --ignore-scripts \
+        --no-audit --no-fund \
+        "https://registry.npmjs.org/@i7m/instagram-cli/-/instagram-cli-1.4.0.tgz"
+
+      # remove musl-only artifacts that can produce linter noise
+      rm -rf \
+        "$CRAFT_PART_INSTALL/lib/node_modules/@i7m/instagram-cli/node_modules/@img/sharp-linuxmusl-"* \
+        "$CRAFT_PART_INSTALL/lib/node_modules/@i7m/instagram-cli/node_modules/@img/sharp-libvips-linuxmusl-"* \
+        "$CRAFT_PART_INSTALL/lib/node_modules/@i7m/instagram-cli/node_modules/@unrs/resolver-binding-linux-x64-musl"* \
+        2>/dev/null || true
