@@ -1,9 +1,17 @@
 name: instagram-cli
 base: core22
 version: "1.4.0"
-summary: Instagram CLI client
+summary: Instagram in the terminal (CLI/TUI)
+title: Instagram CLI
+license: MIT
+contact: https://github.com/supreme-gg-gg/instagram-cli/issues
+source-code: https://github.com/supreme-gg-gg/instagram-cli
+issues: https://github.com/supreme-gg-gg/instagram-cli/issues
+website: https://github.com/supreme-gg-gg/instagram-cli#readme
+
 description: |
-  A terminal-based Instagram CLI client.
+  instagram-cli is a terminal-based Instagram client built with Typer/curses,
+  using instagrapi under the hood.
 
 grade: stable
 confinement: strict
@@ -13,6 +21,11 @@ apps:
     command: bin/instagram-cli
     plugs:
       - network
+      - home
+    environment:
+      HOME: $SNAP_USER_DATA
+      XDG_CONFIG_HOME: $SNAP_USER_DATA
+      XDG_DATA_HOME: $SNAP_USER_DATA
 
 parts:
   instagram-cli:
@@ -23,7 +36,7 @@ parts:
       - ca-certificates
       - curl
       - xz-utils
-      # native addon toolchain if any deps require it
+      # native addon toolchain (safe to keep even if not used every time)
       - python3
       - make
       - g++
@@ -35,7 +48,7 @@ parts:
 
       test -f package.json
 
-      # bundle Node.js (use latest v20.x)
+      # bundle Node.js (deps require Node >= 20.17)
       NODE_VERSION="20.19.6"
 
       case "${CRAFT_ARCH_BUILD_FOR}" in
@@ -56,7 +69,7 @@ parts:
       export HUSKY=0
       export CI=1
 
-      # make npm persist through faulty connection
+      # make npm more resilient to network hiccups
       npm config set registry "https://registry.npmjs.org/"
       npm config set audit false
       npm config set fund false
@@ -67,7 +80,7 @@ parts:
       npm config set prefer-offline true
       npm config set cache "${CRAFT_PART_BUILD}/npm-cache"
 
-      # build deps (dev deps needed for tsc)
+      # build deps (need dev deps for tsc)
       if [ -f package-lock.json ]; then
         npm ci --ignore-scripts --no-audit --no-fund
       else
@@ -77,7 +90,7 @@ parts:
       ./node_modules/.bin/patch-package
       npm run build
 
-      # runtime deps only (reinstall prod-only, still no scripts)
+      # runtime deps only (prod-only)
       rm -rf node_modules
       if [ -f package-lock.json ]; then
         npm ci --omit=dev --ignore-scripts --no-audit --no-fund
@@ -87,6 +100,12 @@ parts:
 
       ./node_modules/.bin/patch-package
 
+      # remove musl-only sharp artifacts (they trigger linter warnings on glibc Ubuntu)
+      rm -rf \
+        node_modules/@img/sharp-linuxmusl-* \
+        node_modules/@img/sharp-libvips-linuxmusl-* \
+        node_modules/@img/sharp-linuxmusl-* 2>/dev/null || true
+
       # assemble runtime payload under $SNAP/app 
       mkdir -p "${CRAFT_PART_INSTALL}/app"
       cp -a package.json dist node_modules "${CRAFT_PART_INSTALL}/app/"
@@ -95,10 +114,13 @@ parts:
       [ -d resource ] && cp -a resource "${CRAFT_PART_INSTALL}/app/" || true
       [ -d data ] && cp -a data "${CRAFT_PART_INSTALL}/app/" || true
 
-      # wrapper entrypoint
+      # wrapper entrypoint (force writable HOME)
       install -d "${CRAFT_PART_INSTALL}/bin"
       cat > "${CRAFT_PART_INSTALL}/bin/instagram-cli" << 'EOF'
       #!/bin/sh
+      export HOME="${SNAP_USER_DATA}"
+      export XDG_CONFIG_HOME="${SNAP_USER_DATA}"
+      export XDG_DATA_HOME="${SNAP_USER_DATA}"
       exec "$SNAP/usr/local/bin/node" "$SNAP/app/dist/cli.js" "$@"
       EOF
       chmod +x "${CRAFT_PART_INSTALL}/bin/instagram-cli"
