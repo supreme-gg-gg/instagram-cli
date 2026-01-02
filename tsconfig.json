@@ -6,6 +6,7 @@
 		"lib": ["ES2022"],
 		"outDir": "dist",
 		"module": "nodenext",
+		"noEmit": true,
 		"moduleResolution": "node16",
 		"allowImportingTsExtensions": false,
 		"resolveJsonModule": true,
