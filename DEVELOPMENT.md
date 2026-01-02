@@ -55,13 +55,15 @@ npm run start:mock -- --chat | --feed | --story
 
 Similarly, you should update the mock data when making changes to relevant client endpoints.
 
-### Build
+### Local Build
 
 To build for production locally, this will exclude tests and mocks:
 
 ```bash
 npm run build
 ```
+
+We use `esbuild` for both production and development builds. You can find the configuration in `esbuild.config.mjs`.
 
 ### Debugging APIs
 
