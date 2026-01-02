@@ -1,10 +1,8 @@
 import {join, extname} from 'node:path';
 import fs from 'node:fs';
 import {EventEmitter} from 'node:events';
-import {pipeline} from 'node:stream';
-import {promisify} from 'node:util';
-import https from 'node:https';
-import http from 'node:http';
+import {Readable} from 'node:stream';
+import {pipeline} from 'node:stream/promises';
 import {
 	type IgApiClient,
 	IgCheckpointError,
@@ -929,35 +927,23 @@ export class InstagramClient extends EventEmitter {
 		downloadPath: string,
 	): Promise<string> {
 		try {
-			const streamPipeline = promisify(pipeline);
-			const parsedUrl = new URL(mediaUrl);
-			const client = parsedUrl.protocol === 'https:' ? https : http;
+			const response = await fetch(mediaUrl);
 
-			await new Promise<void>((resolve, reject) => {
-				const request = client.get(mediaUrl, async response => {
-					if (response.statusCode !== 200) {
-						reject(
-							new Error(
-								`Failed to download media: ${response.statusCode} ${response.statusMessage}`,
-							),
-						);
-						return;
-					}
+			if (!response.ok) {
+				throw new Error(
+					`Failed to download media: ${response.status} ${response.statusText}`,
+				);
+			}
 
-					try {
-						await streamPipeline(response, fs.createWriteStream(downloadPath));
-						resolve();
-					} catch (error) {
-						reject(error instanceof Error ? error : new Error(String(error)));
-					}
-				});
+			if (!response.body) {
+				throw new Error('Response body is empty');
+			}
 
-				request.on('error', error => {
-					reject(error instanceof Error ? error : new Error(String(error)));
-				});
+			await pipeline(
+				Readable.fromWeb(response.body),
+				fs.createWriteStream(downloadPath),
+			);
 
-				request.end();
-			});
 			return downloadPath;
 		} catch (error) {
 			this.logger.error('Failed to download media', error);
