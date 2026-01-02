@@ -492,10 +492,6 @@ export class InstagramClient extends EventEmitter {
 		return this.realtimeStatus;
 	}
 
-	public getConfigManager(): ConfigManager {
-		return this.configManager;
-	}
-
 	public async getCurrentUser(): Promise<User | undefined> {
 		try {
 			const user = await this.ig.user.info(this.ig.state.cookieUserId);

@@ -3,6 +3,7 @@ import path from 'node:path';
 import type {InstagramClient} from '../client.js';
 import type {ChatState, Post} from '../types/instagram.js';
 import type {ScrollViewRef} from '../ui/components/scroll-view.js';
+import {ConfigManager} from '../config.js';
 import {preprocessMessage} from './preprocess.js';
 import {createContextualLogger} from './logger.js';
 import {getEmojiByName} from './emoji.js';
@@ -304,9 +305,7 @@ export const chatCommands: Record<string, ChatCommand> = {
 				return;
 			}
 
-			// Get the config manager instance to access the download directory
-			const configManager = client.getConfigManager();
-			await configManager.initialize();
+			const configManager = ConfigManager.getInstance();
 
 			// Use CLI argument if provided, otherwise use config value, fallback to default
 			const configDownloadDir = configManager.get('advanced.downloadDir');
