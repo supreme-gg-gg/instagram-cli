@@ -1,0 +1,104 @@
+name: instagram-cli
+base: core22
+version: "1.4.0"
+summary: Instagram CLI client
+description: |
+  A terminal-based Instagram CLI client.
+
+grade: stable
+confinement: strict
+
+apps:
+  instagram-cli:
+    command: bin/instagram-cli
+    plugs:
+      - network
+
+parts:
+  instagram-cli:
+    plugin: nil
+    source: .
+
+    build-packages:
+      - ca-certificates
+      - curl
+      - xz-utils
+      # native addon toolchain if any deps require it
+      - python3
+      - make
+      - g++
+      - pkg-config
+
+    override-build: |
+      set -eux
+      cd "${CRAFT_PART_SRC}"
+
+      test -f package.json
+
+      # bundle Node.js (use latest v20.x)
+      NODE_VERSION="20.19.6"
+
+      case "${CRAFT_ARCH_BUILD_FOR}" in
+        amd64) NODE_ARCH="x64" ;;
+        arm64) NODE_ARCH="arm64" ;;
+        armhf) NODE_ARCH="armv7l" ;;
+        *) echo "Unsupported architecture: ${CRAFT_ARCH_BUILD_FOR}" >&2; exit 1 ;;
+      esac
+
+      curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" -o node.tar.xz
+      mkdir -p "${CRAFT_PART_INSTALL}/usr/local"
+      tar -xJf node.tar.xz --strip-components=1 -C "${CRAFT_PART_INSTALL}/usr/local"
+      rm -f node.tar.xz
+
+      export PATH="${CRAFT_PART_INSTALL}/usr/local/bin:${PATH}"
+
+      # avoid husky/prepare issues in build envs
+      export HUSKY=0
+      export CI=1
+
+      # make npm persist through faulty connection
+      npm config set registry "https://registry.npmjs.org/"
+      npm config set audit false
+      npm config set fund false
+      npm config set progress false
+      npm config set fetch-retries 5
+      npm config set fetch-retry-mintimeout 20000
+      npm config set fetch-retry-maxtimeout 120000
+      npm config set prefer-offline true
+      npm config set cache "${CRAFT_PART_BUILD}/npm-cache"
+
+      # build deps (dev deps needed for tsc)
+      if [ -f package-lock.json ]; then
+        npm ci --ignore-scripts --no-audit --no-fund
+      else
+        npm install --ignore-scripts --no-audit --no-fund
+      fi
+
+      ./node_modules/.bin/patch-package
+      npm run build
+
+      # runtime deps only (reinstall prod-only, still no scripts)
+      rm -rf node_modules
+      if [ -f package-lock.json ]; then
+        npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+      else
+        npm install --omit=dev --ignore-scripts --no-audit --no-fund
+      fi
+
+      ./node_modules/.bin/patch-package
+
+      # assemble runtime payload under $SNAP/app 
+      mkdir -p "${CRAFT_PART_INSTALL}/app"
+      cp -a package.json dist node_modules "${CRAFT_PART_INSTALL}/app/"
+      [ -f package-lock.json ] && cp -a package-lock.json "${CRAFT_PART_INSTALL}/app/" || true
+
+      [ -d resource ] && cp -a resource "${CRAFT_PART_INSTALL}/app/" || true
+      [ -d data ] && cp -a data "${CRAFT_PART_INSTALL}/app/" || true
+
+      # wrapper entrypoint
+      install -d "${CRAFT_PART_INSTALL}/bin"
+      cat > "${CRAFT_PART_INSTALL}/bin/instagram-cli" << 'EOF'
+      #!/bin/sh
+      exec "$SNAP/usr/local/bin/node" "$SNAP/app/dist/cli.js" "$@"
+      EOF
+      chmod +x "${CRAFT_PART_INSTALL}/bin/instagram-cli"
