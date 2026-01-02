@@ -10,8 +10,8 @@ issues: https://github.com/supreme-gg-gg/instagram-cli/issues
 website: https://github.com/supreme-gg-gg/instagram-cli#readme
 
 description: |
-  instagram-cli is a terminal-based Instagram client built with Typer/curses,
-  using instagrapi under the hood.
+  instagram-cli is a terminal-based Instagram client built with TypeScript and Node.js,
+  using React Ink for the user interface and powered by instagram-private-api.
 
 grade: stable
 confinement: strict
@@ -19,108 +19,48 @@ confinement: strict
 apps:
   instagram-cli:
     command: bin/instagram-cli
-    plugs:
-      - network
-      - home
+    plugs: [network, home]
     environment:
       HOME: $SNAP_USER_DATA
       XDG_CONFIG_HOME: $SNAP_USER_DATA
       XDG_DATA_HOME: $SNAP_USER_DATA
 
 parts:
-  instagram-cli:
+  # provide Node at runtime inside the snap (ends up at $SNAP/bin/node)
+  node-runtime:
     plugin: nil
-    source: .
+    stage-snaps:
+      - node/20/stable
 
-    build-packages:
-      - ca-certificates
-      - curl
-      - xz-utils
-      # native addon toolchain (safe to keep even if not used every time)
-      - python3
-      - make
-      - g++
-      - pkg-config
+  instagram-cli:
+    plugin: npm
+    after: [node-runtime]
+
+    # source is the npm tarball (keeps the build reproducible).
+    source: https://registry.npmjs.org/@i7m/instagram-cli/-/instagram-cli-1.4.0.tgz
+    source-type: tar
+
+    # ensure npm exists during build so override-build can run it
+    build-snaps:
+      - node/20/stable
 
     override-build: |
       set -eux
-      cd "${CRAFT_PART_SRC}"
 
-      test -f package.json
-
-      # bundle Node.js (deps require Node >= 20.17)
-      NODE_VERSION="20.19.6"
-
-      case "${CRAFT_ARCH_BUILD_FOR}" in
-        amd64) NODE_ARCH="x64" ;;
-        arm64) NODE_ARCH="arm64" ;;
-        armhf) NODE_ARCH="armv7l" ;;
-        *) echo "Unsupported architecture: ${CRAFT_ARCH_BUILD_FOR}" >&2; exit 1 ;;
-      esac
-
-      curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" -o node.tar.xz
-      mkdir -p "${CRAFT_PART_INSTALL}/usr/local"
-      tar -xJf node.tar.xz --strip-components=1 -C "${CRAFT_PART_INSTALL}/usr/local"
-      rm -f node.tar.xz
-
-      export PATH="${CRAFT_PART_INSTALL}/usr/local/bin:${PATH}"
-
-      # avoid husky/prepare issues in build envs
-      export HUSKY=0
       export CI=1
+      export HUSKY=0
 
-      # make npm more resilient to network hiccups
-      npm config set registry "https://registry.npmjs.org/"
-      npm config set audit false
-      npm config set fund false
-      npm config set progress false
-      npm config set fetch-retries 5
-      npm config set fetch-retry-mintimeout 20000
-      npm config set fetch-retry-maxtimeout 120000
-      npm config set prefer-offline true
-      npm config set cache "${CRAFT_PART_BUILD}/npm-cache"
+      # install from the published tarball,
+      # and not run lifecycle scripts.
+      npm install -g \
+        --prefix "$CRAFT_PART_INSTALL" \
+        --ignore-scripts \
+        --no-audit --no-fund \
+        "https://registry.npmjs.org/@i7m/instagram-cli/-/instagram-cli-1.4.0.tgz"
 
-      # build deps (need dev deps for tsc)
-      if [ -f package-lock.json ]; then
-        npm ci --ignore-scripts --no-audit --no-fund
-      else
-        npm install --ignore-scripts --no-audit --no-fund
-      fi
-
-      ./node_modules/.bin/patch-package
-      npm run build
-
-      # runtime deps only (prod-only)
-      rm -rf node_modules
-      if [ -f package-lock.json ]; then
-        npm ci --omit=dev --ignore-scripts --no-audit --no-fund
-      else
-        npm install --omit=dev --ignore-scripts --no-audit --no-fund
-      fi
-
-      ./node_modules/.bin/patch-package
-
-      # remove musl-only sharp artifacts (they trigger linter warnings on glibc Ubuntu)
+      # remove musl-only artifacts that can produce linter noise
       rm -rf \
-        node_modules/@img/sharp-linuxmusl-* \
-        node_modules/@img/sharp-libvips-linuxmusl-* \
-        node_modules/@img/sharp-linuxmusl-* 2>/dev/null || true
-
-      # assemble runtime payload under $SNAP/app 
-      mkdir -p "${CRAFT_PART_INSTALL}/app"
-      cp -a package.json dist node_modules "${CRAFT_PART_INSTALL}/app/"
-      [ -f package-lock.json ] && cp -a package-lock.json "${CRAFT_PART_INSTALL}/app/" || true
-
-      [ -d resource ] && cp -a resource "${CRAFT_PART_INSTALL}/app/" || true
-      [ -d data ] && cp -a data "${CRAFT_PART_INSTALL}/app/" || true
-
-      # wrapper entrypoint (force writable HOME)
-      install -d "${CRAFT_PART_INSTALL}/bin"
-      cat > "${CRAFT_PART_INSTALL}/bin/instagram-cli" << 'EOF'
-      #!/bin/sh
-      export HOME="${SNAP_USER_DATA}"
-      export XDG_CONFIG_HOME="${SNAP_USER_DATA}"
-      export XDG_DATA_HOME="${SNAP_USER_DATA}"
-      exec "$SNAP/usr/local/bin/node" "$SNAP/app/dist/cli.js" "$@"
-      EOF
-      chmod +x "${CRAFT_PART_INSTALL}/bin/instagram-cli"
+        "$CRAFT_PART_INSTALL/lib/node_modules/@i7m/instagram-cli/node_modules/@img/sharp-linuxmusl-"* \
+        "$CRAFT_PART_INSTALL/lib/node_modules/@i7m/instagram-cli/node_modules/@img/sharp-libvips-linuxmusl-"* \
+        "$CRAFT_PART_INSTALL/lib/node_modules/@i7m/instagram-cli/node_modules/@unrs/resolver-binding-linux-x64-musl"* \
+        2>/dev/null || true
