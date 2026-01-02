@@ -11,6 +11,8 @@ from .commands import CommandRegistry
 from instagram.api import DirectChat
 from instagram.configs import Config
 
+import shlex
+
 cmd_registry = CommandRegistry()
 
 
@@ -48,6 +50,8 @@ def upload_media(context, filepath: str = "") -> str:
 
     if not os.path.exists(filepath):
         return f"File not found: {filepath}"
+    
+    escaped_filepath = shlex.quote(filepath)
 
     if filepath.lower().endswith((".jpg", ".png", ".jpeg")):
         try:
