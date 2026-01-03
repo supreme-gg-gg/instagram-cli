@@ -50,18 +50,19 @@ def upload_media(context, filepath: str = "") -> str:
 
     if not os.path.exists(filepath):
         return f"File not found: {filepath}"
-    
+
+    # Escape the filepath to handle spaces or special characters
     escaped_filepath = shlex.quote(filepath)
 
     if filepath.lower().endswith((".jpg", ".png", ".jpeg")):
         try:
-            chat.send_photo(filepath)
+            chat.send_photo(escaped_filepath)  # Use escaped_filepath here
             return "Successfully uploaded photo at " + filepath
         except Exception as e:
             return f"Failed to upload photo: {e}"
     elif filepath.lower().endswith(".mp4"):
         try:
-            chat.send_video(filepath)
+            chat.send_video(escaped_filepath)  # Use escaped_filepath here
             return "Successfully uploaded video at " + filepath
         except Exception as e:
             return f"Failed to upload video: {e}"
