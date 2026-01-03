@@ -1055,7 +1055,7 @@ export class InstagramClient extends EventEmitter {
 	 * @returns The path where the media was downloaded
 	 */
 	public async downloadMediaFromMessage(
-		message: any, // Message type with media property
+		message: { media?: any },
 		downloadPath: string,
 	): Promise<string> {
 		if (!message || !message.media) {
