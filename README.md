@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/3dd65afe-b0d7-4554-9b3c-1e37111ae27d
 > [!WARNING]
 > This project is not affiliated with, authorized, or endorsed by Instagram. This is an independent and unofficial project. Using it might violate Meta's Terms of Service. Use at your own risk.
 
-## What does it do?
+## Why Instagram CLI?
 
 Empower yourself to become a 10x Instagrammer by minimizing distractions, enabling 100% keyboard control, and accessing it from any terminal — whether in your VSCode editor or your Linux server.
 
@@ -32,6 +32,14 @@ Empower yourself to become a 10x Instagrammer by minimizing distractions, enabli
 
 ## Installation (TypeScript Client)
 
+### NPM
+
+Requires Node.js v20 or higher.
+
+```bash
+npm install -g @i7m/instagram-cli
+```
+
 ### Homebrew (macOS/Linux)
 
 ```bash
@@ -40,12 +48,6 @@ brew install instagram-cli
 ```
 
 The formula is available [here](https://github.com/supreme-gg-gg/homebrew-tap/blob/main/Formula/instagram-cli.rb).
-
-### NPM
-
-```bash
-npm install -g @i7m/instagram-cli
-```
 
 ### Community Packages
 
