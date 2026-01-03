@@ -129,7 +129,7 @@ Inside the chat interface and after selecting a thread, you can navigate all int
 
 # Media Handling
 :upload <path-to-image-or-video>
-# Download command coming soon...
+:download [path] # Download media from selected message
 
 # Navigation
 :k # go up

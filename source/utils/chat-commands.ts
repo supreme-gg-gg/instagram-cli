@@ -1,6 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type {InstagramClient} from '../client.js';
 import type {ChatState, Post} from '../types/instagram.js';
 import type {ScrollViewRef} from '../ui/components/scroll-view.js';
+import {ConfigManager} from '../config.js';
 import {preprocessMessage} from './preprocess.js';
 import {createContextualLogger} from './logger.js';
 import {getEmojiByName} from './emoji.js';
@@ -178,7 +181,7 @@ export const chatCommands: Record<string, ChatCommand> = {
 			const messageToUnsend =
 				chatState.messages[chatState.selectedMessageIndex];
 
-			if (!messageToUnsend?.isOutgoing) {
+			if (!messageToUnsend || !messageToUnsend.isOutgoing) {
 				return 'You can only unsend your own messages.';
 			}
 
@@ -283,6 +286,60 @@ export const chatCommands: Record<string, ChatCommand> = {
 
 			onViewMediaShare(targetMessage.mediaSharePost);
 			return;
+		},
+	},
+	download: {
+		description:
+			'Download media from the selected message. Usage: :download [path]',
+		async handler(arguments_, {client, chatState, setChatState}) {
+			if (chatState.selectedMessageIndex === undefined) {
+				return 'Usage: :select to enter selection mode first.';
+			}
+
+			const message = chatState.messages[chatState.selectedMessageIndex];
+			if (!message || message.itemType !== 'media' || !message.media) {
+				return 'Selected message does not contain media.';
+			}
+
+			if (!chatState.currentThread) {
+				return;
+			}
+
+			const configManager = ConfigManager.getInstance();
+
+			// Use CLI argument if provided, otherwise use config value, fallback to default
+			const configDownloadDir = configManager.get('advanced.downloadDir');
+			const defaultDownloadPath = path.join(
+				configDownloadDir,
+				`media_${message.id}`,
+			);
+			const downloadPath = arguments_[0] ?? defaultDownloadPath;
+
+			// Create downloads directory if it doesn't exist
+			const downloadDir = path.dirname(downloadPath);
+			try {
+				if (!fs.existsSync(downloadDir)) {
+					fs.mkdirSync(downloadDir, {recursive: true});
+				}
+			} catch (error) {
+				logger.error('Failed to create download directory', error);
+				return `Failed to create download directory: ${error instanceof Error ? error.message : 'Unknown error'}`;
+			}
+
+			try {
+				const downloadedPath = await client.downloadMediaFromMessage(
+					message,
+					downloadPath,
+				);
+				setChatState(previous => ({
+					...previous,
+					selectedMessageIndex: undefined,
+				}));
+				return `Media downloaded to: ${downloadedPath}`;
+			} catch (error) {
+				logger.error('Failed to download media', error);
+				return `Failed to download media: ${error instanceof Error ? error.message : 'Unknown error'}`;
+			}
 		},
 	},
 };
