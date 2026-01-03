@@ -11,6 +11,7 @@ $$
 ![PyPI](https://img.shields.io/pypi/v/instagram-cli)
 [![PyPI Downloads](https://static.pepy.tech/badge/instagram-cli)](https://pepy.tech/projects/instagram-cli)
 ![Python](https://img.shields.io/pypi/pyversions/instagram-cli)
+[![AUR](https://img.shields.io/aur/version/instagram-cli?label=AUR)](https://aur.archlinux.org/packages/instagram-cli)
 [![MIT license](https://img.shields.io/github/license/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)
 
@@ -46,6 +47,13 @@ The formula is available [here](https://github.com/supreme-gg-gg/homebrew-tap/bl
 
 ```bash
 npm install -g @i7m/instagram-cli
+```
+
+### AUR
+Use your favorite AUR helper
+
+```bash
+yay -S instagram-cli
 ```
 
 For other installation methods, please refer to the [TypeScript Client Documentation](./DEVELOPMENT.md).
