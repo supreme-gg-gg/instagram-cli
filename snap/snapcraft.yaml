@@ -1,6 +1,6 @@
 name: instagram-cli
 base: core22
-version: "1.4.0"
+version: '1.4.0'
 summary: Instagram in the terminal (CLI/TUI)
 title: Instagram CLI
 license: MIT

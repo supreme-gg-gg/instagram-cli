@@ -50,6 +50,7 @@ npm install -g @i7m/instagram-cli
 ```
 
 ### AUR
+
 Use your favorite AUR helper
 
 ```bash
@@ -129,7 +130,7 @@ Inside the chat interface and after selecting a thread, you can navigate all int
 
 # Media Handling
 :upload <path-to-image-or-video>
-:download [path] # Download media from selected message
+:download <path-to-save> # Requires :select first to select message
 
 # Navigation
 :k # go up
