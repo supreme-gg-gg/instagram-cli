@@ -1,6 +1,10 @@
-import {join} from 'node:path';
+import {join, extname, dirname} from 'node:path';
 import fs from 'node:fs';
 import {EventEmitter} from 'node:events';
+import {pipeline} from 'node:stream';
+import {promisify} from 'node:util';
+import https from 'node:https';
+import http from 'node:http';
 import {
 	type IgApiClient,
 	IgCheckpointError,
@@ -486,6 +490,10 @@ export class InstagramClient extends EventEmitter {
 
 	public getRealtimeStatus(): RealtimeStatus {
 		return this.realtimeStatus;
+	}
+
+	public getConfigManager(): ConfigManager {
+		return this.configManager;
 	}
 
 	public async getCurrentUser(): Promise<User | undefined> {
@@ -1038,6 +1046,127 @@ export class InstagramClient extends EventEmitter {
 				error,
 			);
 		}
+	}
+
+	/**
+	 * Downloads media from a message to the specified path
+	 * @param message - The message containing media to download
+	 * @param downloadPath - The path to download the media to
+	 * @returns The path where the media was downloaded
+	 */
+	public async downloadMediaFromMessage(
+		message: any, // Message type with media property
+		downloadPath: string,
+	): Promise<string> {
+		if (!message || !message.media) {
+			throw new Error('Message does not contain media');
+		}
+
+		let mediaUrl: string | undefined;
+		let mediaType: 'image' | 'video' | undefined;
+
+		// Helper function to find highest quality media
+		const findHighestQuality = (mediaList: any[]) => {
+			if (!mediaList || !Array.isArray(mediaList) || mediaList.length === 0) {
+				return undefined;
+			}
+			
+			let highestQuality = mediaList[0];
+			for (const media of mediaList) {
+				if (media && typeof media === 'object' && typeof media.width === 'number' && typeof media.height === 'number') {
+					const currentQuality = media.width * media.height;
+					const highestQualityValue = highestQuality.width * highestQuality.height;
+					if (currentQuality > highestQualityValue) {
+						highestQuality = media;
+					}
+				}
+			}
+			return highestQuality;
+		};
+
+		if (message.media.media_type === 2) {
+			// Video
+			mediaType = 'video';
+			const videoVersions = message.media.video_versions;
+			if (Array.isArray(videoVersions) && videoVersions.length > 0) {
+				const highestQuality = findHighestQuality(videoVersions);
+				mediaUrl = highestQuality?.url;
+			}
+		} else if (message.media.media_type === 1) {
+			// Image
+			mediaType = 'image';
+			const imageCandidates = message.media.image_versions2?.candidates;
+			if (Array.isArray(imageCandidates) && imageCandidates.length > 0) {
+				const highestQuality = findHighestQuality(imageCandidates);
+				mediaUrl = highestQuality?.url;
+			}
+		} else {
+			// For other media types, try to find available media URLs
+			// This handles cases like carousels or other media types
+			const videoVersions = message.media.video_versions;
+			if (Array.isArray(videoVersions) && videoVersions.length > 0) {
+				mediaType = 'video';
+				const highestQuality = findHighestQuality(videoVersions);
+				mediaUrl = highestQuality?.url;
+			} else {
+				const imageCandidates = message.media.image_versions2?.candidates;
+				if (Array.isArray(imageCandidates) && imageCandidates.length > 0) {
+					mediaType = 'image';
+					const highestQuality = findHighestQuality(imageCandidates);
+					mediaUrl = highestQuality?.url;
+				}
+			}
+		}
+
+		if (!mediaUrl) {
+			throw new Error('No media URL found in message');
+		}
+
+		// If the download path has no extension, add the appropriate one based on media type
+		let finalDownloadPath = downloadPath;
+		if (mediaType) {
+			const hasExtension = extname(downloadPath) !== '';
+			if (!hasExtension) {
+				const extension = mediaType === 'image' ? '.jpg' : '.mp4';
+				finalDownloadPath = downloadPath + extension;
+			}
+		}
+
+		// Create directory if it doesn't exist
+		const dir = dirname(finalDownloadPath);
+		if (!fs.existsSync(dir)) {
+			fs.mkdirSync(dir, { recursive: true });
+		}
+
+		// Download the media
+		return new Promise((resolve, reject) => {
+			const fileStream = fs.createWriteStream(finalDownloadPath);
+			const request = (mediaUrl?.startsWith('https') ? https : http).get(mediaUrl!, (response) => {
+				if (response.statusCode !== 200) {
+					reject(new Error(`Failed to download media: ${response.statusCode} ${response.statusMessage ?? 'Unknown error'}`));
+					return;
+				}
+				
+				const streamPipeline = promisify(pipeline);
+				streamPipeline(response, fileStream)
+					.then(() => {
+						resolve(finalDownloadPath);
+					})
+					.catch((error: unknown) => {
+						reject(error instanceof Error ? error : new Error(String(error)));
+					});
+			});
+
+			request.on('error', (error: unknown) => {
+				fileStream.close();
+				reject(error instanceof Error ? error : new Error(String(error)));
+			});
+
+			fileStream.on('error', (error: unknown) => {
+				request.destroy(); // Use destroy instead of abort
+				reject(error instanceof Error ? error : new Error(String(error)));
+			});
+		});
 	}
 
 	private setRealtimeStatus(status: RealtimeStatus) {
