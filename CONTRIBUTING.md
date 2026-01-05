@@ -1,6 +1,6 @@
 # Contributing to instagram-cli
 
-Thank you for contributing to instagram-cli, and welcome to the force against brainrot!
+Thank you for contributing to instagram-cli!
 
 ## Project Structure
 
@@ -9,9 +9,7 @@ This repository contains **two separate clients** for Instagram:
 - **TypeScript Client** (`./source` folder in root)
 - **Python Client** (`instagram-py/` folder)
 
-Choose the client you want to work on based on your preferences and the feature you're implementing.
-
-The team is primarily focused on actively developing the TypeScript client. However, both clients are maintained actively.
+The team is primarily focused on actively developing the TypeScript client. However, both clients are maintained actively. Choose the client to work on based on the tag on the issue (typescript / python). If the issue is untagged, we always prefer developing the TypeScript client.
 
 ## How to Contribute
 

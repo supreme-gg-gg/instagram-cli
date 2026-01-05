@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/3dd65afe-b0d7-4554-9b3c-1e37111ae27d
 > [!WARNING]
 > This project is not affiliated with, authorized, or endorsed by Instagram. This is an independent and unofficial project. Using it might violate Meta's Terms of Service. Use at your own risk.
 
-## What does it do?
+## Why Instagram CLI?
 
 Empower yourself to become a 10x Instagrammer by minimizing distractions, enabling 100% keyboard control, and accessing it from any terminal — whether in your VSCode editor or your Linux server.
 
@@ -30,9 +30,15 @@ Empower yourself to become a 10x Instagrammer by minimizing distractions, enabli
 - Full keyboard navigation and shortcuts, no mouse, no touchscreens
 - Celebrate the art and simplicity of **terminal UI (TUI)**
 
-## TypeScript Client
+## Installation (TypeScript Client)
 
-We recommend using the TypeScript client whenever possible. It is more secure, performant, feature-rich, actively developed, and works on all platforms including Windows.
+### NPM
+
+Requires Node.js v20 or higher.
+
+```bash
+npm install -g @i7m/instagram-cli
+```
 
 ### Homebrew (macOS/Linux)
 
@@ -43,21 +49,29 @@ brew install instagram-cli
 
 The formula is available [here](https://github.com/supreme-gg-gg/homebrew-tap/blob/main/Formula/instagram-cli.rb).
 
-### NPM
+### Community Packages
 
-```bash
-npm install -g @i7m/instagram-cli
-```
+The following packages are supported by the community. The maintainers of Instagram CLI do not provide support for these packages.
 
-### AUR
-
-Use your favorite AUR helper
+#### AUR (Arch Linux)
 
 ```bash
 yay -S instagram-cli
 ```
 
-For other installation methods, please refer to the [TypeScript Client Documentation](./DEVELOPMENT.md).
+#### Snap (Linux)
+
+```bash
+snapcraft pack
+sudo snap install instagram-cli_1.4.0_amd64.snap --dangerous
+snap run instagram-cli.instagram-cli
+# OR, since /snap/bin is in PATH
+instagram-cli
+```
+
+We welcome contributions to add more installation methods.
+
+For installation from source, please refer to the [TypeScript Client Documentation](./DEVELOPMENT.md).
 
 ### Key Features
 
@@ -67,9 +81,9 @@ For other installation methods, please refer to the [TypeScript Client Documenta
 - Highly performant and much faster than your GUI browser or touchscreen app
 - Works well in all terminal emulators, **including VSCode Integrated Terminal**
 
-## Python Client
+## Installation (Python Client)
 
-> The Python client is the original implementation of `instagram-cli`.
+The Python client is the original implementation of `instagram-cli` with nostalgic UNIX vibes.
 
 ```bash
 pip install instagram-cli
@@ -80,12 +94,7 @@ Note that Python links to the `instagram` command, while TypeScript links to `in
 > [!CAUTION]
 > We do not recommend using the TypeScript and Python client simultaneously with the same account to reduce the risk of account bans. We recommend using the TypeScript client when possible since it is much less likely to trigger Instagram's anti-bot mechanisms.
 
-### Key Features
-
-- Classic `curses`-based terminal UI, works well on Linux and macOS, nostalgic UNIX vibes...
-- Extends Instagram with powerful plugins like LaTeX rendering, chat summarisation (e.g. Ollama)
-
-For more information about the Python client, please refer to the [Python Client Documentation](./instagram-py/README.md). **The following documentation is for the Typescript client only.**
+For more information about the Python client, please refer to the [Python Client Documentation](./instagram-py/README.md).
 
 ## Commands
 
@@ -143,7 +152,7 @@ Inside the chat interface and after selecting a thread, you can navigate all int
 > You can quickly include text files or images in a message by using `#` followed by the file path. For example, `#path/to/file.txt` or `#path/to/image.png`.
 > Use `tab` and `enter` to autocomplete file paths. You can include emojis in messages with `:emoji_name:` e.g. `:thumbsup:` = 👍 (with fuzzy matching).
 
-### Configuration
+## Configuration
 
 You can view and modify configuration with `instagram-cli config`. The configuration file is located at `~/.instagram-cli/config.ts.yaml`. The following are common configuration options:
 
@@ -159,7 +168,7 @@ You can view and modify configuration with `instagram-cli config`. The configura
 
 We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to get started, create issues, and submit pull requests. It is very important that you follow these instructions because we manage two different clients in the same repository. _Instagram CLI is NOT meant to be used for bot-behaviours, we will not accept contributions that add such features._
 
-## Reporting Issues
+### Reporting Issues
 
 Occasionally, Instagram may update their API or protocols which can cause certain features to break. If you encounter any issues, please report them on our [GitHub Issues page](https://github.com/supreme-gg-gg/instagram-cli/issues). Make sure to attach the relevant log files located at `~/.instagram-cli/logs/` to help us diagnose and fix the problem quickly.
 
