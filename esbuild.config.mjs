@@ -1,6 +1,6 @@
-import * as esbuild from 'esbuild';
 import {rmSync} from 'node:fs';
 import {parseArgs} from 'node:util';
+import * as esbuild from 'esbuild';
 
 const {values} = parseArgs({
 	options: {
@@ -38,19 +38,14 @@ async function runBuild() {
 		external: ['react-devtools-core'],
 	};
 
-	try {
-		if (values.watch) {
-			const ctx = await esbuild.context(buildOptions);
-			await ctx.watch();
-			console.log('Watching for changes...');
-		} else {
-			await esbuild.build(buildOptions);
-			console.log('Build complete!');
-		}
-	} catch (error) {
-		console.error('Build failed:', error);
-		process.exit(1);
+	if (values.watch) {
+		const ctx = await esbuild.context(buildOptions);
+		await ctx.watch();
+		console.log('Watching for changes...');
+	} else {
+		await esbuild.build(buildOptions);
+		console.log('Build complete!');
 	}
 }
 
-runBuild();
+await runBuild();
