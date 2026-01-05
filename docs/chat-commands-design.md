@@ -79,8 +79,8 @@ This feature assists users in finding and inputting file paths directly in the c
 
 #### **1. Triggering Mechanism**
 
-- Autocomplete is triggered when the user types a space followed by `@` and begins typing a path (e.g., `:upload @p` or simply ` @p`).
-- The system will use the text immediately following the `@` as the query for file path suggestions.
+- Autocomplete is triggered when the user types a space followed by `#` and begins typing a path (e.g., `:upload #p` or simply ` #p`).
+- The system will use the text immediately following the `#` as the query for file path suggestions.
 
 #### **2. UI Component (`AutocompleteView`)**
 
@@ -98,11 +98,11 @@ This feature assists users in finding and inputting file paths directly in the c
   	isActive: boolean;
   	suggestions: string[];
   	selectedIndex: number;
-  	triggerPosition: number; // The cursor position where '@' was typed
-  	query: string; // The text after '@' used for filtering
+  	triggerPosition: number; // The cursor position where '#' was typed
+  	query: string; // The text after '#' used for filtering
   }
   ```
-- On input change, the view will check for the ` @` pattern to activate or update the autocomplete state.
+- On input change, the view will check for the `#` pattern to activate or update the autocomplete state.
 
 #### **4. Suggestion Logic (`utils/autocomplete.ts`)**
 
@@ -119,7 +119,7 @@ This feature assists users in finding and inputting file paths directly in the c
 - When the `AutocompleteView` is active, the following keys will be handled by the input component:
   - **`ArrowDown`**: Moves the selection down the list (and loops back to the top).
   - **`ArrowUp`**: Moves the selection up the list (and loops back to the bottom).
-  - **`Tab` or `Enter`**: Accepts the currently selected suggestion. The text from the trigger (`@<query>`) will be replaced with the completed path (`@<suggestion>`). Note that `Enter` is locked to only handle acceptions when autocomplete is active; otherwise, it sends the message.
+  - **`Tab` or `Enter`**: Accepts the currently selected suggestion. The text from the trigger (`#<query>`) will be replaced with the completed path (`#<suggestion>`). Note that `Enter` is locked to only handle acceptions when autocomplete is active; otherwise, it sends the message.
   - **`Escape`**: Deactivates autocomplete and closes the suggestion list without making a change.
 
 ### Command Autocomplete
@@ -151,19 +151,20 @@ Before a message is sent to a thread, it will pass through a preprocessing step 
 
 The `preprocessMessage` function takes the raw text in input box, checks if it contains any special syntax, and processes it accordingly, either modifying the text or triggering additional actions (like file uploads), then returns the final text to be sent.
 
-### 1. File Path Handling (`@<path>`)
+### 1. File Path Handling (`#<path>`)
 
-- **Syntax**: `@path/to/your/file.ext`
+- **Syntax**: `#path/to/your/file.ext`
 - **Text Files** (e.g., `.txt`, `.md`, `.js`, `.ts`, `.json`):
   - The content of the specified file will be read from the filesystem.
-  - The `@<path>` string in the message will load the file's content and append it to the end of message text, preserving the `@<path>` string's position.
+  - The `#<path>` string in the message will load the file's content and append it to the end of message text, preserving the `#<path>` string's position.
 - **Image Files** (e.g., `.png`, `.jpg`, `.jpeg`, `.gif`):
   - For each image path found, the `client.sendPhoto()` method will be called for the current thread.
-  - The `@<path>` string will be removed from the message text.
+  - The `#<path>` string will be removed from the message text.
   - If the message contains only image paths, no text message will be sent.
   - If the message contains text and image paths, the images will be uploaded, and the remaining text will be sent as a separate message.
 
-> NOTE: For those interested, this design follows directly from Gemini CLI's UX, but we modified where text files are added. For AI, it doesn't matter if you just replace `@<path>` with the file content inline. But for human users, we're more used to seeing the file content as an "appendix" and referencing the file content with the file path. This is an intentional UX choice.
+> NOTE: For those interested, this design follows directly from Gemini CLI's UX, but we modified where text files are added. For AI, it doesn't matter if you just replace `#<path>` with the file content inline. But for human users, we're more used to seeing the file content as an "appendix" and referencing the file content with the file path. This is an intentional UX choice.
+since instagram uses `@' for mentions we are using `#` for triggering.
 
 ### 2. Emoji Handling (`:emoji_name:`)
 
