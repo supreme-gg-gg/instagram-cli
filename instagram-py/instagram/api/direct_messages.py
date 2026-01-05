@@ -348,7 +348,7 @@ class DirectChat:
                     message_text = message.text
                 elif message.item_type == "link":
                     # Link message
-                    message_text = message.link.get("text", "")
+                    message_text = message.link.text
                 urls = extract_links_from_text(message_text)
                 if urls:
                     # If there are links, replace them with placeholders
@@ -478,21 +478,8 @@ class DirectChat:
 
             reactions = None
             if message.reactions:
-                # Structure of .reactions:
-                # {
-                #   'emojis': [
-                #     {
-                #         'timestamp': <int>,
-                #         'client_context': '<int>',
-                #         'sender_id': <int>,
-                #         'emoji': '👍',
-                #         'super_react_type': 'none'
-                #     }
-                #   ]
-                # }
-
                 reactions_data = [
-                    reaction["emoji"] for reaction in message.reactions["emojis"]
+                    reaction.emoji for reaction in message.reactions.emojis
                 ]
                 # Convert reactions into a dictionary of emoji: count
                 reactions = {
