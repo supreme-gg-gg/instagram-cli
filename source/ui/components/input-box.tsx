@@ -103,7 +103,8 @@ export default function InputBox({
 
 		const commandMatch = /^:(\w*)$/.exec(value);
 		// Updated regex to match # at the beginning of string or after whitespace
-		const filePathMatch = /(^#(\S*)$)|(\s#(\S*)$)/.exec(value);
+		// modified regex to match files which conains spaces.
+		const filePathMatch = /(^#([^#]*)$)|(\s#([^#]*)$)/.exec(value);
 
 		if (commandMatch) {
 			const query = commandMatch[1] ?? '';
