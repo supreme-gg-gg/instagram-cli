@@ -164,7 +164,7 @@ The `preprocessMessage` function takes the raw text in input box, checks if it c
   - If the message contains text and image paths, the images will be uploaded, and the remaining text will be sent as a separate message.
 
 > NOTE: For those interested, this design follows directly from Gemini CLI's UX, but we modified where text files are added. For AI, it doesn't matter if you just replace `#<path>` with the file content inline. But for human users, we're more used to seeing the file content as an "appendix" and referencing the file content with the file path. This is an intentional UX choice.
-since instagram uses `@' for mentions we are using `#` for triggering.
+> since instagram uses `@' for mentions we are using `#` for triggering.
 
 ### 2. Emoji Handling (`:emoji_name:`)
 

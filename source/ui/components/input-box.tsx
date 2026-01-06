@@ -59,10 +59,11 @@ export default function InputBox({
 		} else if (autocomplete.type === 'filePath') {
 			const textBefore = message.slice(0, autocomplete.triggerIndex);
 			// If triggerIndex is 0, we're at the start of the message
+			// added auto append of quots.
 			const newMessage =
 				autocomplete.triggerIndex === 0
-					? `#${suggestion}`
-					: `${textBefore}#${suggestion}`;
+					? `#"${suggestion}"`
+					: `${textBefore}#"${suggestion}"`;
 			setMessage(newMessage);
 		}
 
@@ -103,8 +104,10 @@ export default function InputBox({
 
 		const commandMatch = /^:(\w*)$/.exec(value);
 		// Updated regex to match # at the beginning of string or after whitespace
-		// modified regex to match files which conains spaces.
-		const filePathMatch = /(^#([^#]*)$)|(\s#([^#]*)$)/.exec(value);
+		// modified regex to match files which contains spaces.
+		const filePathMatch = /(^(#"|#)([^"#]*)(")?$)|(\s(#"|#)([^#"]*)(")?$)/.exec(
+			value,
+		);
 
 		if (commandMatch) {
 			const query = commandMatch[1] ?? '';
@@ -122,8 +125,8 @@ export default function InputBox({
 			});
 		} else if (filePathMatch && typeof filePathMatch.index === 'number') {
 			// Handle both cases: #path at start (group 2) or after space (group 4)
-			const query = filePathMatch[2] ?? filePathMatch[4] ?? '';
-			const triggerIndex = filePathMatch[2] ? 0 : filePathMatch.index + 1;
+			const query = filePathMatch[3] ?? filePathMatch[7] ?? '';
+			const triggerIndex = filePathMatch[3] ? 0 : filePathMatch.index + 1;
 			setAutocomplete(previous => ({
 				...previous, // Preserve existing suggestions while typing
 				type: 'filePath',
