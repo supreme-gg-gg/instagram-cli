@@ -33,16 +33,17 @@ export async function preprocessMessage(
 	});
 
 	// 2. File Path Handling: Find #<path> patterns with file indicators
-	const filePathRegex = /#([^\s#]*[./~][^\s#]*)/g;
+	const filePathRegex = /(#"([^#]*[./~][^\s#]*)")|(#([^\s#]*[./~][^\s#]*))/g;
 	const matches = [...processedText.matchAll(filePathRegex)];
 
 	for (const match of matches) {
-		const rawFilePath = match[1];
+		const rawFilePath = match[0];
 		if (!rawFilePath) continue;
 
 		const filePath = rawFilePath
-			.replace(/^["'(<]+/, '')
-			.replace(/[)"'>.,!?]*$/, '');
+			.slice(1)
+			.replaceAll(/^["'(<]+/g, '')
+			.replaceAll(/[)"'>.,!?]*$/g, '');
 		if (filePath.length === 0) continue;
 
 		const absolutePath = resolveUserPath(filePath);
