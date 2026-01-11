@@ -386,11 +386,16 @@ export class InstagramClient extends EventEmitter {
 
 			await this.ig.state.deserialize(sessionData);
 
+			// Preserve the original username used to load the session (for filesystem consistency)
+			const originalUsername = this.username;
+
 			const currentUser = await this.ig.account.currentUser();
 			this.username = currentUser.username;
 
 			await this.saveSessionState();
-			await this.configManager.set('login.currentUsername', this.username);
+			// Use the original username to maintain consistency with session file paths
+			// Instagram API may return username in different casing (usually lowercase)
+			await this.configManager.set('login.currentUsername', originalUsername);
 
 			if (sessionOptions.initializeRealtime) {
 				try {
