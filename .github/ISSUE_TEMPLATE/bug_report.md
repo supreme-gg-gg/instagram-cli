@@ -26,7 +26,7 @@ If applicable, add screenshots to help explain your problem.
 **System Information:**
 
 - OS: [e.g. Ubuntu 22.04]
-- Terminal: [e.g. iTerm2 3.4.19, Kitty 0.26.5, Windows Terminal 1.16.10]
+- Terminal: [e.g. Kitty 0.26.5]
 - Instagram CLI Version: [e.g. ts-v1.0.0 or v1.4.2]
 - Client: [TypeScript or Python]
 
