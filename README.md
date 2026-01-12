@@ -170,7 +170,7 @@ We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBU
 
 ### Reporting Issues
 
-Occasionally, Instagram may update their API or protocols which can cause certain features to break. If you encounter any issues, please report them on our [GitHub Issues page](https://github.com/supreme-gg-gg/instagram-cli/issues). Make sure to attach the relevant log files located at `~/.instagram-cli/logs/` to help us diagnose and fix the problem quickly.
+Occasionally, Instagram may update their API or protocols which can cause certain features to break. If you encounter any issues, please report them on our [GitHub Issues page](https://github.com/supreme-gg-gg/instagram-cli/issues). Make sure to attach the relevant log files located at `~/.instagram-cli/logs/` to help us diagnose and fix the problem quickly. You may want to redact sensitive data like your username for privacy.
 
 ### Sister projects
 

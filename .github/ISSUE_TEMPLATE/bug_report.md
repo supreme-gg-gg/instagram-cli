@@ -23,22 +23,15 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
-**Desktop (please complete the following information):**
+**System Information:**
 
-- OS: [e.g. iOS]
-- Browser [e.g. chrome, safari]
-- Version [e.g. 22]
-
-**Smartphone (please complete the following information):**
-
-- Device: [e.g. iPhone6]
-- OS: [e.g. iOS8.1]
-- Browser [e.g. stock browser, safari]
-- Version [e.g. 22]
+- OS: [e.g. macOS 14.1, Ubuntu 22.04, Windows 11]
+- Terminal: [e.g. iTerm2, Kitty, Windows Terminal]
+- Instagram CLI Version: [e.g. ts-v1.0.0 or v1.4.2]
 
 **Logs (optional)**
 
-Paste in the logs from `.instagram-cli/logs` here.
+Paste in the logs from `.instagram-cli/logs` here. You may want to redact sensitive data like your username for privacy.
 
 **Additional context**
 Add any other context about the problem here.
