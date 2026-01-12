@@ -18,7 +18,10 @@ export default function MessageList({
 	const imageProtocol = useImageProtocol();
 
 	const formatTime = (date: Date) => {
-		return date.toLocaleTimeString('en-US', {
+		return date.toLocaleString('en-US', {
+			day: '2-digit',
+			month: '2-digit',
+			year: 'numeric',
 			hour12: false,
 			hour: '2-digit',
 			minute: '2-digit',
