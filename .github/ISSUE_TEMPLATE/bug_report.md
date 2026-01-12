@@ -25,9 +25,10 @@ If applicable, add screenshots to help explain your problem.
 
 **System Information:**
 
-- OS: [e.g. macOS 14.1, Ubuntu 22.04, Windows 11]
-- Terminal: [e.g. iTerm2, Kitty, Windows Terminal]
+- OS: [e.g. Ubuntu 22.04]
+- Terminal: [e.g. iTerm2 3.4.19, Kitty 0.26.5, Windows Terminal 1.16.10]
 - Instagram CLI Version: [e.g. ts-v1.0.0 or v1.4.2]
+- Client: [TypeScript or Python]
 
 **Logs (optional)**
 
