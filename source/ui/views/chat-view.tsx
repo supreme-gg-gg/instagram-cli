@@ -686,20 +686,30 @@ export default function ChatView({
 			});
 
 			if (finalText) {
-				await client.sendMessage(threadId, finalText);
-
 				// Create a message object for thread list update
-				const username = client.getUsername() ?? 'me';
-				const sentMessage: TextMessage = {
-					id: `local_${Date.now()}`,
-					timestamp: new Date(),
-					userId: 'me',
-					username,
-					isOutgoing: true,
-					threadId,
-					itemType: 'text',
-					text: finalText,
-				};
+				let sentMessage: TextMessage;
+
+				try {
+					await client.sendMessage(threadId, finalText);
+
+					sentMessage = {
+						id: `local_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+						timestamp: new Date(),
+						userId: String(client.getInstagramClient().state.cookieUserId),
+						username: client.getUsername() ?? 'me',
+						isOutgoing: true,
+						threadId,
+						itemType: 'text',
+						text: finalText,
+					};
+				} catch (error) {
+					// API 실패 시 사용자에게 에러 표시
+					setChatState(previous => ({
+						...previous,
+						error: `Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`,
+					}));
+					return; // 로컬 메시지 생성하지 않고 종료
+				}
 
 				// Update thread list to move this thread to top and update preview
 				setChatState(previous => {
