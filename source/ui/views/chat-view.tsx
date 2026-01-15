@@ -703,12 +703,11 @@ export default function ChatView({
 						text: finalText,
 					};
 				} catch (error) {
-					// API 실패 시 사용자에게 에러 표시
 					setChatState(previous => ({
 						...previous,
 						error: `Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`,
 					}));
-					return; // 로컬 메시지 생성하지 않고 종료
+					return;
 				}
 
 				// Update thread list to move this thread to top and update preview
