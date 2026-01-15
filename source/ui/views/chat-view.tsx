@@ -652,6 +652,10 @@ export default function ChatView({
 	const handleSendMessage = async (text: string) => {
 		if (!client || !chatState.currentThread) return;
 
+		// Capture thread ID immediately to prevent race conditions during async operations
+		const threadId = chatState.currentThread.id;
+		if (!threadId) return;
+
 		const {
 			isCommand,
 			systemMessage: cmdSystemMessage,
@@ -678,16 +682,10 @@ export default function ChatView({
 			const textToProcess = processedText ?? text;
 			const finalText = await preprocessMessage(textToProcess, {
 				client,
-				threadId: chatState.currentThread.id,
+				threadId,
 			});
 
 			if (finalText) {
-				// Capture thread ID before async call to prevent stale state
-				const threadId = chatState.currentThread?.id;
-				if (!threadId) {
-					return;
-				}
-
 				await client.sendMessage(threadId, finalText);
 
 				// Create a message object for thread list update
