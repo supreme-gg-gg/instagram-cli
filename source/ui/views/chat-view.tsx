@@ -682,7 +682,13 @@ export default function ChatView({
 			});
 
 			if (finalText) {
-				await client.sendMessage(chatState.currentThread.id, finalText);
+				// Capture thread ID before async call to prevent stale state
+				const threadId = chatState.currentThread?.id;
+				if (!threadId) {
+					return;
+				}
+
+				await client.sendMessage(threadId, finalText);
 
 				// Create a message object for thread list update
 				const username = client.getUsername() ?? 'me';
@@ -692,7 +698,7 @@ export default function ChatView({
 					userId: 'me',
 					username,
 					isOutgoing: true,
-					threadId: chatState.currentThread.id,
+					threadId,
 					itemType: 'text',
 					text: finalText,
 				};
@@ -700,7 +706,7 @@ export default function ChatView({
 				// Update thread list to move this thread to top and update preview
 				setChatState(previous => {
 					const threadIndex = previous.threads.findIndex(
-						t => t.id === chatState.currentThread!.id,
+						t => t.id === threadId,
 					);
 
 					if (threadIndex === -1) {
