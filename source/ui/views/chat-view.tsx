@@ -742,19 +742,13 @@ export default function ChatView({
 				});
 
 				// Scroll to bottom after sending a message
-				// Timeout to ensure message is rendered before scrolling
-				const timeout = setTimeout(() => {
-					if (scrollViewRef.current) {
-						scrollViewRef.current.scrollToEnd(false);
-					}
-				}, 1000);
+				// Small delay to allow message to render before scrolling
+				setTimeout(() => {
+					scrollViewRef.current?.scrollToEnd(false);
+				}, 100);
 
 				// Clear recipient read status on new message sent
 				setChatState(previous => ({...previous, recipientAlreadyRead: false}));
-
-				return () => {
-					clearTimeout(timeout);
-				};
 			}
 		} catch (error) {
 			const errorMessage =
