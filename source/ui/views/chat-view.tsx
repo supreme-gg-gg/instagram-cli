@@ -8,6 +8,7 @@ import type {
 	Post,
 	ReactionEvent,
 	SeenEvent,
+	TextMessage,
 } from '../../types/instagram.js';
 import type {RealtimeStatus, SearchResult} from '../../client.js';
 import MessageList from '../components/message-list.js';
@@ -682,6 +683,49 @@ export default function ChatView({
 
 			if (finalText) {
 				await client.sendMessage(chatState.currentThread.id, finalText);
+
+				// Create a message object for thread list update
+				const username = client.getUsername() ?? 'me';
+				const sentMessage: TextMessage = {
+					id: `local_${Date.now()}`,
+					timestamp: new Date(),
+					userId: 'me',
+					username,
+					isOutgoing: true,
+					threadId: chatState.currentThread.id,
+					itemType: 'text',
+					text: finalText,
+				};
+
+				// Update thread list to move this thread to top and update preview
+				setChatState(previous => {
+					const threadIndex = previous.threads.findIndex(
+						t => t.id === chatState.currentThread!.id,
+					);
+
+					if (threadIndex === -1) {
+						return previous; // Thread not found, no update
+					}
+
+					const updatedThreads = [...previous.threads];
+					const threadToUpdate = updatedThreads[threadIndex]!;
+
+					// Update last message and activity
+					const updatedThread = {
+						...threadToUpdate,
+						lastActivity: sentMessage.timestamp,
+						lastMessage: sentMessage,
+					};
+
+					// Move updated thread to top of list
+					updatedThreads.splice(threadIndex, 1);
+					updatedThreads.unshift(updatedThread);
+
+					return {
+						...previous,
+						threads: updatedThreads,
+					};
+				});
 
 				// Scroll to bottom after sending a message
 				// Timeout to ensure message is rendered before scrolling
