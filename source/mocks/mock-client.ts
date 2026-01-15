@@ -108,7 +108,7 @@ class MockClient extends EventEmitter {
 	async sendMessage(threadId: string, text: string): Promise<void> {
 		// Simulate sending a message
 		const newMessage: Message = {
-			id: `sent_${Date.now()}`,
+			id: `msg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
 			timestamp: new Date(),
 			userId: 'current_user',
 			username: 'current_user',

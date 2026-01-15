@@ -8,6 +8,7 @@ import type {
 	Post,
 	ReactionEvent,
 	SeenEvent,
+	TextMessage,
 } from '../../types/instagram.js';
 import type {RealtimeStatus, SearchResult} from '../../client.js';
 import MessageList from '../components/message-list.js';
@@ -651,6 +652,10 @@ export default function ChatView({
 	const handleSendMessage = async (text: string) => {
 		if (!client || !chatState.currentThread) return;
 
+		// Capture thread ID immediately to prevent race conditions during async operations
+		const threadId = chatState.currentThread.id;
+		if (!threadId) return;
+
 		const {
 			isCommand,
 			systemMessage: cmdSystemMessage,
@@ -677,26 +682,73 @@ export default function ChatView({
 			const textToProcess = processedText ?? text;
 			const finalText = await preprocessMessage(textToProcess, {
 				client,
-				threadId: chatState.currentThread.id,
+				threadId,
 			});
 
 			if (finalText) {
-				await client.sendMessage(chatState.currentThread.id, finalText);
+				// Create a message object for thread list update
+				let sentMessage: TextMessage;
+
+				try {
+					await client.sendMessage(threadId, finalText);
+
+					sentMessage = {
+						id: `local_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+						timestamp: new Date(),
+						userId: String(client.getInstagramClient().state.cookieUserId),
+						username: client.getUsername() ?? 'me',
+						isOutgoing: true,
+						threadId,
+						itemType: 'text',
+						text: finalText,
+					};
+				} catch (error) {
+					// API 실패 시 사용자에게 에러 표시
+					setChatState(previous => ({
+						...previous,
+						error: `Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`,
+					}));
+					return; // 로컬 메시지 생성하지 않고 종료
+				}
+
+				// Update thread list to move this thread to top and update preview
+				setChatState(previous => {
+					const threadIndex = previous.threads.findIndex(
+						t => t.id === threadId,
+					);
+
+					if (threadIndex === -1) {
+						return previous; // Thread not found, no update
+					}
+
+					const updatedThreads = [...previous.threads];
+					const threadToUpdate = updatedThreads[threadIndex]!;
+
+					// Update last message and activity
+					const updatedThread = {
+						...threadToUpdate,
+						lastActivity: sentMessage.timestamp,
+						lastMessage: sentMessage,
+					};
+
+					// Move updated thread to top of list
+					updatedThreads.splice(threadIndex, 1);
+					updatedThreads.unshift(updatedThread);
+
+					return {
+						...previous,
+						threads: updatedThreads,
+					};
+				});
 
 				// Scroll to bottom after sending a message
-				// Timeout to ensure message is rendered before scrolling
-				const timeout = setTimeout(() => {
-					if (scrollViewRef.current) {
-						scrollViewRef.current.scrollToEnd(false);
-					}
-				}, 1000);
+				// Small delay to allow message to render before scrolling
+				setTimeout(() => {
+					scrollViewRef.current?.scrollToEnd(false);
+				}, 100);
 
 				// Clear recipient read status on new message sent
 				setChatState(previous => ({...previous, recipientAlreadyRead: false}));
-
-				return () => {
-					clearTimeout(timeout);
-				};
 			}
 		} catch (error) {
 			const errorMessage =
