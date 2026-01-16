@@ -2,19 +2,19 @@ import type {Thread, Message} from '../types/instagram.js';
 
 export type UpdateThreadByMessageOptions = {
 	/**
-	 * 스레드를 읽지 않음(unread) 상태로 표시할지 여부
-	 * @default thread의 기존 unread 상태 유지
+	 * Whether to mark the thread as unread
+	 * @default preserve the thread's existing unread state
 	 */
 	readonly markAsUnread?: boolean;
 };
 
 /**
- * 메시지를 기준으로 스레드를 업데이트하고 목록 맨 위로 이동시킵니다.
+ * Updates a thread based on a message and moves it to the top of the list.
  *
- * @param threads - 현재 스레드 목록
- * @param message - 새 메시지
- * @param options - 업데이트 옵션
- * @returns 업데이트된 스레드 목록 (스레드를 찾지 못하면 원본 반환)
+ * @param threads - Current thread list
+ * @param message - New message
+ * @param options - Update options
+ * @returns Updated thread list (returns original if thread not found)
  *
  * @example
  * ```typescript
@@ -33,14 +33,14 @@ export function updateThreadByMessage(
 	);
 
 	if (threadIndex === -1) {
-		// 스레드를 찾지 못하면 원본 반환 (불변성 유지)
+		// Return original if thread not found (preserve immutability)
 		return threads;
 	}
 
 	const updatedThreads = [...threads];
 	const threadToUpdate = updatedThreads[threadIndex]!;
 
-	// 스레드 업데이트: 마지막 활동, 마지막 메시지, 읽지 않음 상태
+	// Update thread: last activity, last message, unread status
 	const updatedThread: Thread = {
 		...threadToUpdate,
 		lastActivity: message.timestamp,
@@ -48,7 +48,7 @@ export function updateThreadByMessage(
 		unread: options?.markAsUnread ?? threadToUpdate.unread,
 	};
 
-	// 맨 위로 이동 (splice + unshift)
+	// Move to top (splice + unshift)
 	updatedThreads.splice(threadIndex, 1);
 	updatedThreads.unshift(updatedThread);
 
