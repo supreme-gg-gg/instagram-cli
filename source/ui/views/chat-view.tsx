@@ -23,6 +23,7 @@ import {preprocessMessage} from '../../utils/preprocess.js';
 import SearchInput from '../components/search-input.js';
 import SinglePostView from '../components/single-post-view.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
+import {updateThreadByMessage} from '../../utils/thread-utils.js';
 
 type SearchMode = 'username' | 'title' | undefined;
 
@@ -50,6 +51,7 @@ export default function ChatView({
 		isSelectionMode: false,
 		recipientAlreadyRead: false,
 	});
+
 	const [currentView, setCurrentView] = useState<'threads' | 'chat'>('threads');
 	const [realtimeStatus, setRealtimeStatus] =
 		useState<RealtimeStatus>('disconnected');
@@ -347,6 +349,10 @@ export default function ChatView({
 					...prev,
 					messages: [...prev.messages, message],
 					recipientAlreadyRead: false,
+					// Update thread: move to top and update last message
+					threads: updateThreadByMessage(prev.threads, message, {
+						markAsUnread: false,
+					}),
 				}));
 
 				// If scrollview is at bottom, scroll to bottom on new messages
@@ -370,41 +376,14 @@ export default function ChatView({
 				return;
 			}
 
-			// if not current thread, update the global thread list to 1. show unread status 2. update last message preview
-			setChatState(prev => {
-				const threadIndex = prev.threads.findIndex(
-					thread => thread.id === message.threadId,
-				);
-				if (threadIndex === -1) {
-					return prev; // Thread not found, no update
-				}
-
-				const updatedThreads = [...prev.threads];
-				const threadToUpdate = updatedThreads[threadIndex]!;
-
-				// Update last message and unread status
-				const updatedThread = {
-					...threadToUpdate,
-					lastActivity: message.timestamp,
-					lastMessage: message,
-					unread: true,
-				};
-
-				updatedThreads[threadIndex] = updatedThread;
-
-				// Move the updated thread to the top of the list
-				// This is more efficient than sorting the entire list
-				updatedThreads.splice(threadIndex, 1);
-				updatedThreads.unshift(updatedThread);
-
-				// Show notification for background message
-				setSystemMessage('Someone else sent you a message!');
-
-				return {
-					...prev,
-					threads: updatedThreads,
-				};
-			});
+			// Update thread list: show unread status, update last message preview, move to top
+			setSystemMessage('Someone else sent you a message!');
+			setChatState(prev => ({
+				...prev,
+				threads: updateThreadByMessage(prev.threads, message, {
+					markAsUnread: true,
+				}),
+			}));
 		};
 
 		client.on('message', handleMessage);
