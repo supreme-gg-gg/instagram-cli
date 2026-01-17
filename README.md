@@ -10,23 +10,25 @@ $$
 [![downloads](https://img.shields.io/npm/dm/@i7m/instagram-cli?style=flat-square)](https://www.npmjs.com/package/@i7m/instagram-cli)
 ![PyPI](https://img.shields.io/pypi/v/instagram-cli)
 [![PyPI Downloads](https://static.pepy.tech/badge/instagram-cli)](https://pepy.tech/projects/instagram-cli)
-![Python](https://img.shields.io/pypi/pyversions/instagram-cli)
 [![AUR](https://img.shields.io/aur/version/instagram-cli?label=AUR)](https://aur.archlinux.org/packages/instagram-cli)
-[![MIT license](https://img.shields.io/github/license/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)
 
-https://github.com/user-attachments/assets/3dd65afe-b0d7-4554-9b3c-1e37111ae27d
+<!-- ![Python](https://img.shields.io/pypi/pyversions/instagram-cli) -->
+
+https://github.com/user-attachments/assets/fb25cc5f-a868-487d-b853-a7bbe77ba348
 
 > [!WARNING]
 > This project is not affiliated with, authorized, or endorsed by Instagram. This is an independent and unofficial project. Using it might violate Meta's Terms of Service. Use at your own risk.
 
 ## Why Instagram CLI?
 
-Empower yourself to become a 10x Instagrammer by minimizing distractions, enabling 100% keyboard control, and accessing it from any terminal — whether in your VSCode editor or your Linux server.
+Empower yourself to become a 10x Instagrammer by minimizing distractions, enabling 100% keyboard control, and accessing it from any terminal — whether in your VSCode editor or your Linux server. 
+
+Instagram CLI allows you to use social media more intentionally -- to stay connected with people you care about rather than being exploited for your attention.
 
 - Chat with your friends without falling into endless brainrot
-- Stay updated & connected without being exploited for your attention
-- Focus on meaningful conversations and be productive
+- Stay updated with post and stories from people around you
+- Focus on meaningful, intentional conversations and be productive
 - Full keyboard navigation and shortcuts, no mouse, no touchscreens
 - Celebrate the art and simplicity of **terminal UI (TUI)**
 
@@ -72,14 +74,6 @@ instagram-cli
 We welcome contributions to add more installation methods.
 
 For installation from source, please refer to the [TypeScript Client Documentation](./DEVELOPMENT.md).
-
-### Key Features
-
-- Full support for Windows, Linux, and macOS, modern React-based UI
-- Developer-friendly shortcuts, viewing feed and stories, in-terminal image rendering
-- Leverages realtime MQTT-based protocol used by Instagram app for messaging
-- Highly performant and much faster than your GUI browser or touchscreen app
-- Works well in all terminal emulators, **including VSCode Integrated Terminal**
 
 ## Installation (Python Client)
 
