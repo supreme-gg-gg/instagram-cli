@@ -33,12 +33,12 @@
 		"format": "prettier --write .",
 		"build": "tsc --noEmit && node esbuild.config.mjs --production",
 		"clean": "rm -rf dist",
-		"lint-check": "prettier --check . && xo",
+		"lint-check": "prettier --check . && xo --ignore esbuild.config.mjs",
 		"prepare": "husky",
 		"dev": "node esbuild.config.mjs --watch",
 		"start": "node dist/cli.js",
 		"start:mock": "node dist/mocks/cli.mock.js",
-		"test": "prettier --check . && xo && ava",
+		"test": "prettier --check . && xo --ignore esbuild.config.mjs && ava",
 		"postinstall": "patch-package"
 	},
 	"files": [
@@ -104,5 +104,10 @@
 	"lint-staged": {
 		"!(instagram-py)/**/*.{ts,tsx,js,jsx,json,md}": "prettier --write",
 		"!(instagram-py)/**/*.{ts,tsx}": "xo --fix"
+	},
+	"overrides": {
+		"form-data": "^4.0.0",
+		"qs": "^6.14.1",
+		"tough-cookie": "^5.1.0"
 	}
 }
