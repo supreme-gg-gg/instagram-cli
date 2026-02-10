@@ -1,8 +1,8 @@
 diff --git a/node_modules/instagram-private-api/dist/core/constants.js b/node_modules/instagram-private-api/dist/core/constants.js
-index 1234567..abcdefg 100644
+index d4485a0..295427d 100644
 --- a/node_modules/instagram-private-api/dist/core/constants.js
 +++ b/node_modules/instagram-private-api/dist/core/constants.js
-@@ -1,7 +1,7 @@
+@@ -1,8 +1,8 @@
  "use strict";
  Object.defineProperty(exports, "__esModule", { value: true });
  exports.WEBHOST = exports.HOST = exports.WEB_HOSTNAME = exports.HOSTNAME = exports.BLOKS_VERSION_ID = exports.FACEBOOK_ORCA_APPLICATION_ID = exports.FACEBOOK_OTA_FIELDS = exports.FACEBOOK_ANALYTICS_APPLICATION_ID = exports.LOGIN_EXPERIMENTS = exports.EXPERIMENTS = exports.SIGNATURE_VERSION = exports.BREADCRUMB_KEY = exports.SIGNATURE_KEY = exports.APP_VERSION_CODE = exports.APP_VERSION = void 0;
