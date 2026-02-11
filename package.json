@@ -1,11 +1,10 @@
 {
 	"name": "@i7m/instagram-cli",
 	"description": "The unofficial CLI and terminal client for Instagram",
-	"version": "1.4.2",
+	"version": "1.4.4",
 	"license": "MIT",
 	"repository": {
-		"type": "git",
-		"url": "https://github.com/supreme-gg-gg/instagram-cli"
+		"url": "git+https://github.com/supreme-gg-gg/instagram-cli.git"
 	},
 	"keywords": [
 		"instagram",
@@ -42,7 +41,8 @@
 		"postinstall": "patch-package"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"patches"
 	],
 	"dependencies": {
 		"@inkjs/ui": "^2.0.0",
