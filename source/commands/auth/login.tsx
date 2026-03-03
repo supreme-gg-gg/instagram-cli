@@ -63,7 +63,13 @@ export default function Login({options}: Properties) {
 				setTwoFactorInfo(result.twoFactorInfo);
 				const {totp_two_factor_on} = result.twoFactorInfo;
 				const verificationMethod = totp_two_factor_on ? 'TOTP' : 'SMS';
-				setMessage(`Enter code received via ${verificationMethod}`);
+				const smsHint =
+					!totp_two_factor_on
+						? ' If you do not receive a code, go to Instagram Settings → Accounts Center → Password and security → Two-factor authentication → Additional methods, and turn off "Login requests". This can prevent the SMS code from being sent.'
+						: '';
+				setMessage(
+					`Enter code received via ${verificationMethod}.${smsHint}`,
+				);
 				setMode('2fa');
 			} else if (result.checkpointError) {
 				logger.warn('Checkpoint challenge required');
