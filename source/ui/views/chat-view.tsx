@@ -24,6 +24,7 @@ import SearchInput from '../components/search-input.js';
 import SinglePostView from '../components/single-post-view.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
 import {updateThreadByMessage} from '../../utils/thread-utils.js';
+import {TypingIndicator} from '../components/typing-indicator.js';
 
 type SearchMode = 'username' | 'title' | undefined;
 
@@ -59,6 +60,7 @@ export default function ChatView({
 		undefined,
 	);
 
+	const [isRecipientTyping, setIsRecipientTyping] = useState(false);
 	const [searchMode, setSearchMode] = useState<SearchMode>(initialSearchMode);
 	const [searchQuery, setSearchQuery] = useState(initialSearchQuery ?? '');
 	const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -345,6 +347,9 @@ export default function ChatView({
 		const handleMessage = async (message: Message) => {
 			// for current thread, append to message list and handle view changes
 			if (message.threadId === chatState.currentThread?.id) {
+				// Clear typing indicator when message arrives
+				setIsRecipientTyping(false);
+
 				setChatState(prev => ({
 					...prev,
 					messages: [...prev.messages, message],
@@ -523,6 +528,63 @@ export default function ChatView({
 		};
 	}, [client, realtimeStatus]);
 
+	useEffect(() => {
+		if (!client || !chatState.currentThread) return;
+
+		let typingTimeout: NodeJS.Timeout | undefined;
+
+const handleActivityIndicator = (activity: {threadId: string; senderId?: string; activityStatus?: number; activity_status?: number}) => {
+			// Sadece aktif thread için ve başkasının typing indicator'ı için
+			if (activity.threadId === chatState.currentThread?.id) {
+				// activity_status: 1 = typing, 0 = stopped
+				// Support both camelCase and snake_case properties
+				const activityStatus =
+					activity.activityStatus ?? activity.activity_status;
+
+				// Kendi typing indicator'ımızı ignore et
+				const senderId = activity.senderId?.toString();
+				const currentUserId = client.getCurrentUserId();
+
+				if (senderId && senderId === currentUserId) {
+					return;
+				}
+
+				// Clear existing timeout
+				if (typingTimeout) {
+					clearTimeout(typingTimeout);
+					typingTimeout = undefined;
+				}
+
+				if (activityStatus === 1) {
+					// User started typing - show immediately
+					setIsRecipientTyping(true);
+					// Auto-clear after 22 seconds if no new event comes
+					typingTimeout = setTimeout(() => {
+						setIsRecipientTyping(false);
+						typingTimeout = undefined;
+					}, 22000);
+				} else {
+					// User stopped typing - debounce for 1.5 seconds before hiding
+					// This prevents flashing when Instagram sends rapid 1->0->1 events
+					typingTimeout = setTimeout(() => {
+						setIsRecipientTyping(false);
+						typingTimeout = undefined;
+					}, 1500);
+				}
+			}
+		};
+
+		client.on('activityIndicator', handleActivityIndicator);
+
+		return () => {
+			if (typingTimeout) {
+				clearTimeout(typingTimeout);
+			}
+			setIsRecipientTyping(false);
+			client.off('activityIndicator', handleActivityIndicator);
+		};
+	}, [client, chatState.currentThread]);
+
 	useInput((input, key) => {
 		if (viewingPost) {
 			return;
@@ -686,6 +748,17 @@ export default function ChatView({
 		return;
 	};
 
+	const handleTypingChange = useCallback(
+		async (isTyping: boolean) => {
+			if (!client || !chatState.currentThread) return;
+
+			try {
+				await client.sendTypingIndicator(chatState.currentThread.id, isTyping);
+			} catch (error) {}
+		},
+		[client, chatState.currentThread],
+	);
+
 	const handleOnScrollToBottom = () => {
 		setSystemMessage('Scrolled to bottom');
 	};
@@ -810,6 +883,12 @@ export default function ChatView({
 						<Text dimColor>Seen just now</Text>
 					</Box>
 				)}
+				<TypingIndicator isTyping={isRecipientTyping} />
+				{realtimeStatus !== 'connected' && currentView === 'chat' && (
+					<Box paddingX={1}>
+						<Text color="yellow">⚠️ Realtime: {realtimeStatus}</Text>
+					</Box>
+				)}
 				<Box flexDirection="column" flexShrink={0}>
 					{systemMessage && (
 						<Box marginTop={1}>
@@ -819,6 +898,7 @@ export default function ChatView({
 					<InputBox
 						isDisabled={chatState.isSelectionMode}
 						onSend={handleSendMessage}
+						onTypingChange={handleTypingChange}
 					/>
 				</Box>
 			</Box>

@@ -10,6 +10,7 @@ import {AutocompleteView} from './autocomplete-view.js';
 type InputBoxProperties = {
 	readonly onSend: (message: string) => void;
 	readonly isDisabled?: boolean;
+	readonly onTypingChange?: (isTyping: boolean) => void;
 };
 
 type AutocompleteState = {
@@ -33,11 +34,14 @@ const initialAutocompleteState: AutocompleteState = {
 export default function InputBox({
 	onSend,
 	isDisabled = false,
+	onTypingChange,
 }: InputBoxProperties) {
 	const [message, setMessage] = useState('');
 	const [autocomplete, setAutocomplete] = useState<AutocompleteState>(
 		initialAutocompleteState,
 	);
+
+	const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
 	// By changing the key, we force the TextInput to re-mount, which resets its internal state (including cursor position after autocomplete selection)
 	const [inputKey, setInputKey] = useState(0);
@@ -46,6 +50,11 @@ export default function InputBox({
 		if (value.trim()) {
 			onSend(value.trim());
 			setMessage('');
+
+			onTypingChange?.(false);
+			if (typingTimeoutRef.current) {
+				clearTimeout(typingTimeoutRef.current);
+			}
 		}
 
 		setAutocomplete(initialAutocompleteState); // Reset on submit
@@ -102,6 +111,26 @@ export default function InputBox({
 	const handleInputChange = (value: string) => {
 		setMessage(value);
 
+		// Typing indicator logic
+		if (onTypingChange) {
+			if (value.trim().length > 0) {
+				onTypingChange(true);
+
+				if (typingTimeoutRef.current) {
+					clearTimeout(typingTimeoutRef.current);
+				}
+
+				typingTimeoutRef.current = setTimeout(() => {
+					onTypingChange(false);
+				}, 3000); // 3 seconds of inactivity
+			} else {
+				onTypingChange(false);
+				if (typingTimeoutRef.current) {
+					clearTimeout(typingTimeoutRef.current);
+				}
+			}
+		}
+
 		const commandMatch = /^:(\w*)$/.exec(value);
 		// Updated regex to match # at the beginning of string or after whitespace
 		// modified regex to match files which contains spaces.
@@ -139,6 +168,16 @@ export default function InputBox({
 			setAutocomplete(initialAutocompleteState);
 		}
 	};
+
+	useEffect(() => {
+		return () => {
+			// Cleanup typing timeout on unmount
+			if (typingTimeoutRef.current) {
+				clearTimeout(typingTimeoutRef.current);
+			}
+			onTypingChange?.(false);
+		};
+	}, [onTypingChange]);
 
 	// This single useInput hook handles all key presses, creating a clear priority
 	useInput((_input, key) => {

@@ -495,6 +495,19 @@ export class InstagramClient extends EventEmitter {
 		return this.realtimeStatus;
 	}
 
+	public async sendTypingIndicator(
+		threadId: string,
+		isTyping: boolean,
+	): Promise<void> {
+		this.logger.debug(
+			`Sending typing indicator: threadId=${threadId}, isTyping=${isTyping}`,
+		);
+		await this.realtime?.direct?.indicateActivity({
+			threadId: threadId,
+			isActive: isTyping,
+		});
+	}
+
 	public async getCurrentUser(): Promise<User | undefined> {
 		try {
 			const user = await this.ig.user.info(this.ig.state.cookieUserId);
@@ -509,6 +522,10 @@ export class InstagramClient extends EventEmitter {
 			this.logger.error('Failed to get current user', error);
 			return undefined;
 		}
+	}
+
+	public getCurrentUserId(): string {
+		return this.ig.state.cookieUserId;
 	}
 
 	public async getThreads(
@@ -1207,6 +1224,17 @@ export class InstagramClient extends EventEmitter {
 			this.setRealtimeStatus('disconnected');
 		});
 
+		// Listen to ALL events for debugging
+		const originalEmit = this.realtime.emit.bind(this.realtime);
+		(this.realtime as any).emit = (event: string, ...args: any[]) => {
+			if (event !== 'error' && event !== 'close' && event !== 'message') {
+				this.logger.info(
+					`[InstagramClient] 🎯 Realtime emitted event: ${event}`,
+				);
+			}
+			return originalEmit(event as any, ...args);
+		};
+
 		this.realtime.on('message', (wrapper: any) => {
 			this.logger.debug(`Received MQTT "message": ${JSON.stringify(wrapper)}`);
 			// Handle reaction events
@@ -1251,6 +1279,43 @@ export class InstagramClient extends EventEmitter {
 				) {
 					this.emit('threadSeen', seenData);
 				}
+			}
+		});
+
+		// Activity indicator updates - listen to 'direct' event
+		this.realtime.on('direct', (data: any) => {
+			try {
+				// Check if this is an activity indicator update
+				if (data.op === 'add' && data.path?.includes('activity_indicator')) {
+					const threadIdMatch = /\/direct_v2\/threads\/([^/]+)\//.exec(
+						data.path,
+					);
+					const threadId = threadIdMatch?.[1];
+
+					this.logger.info(
+						'*** [InstagramClient] Activity indicator found! ***',
+					);
+					this.logger.info(`[InstagramClient] threadId: ${threadId}`);
+					this.logger.info(
+						`[InstagramClient] value: ${JSON.stringify(data.value)}`,
+					);
+
+					if (threadId && data.value) {
+						const senderId = data.value.sender_id?.toString();
+						const activityStatus = data.value.activity_status;
+						this.logger.info(
+							`[InstagramClient] threadId=${threadId}, senderId=${senderId}, status=${activityStatus}`,
+						);
+						this.emit('activityIndicator', {
+							threadId,
+							senderId,
+							activityStatus,
+							timestamp: data.value.timestamp,
+						});
+					}
+				}
+			} catch (error) {
+				this.logger.error('Failed to process direct event', error);
 			}
 		});
 
