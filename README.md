@@ -22,7 +22,7 @@ https://github.com/user-attachments/assets/fb25cc5f-a868-487d-b853-a7bbe77ba348
 
 ## Why Instagram CLI?
 
-Empower yourself to become a 10x Instagrammer by minimizing distractions, enabling 100% keyboard control, and accessing it from any terminal — whether in your VSCode editor or your Linux server. 
+Empower yourself to become a 10x Instagrammer by minimizing distractions, enabling 100% keyboard control, and accessing it from any terminal — whether in your VSCode editor or your Linux server.
 
 Instagram CLI allows you to use social media more intentionally -- to stay connected with people you care about rather than being exploited for your attention.
 
