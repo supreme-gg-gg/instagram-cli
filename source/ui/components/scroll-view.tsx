@@ -84,6 +84,38 @@ const ScrollView = forwardRef<ScrollViewRef | undefined, Props>(
 		const [offset, setOffset] = useState<number>(0);
 		const contentSize = useContentSize(containerRef);
 
+		// Track whether boundary callbacks should fire on the next offset change.
+		// This avoids calling parent setState inside a state updater
+		const fireBoundaryCallbacksRef = useRef(false);
+
+		// Fire boundary callbacks after offset settles, outside of render
+		useEffect(() => {
+			if (!fireBoundaryCallbacksRef.current) return;
+			fireBoundaryCallbacksRef.current = false;
+
+			const maxOffset =
+				scrollDirection === 'vertical'
+					? contentSize.height - height
+					: contentSize.width - width;
+
+			if (onScrollToStart && offset === 0) {
+				onScrollToStart();
+			}
+
+			if (onScrollToEnd && maxOffset > 0 && offset >= maxOffset) {
+				onScrollToEnd();
+			}
+		}, [
+			offset,
+			contentSize.height,
+			contentSize.width,
+			height,
+			width,
+			scrollDirection,
+			onScrollToStart,
+			onScrollToEnd,
+		]);
+
 		/**
 		 * Scroll to a specific offset, clamping to valid bounds.
 		 * Accepts either a number or a function that calculates offset based on current position.
@@ -93,6 +125,7 @@ const ScrollView = forwardRef<ScrollViewRef | undefined, Props>(
 				currentOffset: number | ((currentOffset: number) => number),
 				fireCallback = true,
 			) => {
+				fireBoundaryCallbacksRef.current = fireCallback;
 				setOffset(currentValue => {
 					const requestedOffset =
 						typeof currentOffset === 'number'
@@ -105,77 +138,27 @@ const ScrollView = forwardRef<ScrollViewRef | undefined, Props>(
 							? contentSize.height - height
 							: contentSize.width - width;
 
-					const newOffset = Math.max(0, Math.min(maxOffset, requestedOffset));
-
-					// Trigger scroll callbacks if needed
-					if (fireCallback && onScrollToStart && newOffset === 0) {
-						onScrollToStart();
-					}
-
-					if (
-						fireCallback &&
-						onScrollToEnd &&
-						(scrollDirection === 'vertical'
-							? newOffset === contentSize.height - height
-							: newOffset === contentSize.width - width)
-					) {
-						onScrollToEnd();
-					}
-
-					return newOffset;
+					return Math.max(0, Math.min(maxOffset, requestedOffset));
 				});
 			},
-			[
-				contentSize.height,
-				contentSize.width,
-				height,
-				width,
-				scrollDirection,
-				onScrollToStart,
-				onScrollToEnd,
-			],
+			[contentSize.height, contentSize.width, height, width, scrollDirection],
 		);
 
-		const scrollToStart = useCallback(
-			(fireCallback = true) => {
-				setOffset(current => {
-					if (current > 0 && fireCallback && onScrollToStart) {
-						onScrollToStart();
-					}
-
-					return 0;
-				});
-			},
-			[onScrollToStart],
-		);
+		const scrollToStart = useCallback((fireCallback = true) => {
+			fireBoundaryCallbacksRef.current = fireCallback;
+			setOffset(0);
+		}, []);
 
 		const scrollToEnd = useCallback(
 			(fireCallback = true) => {
-				setOffset(current => {
-					const newOffset =
-						scrollDirection === 'vertical'
-							? Math.max(0, contentSize.height - height)
-							: Math.max(0, contentSize.width - width);
-					if (
-						fireCallback &&
-						newOffset > 0 &&
-						current < newOffset &&
-						onScrollToEnd
-					) {
-						onScrollToEnd();
-					}
-
-					return newOffset;
-				});
+				fireBoundaryCallbacksRef.current = fireCallback;
+				setOffset(
+					scrollDirection === 'vertical'
+						? Math.max(0, contentSize.height - height)
+						: Math.max(0, contentSize.width - width),
+				);
 			},
-			[
-				contentSize.height,
-				contentSize.width,
-				height,
-				width,
-				scrollDirection,
-				onScrollToEnd,
-			],
+			[contentSize.height, contentSize.width, height, width, scrollDirection],
 		);
 
 		const getScrollOffset = useCallback(() => {

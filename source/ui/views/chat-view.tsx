@@ -347,7 +347,9 @@ export default function ChatView({
 			if (message.threadId === chatState.currentThread?.id) {
 				setChatState(prev => ({
 					...prev,
-					messages: [...prev.messages, message],
+					messages: prev.messages.some(m => m.id === message.id)
+						? prev.messages
+						: [...prev.messages, message],
 					recipientAlreadyRead: false,
 					// Update thread: move to top and update last message
 					threads: updateThreadByMessage(prev.threads, message, {
@@ -737,12 +739,18 @@ export default function ChatView({
 				chatState.currentThread.id,
 				chatState.messageCursor,
 			);
-			setChatState(previous => ({
-				...previous,
-				messages: [...messages, ...previous.messages],
-				loading: false,
-				messageCursor: cursor,
-			}));
+			setChatState(previous => {
+				const existingIds = new Set(previous.messages.map(m => m.id));
+				const uniqueOlderMessages = messages.filter(
+					m => !existingIds.has(m.id),
+				);
+				return {
+					...previous,
+					messages: [...uniqueOlderMessages, ...previous.messages],
+					loading: false,
+					messageCursor: cursor,
+				};
+			});
 			setSystemMessage(`Loaded ${messages.length} more messages.`);
 		} catch {
 			setChatState(previous => ({...previous, loading: false}));
