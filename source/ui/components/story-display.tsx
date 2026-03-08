@@ -190,7 +190,7 @@ export default function StoryDisplay({
 			if (currentStory) {
 				void openMediaUrl(currentStory);
 			}
-		} else if (key.escape) {
+		} else if (key.escape || (key.ctrl && input === 'c')) {
 			exit();
 		}
 	});
