@@ -1,4 +1,4 @@
-name: TypeScript linting and e2e tests
+name: Typescript Preflight
 
 # Only triggers on changes to the TypeScript codebase
 on:
@@ -12,24 +12,44 @@ on:
     paths: ['source/**', 'tests/**']
 
 jobs:
-  format:
-    name: Lint and Test TypeScript Client
+  lint:
+    name: Format and Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Install TS dependencies
-        run: |
-          npm ci
+      - name: Install dependencies
+        run: npm ci
 
       - name: Run Prettier check
         run: npx prettier --check .
 
-      - name: Run xo + tests
-        run: npm test
+      - name: Run XO lint
+        run: npx xo --ignore esbuild.config.mjs
+
+  test:
+    name: Unit and E2E Tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npx ava

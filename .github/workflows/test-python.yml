@@ -1,4 +1,4 @@
-name: Python linting and e2e tests
+name: Python Preflight
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   lint:
-    name: Lint and Format Python Client (Ruff)
+    name: Format and Lint
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -33,7 +33,7 @@ jobs:
         run: uv run ruff format --check
 
   test:
-    name: Test Python Client
+    name: Unit and E2E Tests
     runs-on: ubuntu-latest
 
     strategy:
