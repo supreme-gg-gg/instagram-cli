@@ -17,12 +17,12 @@ const package_ = await readPackageUp({cwd: scriptDir});
 
 const app = new Pastel({
 	importMeta: import.meta,
+	name: package_?.packageJson.name,
 	version: package_?.packageJson.version,
 	description: package_?.packageJson.description,
 });
 
 // Disable Ink's built-in Ctrl+C exit so the app can handle it internally
-// (e.g. clear the input box when text is present, exit only when empty).
 // Ink reuses the same renderer instance per stdout stream, so calling
 // render() here before Pastel does ensures the shared instance is
 // created with exitOnCtrlC: false for the entire session.

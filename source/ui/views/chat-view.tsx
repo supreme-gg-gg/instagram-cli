@@ -844,7 +844,7 @@ export default function ChatView({
 			return 'j/k: navigate messages, Enter: confirm, Esc: exit selection';
 		}
 
-		return 'Esc: back to threads, Ctrl+C: quit';
+		return 'Esc: back to threads, Ctrl+C: Clear input';
 	};
 
 	if (viewingPost) {
