@@ -75,5 +75,5 @@ export const run = async (view: 'chat' | 'feed' | 'story' = 'chat') => {
 	const configManager = ConfigManager.getInstance();
 	await configManager.initialize();
 
-	render(<AppMock view={view} />);
+	render(<AppMock view={view} />, {exitOnCtrlC: false});
 };

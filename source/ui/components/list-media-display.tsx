@@ -113,7 +113,7 @@ export default function ListMediaDisplay({feed, protocol}: Properties) {
 				}
 			}
 			// Quit
-		} else if (key.escape) {
+		} else if (key.escape || (key.ctrl && input === 'c')) {
 			exit();
 		}
 	});
