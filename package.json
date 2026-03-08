@@ -104,7 +104,7 @@
 	"prettier": "@vdemedes/prettier-config",
 	"lint-staged": {
 		"!(instagram-py)/**/*.{ts,tsx,js,jsx,json,md}": "prettier --write",
-		"!(instagram-py)/**/*.{ts,tsx}": "xo --fix"
+		"!(instagram-py)/**/*.{ts,tsx}": "xo --ignore esbuild.config.mjs"
 	},
 	"overrides": {
 		"form-data": "^4.0.0",

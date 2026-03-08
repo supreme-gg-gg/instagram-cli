@@ -1,3 +1,5 @@
+/* eslint-disable no-control-regex */
+/* eslint-disable @typescript-eslint/no-restricted-types */
 /**
  * Mouse event parsing for terminal ANSI escape sequences.
  *
@@ -19,10 +21,8 @@ export const ESC = '\u001B';
 export const SGR_EVENT_PREFIX = `${ESC}[<`;
 export const X11_EVENT_PREFIX = `${ESC}[M`;
 
-// eslint-disable-next-line no-control-regex
 export const SGR_MOUSE_REGEX = /^\u001B\[<(\d+);(\d+);(\d+)([mM])/;
 // X11 is ESC [ M followed by 3 bytes
-// eslint-disable-next-line no-control-regex
 export const X11_MOUSE_REGEX = /^\u001B\[M([\s\S]{3})/;
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ export function disableMouseTracking(stdout: NodeJS.WriteStream): void {
 function getMouseEventName(
 	buttonCode: number,
 	isRelease: boolean,
-): MouseEventName | undefined {
+): MouseEventName | null {
 	const isMove = (buttonCode & 32) !== 0;
 
 	// Scroll wheel (bit 6 set)
@@ -132,7 +132,7 @@ function getButtonFromCode(code: number): MouseButton {
 /** Try to parse an SGR-format mouse sequence at the start of the buffer. */
 export function parseSGRMouseEvent(
 	buffer: string,
-): {event: MouseEvent; length: number} | undefined {
+): {event: MouseEvent; length: number} | null {
 	const match = SGR_MOUSE_REGEX.exec(buffer);
 	if (!match) return null;
 
@@ -165,7 +165,7 @@ export function parseSGRMouseEvent(
 /** Try to parse an X11-format mouse sequence at the start of the buffer. */
 export function parseX11MouseEvent(
 	buffer: string,
-): {event: MouseEvent; length: number} | undefined {
+): {event: MouseEvent; length: number} | null {
 	const match = X11_MOUSE_REGEX.exec(buffer);
 	if (!match) return null;
 
@@ -180,7 +180,7 @@ export function parseX11MouseEvent(
 	const isMove = (b & 32) !== 0;
 	const isWheel = (b & 64) !== 0;
 
-	let name: MouseEventName | undefined = null;
+	let name: MouseEventName | null = null;
 
 	if (isWheel) {
 		name = (b & 1) === 0 ? 'scroll-up' : 'scroll-down';
@@ -231,7 +231,7 @@ export function parseX11MouseEvent(
 /** Try to parse any mouse sequence at the start of the buffer (SGR first, then X11). */
 export function parseMouseEvent(
 	buffer: string,
-): {event: MouseEvent; length: number} | undefined {
+): {event: MouseEvent; length: number} | null {
 	return parseSGRMouseEvent(buffer) ?? parseX11MouseEvent(buffer);
 }
 
