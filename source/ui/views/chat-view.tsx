@@ -612,6 +612,22 @@ export default function ChatView({
 		}
 	});
 
+	// Handle message click from ScrollView's onChildClick
+	// Sets the selected message but stays out of selection mode so the user
+	// can immediately type commands like :reply, :react, :unsend, :download.
+	const handleMessageClick = useCallback(
+		(index: number) => {
+			if (chatState.messages.length > 0) {
+				setChatState(previous => ({
+					...previous,
+					isSelectionMode: false,
+					selectedMessageIndex: index,
+				}));
+			}
+		},
+		[chatState.messages.length],
+	);
+
 	const handleSearchChange = useCallback((value: string) => {
 		setSearchQuery(value);
 	}, []);
@@ -794,7 +810,9 @@ export default function ChatView({
 						ref={scrollViewRef}
 						height={messageAreaHeight}
 						initialScrollPosition="end"
+						mouseScrollLines={3}
 						width={width}
+						onChildClick={handleMessageClick}
 						onScrollToEnd={handleOnScrollToBottom}
 						onScrollToStart={handleOnScrollToTop}
 					>

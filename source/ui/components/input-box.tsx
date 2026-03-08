@@ -1,11 +1,13 @@
-import React, {useState, useEffect} from 'react';
-import {Box, useInput} from 'ink';
-import TextInput from 'ink-text-input';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
+import {Box, useInput, type DOMElement} from 'ink';
 import {
 	getFilePathSuggestions,
 	getCommandSuggestions,
 } from '../../utils/autocomplete.js';
+import {useMouse} from '../context/mouse-context.js';
+import {measureAbsoluteLayout} from '../hooks/use-content-size.js';
 import {AutocompleteView} from './autocomplete-view.js';
+import TextInput from './text-input.js';
 
 type InputBoxProperties = {
 	readonly onSend: (message: string) => void;
@@ -38,6 +40,15 @@ export default function InputBox({
 	const [autocomplete, setAutocomplete] = useState<AutocompleteState>(
 		initialAutocompleteState,
 	);
+
+	// Ref for measuring our own layout for mouse click-to-cursor
+	// eslint-disable-next-line @typescript-eslint/no-restricted-types
+	const boxRef = useRef<DOMElement | null>(null);
+
+	// Cursor offset state driven by mouse clicks
+	const [cursorOffset, setCursorOffset] = useState<
+		{offset: number; timestamp: number} | undefined
+	>(undefined);
 
 	// By changing the key, we force the TextInput to re-mount, which resets its internal state (including cursor position after autocomplete selection)
 	const [inputKey, setInputKey] = useState(0);
@@ -190,11 +201,40 @@ export default function InputBox({
 		}
 	});
 
+	// Handle mouse click-to-cursor internally
+	useMouse(
+		useCallback(
+			event => {
+				if (isDisabled) return false;
+				if (event.name !== 'left-press') return false;
+
+				const node = boxRef.current;
+				if (!node) return false;
+
+				const clickX = event.col - 1;
+				const clickY = event.row - 1;
+				const layout = measureAbsoluteLayout(node);
+
+				// The text line is 1 row below the box top (border row)
+				const inputTextY = layout.y + 1;
+				if (clickY !== inputTextY) return false;
+
+				// Text starts 2 columns in (border + padding)
+				const inputTextX = layout.x + 2;
+				const cursorPos = Math.max(0, clickX - inputTextX);
+				setCursorOffset({offset: cursorPos, timestamp: Date.now()});
+				return true;
+			},
+			[isDisabled],
+		),
+	);
+
 	return (
-		<Box flexDirection="column">
+		<Box ref={boxRef} flexDirection="column">
 			<Box borderStyle="round" paddingX={1}>
 				<TextInput
 					key={inputKey}
+					cursorOffset={cursorOffset}
 					showCursor={!isDisabled}
 					value={message}
 					placeholder={

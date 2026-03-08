@@ -7,6 +7,7 @@ import ChatView from '../ui/views/chat-view.js';
 import {ClientContext} from '../ui/context/client-context.js';
 import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 import AltScreen from '../ui/components/alt-screen.js';
+import {MouseProvider} from '../ui/context/mouse-context.js';
 
 export const args = zod.tuple([
 	zod
@@ -95,12 +96,14 @@ export default function Chat({args, options}: Properties) {
 
 	return (
 		<AltScreen>
-			<ClientContext.Provider value={client}>
-				<ChatView
-					initialSearchQuery={searchQuery}
-					initialSearchMode={searchMode}
-				/>
-			</ClientContext.Provider>
+			<MouseProvider>
+				<ClientContext.Provider value={client}>
+					<ChatView
+						initialSearchQuery={searchQuery}
+						initialSearchMode={searchMode}
+					/>
+				</ClientContext.Provider>
+			</MouseProvider>
 		</AltScreen>
 	);
 }

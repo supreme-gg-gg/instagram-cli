@@ -1,6 +1,11 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {Box, Text, useInput, measureElement, type DOMElement} from 'ink';
 import type {Thread} from '../../types/instagram.js';
+import {useMouse} from '../context/mouse-context.js';
+import {
+	findChildAtPosition,
+	measureAbsoluteLayout,
+} from '../hooks/use-content-size.js';
 import ThreadItem from './thread-item.js';
 
 type ThreadListProperties = {
@@ -69,6 +74,76 @@ export default function ThreadList({
 			onSelect(threads[selectedIndex]);
 		}
 	});
+
+	// Handle mouse events for the thread list
+	useMouse(
+		useCallback(
+			event => {
+				if (threads.length === 0) return false;
+
+				// Scroll wheel moves the selected index and scrolls the viewport
+				if (event.name === 'scroll-up') {
+					setSelectedIndex(previous => {
+						const newIndex = Math.max(previous - 1, 0);
+						setScrollOffset(prevOffset =>
+							newIndex < prevOffset ? prevOffset - 1 : prevOffset,
+						);
+						return newIndex;
+					});
+					return true;
+				}
+
+				if (event.name === 'scroll-down') {
+					setSelectedIndex(previous => {
+						const newIndex = Math.min(previous + 1, threads.length - 1);
+						setScrollOffset(prevOffset =>
+							newIndex >= prevOffset + viewportSize
+								? prevOffset + 1
+								: prevOffset,
+						);
+						// Trigger load more when reaching the bottom
+						if (newIndex === threads.length - 1 && onScrollToBottom) {
+							onScrollToBottom();
+						}
+
+						return newIndex;
+					});
+					return true;
+				}
+
+				// Click to select and open a thread
+				if (event.name === 'left-press') {
+					const containerNode = containerReference.current;
+					if (!containerNode) return false;
+
+					const clickX = event.col - 1;
+					const clickY = event.row - 1;
+
+					const containerLayout = measureAbsoluteLayout(containerNode);
+					const relativeX = clickX - containerLayout.x;
+					const relativeY = clickY - containerLayout.y;
+
+					const visibleIndex = findChildAtPosition(
+						containerNode,
+						relativeX,
+						relativeY,
+					);
+
+					if (visibleIndex >= 0) {
+						const absoluteIndex = scrollOffset + visibleIndex;
+						if (absoluteIndex < threads.length && threads[absoluteIndex]) {
+							setSelectedIndex(absoluteIndex);
+							onSelect(threads[absoluteIndex]);
+							return true;
+						}
+					}
+				}
+
+				return false;
+			},
+			[threads, viewportSize, scrollOffset, onScrollToBottom, onSelect],
+		),
+	);
 
 	if (threads.length === 0) {
 		return (

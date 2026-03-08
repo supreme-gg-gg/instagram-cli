@@ -8,6 +8,7 @@ import ChatView from '../ui/views/chat-view.js';
 import MediaView from '../ui/views/media-view.js';
 import StoryView from '../ui/views/story-view.js';
 import AltScreen from '../ui/components/alt-screen.js';
+import {MouseProvider} from '../ui/context/mouse-context.js';
 import {useStories} from '../ui/hooks/use-stories.js';
 import {useInstagramClient as useMockInstagramClient} from './use-instagram-client.mock.js';
 import {mockClient, mockFeed} from './index.js';
@@ -57,11 +58,13 @@ export function AppMock({view}: {readonly view: 'chat' | 'feed' | 'story'}) {
 
 	return (
 		<AltScreen>
-			<ClientContext.Provider value={mockClient}>
-				<Box flexDirection="column" width="100%" height="100%">
-					{renderView()}
-				</Box>
-			</ClientContext.Provider>
+			<MouseProvider>
+				<ClientContext.Provider value={mockClient}>
+					<Box flexDirection="column" width="100%" height="100%">
+						{renderView()}
+					</Box>
+				</ClientContext.Provider>
+			</MouseProvider>
 		</AltScreen>
 	);
 }

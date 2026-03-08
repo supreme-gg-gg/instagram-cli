@@ -43,10 +43,14 @@ export const measureContentSize = (node: DOMElement): ContentSize => {
 		}
 
 		// Get the child's position relative to its parent
-		const left = offsetX + childNode.yogaNode.getComputedLeft();
-		const top = offsetY + childNode.yogaNode.getComputedTop();
-		const width = childNode.yogaNode.getComputedWidth();
-		const height = childNode.yogaNode.getComputedHeight();
+		const {
+			left: childLeft,
+			top: childTop,
+			width,
+			height,
+		} = childNode.yogaNode.getComputedLayout();
+		const left = offsetX + childLeft;
+		const top = offsetY + childTop;
 
 		// Update max bounds
 		const right = left + width;
@@ -134,6 +138,91 @@ const useContentSize = (
 	}, [containerRef]);
 
 	return contentSize;
+};
+
+export type AbsoluteLayout = {
+	readonly x: number;
+	readonly y: number;
+	readonly width: number;
+	readonly height: number;
+};
+
+/**
+ * Calculates the absolute position (in SGR terminal coordinates, 0-based) and size of an Ink DOM element.
+ * It walks up the tree summing `getComputedLeft()` and `getComputedTop()` of Yoga nodes.
+ */
+export const measureAbsoluteLayout = (
+	node: DOMElement | undefined,
+): AbsoluteLayout => {
+	if (!node) {
+		return {x: 0, y: 0, width: 0, height: 0};
+	}
+
+	let x = 0;
+	let y = 0;
+	const width = node.yogaNode?.getComputedWidth() ?? 0;
+	const height = node.yogaNode?.getComputedHeight() ?? 0;
+
+	let currentNode: DOMElement | undefined = node;
+	while (currentNode?.yogaNode) {
+		x += currentNode.yogaNode.getComputedLeft();
+		y += currentNode.yogaNode.getComputedTop();
+		currentNode = currentNode.parentNode;
+	}
+
+	return {x, y, width, height};
+};
+
+/**
+ * Given a container node and a position relative to that container,
+ * returns the index of the child whose layout rect contains the point,
+ * or -1 if no child matches.
+ *
+ * Automatically descends through single-child wrapper nodes (adjusting
+ * coordinates for each level's offset and padding) until it reaches a
+ * node with multiple children, then checks which child contains the point.
+ * This means callers don't need to know about intermediate wrapper `<Box>` nodes.
+ */
+export const findChildAtPosition = (
+	node: DOMElement | undefined,
+	x: number,
+	y: number,
+): number => {
+	if (!node) return -1;
+
+	// Descend through single-child wrappers, adjusting coordinates
+	let current: DOMElement = node;
+	let adjustedX = x;
+	let adjustedY = y;
+
+	while (current.childNodes.length === 1) {
+		const only = current.childNodes[0] as DOMElement;
+		if (!only.yogaNode) break;
+		const layout = only.yogaNode.getComputedLayout();
+		adjustedX -= layout.left;
+		adjustedY -= layout.top;
+		current = only;
+	}
+
+	// Now check which direct child of `current` contains the point
+	const children = current.childNodes;
+	for (const [i, child_] of children.entries()) {
+		const child = child_ as DOMElement;
+		if (!child.yogaNode) continue;
+
+		const {left, top, width, height} = child.yogaNode.getComputedLayout();
+
+		if (
+			adjustedX >= left &&
+			adjustedX < left + width &&
+			adjustedY >= top &&
+			adjustedY < top + height
+		) {
+			return i;
+		}
+	}
+
+	return -1;
 };
 
 export default useContentSize;

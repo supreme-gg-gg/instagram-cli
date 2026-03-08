@@ -8,7 +8,11 @@ import React, {
 	useCallback,
 } from 'react';
 import {Box, type DOMElement} from 'ink';
-import useContentSize from '../hooks/use-content-size.js';
+import useContentSize, {
+	findChildAtPosition,
+	measureAbsoluteLayout,
+} from '../hooks/use-content-size.js';
+import {useMouse} from '../context/mouse-context.js';
 
 /**
  * Reference interface for programmatically controlling a ScrollView component.
@@ -50,6 +54,10 @@ type Props = {
 	readonly onScrollToStart?: () => void;
 	/** Callback that is triggered when the scroll view hits the bottom */
 	readonly onScrollToEnd?: () => void;
+	/** Lines to scroll per mouse wheel tick. Set to enable mouse wheel scrolling. */
+	readonly mouseScrollLines?: number;
+	/** Callback fired when a child element is clicked, with the child index. */
+	readonly onChildClick?: (index: number) => void;
 };
 
 /**
@@ -66,6 +74,8 @@ const ScrollView = forwardRef<ScrollViewRef | undefined, Props>(
 			initialScrollPosition = 'end',
 			onScrollToStart,
 			onScrollToEnd,
+			mouseScrollLines,
+			onChildClick,
 		}: Props,
 		ref: React.Ref<ScrollViewRef | undefined>,
 	) => {
@@ -183,6 +193,50 @@ const ScrollView = forwardRef<ScrollViewRef | undefined, Props>(
 			getScrollOffset,
 			getContentSize,
 		}));
+
+		// Handle mouse scroll and click events internally
+		useMouse(
+			useCallback(
+				event => {
+					if (mouseScrollLines !== undefined) {
+						if (event.name === 'scroll-up') {
+							scrollTo(curr => curr - mouseScrollLines);
+							return true;
+						}
+
+						if (event.name === 'scroll-down') {
+							scrollTo(curr => curr + mouseScrollLines);
+							return true;
+						}
+					}
+
+					if (onChildClick && event.name === 'left-press') {
+						const container = containerRef.current;
+						if (!container) return false;
+
+						const clickX = event.col - 1;
+						const clickY = event.row - 1;
+						const containerLayout = measureAbsoluteLayout(container);
+						const relativeX = clickX - containerLayout.x;
+						const relativeY = clickY - containerLayout.y;
+						const childIndex = findChildAtPosition(
+							container,
+							relativeX,
+							relativeY,
+						);
+
+						if (childIndex >= 0) {
+							onChildClick(childIndex);
+							return true;
+						}
+					}
+
+					return false;
+				},
+				[mouseScrollLines, onChildClick, scrollTo],
+			),
+			{isActive: mouseScrollLines !== undefined || onChildClick !== undefined},
+		);
 
 		// Set initial scroll position only once when component mounts
 		useEffect(() => {
