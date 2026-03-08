@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {Box, useInput} from 'ink';
+import {Box, useInput, useApp} from 'ink';
 import TextInput from 'ink-text-input';
 import {
 	getFilePathSuggestions,
@@ -34,6 +34,7 @@ export default function InputBox({
 	onSend,
 	isDisabled = false,
 }: InputBoxProperties) {
+	const {exit} = useApp();
 	const [message, setMessage] = useState('');
 	const [autocomplete, setAutocomplete] = useState<AutocompleteState>(
 		initialAutocompleteState,
@@ -143,6 +144,19 @@ export default function InputBox({
 	// This single useInput hook handles all key presses, creating a clear priority
 	useInput((_input, key) => {
 		if (isDisabled) {
+			return;
+		}
+
+		// Ctrl+C: clear the input if it has text, otherwise exit the app
+		if (key.ctrl && _input === 'c') {
+			if (message.length > 0) {
+				setMessage('');
+				setAutocomplete(initialAutocompleteState);
+				setInputKey(previous => previous + 1);
+			} else {
+				exit();
+			}
+
 			return;
 		}
 

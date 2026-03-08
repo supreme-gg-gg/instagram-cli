@@ -534,7 +534,12 @@ export default function ChatView({
 		}
 
 		if (key.ctrl && input === 'c') {
-			exit();
+			if (currentView === 'threads') {
+				exit();
+			}
+
+			// In 'chat' view the InputBox component handles Ctrl+C
+			// (clear text if non-empty, exit if empty).
 			return;
 		}
 
@@ -839,7 +844,7 @@ export default function ChatView({
 			return 'j/k: navigate messages, Enter: confirm, Esc: exit selection';
 		}
 
-		return 'Esc: back to threads, Ctrl+C: quit';
+		return 'Esc: back to threads, Ctrl+C: Clear input';
 	};
 
 	if (viewingPost) {
