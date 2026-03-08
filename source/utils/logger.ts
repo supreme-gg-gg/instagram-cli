@@ -17,6 +17,8 @@ type LogEntry = {
 };
 
 class Logger {
+	// eslint-disable-next-line @typescript-eslint/class-literal-property-style
+	private static readonly MAX_BUFFER_SIZE = 1000;
 	private logFilePath: string;
 	private logsDir: string;
 	private readonly sessionId: string;
@@ -70,24 +72,40 @@ class Logger {
 					: undefined;
 		const entry = this.createLogEntry('error', message, context, stack);
 		this.logBuffer.push(entry);
+		if (this.logBuffer.length > Logger.MAX_BUFFER_SIZE) {
+			this.logBuffer.shift();
+		}
+
 		void this.writeToFile(entry);
 	}
 
 	warn(message: string, context?: string): void {
 		const entry = this.createLogEntry('warn', message, context);
 		this.logBuffer.push(entry);
+		if (this.logBuffer.length > Logger.MAX_BUFFER_SIZE) {
+			this.logBuffer.shift();
+		}
+
 		void this.writeToFile(entry);
 	}
 
 	info(message: string, context?: string): void {
 		const entry = this.createLogEntry('info', message, context);
 		this.logBuffer.push(entry);
+		if (this.logBuffer.length > Logger.MAX_BUFFER_SIZE) {
+			this.logBuffer.shift();
+		}
+
 		void this.writeToFile(entry);
 	}
 
 	debug(message: string, context?: string): void {
 		const entry = this.createLogEntry('debug', message, context);
 		this.logBuffer.push(entry);
+		if (this.logBuffer.length > Logger.MAX_BUFFER_SIZE) {
+			this.logBuffer.shift();
+		}
+
 		void this.writeToFile(entry);
 	}
 

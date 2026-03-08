@@ -37,6 +37,7 @@ import {
 	parseMessageItem,
 	parseReactionEvent,
 	parseSeenEvent,
+	getBestMediaUrl,
 } from './utils/message-parser.js';
 import {createContextualLogger} from './utils/logger.js';
 
@@ -965,90 +966,9 @@ export class InstagramClient extends EventEmitter {
 		}
 
 		// Determine the best media URL based on media type
-		let mediaUrl: string | undefined;
-		let mediaType: 'image' | 'video' | undefined;
-
-		if (message.media.media_type === 2) {
-			// Video
-			mediaType = 'video';
-			if (
-				message.media.video_versions &&
-				message.media.video_versions.length > 0
-			) {
-				// Get the highest quality video
-				let highestQuality = message.media.video_versions[0];
-				for (const video of message.media.video_versions) {
-					if (
-						highestQuality &&
-						video.width * video.height >
-							highestQuality.width * highestQuality.height
-					) {
-						highestQuality = video;
-					}
-				}
-
-				mediaUrl = highestQuality?.url;
-			}
-		} else if (message.media.media_type === 1) {
-			// Image
-			mediaType = 'image';
-			if (
-				message.media.image_versions2 &&
-				message.media.image_versions2.candidates.length > 0
-			) {
-				// Get the highest quality image
-				let highestQuality = message.media.image_versions2.candidates[0];
-				for (const image of message.media.image_versions2.candidates) {
-					if (
-						highestQuality &&
-						image.width * image.height >
-							highestQuality.width * highestQuality.height
-					) {
-						highestQuality = image;
-					}
-				}
-
-				mediaUrl = highestQuality?.url;
-			}
-		}
-
-		// For other media types, try to find available media URLs
-		// This handles cases like carousels or other media types
-		if (
-			message.media.video_versions &&
-			message.media.video_versions.length > 0
-		) {
-			mediaType = 'video';
-			let highestQuality = message.media.video_versions[0];
-			for (const video of message.media.video_versions) {
-				if (
-					highestQuality &&
-					video.width * video.height >
-						highestQuality.width * highestQuality.height
-				) {
-					highestQuality = video;
-				}
-			}
-
-			mediaUrl = highestQuality?.url;
-		} else if (
-			message.media.image_versions2 &&
-			message.media.image_versions2.candidates.length > 0
-		) {
-			mediaType = 'image';
-			let highestQuality = message.media.image_versions2.candidates[0];
-			for (const image of message.media.image_versions2.candidates) {
-				if (
-					highestQuality &&
-					image.width * image.height >
-						highestQuality.width * highestQuality.height
-				) {
-					highestQuality = image;
-				}
-			}
-
-			mediaUrl = highestQuality?.url;
-		}
+		const result = getBestMediaUrl(message.media);
+		const mediaUrl = result?.url;
+		const mediaType = result?.type;
 
 		if (!mediaUrl) {
 			throw new Error('No media URL found in message');

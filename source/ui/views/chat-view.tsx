@@ -162,7 +162,16 @@ export default function ChatView({
 
 				if (lastMessage?.id) {
 					// Mark as read in local and remote states
-					thread.unread = false;
+					setChatState(previous => ({
+						...previous,
+						threads: previous.threads.map(t =>
+							t.id === threadId ? {...t, unread: false} : t,
+						),
+						currentThread:
+							previous.currentThread?.id === threadId
+								? {...previous.currentThread, unread: false}
+								: previous.currentThread,
+					}));
 					await client.markThreadAsSeen(threadId, lastMessage.id);
 				}
 			} catch (error) {
