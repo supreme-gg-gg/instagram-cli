@@ -81,6 +81,8 @@ const ScrollView = forwardRef<ScrollViewRef | undefined, Props>(
 	) => {
 		// eslint-disable-next-line @typescript-eslint/no-restricted-types
 		const containerRef = useRef<DOMElement | null>(null);
+		// eslint-disable-next-line @typescript-eslint/no-restricted-types
+		const viewportRef = useRef<DOMElement | null>(null);
 		const [offset, setOffset] = useState<number>(0);
 		const contentSize = useContentSize(containerRef);
 
@@ -181,6 +183,22 @@ const ScrollView = forwardRef<ScrollViewRef | undefined, Props>(
 		useMouse(
 			useCallback(
 				event => {
+					// Bounds check: ignore events outside the viewport
+					const viewport = viewportRef.current;
+					if (viewport) {
+						const vp = measureAbsoluteLayout(viewport);
+						const cx = event.col - 1;
+						const cy = event.row - 1;
+						if (
+							cx < vp.x ||
+							cx >= vp.x + vp.width ||
+							cy < vp.y ||
+							cy >= vp.y + vp.height
+						) {
+							return false;
+						}
+					}
+
 					if (mouseScrollLines !== undefined) {
 						if (event.name === 'scroll-up') {
 							scrollTo(curr => curr - mouseScrollLines);
@@ -241,6 +259,7 @@ const ScrollView = forwardRef<ScrollViewRef | undefined, Props>(
 
 		return (
 			<Box
+				ref={viewportRef}
 				flexDirection={scrollDirection === 'horizontal' ? 'row' : 'column'}
 				overflow="hidden"
 				width={width}

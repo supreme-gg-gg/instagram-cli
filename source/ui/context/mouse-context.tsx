@@ -43,12 +43,17 @@ export function useMouseContext(): MouseContextValue {
 /**
  * Subscribe to mouse events. The handler is called for every parsed mouse
  * event while `isActive` is true. Return `true` from the handler to indicate
- * the event was consumed (prevents propagation warning for drags).
+ * the event was consumed, which stops propagation to other handlers.
+ *
+ * Handlers are dispatched in reverse-subscription order: components that mount
+ * later (visually "on top") receive events first, matching the intuitive
+ * expectation that clicking an overlapping element doesn't trigger the one beneath.
  *
  * Usage:
  * ```tsx
  * useMouse(useCallback((event) => {
- *   if (event.name === 'scroll-up') { ... }
+ *   if (event.name === 'scroll-up') { ... return true; }
+ *   return false;
  * }, [deps]));
  * ```
  */
@@ -82,18 +87,24 @@ export function useMouse(
 export function MouseProvider({children}: {readonly children: ReactNode}) {
 	const {stdin} = useStdin();
 	const {stdout} = useStdout();
-	const subscribers = useRef<Set<MouseHandler>>(new Set()).current;
+	const subscribers = useRef<MouseHandler[]>([]).current;
 
 	const subscribe = useCallback(
 		(handler: MouseHandler) => {
-			subscribers.add(handler);
+			// Prepend: later-mounted components (visually "on top") get priority.
+			// React renders children top-to-bottom, so a component rendered after
+			// (below/on-top-of) another will subscribe later and land at index 0.
+			subscribers.unshift(handler);
 		},
 		[subscribers],
 	);
 
 	const unsubscribe = useCallback(
 		(handler: MouseHandler) => {
-			subscribers.delete(handler);
+			const index = subscribers.indexOf(handler);
+			if (index !== -1) {
+				subscribers.splice(index, 1);
+			}
 		},
 		[subscribers],
 	);
@@ -111,8 +122,10 @@ export function MouseProvider({children}: {readonly children: ReactNode}) {
 		let mouseBuffer = '';
 
 		const broadcast = (event: TerminalMouseEvent) => {
+			// Iterate in order (index 0 = most-recently-subscribed = topmost).
+			// Stop as soon as a handler returns true to indicate consumption.
 			for (const handler of subscribers) {
-				handler(event);
+				if (handler(event) === true) return;
 			}
 		};
 
