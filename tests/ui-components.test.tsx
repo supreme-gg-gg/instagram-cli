@@ -21,7 +21,7 @@ test('ThreadItem renders thread title and unread indicator', t => {
 	t.truthy(output?.includes('●'), 'Should display unread indicator');
 });
 
-test('ThreadItem renders selected state', t => {
+test("Read ThreadItem doesn't display unread indicator", t => {
 	const readThread = mockThreads.find(th => !th.unread)!;
 
 	const {lastFrame} = render(<ThreadItem isSelected thread={readThread} />);
@@ -32,6 +32,16 @@ test('ThreadItem renders selected state', t => {
 		output?.includes('●'),
 		'Should not display unread indicator for read thread',
 	);
+});
+
+test('ThreadItem renders selected state', t => {
+	const thread = mockThreads[0]!;
+
+	const {lastFrame} = render(<ThreadItem isSelected thread={thread} />);
+	const output = lastFrame();
+
+	// Selected threads have rounded corners in the Box component
+	t.truthy(output?.includes('\u2500'), 'Should display selected state');
 });
 
 test('MessageList renders messages', t => {
