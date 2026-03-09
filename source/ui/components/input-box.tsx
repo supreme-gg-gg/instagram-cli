@@ -31,14 +31,10 @@ export function clickToCharOffset(
 	for (const char of text) {
 		const w = stringWidth(char);
 
-		// Midpoint rule: clicking the left half of a wide char places the cursor
-		// before it; clicking the right half advances the cursor past it.
-		// For single-width chars (w=1) the threshold is 1, so any click at the
-		// char's column selects "before" (the normal insertion point before it).
-		if (
-			currentLine === lineIndex &&
-			colInLine < currentCol + Math.ceil(w / 2)
-		) {
+		// Clicking any cell within a character places the cursor at that character.
+		// Zero-width characters (w=0) are never visually present, so the condition
+		// `colInLine < currentCol + 0` is always false and they are skipped.
+		if (currentLine === lineIndex && colInLine < currentCol + w) {
 			return charIndex;
 		}
 

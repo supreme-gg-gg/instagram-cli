@@ -61,20 +61,19 @@ test('clickToCharOffset: ASCII single line', (t: ExecutionContext) => {
 
 test('clickToCharOffset: wide emoji (width 2)', (t: ExecutionContext) => {
 	// "😀ab" — emoji spans visual cols 0-1, 'a' at col 2, 'b' at col 3.
-	// Midpoint rule: left cell (col 0) → cursor before emoji (index 0);
-	//                right cell (col 1) → cursor after emoji (index 1, at 'a').
+	// Clicking any cell occupied by the emoji places the cursor at the emoji.
 	t.is(clickToCharOffset('\u{1F600}ab', 96, 0, 0), 0); // left cell of emoji → at emoji
-	t.is(clickToCharOffset('\u{1F600}ab', 96, 0, 1), 1); // right cell of emoji → after emoji (at 'a')
+	t.is(clickToCharOffset('\u{1F600}ab', 96, 0, 1), 0); // right cell of emoji → still at emoji
 	t.is(clickToCharOffset('\u{1F600}ab', 96, 0, 2), 1); // 'a'
 	t.is(clickToCharOffset('\u{1F600}ab', 96, 0, 3), 2); // 'b'
 });
 
 test('clickToCharOffset: CJK wide character (width 2)', (t: ExecutionContext) => {
-	// "你好" — each char is width-2; midpoint rule applies the same way.
+	// "你好" — each char is width-2; clicking either cell places cursor at that char.
 	t.is(clickToCharOffset('\u{4F60}\u{597D}', 96, 0, 0), 0); // left cell of '你' → at '你'
-	t.is(clickToCharOffset('\u{4F60}\u{597D}', 96, 0, 1), 1); // right cell of '你' → after '你' (at '好')
+	t.is(clickToCharOffset('\u{4F60}\u{597D}', 96, 0, 1), 0); // right cell of '你' → still at '你'
 	t.is(clickToCharOffset('\u{4F60}\u{597D}', 96, 0, 2), 1); // left cell of '好' → at '好'
-	t.is(clickToCharOffset('\u{4F60}\u{597D}', 96, 0, 3), 2); // right cell of '好' → after '好' (end)
+	t.is(clickToCharOffset('\u{4F60}\u{597D}', 96, 0, 3), 1); // right cell of '好' → still at '好'
 });
 
 test('clickToCharOffset: multi-line ASCII wrapping', (t: ExecutionContext) => {
@@ -150,7 +149,7 @@ test('mouse click on left cell of emoji places cursor at emoji', async (t: Execu
 	);
 });
 
-test('mouse click on right cell of emoji places cursor after emoji', async (t: ExecutionContext) => {
+test('mouse click on right cell of emoji places cursor at emoji', async (t: ExecutionContext) => {
 	const {lastFrame, stdin} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
@@ -160,15 +159,15 @@ test('mouse click on right cell of emoji places cursor after emoji', async (t: E
 	stdin.write('\u{1F600}abc');
 	await delay(100);
 
-	// Emoji spans visual cols 0-1. Clicking col 1 (right cell, midpoint rule)
-	// advances cursor past the emoji → cursor at 'a' (index 1).
+	// Emoji spans visual cols 0-1. Clicking col 1 (right cell) still places
+	// the cursor at the emoji (index 0) — not after it.
 	stdin.write(clickAt(0, 1));
 	await delay(100);
 
 	const frame = lastFrame()!;
 	t.true(
-		frame.includes('\u001B[7ma\u001B[27m'),
-		`Expected cursor on "a" (after emoji) but got: ${JSON.stringify(frame)}`,
+		frame.includes(`\u001B[7m\u{1F600}\u001B[27m`),
+		`Expected cursor on emoji but got: ${JSON.stringify(frame)}`,
 	);
 });
 
