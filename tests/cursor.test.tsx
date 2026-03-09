@@ -135,6 +135,14 @@ test('clickToCharOffset: complex mixed string', (t: ExecutionContext) => {
 	t.is(clickToCharOffset(string, 4, 2, 1), 6); // end
 });
 
+test('clickToCharOffset: multiline string with explicit newlines', (t: ExecutionContext) => {
+	// "a\nb\nc" with lineWidth=1: line 0 = "a", line 1 = "b", line 2 = "c"
+	const string = 'a\nb\nc';
+	t.is(clickToCharOffset(string, 10, 0, 0), 0); // 'a'
+	t.is(clickToCharOffset(string, 10, 1, 0), 2); // 'b'
+	t.is(clickToCharOffset(string, 10, 2, 0), 4); // 'c'
+});
+
 // ── Integration tests: mouse click → cursor highlight in rendered frame ──────
 
 test('mouse click places cursor on correct ASCII character', async (t: ExecutionContext) => {
@@ -263,4 +271,39 @@ test('mouse click above text area is ignored', async (t: ExecutionContext) => {
 
 	// Frame should be unchanged — cursor still at end
 	t.is(lastFrame(), frameBefore);
+});
+
+test('mouse click places cursor on correct character in multiline string', async (t: ExecutionContext) => {
+	const {lastFrame, stdin} = render(
+		<MouseProvider>
+			<InputBox onSend={() => {}} />
+		</MouseProvider>,
+	);
+
+	stdin.write('hello');
+	await delay(100);
+	stdin.write('\n'); // '\r' submitted the message, so we use '\n' to insert a newline without submitting
+	await delay(100);
+	stdin.write('world');
+	await delay(100);
+
+	// Click on 'l' (index 2, visual col 2)
+	stdin.write(clickAt(0, 2));
+	await delay(100);
+
+	const frame = lastFrame()!;
+	// Cursor is rendered as chalk.inverse(char) = ESC[7m{char}ESC[27m
+	t.true(
+		frame.includes('he\u001B[7ml\u001B[27mlo'),
+		`Expected cursor on "he[l]lo" but got: ${JSON.stringify(frame)}`,
+	);
+
+	stdin.write(clickAt(1, 2)); // Click on 'r' in "world"
+	await delay(100);
+	const frameAfterSecondClick = lastFrame()!;
+
+	t.true(
+		frameAfterSecondClick.includes('wo\u001B[7mr\u001B[27mld'),
+		`Expected cursor on "wo[r]ld" but got: ${JSON.stringify(frameAfterSecondClick)}`,
+	);
 });

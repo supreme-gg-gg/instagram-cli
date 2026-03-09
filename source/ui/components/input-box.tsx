@@ -41,6 +41,16 @@ export function clickToCharOffset(
 	let currentCol = 0;
 
 	for (const [index, char] of chars.entries()) {
+		if (char === '\n') {
+			if (currentLine === safeLineIndex) {
+				return index;
+			}
+
+			currentLine++;
+			currentCol = 0;
+			continue;
+		}
+
 		const width = stringWidth(char);
 
 		// Hard-wrap moves wide characters to the next line if they do not fit.
