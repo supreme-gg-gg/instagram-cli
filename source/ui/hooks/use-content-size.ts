@@ -1,5 +1,5 @@
-import {useState, useEffect, useCallback} from 'react';
-import {type DOMElement, useStdout} from 'ink';
+import {useState, useEffect} from 'react';
+import {type DOMElement} from 'ink';
 
 /**
  * Represents the total dimensions of content within a container,
@@ -86,12 +86,9 @@ export const measureContentSize = (node: DOMElement): ContentSize => {
 };
 
 /**
- * Hook that measures the total content size of a DOM element.
- *
- * Instead of polling at 60fps, this hook re-measures on every React render
- * (via a dependency-free useEffect) and on terminal resize events.
- * React renders are triggered by state/prop changes in the subtree, which
- * is when content size would actually change.
+ * Hook that measures the content size of a DOM element.
+ * It proactively polls for size changes to detect deep updates in the
+ * component tree that don't trigger a re-render on the container.
  *
  * @param containerRef - Reference to the container DOM element
  * @returns The current content size {width, height}
@@ -104,39 +101,41 @@ const useContentSize = (
 		width: 0,
 		height: 0,
 	});
-	const {stdout} = useStdout();
 
-	const updateSize = useCallback(() => {
-		if (!containerRef.current) {
-			return;
-		}
-
-		const newSize = measureContentSize(containerRef.current);
-
-		setContentSize(currentSize => {
-			if (
-				newSize.width !== currentSize.width ||
-				newSize.height !== currentSize.height
-			) {
-				return newSize;
+	/**
+	 * Set up polling to detect content size changes.
+	 * This is necessary because changes deep in the children tree don't cause
+	 * the parent component to re-render, so measurement needs to be proactive.
+	 */
+	useEffect(() => {
+		const intervalId = setInterval(() => {
+			// Do nothing if the container isn't mounted yet
+			if (!containerRef.current) {
+				return;
 			}
 
-			return currentSize;
-		});
-	}, [containerRef]);
+			const newSize = measureContentSize(containerRef.current);
 
-	// Re-measure after every render
-	useEffect(updateSize);
+			// Use functional update to ensure we compare against the latest state
+			setContentSize(currentSize => {
+				if (
+					newSize.width !== currentSize.width ||
+					newSize.height !== currentSize.height
+				) {
+					// Size has changed, trigger a re-render
+					return newSize;
+				}
 
-	// Terminal resize events don't flow through React's render cycle.
-	// Ink recalculates Yoga layout in its own resize handler, so by the
-	// time this callback fires the computed layout is already up-to-date.
-	useEffect(() => {
-		stdout.on('resize', updateSize);
+				// Size is the same, React will bail out of the update
+				return currentSize;
+			});
+		}, 1000 / 60); // Poll at ~60fps to match Ink's typical frame rate
+
+		// Cleanup interval on unmount or ref change
 		return () => {
-			stdout.off('resize', updateSize);
+			clearInterval(intervalId);
 		};
-	}, [stdout, updateSize]);
+	}, [containerRef]);
 
 	return contentSize;
 };
