@@ -81,7 +81,7 @@ The message list uses a `ScrollView` component that provides smooth, viewport-re
   - Automatically scrolls to bottom when entering a chat or sending a message
   - Infinite scroll: Loading older messages when scrolling to the top
 - **Content Rendering**: All messages are rendered; `ScrollView` handles viewport clipping
-- **Mouse Support**: Planned for future implementation to enable scroll wheel navigation
+- **Mouse Support**: Scroll wheel navigation and click-to-select for messages and threads (see `docs/mouse-support-design.md`)
 
 **Technical Implementation:**
 
@@ -198,6 +198,7 @@ interface ChatUIState {
   - `scrollToEnd()`: Jump to end
 - Automatically measures content size using `useContentSize` hook
 - Triggers callbacks when reaching boundaries (`onScrollToStart`, `onScrollToEnd`)
+- Handles mouse scroll wheel and child click detection internally via `mouseScrollLines` and `onChildClick` props
 
 #### InputBox
 
@@ -205,6 +206,7 @@ interface ChatUIState {
 - Clears input after submission
 - Passes navigation events to parent when not typing
 - Manages typing state to prevent navigation conflicts
+- Handles mouse click-to-cursor positioning internally (see `docs/mouse-support-design.md`)
 
 ### Navigation Flow
 
@@ -277,5 +279,4 @@ render thread list
 
 ## Future Enhancements
 
-- **Mouse Support**: Enable scroll wheel navigation for message history
 - **Bounds Checking**: Prevent navigation beyond available messages

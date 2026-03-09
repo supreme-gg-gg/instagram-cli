@@ -32,6 +32,10 @@ const xoConfig: FlatXoConfig = {
 		'no-console': 'warn',
 		'promise/prefer-await-to-then': 'off',
 		'react/jsx-no-leaked-render': 'off',
+		'react/boolean-prop-naming': 'off',
+		'react-hooks/exhaustive-deps': 'warn',
+		complexity: 'warn',
+		'no-bitwise': 'off',
 		'@typescript-eslint/switch-exhaustiveness-check': [
 			'error',
 			{considerDefaultExhaustiveForUnions: true},

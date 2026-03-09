@@ -45,6 +45,14 @@ npm run start -- auth login # = instagram-cli auth login
 npm run start -- chat --username some_username # = instagram-cli chat --username some_username
 ```
 
+### Error Logs
+
+If Ink/React errors go to stderr rather than our logger, it will not be visible. Instead, run the CLI with this command and stream the logs to a file:
+
+```bash
+npm run start chat 2> error.log
+```
+
 ### Using mocks
 
 To avoid exhausting Instagram's API calls during development, you can use the mock system to test your UI changes. This would not work if you are changing API-related code, but for pure UI changes this is very useful.

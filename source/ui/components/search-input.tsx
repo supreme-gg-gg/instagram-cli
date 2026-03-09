@@ -1,6 +1,6 @@
 import React from 'react';
 import {Box, Text, useInput} from 'ink';
-import TextInput from 'ink-text-input';
+import TextInput from './text-input.js';
 
 type SearchMode = 'username' | 'title';
 
