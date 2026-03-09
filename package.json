@@ -67,6 +67,7 @@
 		"react": "^19.2.0",
 		"read-package-up": "^12.0.0",
 		"sharp": "^0.34.4",
+		"string-width": "^5.1.2",
 		"unicode-emoji-json": "^0.8.0",
 		"zod": "^4.1.0"
 	},
