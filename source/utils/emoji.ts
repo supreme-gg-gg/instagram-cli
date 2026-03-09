@@ -25,6 +25,16 @@ const emojiEntries: EmojiEntry[] = [
 	...emojiNamesEntries,
 ];
 
+const fuseExact = new Fuse(emojiEntries, {
+	keys: ['name'],
+	threshold: 0,
+});
+
+const fuseDefault = new Fuse(emojiEntries, {
+	keys: ['name'],
+	threshold: 0.3,
+});
+
 type Options = {
 	exact?: boolean;
 	threshold?: number;
@@ -40,10 +50,14 @@ export function getEmojiByName(
 	options: Options = defaultOptions,
 ): string | undefined {
 	const {exact = false, threshold = 0.3} = options;
-	const fuse = new Fuse(emojiEntries, {
-		keys: ['name'],
-		threshold: exact ? 0 : threshold,
-	});
+	const fuse = exact
+		? fuseExact
+		: threshold === 0.3
+			? fuseDefault
+			: new Fuse(emojiEntries, {
+					keys: ['name'],
+					threshold,
+				});
 
 	const result = fuse.search(name);
 	if (!result || result.length === 0 || !result[0]?.item) {

@@ -7,6 +7,7 @@ import type {
 	ReactionEvent,
 	RepliedToMessage,
 	SeenEvent,
+	MessageMedia,
 } from '../types/instagram.js';
 
 /**
@@ -550,4 +551,36 @@ export function parseSeenEvent(
 	} catch {
 		return undefined;
 	}
+}
+
+/**
+ * Finds the highest-quality media URL from a MessageMedia object.
+ * Prefers video_versions when available, then falls back to image_versions2.
+ */
+export function getBestMediaUrl(
+	media: MessageMedia,
+): {url: string; type: 'image' | 'video'} | undefined {
+	if (media.video_versions && media.video_versions.length > 0) {
+		let best = media.video_versions[0]!;
+		for (const v of media.video_versions) {
+			if (v.width * v.height > best.width * best.height) {
+				best = v;
+			}
+		}
+
+		return {url: best.url, type: 'video'};
+	}
+
+	if (media.image_versions2 && media.image_versions2.candidates.length > 0) {
+		let best = media.image_versions2.candidates[0]!;
+		for (const img of media.image_versions2.candidates) {
+			if (img.width * img.height > best.width * best.height) {
+				best = img;
+			}
+		}
+
+		return {url: best.url, type: 'image'};
+	}
+
+	return undefined;
 }

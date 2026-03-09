@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import {ConfigManager} from './config.js';
 import {createContextualLogger} from './utils/logger.js';
@@ -39,7 +39,7 @@ export class SessionManager {
 		try {
 			// Remove constants to always use the latest version
 			const {constants, ...stateToSave} = serializedState;
-			fs.writeFileSync(
+			await fs.writeFile(
 				sessionPath,
 				JSON.stringify(stateToSave, null, 2),
 				'utf8',
@@ -56,7 +56,7 @@ export class SessionManager {
 		try {
 			let sessionExists;
 			try {
-				fs.accessSync(sessionPath);
+				await fs.access(sessionPath);
 				sessionExists = true;
 			} catch {
 				sessionExists = false;
@@ -66,7 +66,7 @@ export class SessionManager {
 				return undefined;
 			}
 
-			const sessionData = fs.readFileSync(sessionPath, 'utf8');
+			const sessionData = await fs.readFile(sessionPath, 'utf8');
 			return JSON.parse(sessionData) as SerializedState;
 		} catch (error) {
 			this.logger.error('Error loading session:', error);
@@ -78,7 +78,7 @@ export class SessionManager {
 		const sessionPath = this.getSessionPath();
 
 		try {
-			fs.unlinkSync(sessionPath);
+			await fs.unlink(sessionPath);
 		} catch (error) {
 			// Session file doesn't exist, which is fine
 			if ((error as any).code !== 'ENOENT') {
@@ -91,7 +91,7 @@ export class SessionManager {
 	public async sessionExists(): Promise<boolean> {
 		const sessionPath = this.getSessionPath();
 		try {
-			fs.accessSync(sessionPath);
+			await fs.access(sessionPath);
 			return true;
 		} catch {
 			return false;
@@ -128,7 +128,7 @@ export class SessionManager {
 
 		const usersDirectory = this.configManager.get('advanced.usersDir');
 		const sessionDirectory = path.join(usersDirectory, this.username);
-		fs.mkdirSync(sessionDirectory, {recursive: true});
+		await fs.mkdir(sessionDirectory, {recursive: true});
 		return sessionDirectory;
 	}
 }
