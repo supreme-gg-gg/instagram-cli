@@ -1,5 +1,7 @@
 import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {Box, useInput, type DOMElement, useApp} from 'ink';
+import stringWidth from 'string-width';
+import wrapAnsi from 'wrap-ansi';
 import {
 	getFilePathSuggestions,
 	getCommandSuggestions,
@@ -8,6 +10,81 @@ import {useMouse} from '../context/mouse-context.js';
 import {measureAbsoluteLayout} from '../hooks/use-content-size.js';
 import {AutocompleteView} from './autocomplete-view.js';
 import TextInput from './text-input.js';
+
+/**
+ * Convert a click position (line index + column within that line) into a
+ * character (code-point) index in `text`.
+ *
+ * Uses the same wrapping strategy as Ink (`wrap-ansi` with hard wrapping)
+ * so cursor placement matches visual line breaks for unicode text.
+ */
+export function clickToCharOffset(
+	text: string,
+	lineWidth: number,
+	lineIndex: number,
+	colInLine: number,
+): number {
+	const safeWidth = Math.max(1, lineWidth);
+	const safeLineIndex = Math.max(0, lineIndex);
+	const safeColInLine = Math.max(0, colInLine);
+	const chars = [...text];
+	const wrappedLines = wrapAnsi(text, safeWidth, {
+		trim: false,
+		hard: true,
+	}).split('\n');
+
+	if (safeLineIndex >= wrappedLines.length) {
+		return chars.length;
+	}
+
+	let currentLine = 0;
+	let currentCol = 0;
+
+	for (const [index, char] of chars.entries()) {
+		if (char === '\n') {
+			if (currentLine === safeLineIndex) {
+				return index;
+			}
+
+			currentLine++;
+			currentCol = 0;
+			continue;
+		}
+
+		const width = stringWidth(char);
+
+		// Hard-wrap moves wide characters to the next line if they do not fit.
+		if (width > 0 && currentCol > 0 && currentCol + width > safeWidth) {
+			if (currentLine === safeLineIndex) {
+				return index;
+			}
+
+			currentLine++;
+			currentCol = 0;
+		}
+
+		if (
+			currentLine === safeLineIndex &&
+			width > 0 &&
+			safeColInLine < currentCol + width
+		) {
+			return index;
+		}
+
+		currentCol += width;
+
+		if (currentCol >= safeWidth) {
+			if (currentLine === safeLineIndex) {
+				return index + 1;
+			}
+
+			currentLine++;
+			currentCol = 0;
+		}
+	}
+
+	return chars.length;
+}
 
 type InputBoxProperties = {
 	readonly onSend: (message: string) => void;
@@ -45,6 +122,11 @@ export default function InputBox({
 	// Ref for measuring our own layout for mouse click-to-cursor
 	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	const boxRef = useRef<DOMElement | null>(null);
+
+	// Keep a ref to the current message so the memoized mouse handler always
+	// sees the latest value without being recreated on every keystroke.
+	const messageRef = useRef(message);
+	messageRef.current = message;
 
 	// Cursor offset state driven by mouse clicks
 	const [cursorOffset, setCursorOffset] = useState<
@@ -229,13 +311,24 @@ export default function InputBox({
 				const clickY = event.row - 1;
 				const layout = measureAbsoluteLayout(node);
 
-				// The text line is 1 row below the box top (border row)
+				// Text rows start 1 row below the box top (border row) and end
+				// 1 row above the box bottom (border row).
 				const inputTextY = layout.y + 1;
-				if (clickY !== inputTextY) return false;
+				const inputTextYMax = layout.y + layout.height - 2;
+				if (clickY < inputTextY || clickY > inputTextYMax) return false;
 
-				// Text starts 2 columns in (border + padding)
+				// Text starts 2 columns in (border + padding).
 				const inputTextX = layout.x + 2;
-				const cursorPos = Math.max(0, clickX - inputTextX);
+				// Inner text area width: full box width minus 2 borders and 2 padding.
+				const lineWidth = Math.max(1, layout.width - 4);
+				const lineIndex = clickY - inputTextY;
+				const colInLine = Math.max(0, clickX - inputTextX);
+				const cursorPos = clickToCharOffset(
+					messageRef.current,
+					lineWidth,
+					lineIndex,
+					colInLine,
+				);
 				setCursorOffset({offset: cursorPos, timestamp: Date.now()});
 				return true;
 			},
