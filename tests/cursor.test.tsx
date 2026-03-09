@@ -9,6 +9,7 @@ import InputBox, {
 	clickToCharOffset,
 } from '../source/ui/components/input-box.js';
 import {MouseProvider} from '../source/ui/context/mouse-context.js';
+import {ESC} from '../source/utils/mouse.js';
 
 // Force chalk to emit ANSI color codes so the cursor highlight is visible in
 // the captured frame output. This must be set before any rendering occurs.
@@ -24,10 +25,9 @@ const delay = async (ms: number): Promise<void> => {
 
 /**
  * Build an SGR mouse left-press sequence (1-indexed col/row).
- * Uses Unicode escapes to satisfy the linter's unicorn/no-hex-escape rule.
  */
 function sgrLeftPress(col: number, row: number): string {
-	return `\u001B[<0;${col};${row}M`;
+	return `${ESC}[<0;${col};${row}M`;
 }
 
 // In the test environment the outer box fills the full 100-column viewport:
@@ -56,24 +56,36 @@ test('clickToCharOffset: ASCII single line', (t: ExecutionContext) => {
 	t.is(clickToCharOffset('hello', 96, 0, 0), 0);
 	t.is(clickToCharOffset('hello', 96, 0, 2), 2);
 	t.is(clickToCharOffset('hello', 96, 0, 4), 4);
+	t.is(clickToCharOffset('hello', 96, 0, 5), 5);
 	t.is(clickToCharOffset('hello', 96, 0, 99), 5); // past end → clamp to end
 });
 
 test('clickToCharOffset: wide emoji (width 2)', (t: ExecutionContext) => {
 	// "😀ab" — emoji spans visual cols 0-1, 'a' at col 2, 'b' at col 3.
 	// Clicking any cell occupied by the emoji places the cursor at the emoji.
-	t.is(clickToCharOffset('\u{1F600}ab', 96, 0, 0), 0); // left cell of emoji → at emoji
-	t.is(clickToCharOffset('\u{1F600}ab', 96, 0, 1), 0); // right cell of emoji → still at emoji
-	t.is(clickToCharOffset('\u{1F600}ab', 96, 0, 2), 1); // 'a'
-	t.is(clickToCharOffset('\u{1F600}ab', 96, 0, 3), 2); // 'b'
+	const string = '😀ab';
+	t.is(clickToCharOffset(string, 96, 0, 0), 0); // left cell of emoji → at emoji
+	t.is(clickToCharOffset(string, 96, 0, 1), 0); // right cell of emoji → still at emoji
+	t.is(clickToCharOffset(string, 96, 0, 2), 1); // 'a'
+	t.is(clickToCharOffset(string, 96, 0, 3), 2); // 'b'
 });
 
 test('clickToCharOffset: CJK wide character (width 2)', (t: ExecutionContext) => {
 	// "你好" — each char is width-2; clicking either cell places cursor at that char.
-	t.is(clickToCharOffset('\u{4F60}\u{597D}', 96, 0, 0), 0); // left cell of '你' → at '你'
-	t.is(clickToCharOffset('\u{4F60}\u{597D}', 96, 0, 1), 0); // right cell of '你' → still at '你'
-	t.is(clickToCharOffset('\u{4F60}\u{597D}', 96, 0, 2), 1); // left cell of '好' → at '好'
-	t.is(clickToCharOffset('\u{4F60}\u{597D}', 96, 0, 3), 1); // right cell of '好' → still at '好'
+	const string = '你好';
+	t.is(clickToCharOffset(string, 96, 0, 0), 0); // left cell of '你' → at '你'
+	t.is(clickToCharOffset(string, 96, 0, 1), 0); // right cell of '你' → still at '你'
+	t.is(clickToCharOffset(string, 96, 0, 2), 1); // left cell of '好' → at '好'
+	t.is(clickToCharOffset(string, 96, 0, 3), 1); // right cell of '好' → still at '好'
+	t.is(clickToCharOffset(string, 96, 0, 4), 2);
+});
+
+test('clickToCharOffset: zero-width characters', (t: ExecutionContext) => {
+	// zero-width char \u200B between 'a' and 'b'
+	const string = 'a\u200Bb';
+	t.is(clickToCharOffset(string, 96, 0, 0), 0); // 'a'
+	t.is(clickToCharOffset(string, 96, 0, 1), 2); // 'b', zero-width char is skipped
+	t.is(clickToCharOffset(string, 96, 0, 2), 3);
 });
 
 test('clickToCharOffset: multi-line ASCII wrapping', (t: ExecutionContext) => {
@@ -82,6 +94,45 @@ test('clickToCharOffset: multi-line ASCII wrapping', (t: ExecutionContext) => {
 	t.is(clickToCharOffset('abcde', 3, 0, 2), 2); // 'c'
 	t.is(clickToCharOffset('abcde', 3, 1, 0), 3); // 'd' — first char on line 1
 	t.is(clickToCharOffset('abcde', 3, 1, 1), 4); // 'e'
+	t.is(clickToCharOffset('abcde', 3, 1, 2), 5);
+});
+
+test('clickToCharOffset: multi-line with wide emoji', (t: ExecutionContext) => {
+	// "😀ab" with lineWidth=2: line 0 = "😀", line 1 = "ab"
+	const string = '😀ab';
+	t.is(clickToCharOffset(string, 2, 0, 0), 0); // '😀'
+	t.is(clickToCharOffset(string, 2, 1, 0), 1); // 'a'
+	t.is(clickToCharOffset(string, 2, 1, 1), 2); // 'b'
+
+	const string2 = 'a😀b';
+	t.is(clickToCharOffset(string2, 2, 0, 0), 0); // 'a'
+	t.is(clickToCharOffset(string2, 2, 0, 1), 1); // '😀'(wrapped to next line)
+	t.is(clickToCharOffset(string2, 2, 1, 0), 1); // '😀'
+	t.is(clickToCharOffset(string2, 2, 1, 1), 1); // '😀'
+	t.is(clickToCharOffset(string2, 2, 2, 0), 2); // 'b'
+});
+
+test('clipkToCharOffset: multi-line with zero-width char', (t: ExecutionContext) => {
+	// "a\u200Bb" with lineWidth=2: line 0 = "a\u200B", line 1 = "b"
+	const string = 'a\u200Bb';
+	t.is(clickToCharOffset(string, 2, 0, 0), 0); // 'a'
+	t.is(clickToCharOffset(string, 2, 0, 1), 2); // zero-width char is skipped → 'b'
+});
+
+test('clickToCharOffset: complex mixed string', (t: ExecutionContext) => {
+	// "a😀\u200B你好b" with lineWidth=4:
+	// line 0 = "a😀\u200B", line 1 = "你好", line 3 = "b"
+	const string = 'a😀\u200B你好b';
+	t.is(clickToCharOffset(string, 4, 0, 0), 0); // 'a'
+	t.is(clickToCharOffset(string, 4, 0, 1), 1); // '😀'
+	t.is(clickToCharOffset(string, 4, 0, 2), 1); // still '😀'
+	t.is(clickToCharOffset(string, 4, 0, 3), 3); // zero-width char is skipped → '你'
+	t.is(clickToCharOffset(string, 4, 1, 0), 3); // '你'
+	t.is(clickToCharOffset(string, 4, 1, 1), 3); // still '你'
+	t.is(clickToCharOffset(string, 4, 1, 2), 4); // '好'
+	t.is(clickToCharOffset(string, 4, 1, 3), 4); // still '好'
+	t.is(clickToCharOffset(string, 4, 2, 0), 5); // 'b'
+	t.is(clickToCharOffset(string, 4, 2, 1), 6); // end
 });
 
 // ── Integration tests: mouse click → cursor highlight in rendered frame ──────
@@ -103,8 +154,8 @@ test('mouse click places cursor on correct ASCII character', async (t: Execution
 	const frame = lastFrame()!;
 	// Cursor is rendered as chalk.inverse(char) = ESC[7m{char}ESC[27m
 	t.true(
-		frame.includes('\u001B[7ml\u001B[27m'),
-		`Expected cursor on "l" but got: ${JSON.stringify(frame)}`,
+		frame.includes('he\u001B[7ml\u001B[27mlo'),
+		`Expected cursor on "he[l]lo" but got: ${JSON.stringify(frame)}`,
 	);
 });
 

@@ -1,6 +1,7 @@
 import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {Box, useInput, type DOMElement, useApp} from 'ink';
 import stringWidth from 'string-width';
+import wrapAnsi from 'wrap-ansi';
 import {
 	getFilePathSuggestions,
 	getCommandSuggestions,
@@ -14,9 +15,8 @@ import TextInput from './text-input.js';
  * Convert a click position (line index + column within that line) into a
  * character (code-point) index in `text`.
  *
- * Replicates Ink's hard-wrap algorithm (using string-width for character
- * widths) so that unicode characters occupying 0 or 2 terminal cells are
- * handled correctly.
+ * Uses the same wrapping strategy as Ink (`wrap-ansi` with hard wrapping)
+ * so cursor placement matches visual line breaks for unicode text.
  */
 export function clickToCharOffset(
 	text: string,
@@ -24,29 +24,48 @@ export function clickToCharOffset(
 	lineIndex: number,
 	colInLine: number,
 ): number {
+	const safeWidth = Math.max(1, lineWidth);
+	const safeLineIndex = Math.max(0, lineIndex);
+	const safeColInLine = Math.max(0, colInLine);
+	const chars = [...text];
+	const wrappedLines = wrapAnsi(text, safeWidth, {
+		trim: false,
+		hard: true,
+	}).split('\n');
+
+	if (safeLineIndex >= wrappedLines.length) {
+		return chars.length;
+	}
+
 	let currentLine = 0;
 	let currentCol = 0;
-	let charIndex = 0;
 
-	for (const char of text) {
-		const w = stringWidth(char);
+	for (const [index, char] of chars.entries()) {
+		const width = stringWidth(char);
 
-		// Clicking any cell within a character places the cursor at that character.
-		// Zero-width characters (w=0) are never visually present, so the condition
-		// `colInLine < currentCol + 0` is always false and they are skipped.
-		if (currentLine === lineIndex && colInLine < currentCol + w) {
-			return charIndex;
+		// Hard-wrap moves wide characters to the next line if they do not fit.
+		if (width > 0 && currentCol > 0 && currentCol + width > safeWidth) {
+			if (currentLine === safeLineIndex) {
+				return index;
+			}
+
+			currentLine++;
+			currentCol = 0;
 		}
 
-		currentCol += w;
-		charIndex++;
+		if (
+			currentLine === safeLineIndex &&
+			width > 0 &&
+			safeColInLine < currentCol + width
+		) {
+			return index;
+		}
 
-		// Simulate hard-wrap: when the visual column reaches the line width,
-		// start a new line.
-		if (currentCol >= lineWidth) {
-			if (currentLine === lineIndex) {
-				// Click was past the visible content on this line.
-				return charIndex;
+		currentCol += width;
+
+		if (currentCol >= safeWidth) {
+			if (currentLine === safeLineIndex) {
+				return index + 1;
 			}
 
 			currentLine++;
@@ -54,8 +73,7 @@ export function clickToCharOffset(
 		}
 	}
 
-	// Click was at or past the end of the text.
-	return charIndex;
+	return chars.length;
 }
 
 type InputBoxProperties = {
