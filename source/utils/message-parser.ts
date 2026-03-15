@@ -291,7 +291,7 @@ export function parseMessageItem(
 		repliedTo,
 		item_id: item.item_id,
 		// Requires type assertion because the field is not defined on MQTT message
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 		client_context: (item as any).client_context,
 	};
 

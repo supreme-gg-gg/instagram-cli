@@ -48,7 +48,6 @@ export default function Config({args}: Properties) {
 
 				if (value !== undefined) {
 					try {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						value = JSON.parse(value);
 					} catch {
 						// If parsing fails, treat it as a plain string

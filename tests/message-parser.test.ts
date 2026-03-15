@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import test from 'ava';
@@ -31,7 +30,7 @@ test('parseMessageItem parses standard text message', t => {
 	t.is(result?.id, 'msg_123');
 	t.is(result?.itemType, 'text');
 	t.is((result as TextMessage)?.text, 'Hello world');
-	t.is(result?.isOutgoing, false);
+	t.false(result?.isOutgoing);
 });
 
 test('parseMessageItem handles outgoing messages properly', t => {
@@ -46,7 +45,7 @@ test('parseMessageItem handles outgoing messages properly', t => {
 	const result = parseMessageItem(rawMessage as any, 'thread_1', mockContext);
 
 	t.truthy(result);
-	t.is(result?.isOutgoing, true);
+	t.true(result?.isOutgoing);
 });
 
 test('parseMessageItem skips items without item_id', t => {
