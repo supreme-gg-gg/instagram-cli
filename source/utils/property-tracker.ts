@@ -20,7 +20,6 @@ export default function registerProperties(
 		fs.writeFileSync(filePath, JSON.stringify([]));
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const registeredProperties: string[] = JSON.parse(
 		fs.readFileSync(filePath, 'utf8'),
 	);

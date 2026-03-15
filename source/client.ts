@@ -1146,7 +1146,7 @@ export class InstagramClient extends EventEmitter {
 			} else if (wrapper.delta_type === 'deltaNewMessage') {
 				// Handle regular message events
 				// ThreadId must exist otherwise it's not possible to identify where this event belongs
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 				const threadId =
 					wrapper?.message?.thread_id ?? wrapper?.message?.thread_v2_id;
 				if (!threadId) return;
@@ -1202,7 +1202,6 @@ export class InstagramClient extends EventEmitter {
 		}
 
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const serialized = await this.ig.state.serialize();
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			await this.sessionManager.saveSession(serialized);
@@ -1293,9 +1292,8 @@ export class InstagramClient extends EventEmitter {
 				profilePicUrl: item.user.profile_pic_url,
 			},
 			// We validated that this field exists on the returned object
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			reel_mentions: (item as any).reel_mentions?.map((mention: any) => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const {user} = mention;
 				return {
 					user: {

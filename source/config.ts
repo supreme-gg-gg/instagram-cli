@@ -108,7 +108,6 @@ export class ConfigManager {
 
 		for (const key of keys) {
 			if (value && typeof value === 'object' && key in value) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				value = value[key];
 			} else {
 				return defaultValue as T;
@@ -129,14 +128,12 @@ export class ConfigManager {
 			}
 
 			if (key) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				current = current[key];
 			}
 		}
 
 		const lastKey = keys.at(-1);
 		if (lastKey) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			current[lastKey] = value;
 		}
 
