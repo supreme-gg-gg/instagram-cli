@@ -5,6 +5,7 @@ import React from 'react';
 import test, {type ExecutionContext} from 'ava';
 import {render} from 'ink-testing-library';
 import Index from '../source/commands/index.js';
+import Version from '../source/commands/version.js';
 import {AppMock} from '../source/mocks/app.mock.js';
 import {mockThreads, mockMessages} from '../source/mocks/mock-data.js';
 
@@ -26,6 +27,31 @@ test('unknown command shows helpful error', (t: ExecutionContext) => {
 	t.true(output.includes('Unknown command'));
 	t.true(output.includes('asdfljk'));
 	t.true(output.includes('--help'));
+});
+
+test('version command renders all version info', async (t: ExecutionContext) => {
+	const {lastFrame} = render(<Version />);
+
+	await delay(100);
+
+	const output = lastFrame();
+	t.truthy(output, 'Frame should render version info');
+	t.true(
+		output!.includes('instagram-cli'),
+		'Should display instagram-cli version',
+	);
+	t.true(
+		output!.includes('instagram-private-api'),
+		'Should display instagram-private-api version',
+	);
+	t.true(
+		output!.includes('(patched)'),
+		'Should display patched label for instagram-private-api',
+	);
+	t.true(
+		output!.includes('Instagram app version'),
+		'Should display Instagram app version',
+	);
 });
 
 test('renders chat view', (t: ExecutionContext) => {
