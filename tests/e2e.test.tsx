@@ -36,21 +36,26 @@ test('version command renders all version info', async (t: ExecutionContext) => 
 
 	const output = lastFrame();
 	t.truthy(output, 'Frame should render version info');
-	t.true(
-		output!.includes('instagram-cli'),
-		'Should display instagram-cli version',
+
+	// Verify CLI version is shown as a valid semver (e.g. "instagram-cli: v1.4.5")
+	t.regex(
+		output ?? '',
+		/instagram-cli: v\d+\.\d+\.\d+/,
+		'Should display instagram-cli with a valid version number',
 	);
-	t.true(
-		output!.includes('instagram-private-api'),
-		'Should display instagram-private-api version',
+
+	// Verify instagram-private-api version is shown with semver and "(patched)" label
+	t.regex(
+		output ?? '',
+		/instagram-private-api: v\d+\.\d+\.\d+ \(patched\)/,
+		'Should display instagram-private-api with a valid version number and (patched) label',
 	);
-	t.true(
-		output!.includes('(patched)'),
-		'Should display patched label for instagram-private-api',
-	);
-	t.true(
-		output!.includes('Instagram app version'),
-		'Should display Instagram app version',
+
+	// Verify Instagram app version is shown as a valid dotted version string
+	t.regex(
+		output ?? '',
+		/Instagram app version: \d+\.\d+\.\d+/,
+		'Should display Instagram app version as a valid version number',
 	);
 });
 
