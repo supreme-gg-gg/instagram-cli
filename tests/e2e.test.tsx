@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import React from 'react';
 import test, {type ExecutionContext} from 'ava';
@@ -35,26 +34,20 @@ test('version command renders all version info', async (t: ExecutionContext) => 
 	await delay(100);
 
 	const output = lastFrame();
-	t.truthy(output, 'Frame should render version info');
-
-	// Verify CLI version is shown as a valid semver (e.g. "instagram-cli: v1.4.5")
 	t.regex(
 		output ?? '',
 		/instagram-cli: v\d+\.\d+\.\d+/,
 		'Should display instagram-cli with a valid version number',
 	);
-
-	// Verify instagram-private-api version is shown with semver and "(patched)" label
 	t.regex(
 		output ?? '',
 		/instagram-private-api: v\d+\.\d+\.\d+ \(patched\)/,
 		'Should display instagram-private-api with a valid version number and (patched) label',
 	);
-
-	// Verify Instagram app version is shown as a valid dotted version string
 	t.regex(
 		output ?? '',
-		/Instagram app version: \d+\.\d+\.\d+/,
+		// eslint-disable-next-line unicorn/better-regex
+		/Instagram app version: \d+\.\d+\.\d+\.\d+\.\d+/,
 		'Should display Instagram app version as a valid version number',
 	);
 });
