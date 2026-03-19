@@ -2,7 +2,7 @@ import path from 'node:path';
 import React, {useState} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
 import {Spinner} from '@inkjs/ui';
-import Image from 'ink-picture';
+import Image, {TerminalInfoProvider} from 'ink-picture';
 import type {InstagramClient} from '../../client.js';
 import FileBrowser from '../components/file-browser.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
@@ -97,12 +97,14 @@ function ConfirmScreen({
 				</Text>
 			</Box>
 			{imageProtocol && mediaType === 'image' && (
-				<Image
-					src={`file://${filePath}`}
-					width={20}
-					height={10}
-					protocol={imageProtocol}
-				/>
+				<TerminalInfoProvider>
+					<Image
+						src={`file://${filePath}`}
+						width={20}
+						height={10}
+						protocol={imageProtocol}
+					/>
+				</TerminalInfoProvider>
 			)}
 			<Text dimColor color="yellow">
 				Note: ensure your file meets Instagram&apos;s format requirements
@@ -122,7 +124,7 @@ function ResultScreen({
 }) {
 	const {exit} = useApp();
 
-	useInput((input, _key) => {
+	useInput((input, key) => {
 		if (error) {
 			if (input === 'r') onRetry();
 			else if (input === 'q' || (key.ctrl && input === 'c')) exit();
@@ -211,7 +213,7 @@ export default function PostStoryView({client}: PostStoryViewProps) {
 	if (screen === 'confirm') {
 		return (
 			<ConfirmScreen
-				filePath={selectedFile}
+				filePath={selectedFile ?? ''}
 				closeFriends={closeFriends}
 				onConfirm={() => {
 					void handlePost();
