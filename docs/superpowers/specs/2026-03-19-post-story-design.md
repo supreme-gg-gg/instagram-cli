@@ -27,18 +27,19 @@ instagram-cli post story [<username>]
 ### Zod Schema Exports
 
 ```typescript
-import { argument } from 'pastel';
+import {argument} from 'pastel';
 
 export const args = zod.tuple([
-  zod
-    .string()
-    .optional()
-    .describe(
-      argument({
-        name: 'username',
-        description: 'Instagram account username (uses current session if omitted)',
-      }),
-    ),
+	zod
+		.string()
+		.optional()
+		.describe(
+			argument({
+				name: 'username',
+				description:
+					'Instagram account username (uses current session if omitted)',
+			}),
+		),
 ]);
 
 // No flags in v1; Pastel requires this export even when empty
@@ -49,12 +50,12 @@ export const options = zod.object({});
 
 ## Files
 
-| File | Type | Purpose |
-|---|---|---|
-| `source/commands/post/story.tsx` | New | Command entry point; session init via `useInstagramClient(args[0], { realtime: false })`, renders `PostStoryView` |
-| `source/ui/views/post-story-view.tsx` | New | 3-screen TUI state machine |
-| `source/ui/components/file-browser.tsx` | New | Reusable filesystem navigation component |
-| `source/client.ts` | Modified | Add `postStory()` method |
+| File                                    | Type     | Purpose                                                                                                           |
+| --------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
+| `source/commands/post/story.tsx`        | New      | Command entry point; session init via `useInstagramClient(args[0], { realtime: false })`, renders `PostStoryView` |
+| `source/ui/views/post-story-view.tsx`   | New      | 3-screen TUI state machine                                                                                        |
+| `source/ui/components/file-browser.tsx` | New      | Reusable filesystem navigation component                                                                          |
+| `source/client.ts`                      | Modified | Add `postStory()` method                                                                                          |
 
 ---
 
@@ -136,20 +137,20 @@ public async postStory(
    - `.jpg`, `.jpeg`, `.png` (all others) → image
 3. For images:
    ```typescript
-   await this.ig.publish.story({ file: buffer });
+   await this.ig.publish.story({file: buffer});
    ```
 4. For videos — `instagram-private-api` requires a separate `coverImage` (JPEG buffer). In v1, use a 1×1 black JPEG placeholder as the cover image (avoids an `ffmpeg` dependency). The confirmation screen displays the format note so the user is aware.
    ```typescript
    // Minimal valid 1×1 black JPEG (hardcoded; generated once with sharp)
    const BLACK_1X1_JPEG = Buffer.from(
-     '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8U' +
-     'HRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAARCAABAAEDASIA' +
-     'AhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAU' +
-     'AQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A' +
-     'JQAB/9k=',
-     'base64',
+   	'/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8U' +
+   		'HRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAARCAABAAEDASIA' +
+   		'AhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAU' +
+   		'AQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A' +
+   		'JQAB/9k=',
+   	'base64',
    );
-   await this.ig.publish.story({ video: buffer, coverImage: BLACK_1X1_JPEG });
+   await this.ig.publish.story({video: buffer, coverImage: BLACK_1X1_JPEG});
    ```
 5. Close friends: pass `audienceType: 'besties'` in publish options. **Verify exact option name against `instagram-private-api` `StoryVideoOptions` / `StoryPhotoOptions` source before implementing** — this is the primary unknown.
 6. Log errors via `createContextualLogger('postStory')`
@@ -161,9 +162,9 @@ public async postStory(
 
 ```typescript
 type FileBrowserProps = {
-  initialPath?: string; // defaults to process.cwd()
-  onSelect: (filePath: string) => void;
-  onExit: () => void;
+	initialPath?: string; // defaults to process.cwd()
+	onSelect: (filePath: string) => void;
+	onExit: () => void;
 };
 ```
 
@@ -177,10 +178,10 @@ type FileBrowserProps = {
 
 ## Supported Formats
 
-| Type | Extensions |
-|---|---|
+| Type  | Extensions              |
+| ----- | ----------------------- |
 | Image | `.jpg`, `.jpeg`, `.png` |
-| Video | `.mp4` |
+| Video | `.mp4`                  |
 
 `.mov` excluded entirely from both the file browser filter and `postStory()` detection in v1 (Instagram private API acceptance is inconsistent; can be added in a follow-up PR).
 
@@ -188,14 +189,14 @@ type FileBrowserProps = {
 
 ## Error Cases
 
-| Case | Handling |
-|---|---|
-| Not logged in | Caught at session init in command entry, shows `Alert variant="error"` (standard pattern) |
-| File not readable | `postStory()` throws; shown in result error screen |
-| API error (rate limit, checkpoint, etc.) | `postStory()` throws; shown in result error screen |
-| Unsupported format slips through | API rejects; error shown in result error screen |
-| Empty directory | `FileBrowser` shows "No compatible files found in this directory." |
-| Directory read fails | `FileBrowser` shows error inline, allows navigating back up |
+| Case                                     | Handling                                                                                  |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Not logged in                            | Caught at session init in command entry, shows `Alert variant="error"` (standard pattern) |
+| File not readable                        | `postStory()` throws; shown in result error screen                                        |
+| API error (rate limit, checkpoint, etc.) | `postStory()` throws; shown in result error screen                                        |
+| Unsupported format slips through         | API rejects; error shown in result error screen                                           |
+| Empty directory                          | `FileBrowser` shows "No compatible files found in this directory."                        |
+| Directory read fails                     | `FileBrowser` shows error inline, allows navigating back up                               |
 
 ---
 
