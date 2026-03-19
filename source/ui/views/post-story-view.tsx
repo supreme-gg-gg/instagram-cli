@@ -123,7 +123,7 @@ function ResultScreen({
 }) {
 	const {exit} = useApp();
 
-	useInput((input, key) => {
+	useInput((input, _key) => {
 		if (error) {
 			if (input === 'r') onRetry();
 			else if (input === 'q') exit();
