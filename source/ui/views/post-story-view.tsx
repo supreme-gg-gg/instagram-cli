@@ -105,8 +105,9 @@ function ConfirmScreen({
 				/>
 			)}
 			<Text color="yellow" dimColor>
-				Note: ensure your file meets Instagram's format requirements
-				{mediaType === 'video' ? ' (H.264 MP4, ≤ 60s)' : ' (JPG/PNG)'}.
+				{
+					"Note: ensure your file meets Instagram's format requirements (image: JPG/PNG, video: H.264 MP4 ≤ 60s)."
+				}
 			</Text>
 			<Text dimColor>Enter to post · Esc/b back</Text>
 		</Box>
@@ -125,7 +126,7 @@ function ResultScreen({
 	useInput((input, key) => {
 		if (error) {
 			if (input === 'r') onRetry();
-			else if (input === 'q' || key.escape) exit();
+			else if (input === 'q') exit();
 		} else {
 			exit();
 		}
