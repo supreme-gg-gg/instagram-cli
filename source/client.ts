@@ -1,3 +1,4 @@
+import {Buffer} from 'node:buffer';
 import {join, extname} from 'node:path';
 import fs from 'node:fs';
 import {EventEmitter} from 'node:events';

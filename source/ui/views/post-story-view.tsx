@@ -1,8 +1,8 @@
+import path from 'node:path';
 import React, {useState} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
 import {Spinner} from '@inkjs/ui';
 import Image from 'ink-picture';
-import path from 'node:path';
 import type {InstagramClient} from '../../client.js';
 import FileBrowser from '../components/file-browser.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
@@ -39,8 +39,8 @@ function OptionsScreen({
 			<Text bold>Audience</Text>
 			<Box gap={2}>
 				<Text
-					color={!closeFriends ? 'black' : undefined}
-					backgroundColor={!closeFriends ? 'white' : undefined}
+					backgroundColor={closeFriends ? undefined : 'white'}
+					color={closeFriends ? undefined : 'black'}
 				>
 					{' Everyone '}
 				</Text>
@@ -104,10 +104,9 @@ function ConfirmScreen({
 					protocol={imageProtocol}
 				/>
 			)}
-			<Text color="yellow" dimColor>
-				{
-					"Note: ensure your file meets Instagram's format requirements (image: JPG/PNG, video: H.264 MP4 ≤ 60s)."
-				}
+			<Text dimColor color="yellow">
+				Note: ensure your file meets Instagram&apos;s format requirements
+				(image: JPG/PNG, video: H.264 MP4 ≤ 60s).
 			</Text>
 			<Text dimColor>Enter to post · Esc/b back</Text>
 		</Box>
@@ -143,7 +142,7 @@ function ResultScreen({
 
 	return (
 		<Box flexDirection="column" gap={1}>
-			<Text color="green" bold>
+			<Text bold color="green">
 				Story posted successfully!
 			</Text>
 			<Text dimColor>Press any key to exit</Text>
@@ -177,7 +176,14 @@ export default function PostStoryView({client}: PostStoryViewProps) {
 	};
 
 	if (screen === 'browsing') {
-		return <FileBrowser onSelect={handleFileSelect} onExit={() => exit()} />;
+		return (
+			<FileBrowser
+				onExit={() => {
+					exit();
+				}}
+				onSelect={handleFileSelect}
+			/>
+		);
 	}
 
 	if (screen === 'options') {

@@ -1,7 +1,8 @@
-import React, {useState, useEffect} from 'react';
-import {Box, Text, useInput} from 'ink';
+import process from 'node:process';
 import fs from 'node:fs';
 import path from 'node:path';
+import React, {useState, useEffect} from 'react';
+import {Box, Text, useInput} from 'ink';
 
 const SUPPORTED_EXTENSIONS = /\.(jpg|jpeg|png|mp4)$/i;
 
@@ -12,9 +13,9 @@ type Entry = {
 };
 
 type FileBrowserProps = {
-	initialPath?: string;
-	onSelect: (filePath: string) => void;
-	onExit: () => void;
+	readonly initialPath?: string;
+	readonly onSelect: (filePath: string) => void;
+	readonly onExit: () => void;
 };
 
 function formatSize(bytes: number): string {
@@ -115,14 +116,14 @@ export default function FileBrowser({
 		return (
 			<Box flexDirection="column">
 				<Text color="red">Error reading directory: {dirError}</Text>
-				<Text color="gray">Press 'h' or ← to go up</Text>
+				<Text color="gray">Press &apos;h&apos; or ← to go up</Text>
 			</Box>
 		);
 	}
 
 	return (
 		<Box flexDirection="column">
-			<Text color="cyan" bold>
+			<Text bold color="cyan">
 				{currentPath}
 			</Text>
 			{entries.length === 0 ? (
@@ -137,7 +138,7 @@ export default function FileBrowser({
 							{entry.isDirectory ? `${entry.name}/` : entry.name}
 						</Text>
 						{!entry.isDirectory && entry.size !== undefined && (
-							<Text color="gray" dimColor>
+							<Text dimColor color="gray">
 								{'  '}
 								{formatSize(entry.size)}
 							</Text>

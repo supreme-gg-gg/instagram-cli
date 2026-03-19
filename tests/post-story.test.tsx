@@ -1,8 +1,12 @@
-import test from 'ava';
-import React from 'react';
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
+import process from 'node:process';
+import React from 'react';
+import test from 'ava';
 import {render} from 'ink-testing-library';
 import {Text, useInput} from 'ink';
 import {mockClient} from '../source/mocks/index.js';
