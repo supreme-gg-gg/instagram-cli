@@ -103,7 +103,7 @@ export default function FileBrowser({
 			if (parent !== currentPath) {
 				setCurrentPath(parent);
 			}
-		} else if (input === 'q' || key.escape) {
+		} else if (input === 'q' || key.escape || (key.ctrl && input === 'c')) {
 			onExit();
 		}
 	});

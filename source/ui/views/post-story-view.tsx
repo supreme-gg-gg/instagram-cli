@@ -96,7 +96,7 @@ function ConfirmScreen({
 					{closeFriends ? 'Close Friends' : 'Everyone'}
 				</Text>
 			</Box>
-			{imageProtocol && (
+			{imageProtocol && mediaType === 'image' && (
 				<Image
 					src={`file://${filePath}`}
 					width={20}
@@ -125,7 +125,7 @@ function ResultScreen({
 	useInput((input, _key) => {
 		if (error) {
 			if (input === 'r') onRetry();
-			else if (input === 'q') exit();
+			else if (input === 'q' || (key.ctrl && input === 'c')) exit();
 		} else {
 			exit();
 		}
@@ -203,10 +203,15 @@ export default function PostStoryView({client}: PostStoryViewProps) {
 		);
 	}
 
+	if (screen === 'confirm' && !selectedFile) {
+		setScreen('browsing');
+		return null;
+	}
+
 	if (screen === 'confirm') {
 		return (
 			<ConfirmScreen
-				filePath={selectedFile!}
+				filePath={selectedFile}
 				closeFriends={closeFriends}
 				onConfirm={() => {
 					void handlePost();
