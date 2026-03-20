@@ -39,11 +39,10 @@ export class SessionManager {
 		try {
 			// Remove constants to always use the latest version
 			const {constants, ...stateToSave} = serializedState;
-			await fs.writeFile(
-				sessionPath,
-				JSON.stringify(stateToSave, null, 2),
-				'utf8',
-			);
+			await fs.writeFile(sessionPath, JSON.stringify(stateToSave, null, 2), {
+				encoding: 'utf8',
+				mode: 0o600,
+			});
 		} catch (error) {
 			this.logger.error('Error saving session:', error);
 			throw error;
@@ -128,7 +127,7 @@ export class SessionManager {
 
 		const usersDirectory = this.configManager.get('advanced.usersDir');
 		const sessionDirectory = path.join(usersDirectory, this.username);
-		await fs.mkdir(sessionDirectory, {recursive: true});
+		await fs.mkdir(sessionDirectory, {recursive: true, mode: 0o700});
 		return sessionDirectory;
 	}
 }
