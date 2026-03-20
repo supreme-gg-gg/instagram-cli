@@ -111,12 +111,18 @@ export default function TextInput({
 						nextCursorOffset + 1,
 					);
 				}
-			} else if (key.backspace || key.delete) {
+			} else if (key.backspace) {
 				if (internalCursorOffset > 0) {
 					nextValue =
 						originalValue.slice(0, internalCursorOffset - 1) +
 						originalValue.slice(internalCursorOffset);
 					nextCursorOffset = internalCursorOffset - 1;
+				}
+			} else if (key.delete) {
+				if (internalCursorOffset < originalValue.length) {
+					nextValue =
+						originalValue.slice(0, internalCursorOffset) +
+						originalValue.slice(internalCursorOffset + 1);
 				}
 			} else {
 				nextValue =
