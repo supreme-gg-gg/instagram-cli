@@ -2,6 +2,7 @@ import React from 'react';
 import {Alert} from '@inkjs/ui';
 import zod from 'zod';
 import {argument} from 'pastel';
+import {TerminalInfoProvider} from 'ink-picture';
 import {useInstagramClient} from '../../ui/hooks/use-instagram-client.js';
 import PostStoryView from '../../ui/views/post-story-view.js';
 
@@ -42,5 +43,9 @@ export default function PostStory({args}: Properties) {
 		return <Alert variant="error">Failed to initialize client.</Alert>;
 	}
 
-	return <PostStoryView client={client} />;
+	return (
+		<TerminalInfoProvider>
+			<PostStoryView client={client} />
+		</TerminalInfoProvider>
+	);
 }

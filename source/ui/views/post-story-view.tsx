@@ -2,7 +2,7 @@ import path from 'node:path';
 import React, {useState} from 'react';
 import {Box, Text, useInput, useApp} from 'ink';
 import {Spinner} from '@inkjs/ui';
-import Image, {TerminalInfoProvider} from 'ink-picture';
+import Image from 'ink-picture';
 import type {InstagramClient} from '../../client.js';
 import FileBrowser from '../components/file-browser.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
@@ -97,14 +97,12 @@ function ConfirmScreen({
 				</Text>
 			</Box>
 			{imageProtocol && mediaType === 'image' && (
-				<TerminalInfoProvider>
-					<Image
-						src={`file://${filePath}`}
-						width={20}
-						height={10}
-						protocol={imageProtocol}
-					/>
-				</TerminalInfoProvider>
+				<Image
+					src={`file://${filePath}`}
+					width={20}
+					height={10}
+					protocol={imageProtocol}
+				/>
 			)}
 			<Text dimColor color="yellow">
 				Note: ensure your file meets Instagram&apos;s format requirements
