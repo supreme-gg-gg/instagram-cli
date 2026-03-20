@@ -8,10 +8,11 @@ import process from 'node:process';
 import React from 'react';
 import test from 'ava';
 import {render} from 'ink-testing-library';
-import {Text, useInput} from 'ink';
 import {mockClient} from '../source/mocks/index.js';
 import FileBrowser from '../source/ui/components/file-browser.js';
-import PostStoryView from '../source/ui/views/post-story-view.js';
+import PostStoryView, {
+	OptionsScreen,
+} from '../source/ui/views/post-story-view.js';
 
 const noop = () => {};
 
@@ -97,39 +98,6 @@ test('FileBrowser calls onExit when q is pressed', async t => {
 
 // ── Task 3: PostStoryView ─────────────────────────────────────────────────────
 
-// OptionsScreen test component defined at module scope (not inside test body)
-// because XO linter rejects useInput hooks defined inside test callbacks.
-// This is a stripped-down version of OptionsScreen to verify its keyboard behavior.
-function TestOptionsScreen({
-	closeFriends,
-	onToggle,
-	onConfirm,
-	onBack,
-}: {
-	readonly closeFriends: boolean;
-	readonly onToggle: () => void;
-	readonly onConfirm: () => void;
-	readonly onBack: () => void;
-}) {
-	useInput(
-		(
-			input: string,
-			key: {
-				tab: boolean;
-				leftArrow: boolean;
-				rightArrow: boolean;
-				return: boolean;
-				escape: boolean;
-			},
-		) => {
-			if (key.tab || key.leftArrow || key.rightArrow) onToggle();
-			else if (key.return) onConfirm();
-			else if (key.escape || input === 'b') onBack();
-		},
-	);
-	return <Text>Audience: {closeFriends ? 'Close Friends' : 'Everyone'}</Text>;
-}
-
 test('PostStoryView initially renders the file browser', async t => {
 	const {lastFrame, unmount} = render(<PostStoryView client={mockClient} />);
 	await new Promise(resolve => {
@@ -149,10 +117,28 @@ test('PostStoryView renders without crashing', async t => {
 	unmount();
 });
 
-test('OptionsScreen shows Everyone by default and toggles on Tab', t => {
+test('OptionsScreen shows Everyone by default', t => {
+	const {lastFrame, unmount} = render(
+		<OptionsScreen
+			closeFriends={false}
+			onToggle={noop}
+			onConfirm={noop}
+			onBack={noop}
+		/>,
+	);
+	const frame = lastFrame() ?? '';
+	t.true(frame.includes('Everyone'), `Expected 'Everyone', got: ${frame}`);
+	t.true(
+		frame.includes('Close Friends'),
+		`Expected 'Close Friends', got: ${frame}`,
+	);
+	unmount();
+});
+
+test('OptionsScreen calls onToggle when Tab is pressed', t => {
 	let toggled = false;
-	const {lastFrame, stdin, unmount} = render(
-		<TestOptionsScreen
+	const {stdin, unmount} = render(
+		<OptionsScreen
 			closeFriends={false}
 			onToggle={() => {
 				toggled = true;
@@ -161,9 +147,41 @@ test('OptionsScreen shows Everyone by default and toggles on Tab', t => {
 			onBack={noop}
 		/>,
 	);
-	const frame = lastFrame() ?? '';
-	t.true(frame.includes('Everyone'), `Expected 'Everyone', got: ${frame}`);
 	stdin.write('\t');
 	t.true(toggled, 'Tab should trigger onToggle');
+	unmount();
+});
+
+test('OptionsScreen calls onBack when b is pressed', t => {
+	let wentBack = false;
+	const {stdin, unmount} = render(
+		<OptionsScreen
+			closeFriends={false}
+			onToggle={noop}
+			onConfirm={noop}
+			onBack={() => {
+				wentBack = true;
+			}}
+		/>,
+	);
+	stdin.write('b');
+	t.true(wentBack, 'b should trigger onBack');
+	unmount();
+});
+
+test('OptionsScreen calls onConfirm when Enter is pressed', t => {
+	let confirmed = false;
+	const {stdin, unmount} = render(
+		<OptionsScreen
+			closeFriends={false}
+			onToggle={noop}
+			onConfirm={() => {
+				confirmed = true;
+			}}
+			onBack={noop}
+		/>,
+	);
+	stdin.write('\r');
+	t.true(confirmed, 'Enter should trigger onConfirm');
 	unmount();
 });

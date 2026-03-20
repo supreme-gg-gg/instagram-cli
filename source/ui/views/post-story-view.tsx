@@ -13,7 +13,7 @@ type PostStoryViewProps = {
 	readonly client: InstagramClient;
 };
 
-function OptionsScreen({
+export function OptionsScreen({
 	closeFriends,
 	onToggle,
 	onConfirm,
@@ -97,12 +97,7 @@ function ConfirmScreen({
 				</Text>
 			</Box>
 			{imageProtocol && mediaType === 'image' && (
-				<Image
-					src={`file://${filePath}`}
-					width={20}
-					height={10}
-					protocol={imageProtocol}
-				/>
+				<Image src={filePath} width={20} height={10} protocol={imageProtocol} />
 			)}
 			<Text dimColor color="yellow">
 				Note: ensure your file meets Instagram&apos;s format requirements
