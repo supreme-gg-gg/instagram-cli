@@ -3,6 +3,7 @@ import {Box, Text} from 'ink';
 import Image from 'ink-picture';
 import type {Message, Thread} from '../../types/instagram.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
+import {truncateText} from '../../utils/text-utils.js';
 
 type MessageListProperties = {
 	readonly messages: Message[];
@@ -168,12 +169,7 @@ export default function MessageList({
 										</Text>
 										<Text dimColor>
 											{message.repliedTo.itemType === 'text'
-												? `"${message.repliedTo.text?.slice(0, 40) ?? ''}${
-														message.repliedTo.text &&
-														message.repliedTo.text.length > 40
-															? '...'
-															: ''
-													}"`
+												? `"${truncateText(message.repliedTo.text ?? '', 40)}"`
 												: `[A ${message.repliedTo.itemType}]`}
 										</Text>
 									</Box>
