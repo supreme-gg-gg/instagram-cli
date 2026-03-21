@@ -32,8 +32,10 @@ export async function preprocessMessage(
 		return getEmojiByName(emojiName) ?? `:${emojiName}:`;
 	});
 
-	// 2. File Path Handling: Find #<path> patterns with file indicators
-	const filePathRegex = /(#"([^#]*[./~][^\s#]*)")|(#([^\s#]*[./~][^\s#]*))/g;
+	// 2. File Path Handling: Find #<path> patterns with file indicators.
+	// Supports: #"path with spaces", #'path with spaces', #/unquoted/path
+	const filePathRegex =
+		/(#"([^#"]*[./~][^#"]*)")|(#'([^#']*[./~][^#']*)')|(#([^\s#]*[./~][^\s#]*))/g;
 	const matches = [...processedText.matchAll(filePathRegex)];
 
 	for (const match of matches) {

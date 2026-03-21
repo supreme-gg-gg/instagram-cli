@@ -140,32 +140,36 @@ export const chatCommands: Record<string, ChatCommand> = {
 		description:
 			'Upload a photo or video to the current thread. Usage: :upload <path>',
 		async handler(arguments_, {client, chatState}) {
-			let [path] = arguments_;
-			if (!path) {
+			// Join all parts so paths containing spaces work without quoting
+			let filePath = arguments_.join(' ').trim();
+			if (!filePath) {
 				return 'Usage: :upload <path-to-file>';
 			}
 
-			// Remove '#' prefix if present (from autocomplete)
-			if (path.startsWith('#')) {
-				path = path.slice(1);
+			// Strip leading '#' (inserted by autocomplete)
+			if (filePath.startsWith('#')) {
+				filePath = filePath.slice(1);
 			}
 
-			const lowerPath = path.toLowerCase();
-			const isImage = /\.(jpg|jpeg|png|gif)$/.test(lowerPath);
-			const isVideo = /\.(mp4|mov|avi|mkv)$/.test(lowerPath);
+			// Strip surrounding single or double quotes
+			filePath = filePath.replaceAll(/^["']|["']$/g, '');
 
 			if (!chatState.currentThread) {
 				return;
 			}
 
+			const lowerPath = filePath.toLowerCase();
+			const isImage = /\.(jpg|jpeg|png|gif)$/.test(lowerPath);
+			const isVideo = /\.(mp4|mov|avi|mkv)$/.test(lowerPath);
+
 			if (isImage) {
-				await client.sendPhoto(chatState.currentThread.id, path);
-				return `Image uploaded: ${path}`;
+				await client.sendPhoto(chatState.currentThread.id, filePath);
+				return `Image uploaded: ${filePath}`;
 			}
 
 			if (isVideo) {
-				await client.sendVideo(chatState.currentThread.id, path);
-				return `Video uploaded: ${path}`;
+				await client.sendVideo(chatState.currentThread.id, filePath);
+				return `Video uploaded: ${filePath}`;
 			}
 
 			return 'Unsupported file type. Please upload an image or video.';
