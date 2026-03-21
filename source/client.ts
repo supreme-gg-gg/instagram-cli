@@ -1,3 +1,4 @@
+import {Buffer} from 'node:buffer';
 import {join, extname} from 'node:path';
 import fs from 'node:fs';
 import {EventEmitter} from 'node:events';
@@ -1105,6 +1106,48 @@ export class InstagramClient extends EventEmitter {
 				`Failed to mark stories as seen for user ${stories[0]?.user?.pk}`,
 				error,
 			);
+		}
+	}
+
+	/**
+	 * Posts a photo or video as an Instagram Story.
+	 *
+	 * @param filePath - Absolute path to the image (.jpg/.jpeg/.png) or video (.mp4) file
+	 * @param options - Optional settings; closeFriends posts to your Close Friends list only
+	 */
+	public async postStory(
+		filePath: string,
+		options?: {closeFriends?: boolean},
+	): Promise<void> {
+		try {
+			const fileBuffer = await fs.promises.readFile(filePath);
+			const ext = extname(filePath).toLowerCase();
+			const isVideo = ext === '.mp4';
+
+			if (isVideo) {
+				// Minimal 1×1 black JPEG used as cover image placeholder (avoids ffmpeg dependency)
+				const BLACK_1X1_JPEG = Buffer.from(
+					'/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8U' +
+						'HRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAARCAABAAEDASIA' +
+						'AhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAU' +
+						'AQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A' +
+						'JQAB/9k=',
+					'base64',
+				);
+				await this.ig.publish.story({
+					video: fileBuffer,
+					coverImage: BLACK_1X1_JPEG,
+					...(options?.closeFriends && {toBesties: true}),
+				});
+			} else {
+				await this.ig.publish.story({
+					file: fileBuffer,
+					...(options?.closeFriends && {toBesties: true}),
+				});
+			}
+		} catch (error) {
+			this.logger.error('Failed to post story', error);
+			throw error;
 		}
 	}
 

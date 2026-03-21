@@ -501,6 +501,17 @@ class MockClient extends EventEmitter {
 		}
 	}
 
+	async postStory(
+		filePath: string,
+		_options?: {closeFriends?: boolean},
+	): Promise<void> {
+		// Simulate upload delay
+		await new Promise(resolve => {
+			setTimeout(resolve, 300);
+		});
+		logger.info(`Mock: Posted story from ${filePath}`);
+	}
+
 	// Login methods
 	async login(
 		username: string,
