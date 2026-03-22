@@ -32,6 +32,7 @@ import type {
 	User,
 	Story,
 	StoryReel,
+	ProfileInfo,
 } from './types/instagram.js';
 import {
 	parseMessageItem,
@@ -510,6 +511,28 @@ export class InstagramClient extends EventEmitter {
 			this.logger.error('Failed to get current user', error);
 			return undefined;
 		}
+	}
+
+	/**
+	 * Fetches a full profile for the given username, including bio,
+	 * follower/following/media counts, and privacy status.
+	 */
+	public async getUserProfile(username: string): Promise<ProfileInfo> {
+		const user = await this.ig.user.searchExact(username);
+		const info = await this.ig.user.info(user.pk);
+		return {
+			pk: user.pk.toString(),
+			username: info.username,
+			fullName: info.full_name,
+			profilePicUrl: info.profile_pic_url,
+			isVerified: info.is_verified,
+			isPrivate: info.is_private,
+			biography: info.biography,
+			followerCount: info.follower_count,
+			followingCount: info.following_count,
+			mediaCount: info.media_count,
+			externalUrl: info.external_url ?? undefined,
+		};
 	}
 
 	public async getThreads(
