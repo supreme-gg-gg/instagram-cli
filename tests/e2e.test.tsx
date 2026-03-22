@@ -20,6 +20,14 @@ test('sanity check', (t: ExecutionContext) => {
 	t.not(lastFrame(), undefined);
 });
 
+test('unknown command shows helpful error', (t: ExecutionContext) => {
+	const {lastFrame} = render(<Index args={['asdfljk']} />);
+	const output = lastFrame()!;
+	t.true(output.includes('Unknown command'));
+	t.true(output.includes('asdfljk'));
+	t.true(output.includes('--help'));
+});
+
 test('renders chat view', (t: ExecutionContext) => {
 	const {lastFrame} = render(<AppMock view="chat" />);
 

@@ -2,8 +2,26 @@ import React from 'react';
 import Gradient from 'ink-gradient';
 import BigText from 'ink-big-text';
 import {Text} from 'ink';
+import zod from 'zod';
 
-export default function Index() {
+export const args = zod.tuple([]).rest(zod.string());
+
+type Props = {
+	readonly args?: string[];
+};
+
+const defaultArgs: string[] = [];
+
+export default function Index({args: unknownArgs = defaultArgs}: Props) {
+	if (unknownArgs.length > 0) {
+		return (
+			<>
+				<Text color="red">Unknown command: {unknownArgs.join(' ')}</Text>
+				<Text>Run &#39;instagram-cli --help&#39; for available commands.</Text>
+			</>
+		);
+	}
+
 	return (
 		<>
 			<Gradient
