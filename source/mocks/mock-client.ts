@@ -13,6 +13,7 @@ import type {
 	User,
 	Story,
 	StoryReel,
+	ProfileInfo,
 } from '../types/instagram.js';
 import {createContextualLogger} from '../utils/logger.js';
 import {
@@ -437,6 +438,25 @@ class MockClient extends EventEmitter {
 			fullName: 'Mock User',
 			profilePicUrl: 'https://via.placeholder.com/150',
 			isVerified: false,
+		};
+	}
+
+	async getUserProfile(username: string): Promise<ProfileInfo> {
+		await new Promise(resolve => {
+			setTimeout(resolve, 300);
+		});
+		return {
+			pk: '12345',
+			username,
+			fullName: 'Mock Profile User',
+			profilePicUrl: 'https://via.placeholder.com/150',
+			isVerified: true,
+			isPrivate: false,
+			biography: 'Mock bio for testing. Building cool things in the terminal.',
+			followerCount: 12_500,
+			followingCount: 843,
+			mediaCount: 127,
+			externalUrl: 'https://example.com',
 		};
 	}
 
