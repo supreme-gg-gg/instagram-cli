@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import React from 'react';
 import test, {type ExecutionContext} from 'ava';
 import {render} from 'ink-testing-library';
 import Index from '../source/commands/index.js';
+import Version from '../source/commands/version.js';
 import {AppMock} from '../source/mocks/app.mock.js';
 import {mockThreads, mockMessages} from '../source/mocks/mock-data.js';
 
@@ -26,6 +26,30 @@ test('unknown command shows helpful error', (t: ExecutionContext) => {
 	t.true(output.includes('Unknown command'));
 	t.true(output.includes('asdfljk'));
 	t.true(output.includes('--help'));
+});
+
+test('version command renders all version info', async (t: ExecutionContext) => {
+	const {lastFrame} = render(<Version />);
+
+	await delay(100);
+
+	const output = lastFrame();
+	t.regex(
+		output ?? '',
+		/instagram-cli: v\d+\.\d+\.\d+/,
+		'Should display instagram-cli with a valid version number',
+	);
+	t.regex(
+		output ?? '',
+		/instagram-private-api: v\d+\.\d+\.\d+ \(patched\)/,
+		'Should display instagram-private-api with a valid version number and (patched) label',
+	);
+	t.regex(
+		output ?? '',
+		// eslint-disable-next-line unicorn/better-regex
+		/Instagram app version: \d+\.\d+\.\d+\.\d+\.\d+/,
+		'Should display Instagram app version as a valid version number',
+	);
 });
 
 test('renders chat view', (t: ExecutionContext) => {
