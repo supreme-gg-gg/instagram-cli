@@ -9,6 +9,8 @@ import {
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
+export const description = 'Read messages from a thread';
+
 export const args = zod.tuple([
 	zod.string().describe(
 		argument({
@@ -104,6 +106,10 @@ export default function Read({args: commandArgs, options}: Properties) {
 							id: m.id,
 							itemType: m.itemType,
 							text: 'text' in m ? m.text : undefined,
+							media:
+								m.itemType === 'media' && 'media' in m
+									? {id: m.media.id, mediaType: m.media.media_type}
+									: undefined,
 							userId: m.userId,
 							username: m.username,
 							timestamp: m.timestamp,

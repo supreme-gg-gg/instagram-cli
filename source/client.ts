@@ -831,7 +831,7 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
-	public async sendMessage(threadId: string, text: string): Promise<void> {
+	public async sendMessage(threadId: string, text: string): Promise<string> {
 		// if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
 		// 	try {
 		// 		await this.realtime.direct.sendText({threadId, text});
@@ -843,7 +843,10 @@ export class InstagramClient extends EventEmitter {
 
 		// Fallback to API if MQTT not available, failed, or not ready
 		try {
-			await this.ig.entity.directThread(threadId).broadcastText(text);
+			const result = await this.ig.entity
+				.directThread(threadId)
+				.broadcastText(text);
+			return ((result as any)?.item_id as string) ?? '';
 		} catch (error) {
 			this.logger.error('Failed to send message', error);
 			throw error;
@@ -854,15 +857,16 @@ export class InstagramClient extends EventEmitter {
 		threadId: string,
 		text: string,
 		replyToMessage: Message,
-	): Promise<void> {
+	): Promise<string> {
 		try {
-			await this.ig.entity
+			const result = await this.ig.entity
 				.directThread(threadId)
 				// The APi only requires item_id and client_context which are already present
 				.broadcastText(
 					text,
 					replyToMessage as unknown as DirectThreadFeedResponseItemsItem,
 				);
+			return ((result as any)?.item_id as string) ?? '';
 		} catch (error) {
 			this.logger.error('Failed to send reply', error);
 			throw error;
@@ -891,24 +895,30 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
-	public async sendPhoto(threadId: string, filePath: string): Promise<void> {
+	public async sendPhoto(threadId: string, filePath: string): Promise<string> {
 		try {
 			const fileBuffer = await fs.promises.readFile(filePath);
-			await this.ig.entity.directThread(threadId).broadcastPhoto({
-				file: fileBuffer,
-			});
+			const result = await this.ig.entity
+				.directThread(threadId)
+				.broadcastPhoto({
+					file: fileBuffer,
+				});
+			return ((result as any)?.item_id as string) ?? '';
 		} catch (error) {
 			this.logger.error('Failed to send photo', error);
 			throw error;
 		}
 	}
 
-	public async sendVideo(threadId: string, filePath: string): Promise<void> {
+	public async sendVideo(threadId: string, filePath: string): Promise<string> {
 		try {
 			const fileBuffer = await fs.promises.readFile(filePath);
-			await this.ig.entity.directThread(threadId).broadcastVideo({
-				video: fileBuffer,
-			});
+			const result = await this.ig.entity
+				.directThread(threadId)
+				.broadcastVideo({
+					video: fileBuffer,
+				});
+			return ((result as any)?.item_id as string) ?? '';
 		} catch (error) {
 			this.logger.error('Failed to send video', error);
 			throw error;

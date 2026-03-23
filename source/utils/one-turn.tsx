@@ -28,6 +28,33 @@ export function outputText(text: string): void {
 	process.stdout.write(text + '\n');
 }
 
+/**
+ * Resolves a recipient username to a thread ID and user PK.
+ * Handles the PENDING_ virtual thread ID by calling ensureThread.
+ */
+export async function resolveRecipient(
+	client: InstagramClient,
+	recipient: string,
+): Promise<{threadId: string; userPk: string}> {
+	const results = await client.searchThreadByUsername(recipient, {
+		forceExact: true,
+	});
+	if (results.length === 0 || !results[0]) {
+		throw new Error(`User "${recipient}" not found`);
+	}
+
+	const {thread} = results[0];
+	let threadId = thread.id;
+	const userPk = thread.users[0]?.pk ?? '';
+	if (threadId.startsWith('PENDING_')) {
+		const pk = threadId.replace('PENDING_', '');
+		const realThread = await client.ensureThread(pk);
+		threadId = realThread.id;
+	}
+
+	return {threadId, userPk};
+}
+
 type OneTurnCommandProperties = {
 	readonly username?: string;
 	readonly json?: boolean;
@@ -54,9 +81,11 @@ export function OneTurnCommand({
 		if (isLoading || !client) return;
 
 		const execute = async () => {
+			let hasError = false;
 			try {
 				await run(client);
 			} catch (error_: unknown) {
+				hasError = true;
 				const message =
 					error_ instanceof Error ? error_.message : String(error_);
 				logger.error('Command failed', error_);
@@ -69,7 +98,7 @@ export function OneTurnCommand({
 				setDone(true);
 				setTimeout(() => {
 					// eslint-disable-next-line unicorn/no-process-exit -- CLI command must exit after one-turn execution
-					process.exit(0);
+					process.exit(hasError ? 1 : 0);
 				}, 50);
 			}
 		};
@@ -87,7 +116,12 @@ export function OneTurnCommand({
 			return <Text> </Text>;
 		}
 
-		return <Text color="red">Error: {error}</Text>;
+		outputText(`Error: ${error}`);
+		setTimeout(() => {
+			// eslint-disable-next-line unicorn/no-process-exit -- CLI command must exit on auth error
+			process.exit(1);
+		}, 50);
+		return <Text> </Text>;
 	}
 
 	if (runError) {

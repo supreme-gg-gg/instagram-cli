@@ -9,6 +9,8 @@ import {
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
+export const description = 'List timeline feed posts';
+
 export const options = zod.object({
 	username: zod
 		.string()

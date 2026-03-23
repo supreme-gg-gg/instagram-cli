@@ -9,6 +9,8 @@ import {
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
+export const description = 'List users with active stories';
+
 export const options = zod.object({
 	username: zod
 		.string()
@@ -27,6 +29,15 @@ export const options = zod.object({
 				description: 'Output as JSON',
 			}),
 		),
+	limit: zod
+		.number()
+		.default(20)
+		.describe(
+			option({
+				alias: 'l',
+				description: 'Maximum number of users to show',
+			}),
+		),
 });
 
 type Properties = {
@@ -37,11 +48,12 @@ export default function StoriesList({options}: Properties) {
 	const run = useCallback(
 		async (client: InstagramClient) => {
 			const reels = await client.getReelsTray();
+			const limited = reels.slice(0, options.limit);
 
 			if (options.json) {
 				outputJson(
 					jsonSuccess(
-						reels.map(r => ({
+						limited.map(r => ({
 							username: r.user.username,
 							userId: r.user.pk,
 							profilePicUrl: r.user.profilePicUrl,
@@ -51,17 +63,17 @@ export default function StoriesList({options}: Properties) {
 				return;
 			}
 
-			if (reels.length === 0) {
+			if (limited.length === 0) {
 				outputText('No active stories found.');
 				return;
 			}
 
-			outputText(`${reels.length} users with active stories:\n`);
-			for (const r of reels) {
+			outputText(`${limited.length} users with active stories:\n`);
+			for (const r of limited) {
 				outputText(`  @${r.user.username}`);
 			}
 		},
-		[options.json],
+		[options.json, options.limit],
 	);
 
 	return (

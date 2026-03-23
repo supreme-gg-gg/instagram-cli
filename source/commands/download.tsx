@@ -9,6 +9,8 @@ import {
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
+export const description = 'Download media from a message';
+
 export const args = zod.tuple([
 	zod.string().describe(
 		argument({
@@ -60,8 +62,15 @@ export default function Download({args: commandArgs, options}: Properties) {
 		async (client: InstagramClient) => {
 			const [threadId, messageId, outputPath] = commandArgs;
 
-			const {messages} = await client.getMessages(threadId);
-			const message = messages.find(m => m.id === messageId);
+			let message;
+			let cursor: string | undefined;
+			do {
+				// eslint-disable-next-line no-await-in-loop
+				const result = await client.getMessages(threadId, cursor);
+				message = result.messages.find(m => m.id === messageId);
+				if (message) break;
+				cursor = result.cursor;
+			} while (cursor);
 
 			if (!message) {
 				throw new Error(`Message ${messageId} not found in thread ${threadId}`);

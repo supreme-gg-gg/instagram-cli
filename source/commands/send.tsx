@@ -6,8 +6,11 @@ import {
 	outputJson,
 	jsonSuccess,
 	outputText,
+	resolveRecipient,
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
+
+export const description = 'Send a text message to a user';
 
 export const args = zod.tuple([
 	zod.string().describe(
@@ -54,25 +57,11 @@ export default function Send({args: commandArgs, options}: Properties) {
 		async (client: InstagramClient) => {
 			const [recipient, message] = commandArgs;
 
-			const results = await client.searchThreadByUsername(recipient, {
-				forceExact: true,
-			});
-			if (results.length === 0 || !results[0]) {
-				throw new Error(`User "${recipient}" not found`);
-			}
-
-			const {thread} = results[0];
-			let threadId = thread.id;
-			if (threadId.startsWith('PENDING_')) {
-				const userPk = threadId.replace('PENDING_', '');
-				const realThread = await client.ensureThread(userPk);
-				threadId = realThread.id;
-			}
-
-			await client.sendMessage(threadId, message);
+			const {threadId} = await resolveRecipient(client, recipient);
+			const messageId = await client.sendMessage(threadId, message);
 
 			if (options.json) {
-				outputJson(jsonSuccess({threadId, recipient, sent: true}));
+				outputJson(jsonSuccess({threadId, recipient, messageId, sent: true}));
 			} else {
 				outputText(`Message sent to @${recipient}`);
 			}
