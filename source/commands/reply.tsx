@@ -62,8 +62,15 @@ export default function Reply({args: commandArgs, options}: Properties) {
 		async (client: InstagramClient) => {
 			const [threadId, messageId, text] = commandArgs;
 
-			const {messages} = await client.getMessages(threadId);
-			const replyToMessage = messages.find(m => m.id === messageId);
+			let replyToMessage;
+			let cursor: string | undefined;
+			do {
+				// eslint-disable-next-line no-await-in-loop
+				const result = await client.getMessages(threadId, cursor);
+				replyToMessage = result.messages.find(m => m.id === messageId);
+				if (replyToMessage) break;
+				cursor = result.cursor;
+			} while (cursor);
 
 			if (!replyToMessage) {
 				throw new Error(`Message ${messageId} not found in thread ${threadId}`);

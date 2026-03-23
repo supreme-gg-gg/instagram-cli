@@ -6,6 +6,7 @@ import {
 	outputJson,
 	jsonSuccess,
 	outputText,
+	resolveRecipient,
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
@@ -67,18 +68,12 @@ export default function Read({args: commandArgs, options}: Properties) {
 		async (client: InstagramClient) => {
 			const query = commandArgs[0];
 			let threadId: string | undefined;
-			const userResults = await client.searchThreadByUsername(query, {
-				forceExact: true,
-			});
-			if (userResults.length > 0 && userResults[0]) {
-				const {thread} = userResults[0];
-				if (thread.id.startsWith('PENDING_')) {
-					const userPk = thread.id.replace('PENDING_', '');
-					const realThread = await client.ensureThread(userPk);
-					threadId = realThread.id;
-				} else {
-					threadId = thread.id;
-				}
+
+			try {
+				const resolved = await resolveRecipient(client, query);
+				threadId = resolved.threadId;
+			} catch {
+				// resolveRecipient throws when username not found — fall through to title search
 			}
 
 			if (!threadId) {

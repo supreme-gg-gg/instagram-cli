@@ -74,7 +74,6 @@ export function OneTurnCommand({
 	const {client, isLoading, error} = useInstagramClient(username, {
 		realtime: false,
 	});
-	const [runError, setRunError] = useState<string | undefined>(undefined);
 	const [done, setDone] = useState(false);
 
 	useEffect(() => {
@@ -92,7 +91,7 @@ export function OneTurnCommand({
 				if (json) {
 					outputJson(jsonError(message));
 				} else {
-					setRunError(message);
+					outputText(`Error: ${message}`);
 				}
 			} finally {
 				setDone(true);
@@ -122,10 +121,6 @@ export function OneTurnCommand({
 			process.exit(1);
 		}, 50);
 		return <Text> </Text>;
-	}
-
-	if (runError) {
-		return <Text color="red">Error: {runError}</Text>;
 	}
 
 	if (isLoading) {

@@ -62,6 +62,8 @@ export type RealtimeStatus =
 	| 'connected'
 	| 'error';
 
+type BroadcastResult = {item_id?: string; status?: string};
+
 // eslint-disable-next-line unicorn/prefer-event-target
 export class InstagramClient extends EventEmitter {
 	public static async cleanupSessions(): Promise<void> {
@@ -800,7 +802,7 @@ export class InstagramClient extends EventEmitter {
 			const result = await this.ig.entity
 				.directThread(threadId)
 				.broadcastText(text);
-			return ((result as any)?.item_id as string) ?? '';
+			return (result as BroadcastResult)?.item_id ?? '';
 		} catch (error) {
 			this.logger.error('Failed to send message', error);
 			throw error;
@@ -820,7 +822,7 @@ export class InstagramClient extends EventEmitter {
 					text,
 					replyToMessage as unknown as DirectThreadFeedResponseItemsItem,
 				);
-			return ((result as any)?.item_id as string) ?? '';
+			return (result as BroadcastResult)?.item_id ?? '';
 		} catch (error) {
 			this.logger.error('Failed to send reply', error);
 			throw error;
@@ -857,7 +859,7 @@ export class InstagramClient extends EventEmitter {
 				.broadcastPhoto({
 					file: fileBuffer,
 				});
-			return ((result as any)?.item_id as string) ?? '';
+			return (result as BroadcastResult)?.item_id ?? '';
 		} catch (error) {
 			this.logger.error('Failed to send photo', error);
 			throw error;
@@ -872,7 +874,7 @@ export class InstagramClient extends EventEmitter {
 				.broadcastVideo({
 					video: fileBuffer,
 				});
-			return ((result as any)?.item_id as string) ?? '';
+			return (result as BroadcastResult)?.item_id ?? '';
 		} catch (error) {
 			this.logger.error('Failed to send video', error);
 			throw error;
