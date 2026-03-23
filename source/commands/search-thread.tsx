@@ -9,6 +9,8 @@ import {
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
+export const description = 'Search threads by title';
+
 export const args = zod.tuple([
 	zod.string().describe(
 		argument({

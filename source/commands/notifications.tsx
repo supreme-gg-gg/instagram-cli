@@ -10,6 +10,8 @@ import {
 import {type InstagramClient} from '../client.js';
 import {formatUsernamesInText} from '../utils/notifications.js';
 
+export const description = 'List recent notifications';
+
 export const options = zod.object({
 	username: zod
 		.string()

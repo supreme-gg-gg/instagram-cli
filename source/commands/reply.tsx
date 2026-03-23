@@ -6,23 +6,28 @@ import {
 	outputJson,
 	jsonSuccess,
 	outputText,
-	resolveRecipient,
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
-export const description = 'Send a video to a user';
+export const description = 'Reply to a specific message in a thread';
 
 export const args = zod.tuple([
 	zod.string().describe(
 		argument({
-			name: 'recipient',
-			description: 'Username of the recipient',
+			name: 'thread-id',
+			description: 'Thread ID containing the message',
 		}),
 	),
 	zod.string().describe(
 		argument({
-			name: 'filepath',
-			description: 'Path to the video file',
+			name: 'message-id',
+			description: 'ID of the message to reply to',
+		}),
+	),
+	zod.string().describe(
+		argument({
+			name: 'text',
+			description: 'Reply text',
 		}),
 	),
 ]);
@@ -52,20 +57,35 @@ type Properties = {
 	readonly options: zod.infer<typeof options>;
 };
 
-export default function SendVideo({args: commandArgs, options}: Properties) {
+export default function Reply({args: commandArgs, options}: Properties) {
 	const run = useCallback(
 		async (client: InstagramClient) => {
-			const [recipient, filepath] = commandArgs;
+			const [threadId, messageId, text] = commandArgs;
 
-			const {threadId} = await resolveRecipient(client, recipient);
-			const messageId = await client.sendVideo(threadId, filepath);
+			const {messages} = await client.getMessages(threadId);
+			const replyToMessage = messages.find(m => m.id === messageId);
+
+			if (!replyToMessage) {
+				throw new Error(`Message ${messageId} not found in thread ${threadId}`);
+			}
+
+			const replyMessageId = await client.sendReply(
+				threadId,
+				text,
+				replyToMessage,
+			);
 
 			if (options.json) {
 				outputJson(
-					jsonSuccess({threadId, recipient, messageId, filepath, sent: true}),
+					jsonSuccess({
+						threadId,
+						replyToMessageId: messageId,
+						messageId: replyMessageId,
+						sent: true,
+					}),
 				);
 			} else {
-				outputText(`Video sent to @${recipient}`);
+				outputText(`Reply sent in thread ${threadId}`);
 			}
 		},
 		[commandArgs, options.json],

@@ -9,6 +9,8 @@ import {
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
+export const description = 'List inbox threads';
+
 export const options = zod.object({
 	username: zod
 		.string()
@@ -57,6 +59,7 @@ export default function Inbox({options}: Properties) {
 							users: t.users,
 							lastMessage: t.lastMessage
 								? {
+										id: t.lastMessage.id,
 										itemType: t.lastMessage.itemType,
 										text:
 											'text' in t.lastMessage ? t.lastMessage.text : undefined,
