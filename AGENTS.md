@@ -28,9 +28,29 @@ This documentation provides context for AI coding tools like VSCode, Cursor, Gem
 
 ## Testing Instructions
 
-- Ink smoke tests reside in `tests/test.tsx` using Ava + `ink-testing-library`; update or extend them when view output changes.
+- Ink smoke tests reside in `tests/` using Ava + `ink-testing-library`; update or extend them when view output changes.
 - When pre-commit hooks are unavailable, run `npm run format`, `npm run lint-check`, and `npm test` locally before submitting work.
 - Prefer mock runs (`npm run start:mock -- --chat|--feed|--story`) during UI work; update `source/mocks/mock-data.ts` if expectations shift.
+- **TUI testing quirks:** Ink renders to a string buffer, not a real terminal. Use `render()` from `ink-testing-library` and assert against `lastFrame()` output. For visual elements like unread indicators or selection highlights, check for the expected Unicode/ANSI characters in the frame string (e.g., `t.truthy(output?.includes('●'))`).
+- **What to test:** Component rendering with mock data, keyboard input handling (`stdin.write()`), edge cases like empty states and Unicode text. Do not test Instagram API calls directly — mock the client.
+
+## External Documentation
+
+| Dependency                       | Link                                                |
+| -------------------------------- | --------------------------------------------------- |
+| Ink (React for CLI)              | https://github.com/vadimdemedes/ink                 |
+| Pastel (CLI framework)           | https://github.com/vadimdemedes/pastel              |
+| @inkjs/ui (components)           | https://github.com/vadimdemedes/ink-ui              |
+| ink-picture (images in terminal) | https://github.com/endernoke/ink-picture            |
+| instagram-private-api            | https://github.com/dilame/instagram-private-api     |
+| instagram_mqtt                   | https://github.com/Nerixyz/instagram_mqtt           |
+| AVA (test runner)                | https://github.com/avajs/ava                        |
+| ink-testing-library              | https://github.com/vadimdemedes/ink-testing-library |
+| XO (linter)                      | https://github.com/xojs/xo                          |
+| Fuse.js (fuzzy search)           | https://www.fusejs.io/                              |
+| Zod (schema validation)          | https://zod.dev/                                    |
+
+> **Note:** The project patches `instagram-private-api` via `patch-package` — see `patches/` for active patches.
 
 ## Security Considerations
 
