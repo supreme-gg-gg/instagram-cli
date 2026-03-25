@@ -6,6 +6,7 @@ import {
 	outputJson,
 	jsonSuccess,
 	outputText,
+	resolveThread,
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
@@ -14,8 +15,8 @@ export const description = 'Reply to a specific message in a thread';
 export const args = zod.tuple([
 	zod.string().describe(
 		argument({
-			name: 'thread-id',
-			description: 'Thread ID containing the message',
+			name: 'thread',
+			description: 'Username or thread title',
 		}),
 	),
 	zod.string().describe(
@@ -42,12 +43,13 @@ export const options = zod.object({
 				description: 'Account username to use',
 			}),
 		),
-	json: zod
-		.boolean()
-		.default(false)
+	output: zod
+		.string()
+		.optional()
 		.describe(
 			option({
-				description: 'Output as JSON',
+				alias: 'o',
+				description: 'Output format (json)',
 			}),
 		),
 });
@@ -60,7 +62,10 @@ type Properties = {
 export default function Reply({args: commandArgs, options}: Properties) {
 	const run = useCallback(
 		async (client: InstagramClient) => {
-			const [threadId, messageId, text] = commandArgs;
+			const [threadQuery, messageId, text] = commandArgs;
+			const isJson = options.output === 'json';
+
+			const threadId = await resolveThread(client, threadQuery);
 
 			let replyToMessage;
 			let cursor: string | undefined;
@@ -82,7 +87,7 @@ export default function Reply({args: commandArgs, options}: Properties) {
 				replyToMessage,
 			);
 
-			if (options.json) {
+			if (isJson) {
 				outputJson(
 					jsonSuccess({
 						threadId,
@@ -95,10 +100,14 @@ export default function Reply({args: commandArgs, options}: Properties) {
 				outputText(`Reply sent in thread ${threadId}`);
 			}
 		},
-		[commandArgs, options.json],
+		[commandArgs, options],
 	);
 
 	return (
-		<OneTurnCommand username={options.username} json={options.json} run={run} />
+		<OneTurnCommand
+			username={options.username}
+			output={options.output}
+			run={run}
+		/>
 	);
 }

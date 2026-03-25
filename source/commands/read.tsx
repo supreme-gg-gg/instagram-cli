@@ -6,11 +6,12 @@ import {
 	outputJson,
 	jsonSuccess,
 	outputText,
-	resolveRecipient,
+	resolveThread,
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
-export const description = 'Read messages from a thread';
+export const description =
+	'Read messages from a thread, optionally marking as seen or downloading media';
 
 export const args = zod.tuple([
 	zod.string().describe(
@@ -31,12 +32,13 @@ export const options = zod.object({
 				description: 'Account username to use',
 			}),
 		),
-	json: zod
-		.boolean()
-		.default(false)
+	output: zod
+		.string()
+		.optional()
 		.describe(
 			option({
-				description: 'Output as JSON',
+				alias: 'o',
+				description: 'Output format (json)',
 			}),
 		),
 	limit: zod
@@ -56,6 +58,39 @@ export const options = zod.object({
 				description: 'Pagination cursor from a previous request',
 			}),
 		),
+	markSeen: zod
+		.boolean()
+		.default(false)
+		.describe(
+			option({
+				description: 'Mark thread as seen after reading',
+			}),
+		),
+	download: zod
+		.string()
+		.optional()
+		.describe(
+			option({
+				description: 'Download media from a message to this file path',
+			}),
+		),
+	messageId: zod
+		.string()
+		.optional()
+		.describe(
+			option({
+				description: 'Message ID to download (use with --download)',
+			}),
+		),
+	maxPages: zod
+		.number()
+		.optional()
+		.describe(
+			option({
+				description:
+					'Maximum pagination pages when searching for a message (use with --download)',
+			}),
+		),
 });
 
 type Properties = {
@@ -67,33 +102,73 @@ export default function Read({args: commandArgs, options}: Properties) {
 	const run = useCallback(
 		async (client: InstagramClient) => {
 			const query = commandArgs[0];
-			let threadId: string | undefined;
+			const isJson = options.output === 'json';
 
-			try {
-				const resolved = await resolveRecipient(client, query);
-				threadId = resolved.threadId;
-			} catch {
-				// resolveRecipient throws when username not found — fall through to title search
-			}
+			const threadId = await resolveThread(client, query);
 
-			if (!threadId) {
-				const titleResults = await client.searchThreadsByTitle(query);
-				if (titleResults.length > 0 && titleResults[0]) {
-					threadId = titleResults[0].thread.id;
+			// Download mode: find a specific message and download its media
+			if (options.download) {
+				if (!options.messageId) {
+					throw new Error(
+						'--message-id <id> is required when using --download',
+					);
 				}
+
+				let message;
+				let cursor: string | undefined;
+				let pages = 0;
+				const maxPages = options.maxPages ?? Number.POSITIVE_INFINITY;
+
+				do {
+					// eslint-disable-next-line no-await-in-loop
+					const result = await client.getMessages(threadId, cursor);
+					message = result.messages.find(m => m.id === options.messageId);
+					if (message) break;
+					cursor = result.cursor;
+					pages++;
+				} while (cursor && pages < maxPages);
+
+				if (!message) {
+					throw new Error(
+						`Message ${options.messageId} not found in thread ${threadId}`,
+					);
+				}
+
+				const savedPath = await client.downloadMediaFromMessage(
+					message,
+					options.download,
+				);
+
+				if (isJson) {
+					outputJson(
+						jsonSuccess({
+							threadId,
+							messageId: options.messageId,
+							path: savedPath,
+							downloaded: true,
+						}),
+					);
+				} else {
+					outputText(`Media downloaded to ${savedPath}`);
+				}
+
+				return;
 			}
 
-			if (!threadId) {
-				throw new Error(`No thread found matching "${query}"`);
-			}
-
+			// Read mode: fetch and display messages
 			const {messages, cursor: nextCursor} = await client.getMessages(
 				threadId,
 				options.cursor,
 			);
 			const limited = messages.slice(0, options.limit);
 
-			if (options.json) {
+			// Mark as seen using the most recent message
+			if (options.markSeen && limited.length > 0) {
+				const mostRecentId = limited[0]!.id;
+				await client.markThreadAsSeen(threadId, mostRecentId);
+			}
+
+			if (isJson) {
 				outputJson(
 					jsonSuccess({
 						threadId,
@@ -111,6 +186,7 @@ export default function Read({args: commandArgs, options}: Properties) {
 							isOutgoing: m.isOutgoing,
 						})),
 						cursor: nextCursor,
+						markedSeen: options.markSeen && limited.length > 0,
 					}),
 				);
 				return;
@@ -127,14 +203,22 @@ export default function Read({args: commandArgs, options}: Properties) {
 				outputText(`[${time}] ${m.username}: ${text}`);
 			}
 
+			if (options.markSeen && limited.length > 0) {
+				outputText(`Thread marked as seen.`);
+			}
+
 			if (nextCursor) {
 				outputText(`\nMore messages available. Use --cursor=${nextCursor}`);
 			}
 		},
-		[commandArgs, options.json, options.limit, options.cursor],
+		[commandArgs, options],
 	);
 
 	return (
-		<OneTurnCommand username={options.username} json={options.json} run={run} />
+		<OneTurnCommand
+			username={options.username}
+			output={options.output}
+			run={run}
+		/>
 	);
 }

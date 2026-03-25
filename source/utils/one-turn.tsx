@@ -55,9 +55,32 @@ export async function resolveRecipient(
 	return {threadId, userPk};
 }
 
+/**
+ * Resolves a thread identifier (username or thread title) to a thread ID.
+ * First tries username lookup, then falls back to fuzzy title search.
+ */
+export async function resolveThread(
+	client: InstagramClient,
+	query: string,
+): Promise<string> {
+	try {
+		const {threadId} = await resolveRecipient(client, query);
+		return threadId;
+	} catch {
+		// Fall through to title search
+	}
+
+	const titleResults = await client.searchThreadsByTitle(query);
+	if (titleResults.length > 0 && titleResults[0]) {
+		return titleResults[0].thread.id;
+	}
+
+	throw new Error(`No thread found matching "${query}"`);
+}
+
 type OneTurnCommandProperties = {
 	readonly username?: string;
-	readonly json?: boolean;
+	readonly output?: string;
 	readonly run: (client: InstagramClient) => Promise<void>;
 };
 
@@ -68,13 +91,14 @@ type OneTurnCommandProperties = {
  */
 export function OneTurnCommand({
 	username,
-	json,
+	output,
 	run,
 }: OneTurnCommandProperties): React.ReactElement {
 	const {client, isLoading, error} = useInstagramClient(username, {
 		realtime: false,
 	});
 	const [done, setDone] = useState(false);
+	const isJson = output === 'json';
 
 	useEffect(() => {
 		if (isLoading || !client) return;
@@ -88,7 +112,7 @@ export function OneTurnCommand({
 				const message =
 					error_ instanceof Error ? error_.message : String(error_);
 				logger.error('Command failed', error_);
-				if (json) {
+				if (isJson) {
 					outputJson(jsonError(message));
 				} else {
 					outputText(`Error: ${message}`);
@@ -103,10 +127,10 @@ export function OneTurnCommand({
 		};
 
 		void execute();
-	}, [client, isLoading, json, run]);
+	}, [client, isLoading, isJson, run]);
 
 	if (error) {
-		if (json) {
+		if (isJson) {
 			outputJson(jsonError(error));
 			setTimeout(() => {
 				// eslint-disable-next-line unicorn/no-process-exit -- CLI command must exit on auth error
@@ -124,7 +148,7 @@ export function OneTurnCommand({
 	}
 
 	if (isLoading) {
-		if (json) {
+		if (isJson) {
 			return <Text> </Text>;
 		}
 
