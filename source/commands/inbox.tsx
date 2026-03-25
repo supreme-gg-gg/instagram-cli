@@ -9,7 +9,7 @@ import {
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
-export const description = 'List inbox threads';
+export const description = 'List inbox threads, or search threads by title';
 
 export const options = zod.object({
 	username: zod
@@ -21,12 +21,13 @@ export const options = zod.object({
 				description: 'Account username to use',
 			}),
 		),
-	json: zod
-		.boolean()
-		.default(false)
+	output: zod
+		.string()
+		.optional()
 		.describe(
 			option({
-				description: 'Output as JSON',
+				alias: 'o',
+				description: 'Output format (json)',
 			}),
 		),
 	limit: zod
@@ -38,6 +39,14 @@ export const options = zod.object({
 				description: 'Maximum number of threads to show',
 			}),
 		),
+	search: zod
+		.string()
+		.optional()
+		.describe(
+			option({
+				description: 'Fuzzy search thread titles instead of listing inbox',
+			}),
+		),
 });
 
 type Properties = {
@@ -47,10 +56,47 @@ type Properties = {
 export default function Inbox({options}: Properties) {
 	const run = useCallback(
 		async (client: InstagramClient) => {
+			const isJson = options.output === 'json';
+
+			if (options.search) {
+				const results = await client.searchThreadsByTitle(options.search, {
+					maxThreadsToSearch: options.limit * 4,
+				});
+				const limited = results.slice(0, options.limit);
+
+				if (isJson) {
+					outputJson(
+						jsonSuccess(
+							limited.map(r => ({
+								id: r.thread.id,
+								title: r.thread.title,
+								users: r.thread.users,
+								score: r.score,
+								lastActivity: r.thread.lastActivity,
+							})),
+						),
+					);
+					return;
+				}
+
+				if (limited.length === 0) {
+					outputText(`No threads matching "${options.search}".`);
+					return;
+				}
+
+				for (const r of limited) {
+					const score = Math.round(r.score * 100);
+					outputText(`${r.thread.title} (${score}% match)`);
+					outputText(`  ID: ${r.thread.id}`);
+				}
+
+				return;
+			}
+
 			const {threads} = await client.getThreads();
 			const limited = threads.slice(0, options.limit);
 
-			if (options.json) {
+			if (isJson) {
 				outputJson(
 					jsonSuccess(
 						limited.map(t => ({
@@ -89,10 +135,14 @@ export default function Inbox({options}: Properties) {
 				outputText(`  ID: ${t.id}`);
 			}
 		},
-		[options.json, options.limit],
+		[options],
 	);
 
 	return (
-		<OneTurnCommand username={options.username} json={options.json} run={run} />
+		<OneTurnCommand
+			username={options.username}
+			output={options.output}
+			run={run}
+		/>
 	);
 }

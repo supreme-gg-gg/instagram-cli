@@ -6,6 +6,7 @@ import {
 	outputJson,
 	jsonSuccess,
 	outputText,
+	resolveThread,
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
@@ -14,8 +15,8 @@ export const description = 'Unsend a message';
 export const args = zod.tuple([
 	zod.string().describe(
 		argument({
-			name: 'thread-id',
-			description: 'Thread ID containing the message',
+			name: 'thread',
+			description: 'Username or thread title',
 		}),
 	),
 	zod.string().describe(
@@ -36,12 +37,13 @@ export const options = zod.object({
 				description: 'Account username to use',
 			}),
 		),
-	json: zod
-		.boolean()
-		.default(false)
+	output: zod
+		.string()
+		.optional()
 		.describe(
 			option({
-				description: 'Output as JSON',
+				alias: 'o',
+				description: 'Output format (json)',
 			}),
 		),
 });
@@ -54,20 +56,27 @@ type Properties = {
 export default function Unsend({args: commandArgs, options}: Properties) {
 	const run = useCallback(
 		async (client: InstagramClient) => {
-			const [threadId, messageId] = commandArgs;
+			const [threadQuery, messageId] = commandArgs;
+			const isJson = options.output === 'json';
+
+			const threadId = await resolveThread(client, threadQuery);
 
 			await client.unsendMessage(threadId, messageId);
 
-			if (options.json) {
+			if (isJson) {
 				outputJson(jsonSuccess({threadId, messageId, unsent: true}));
 			} else {
 				outputText(`Message ${messageId} unsent.`);
 			}
 		},
-		[commandArgs, options.json],
+		[commandArgs, options],
 	);
 
 	return (
-		<OneTurnCommand username={options.username} json={options.json} run={run} />
+		<OneTurnCommand
+			username={options.username}
+			output={options.output}
+			run={run}
+		/>
 	);
 }
