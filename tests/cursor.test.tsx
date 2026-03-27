@@ -145,7 +145,7 @@ test('clickToCharOffset: multiline string with explicit newlines', (t: Execution
 // ── Integration tests: mouse click → cursor highlight in rendered frame ──────
 
 test('mouse click places cursor on correct ASCII character', async (t: ExecutionContext) => {
-	const {lastFrame, stdin} = render(
+	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
 		</MouseProvider>,
@@ -164,10 +164,11 @@ test('mouse click places cursor on correct ASCII character', async (t: Execution
 		frame.includes('he\u001B[7ml\u001B[27mlo'),
 		`Expected cursor on "he[l]lo" but got: ${JSON.stringify(frame)}`,
 	);
+	unmount();
 });
 
 test('mouse click places cursor at start of text (col 0)', async (t: ExecutionContext) => {
-	const {lastFrame, stdin} = render(
+	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
 		</MouseProvider>,
@@ -184,10 +185,11 @@ test('mouse click places cursor at start of text (col 0)', async (t: ExecutionCo
 		frame.includes('\u001B[7mh\u001B[27m'),
 		`Expected cursor on "h" but got: ${JSON.stringify(frame)}`,
 	);
+	unmount();
 });
 
 test('mouse click on left cell of emoji places cursor at emoji', async (t: ExecutionContext) => {
-	const {lastFrame, stdin} = render(
+	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
 		</MouseProvider>,
@@ -205,10 +207,11 @@ test('mouse click on left cell of emoji places cursor at emoji', async (t: Execu
 		frame.includes(`\u001B[7m\u{1F600}\u001B[27m`),
 		`Expected cursor on emoji but got: ${JSON.stringify(frame)}`,
 	);
+	unmount();
 });
 
 test('mouse click on right cell of emoji places cursor at emoji', async (t: ExecutionContext) => {
-	const {lastFrame, stdin} = render(
+	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
 		</MouseProvider>,
@@ -227,10 +230,11 @@ test('mouse click on right cell of emoji places cursor at emoji', async (t: Exec
 		frame.includes(`\u001B[7m\u{1F600}\u001B[27m`),
 		`Expected cursor on emoji but got: ${JSON.stringify(frame)}`,
 	);
+	unmount();
 });
 
 test('mouse click after emoji places cursor at correct character', async (t: ExecutionContext) => {
-	const {lastFrame, stdin} = render(
+	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
 		</MouseProvider>,
@@ -248,10 +252,11 @@ test('mouse click after emoji places cursor at correct character', async (t: Exe
 		frame.includes('\u001B[7ma\u001B[27m'),
 		`Expected cursor on "a" but got: ${JSON.stringify(frame)}`,
 	);
+	unmount();
 });
 
 test('mouse click above text area is ignored', async (t: ExecutionContext) => {
-	const {lastFrame, stdin} = render(
+	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
 		</MouseProvider>,
@@ -270,10 +275,11 @@ test('mouse click above text area is ignored', async (t: ExecutionContext) => {
 
 	// Frame should be unchanged — cursor still at end
 	t.is(lastFrame(), frameBefore);
+	unmount();
 });
 
 test('mouse click places cursor on correct character in multiline string', async (t: ExecutionContext) => {
-	const {lastFrame, stdin} = render(
+	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
 		</MouseProvider>,
@@ -305,4 +311,5 @@ test('mouse click places cursor on correct character in multiline string', async
 		frameAfterSecondClick.includes('wo\u001B[7mr\u001B[27mld'),
 		`Expected cursor on "wo[r]ld" but got: ${JSON.stringify(frameAfterSecondClick)}`,
 	);
+	unmount();
 });
