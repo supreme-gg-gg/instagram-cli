@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import React from 'react';
 import test from 'ava';
@@ -45,7 +44,9 @@ test('ThreadItem renders selected state', t => {
 });
 
 test('MessageList renders messages', t => {
-	const messages = mockMessages.slice(0, 3);
+	const messages = mockMessages
+		.filter(msg => msg.itemType === 'text')
+		.slice(0, 3);
 
 	const {lastFrame} = render(<MessageList messages={messages} />);
 
@@ -53,11 +54,11 @@ test('MessageList renders messages', t => {
 
 	// Check if text messages are rendered
 	t.truthy(
-		output?.includes((messages[0] as TextMessage)?.text),
+		output?.includes(messages[0].text),
 		'Should render first message text',
 	);
 	t.truthy(
-		output?.includes((messages[1] as TextMessage)?.text),
+		output?.includes(messages[1].text),
 		'Should render second message text',
 	);
 });
