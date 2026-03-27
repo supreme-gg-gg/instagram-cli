@@ -231,25 +231,30 @@ export class InstagramClient extends EventEmitter {
 				await this.configManager.set('login.defaultUsername', username);
 			}
 
-			if (loginOptions.initializeRealtime) {
-				try {
-					await this.initializeRealtime();
-				} catch (error) {
-					this.setRealtimeStatus('error');
-					this.emit(
-						'error',
-						new Error(
-							`Realtime connection failed: ${(error as Error).message}`,
-						),
-					);
-				}
-			}
-
-			if (!this.loginFlowStates.postLoginDone) {
-				await this.postLoginFlow();
-				// Continue even if postLoginFlow fails
-				this.loginFlowStates.postLoginDone = true;
-			}
+			await Promise.all([
+				(async () => {
+					if (loginOptions.initializeRealtime) {
+						try {
+							await this.initializeRealtime();
+						} catch (error) {
+							this.setRealtimeStatus('error');
+							this.emit(
+								'error',
+								new Error(
+									`Realtime connection failed: ${(error as Error).message}`,
+								),
+							);
+						}
+					}
+				})(),
+				(async () => {
+					if (!this.loginFlowStates.postLoginDone) {
+						await this.postLoginFlow();
+						// Continue even if postLoginFlow fails
+						this.loginFlowStates.postLoginDone = true;
+					}
+				})(),
+			]);
 
 			return {success: true, username};
 		} catch (error) {
@@ -398,25 +403,30 @@ export class InstagramClient extends EventEmitter {
 			// Instagram API may return username in different casing (usually lowercase)
 			await this.configManager.set('login.currentUsername', originalUsername);
 
-			if (sessionOptions.initializeRealtime) {
-				try {
-					await this.initializeRealtime();
-				} catch (error) {
-					this.setRealtimeStatus('error');
-					this.emit(
-						'error',
-						new Error(
-							`Realtime connection failed: ${(error as Error).message}`,
-						),
-					);
-				}
-			}
-
-			if (!this.loginFlowStates.postLoginDone) {
-				await this.postLoginFlow();
-				// Continue even if postLoginFlow fails
-				this.loginFlowStates.postLoginDone = true;
-			}
+			await Promise.all([
+				(async () => {
+					if (sessionOptions.initializeRealtime) {
+						try {
+							await this.initializeRealtime();
+						} catch (error) {
+							this.setRealtimeStatus('error');
+							this.emit(
+								'error',
+								new Error(
+									`Realtime connection failed: ${(error as Error).message}`,
+								),
+							);
+						}
+					}
+				})(),
+				(async () => {
+					if (!this.loginFlowStates.postLoginDone) {
+						await this.postLoginFlow();
+						// Continue even if postLoginFlow fails
+						this.loginFlowStates.postLoginDone = true;
+					}
+				})(),
+			]);
 
 			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
