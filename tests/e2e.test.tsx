@@ -15,21 +15,23 @@ const delay = async (ms: number): Promise<void> => {
 };
 
 test('sanity check', (t: ExecutionContext) => {
-	const {lastFrame} = render(<Index />);
+	const {lastFrame, unmount} = render(<Index />);
 
 	t.not(lastFrame(), undefined);
+	unmount();
 });
 
 test('unknown command shows helpful error', (t: ExecutionContext) => {
-	const {lastFrame} = render(<Index args={['asdfljk']} />);
+	const {lastFrame, unmount} = render(<Index args={['asdfljk']} />);
 	const output = lastFrame()!;
 	t.true(output.includes('Unknown command'));
 	t.true(output.includes('asdfljk'));
 	t.true(output.includes('--help'));
+	unmount();
 });
 
 test('version command renders all version info', async (t: ExecutionContext) => {
-	const {lastFrame} = render(<Version />);
+	const {lastFrame, unmount} = render(<Version />);
 
 	await delay(100);
 
@@ -50,28 +52,32 @@ test('version command renders all version info', async (t: ExecutionContext) => 
 		/Instagram app version: \d+\.\d+\.\d+\.\d+\.\d+/,
 		'Should display Instagram app version as a valid version number',
 	);
+	unmount();
 });
 
 test('renders chat view', (t: ExecutionContext) => {
-	const {lastFrame} = render(<AppMock view="chat" />);
+	const {lastFrame, unmount} = render(<AppMock view="chat" />);
 
 	t.not(lastFrame(), undefined);
+	unmount();
 });
 
 test('renders feed view', (t: ExecutionContext) => {
-	const {lastFrame} = render(<AppMock view="feed" />);
+	const {lastFrame, unmount} = render(<AppMock view="feed" />);
 
 	t.not(lastFrame(), undefined);
+	unmount();
 });
 
 test('renders stories view', (t: ExecutionContext) => {
-	const {lastFrame} = render(<AppMock view="story" />);
+	const {lastFrame, unmount} = render(<AppMock view="story" />);
 
 	t.not(lastFrame(), undefined);
+	unmount();
 });
 
 test('chat view displays messages when thread is selected', async (t: ExecutionContext) => {
-	const {lastFrame, stdin} = render(<AppMock view="chat" />);
+	const {lastFrame, stdin, unmount} = render(<AppMock view="chat" />);
 
 	await delay(1100);
 
@@ -93,4 +99,5 @@ test('chat view displays messages when thread is selected', async (t: ExecutionC
 	const firstMessage = mockMessages[0]!;
 	const messageText = firstMessage.itemType === 'text' ? firstMessage.text : '';
 	t.true(output!.includes(messageText), 'First message should be visible');
+	unmount();
 });

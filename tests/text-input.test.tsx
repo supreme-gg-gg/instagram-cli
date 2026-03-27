@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import chalk from 'chalk';
 import React from 'react';
@@ -26,7 +25,7 @@ const BACKSPACE = '\u0008';
 // ── Delete key tests ──────────────────────────────────────────────────────────
 
 test('delete key removes character to the right of cursor', async t => {
-	const {lastFrame, stdin} = render(
+	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
 		</MouseProvider>,
@@ -50,10 +49,11 @@ test('delete key removes character to the right of cursor', async t => {
 		frame.includes('a\u001B[7m \u001B[27m'),
 		`Expected "a" with cursor at end but got: ${JSON.stringify(frame)}`,
 	);
+	unmount();
 });
 
 test('delete key at end of string does nothing', async t => {
-	const {lastFrame, stdin} = render(
+	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
 		</MouseProvider>,
@@ -69,10 +69,11 @@ test('delete key at end of string does nothing', async t => {
 	await delay(100);
 
 	t.is(lastFrame(), frameBefore);
+	unmount();
 });
 
 test('backspace removes character to the left of cursor', async t => {
-	const {lastFrame, stdin} = render(
+	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
 		</MouseProvider>,
@@ -96,10 +97,11 @@ test('backspace removes character to the left of cursor', async t => {
 		frame.includes('\u001B[7mb\u001B[27m'),
 		`Expected cursor on "[b]" but got: ${JSON.stringify(frame)}`,
 	);
+	unmount();
 });
 
 test('backspace at start of string does nothing', async t => {
-	const {lastFrame, stdin} = render(
+	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
 		</MouseProvider>,
@@ -119,4 +121,5 @@ test('backspace at start of string does nothing', async t => {
 	await delay(100);
 
 	t.is(lastFrame(), frameBefore);
+	unmount();
 });
