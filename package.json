@@ -38,8 +38,7 @@
 		"dev:watch": "node esbuild.config.mjs --watch",
 		"start": "node dist/cli.js",
 		"start:mock": "node dist/mocks/cli.mock.js",
-		"test": "prettier --check . && xo --ignore esbuild.config.mjs && ava",
-		"postinstall": "patch-package"
+		"test": "prettier --check . && xo --ignore esbuild.config.mjs && ava"
 	},
 	"files": [
 		"dist",
@@ -63,7 +62,6 @@
 		"meow": "^14.0.0",
 		"open": "^11.0.0",
 		"pastel": "^4.0.0",
-		"patch-package": "^8.0.1",
 		"react": "^19.2.0",
 		"read-package-up": "^12.0.0",
 		"sharp": "^0.34.4",

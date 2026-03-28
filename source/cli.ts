@@ -5,6 +5,8 @@ import {readPackageUp} from 'read-package-up';
 import Pastel from 'pastel';
 import {render} from 'ink';
 import {initializeLogger} from './utils/logger.js';
+// eslint-disable-next-line import-x/no-unassigned-import, import-x/order
+import './patch.js';
 
 // Initialize logger as early as possible
 await initializeLogger();
