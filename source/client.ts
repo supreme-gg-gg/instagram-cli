@@ -222,34 +222,9 @@ export class InstagramClient extends EventEmitter {
 			}
 
 			await this.ig.account.login(username, password);
-
-			await this.saveSessionState();
-			await this.configManager.set('login.currentUsername', username);
-
-			const defaultUsername = this.configManager.get('login.defaultUsername');
-			if (!defaultUsername) {
-				await this.configManager.set('login.defaultUsername', username);
-			}
-
-			if (loginOptions.initializeRealtime) {
-				try {
-					await this.initializeRealtime();
-				} catch (error) {
-					this.setRealtimeStatus('error');
-					this.emit(
-						'error',
-						new Error(
-							`Realtime connection failed: ${(error as Error).message}`,
-						),
-					);
-				}
-			}
-
-			if (!this.loginFlowStates.postLoginDone) {
-				await this.postLoginFlow();
-				// Continue even if postLoginFlow fails
-				this.loginFlowStates.postLoginDone = true;
-			}
+			await this.postLoginSetup(username, {
+				initializeRealtime: loginOptions.initializeRealtime,
+			});
 
 			return {success: true, username};
 		} catch (error) {
@@ -288,6 +263,10 @@ export class InstagramClient extends EventEmitter {
 		twoFactorIdentifier: string;
 		totp_two_factor_on: boolean;
 	}): Promise<LoginResult> {
+		if (!this.username) {
+			return {success: false, error: 'No username set for 2FA login'};
+		}
+
 		try {
 			if (!this.loginFlowStates.preLoginDone) {
 				await this.preLoginFlow();
@@ -297,22 +276,12 @@ export class InstagramClient extends EventEmitter {
 
 			const verificationMethod = totp_two_factor_on ? '0' : '1';
 			await this.ig.account.twoFactorLogin({
-				username: this.username!,
+				username: this.username,
 				verificationCode,
 				twoFactorIdentifier,
 				verificationMethod,
 			});
-
-			await this.saveSessionState();
-			if (this.username) {
-				await this.configManager.set('login.currentUsername', this.username);
-			}
-
-			if (!this.loginFlowStates.postLoginDone) {
-				await this.postLoginFlow();
-				// Continue even if postLoginFlow fails
-				this.loginFlowStates.postLoginDone = true;
-			}
+			await this.postLoginSetup(this.username, {initializeRealtime: false});
 
 			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
@@ -329,23 +298,13 @@ export class InstagramClient extends EventEmitter {
 	}
 
 	public async sendChallengeCode(code: string): Promise<LoginResult> {
+		if (!this.username) {
+			return {success: false, error: 'No username set for challenge login'};
+		}
+
 		try {
 			await this.ig.challenge.sendSecurityCode(code);
-
-			await this.saveSessionState();
-			if (this.username) {
-				await this.configManager.set('login.currentUsername', this.username);
-				const defaultUsername = this.configManager.get('login.defaultUsername');
-				if (!defaultUsername) {
-					await this.configManager.set('login.defaultUsername', this.username);
-				}
-			}
-
-			if (!this.loginFlowStates.postLoginDone) {
-				await this.postLoginFlow();
-				// Continue even if postLoginFlow fails
-				this.loginFlowStates.postLoginDone = true;
-			}
+			await this.postLoginSetup(this.username, {initializeRealtime: false});
 
 			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
@@ -387,37 +346,9 @@ export class InstagramClient extends EventEmitter {
 
 			await this.ig.state.deserialize(sessionData);
 
-			// Preserve the original username used to load the session (for filesystem consistency)
-			const originalUsername = this.username;
-
-			const currentUser = await this.ig.account.currentUser();
-			this.username = currentUser.username;
-
-			await this.saveSessionState();
-			// Use the original username to maintain consistency with session file paths
-			// Instagram API may return username in different casing (usually lowercase)
-			await this.configManager.set('login.currentUsername', originalUsername);
-
-			if (sessionOptions.initializeRealtime) {
-				try {
-					await this.initializeRealtime();
-				} catch (error) {
-					this.setRealtimeStatus('error');
-					this.emit(
-						'error',
-						new Error(
-							`Realtime connection failed: ${(error as Error).message}`,
-						),
-					);
-				}
-			}
-
-			if (!this.loginFlowStates.postLoginDone) {
-				await this.postLoginFlow();
-				// Continue even if postLoginFlow fails
-				this.loginFlowStates.postLoginDone = true;
-			}
-
+			await this.postLoginSetup(this.username, {
+				initializeRealtime: sessionOptions.initializeRealtime,
+			});
 			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
 			if (error instanceof IgCheckpointError) {
@@ -1340,5 +1271,53 @@ export class InstagramClient extends EventEmitter {
 			this.logger.error('Post login flow failed', error);
 			return false;
 		}
+	}
+
+	private async postLoginSetup(
+		username: string,
+		options: {
+			initializeRealtime?: boolean;
+		},
+	): Promise<void> {
+		const originalUsername = username;
+		const {initializeRealtime = true} = options;
+
+		await this.saveSessionState();
+
+		// Use the original username to maintain consistency with session file paths
+		// Instagram API may return username in different casing (usually lowercase)
+		await this.configManager.set('login.currentUsername', originalUsername);
+		this.username = originalUsername.toLowerCase();
+
+		const defaultUsername = this.configManager.get('login.defaultUsername');
+		if (!defaultUsername) {
+			await this.configManager.set('login.defaultUsername', originalUsername);
+		}
+
+		// Run post-login setup tasks in parallel to speed up initialization
+		await Promise.all([
+			(async () => {
+				if (initializeRealtime) {
+					try {
+						await this.initializeRealtime();
+					} catch (error) {
+						this.setRealtimeStatus('error');
+						this.emit(
+							'error',
+							new Error(
+								`Realtime connection failed: ${(error as Error).message}`,
+							),
+						);
+					}
+				}
+			})(),
+			(async () => {
+				if (!this.loginFlowStates.postLoginDone) {
+					await this.postLoginFlow();
+					// Continue even if postLoginFlow fails
+					this.loginFlowStates.postLoginDone = true;
+				}
+			})(),
+		]);
 	}
 }
