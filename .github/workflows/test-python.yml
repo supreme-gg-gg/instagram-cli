@@ -3,22 +3,10 @@ name: Python Preflight
 on:
   push:
     branches: [main]
-    paths:
-      [
-        'instagram-py/instagram/**',
-        'instagram-py/tests/**',
-        'instagram-py/pyproject.toml',
-        'instagram-py/uv.lock',
-      ]
+    paths: ['instagram-py/instagram/**', 'instagram-py/tests/**']
   pull_request:
     branches: [main]
-    paths:
-      [
-        'instagram-py/instagram/**',
-        'instagram-py/tests/**',
-        'instagram-py/pyproject.toml',
-        'instagram-py/uv.lock',
-      ]
+    paths: ['instagram-py/instagram/**', 'instagram-py/tests/**']
 
 permissions:
   contents: read
