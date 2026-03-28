@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileTypeFromFile} from 'file-type';
 import type {InstagramClient} from '../client.js';
-import {resolveUserPath} from './path-utils.js';
+import {resolveUserPath, validateFilePath} from './path-utils.js';
 import {getEmojiByName} from './emoji.js';
 import {createContextualLogger} from './logger.js';
 
@@ -53,6 +53,15 @@ export async function preprocessMessage(
 		try {
 			// eslint-disable-next-line no-await-in-loop
 			const fileType = await fileTypeFromFile(absolutePath);
+			const mode = fileType?.mime.startsWith('image/') ? 'media' : 'text';
+
+			// eslint-disable-next-line no-await-in-loop
+			const validation = await validateFilePath(absolutePath, mode);
+			if (!validation.allowed) {
+				logger.warn(`File blocked: ${absolutePath} — ${validation.reason}`);
+				continue;
+			}
+
 			logger.debug(
 				`Processing file: ${absolutePath}, type: ${fileType?.mime ?? 'text'}`,
 			);
