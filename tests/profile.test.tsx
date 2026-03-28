@@ -64,6 +64,9 @@ test('profile view hides bio when empty', t => {
 	const output = lastFrame()!;
 	// Should still render username but not have an extra separator for bio
 	t.true(output.includes('@testuser'));
+	// Test for the absence of the bio separator
+	const separator = '─'.repeat(40);
+	t.false(output.split(separator).length > 2);
 });
 
 test('profile view renders private indicator', t => {

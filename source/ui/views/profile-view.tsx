@@ -32,8 +32,8 @@ export default function ProfileView({profile, imageProtocol}: Props) {
 					<Image
 						src={profile.profilePicUrl}
 						alt={profile.username}
-						width="100%"
-						height="100%"
+						width={22}
+						height={10}
 					/>
 				</Box>
 			) : (
