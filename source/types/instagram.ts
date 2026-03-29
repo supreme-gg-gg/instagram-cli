@@ -106,6 +106,20 @@ export type User = {
 	isVerified: boolean;
 };
 
+export type ProfileInfo = {
+	pk: string;
+	username: string;
+	fullName: string;
+	profilePicUrl?: string;
+	isVerified: boolean;
+	isPrivate: boolean;
+	biography: string;
+	followerCount: number;
+	followingCount: number;
+	mediaCount: number;
+	externalUrl?: string;
+};
+
 export type ChatState = {
 	currentThread?: Thread;
 	threads: Thread[];
