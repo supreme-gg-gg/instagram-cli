@@ -70,7 +70,7 @@ export default function Inbox({options}: Properties) {
 							limited.map(r => ({
 								id: r.thread.id,
 								title: r.thread.title,
-								users: r.thread.users,
+								users: r.thread.users.map(u => u.username),
 								score: r.score,
 								lastActivity: r.thread.lastActivity,
 							})),
@@ -102,7 +102,7 @@ export default function Inbox({options}: Properties) {
 						limited.map(t => ({
 							id: t.id,
 							title: t.title,
-							users: t.users,
+							users: t.users.map(u => u.username),
 							lastMessage: t.lastMessage
 								? {
 										id: t.lastMessage.id,

@@ -69,16 +69,21 @@ export default function Reply({args: commandArgs, options}: Properties) {
 
 			let replyToMessage;
 			let cursor: string | undefined;
+			const maxPages = 10;
+			let pages = 0;
 			do {
 				// eslint-disable-next-line no-await-in-loop
 				const result = await client.getMessages(threadId, cursor);
 				replyToMessage = result.messages.find(m => m.id === messageId);
 				if (replyToMessage) break;
 				cursor = result.cursor;
-			} while (cursor);
+				pages++;
+			} while (cursor && pages < maxPages);
 
 			if (!replyToMessage) {
-				throw new Error(`Message ${messageId} not found in thread ${threadId}`);
+				throw new Error(
+					`Message ${messageId} not found within ${maxPages} pages. The message may be too old or the ID may be invalid.`,
+				);
 			}
 
 			const replyMessageId = await client.sendReply(
