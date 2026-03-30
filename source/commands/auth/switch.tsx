@@ -5,6 +5,8 @@ import {argument} from 'pastel';
 import {Alert} from '@inkjs/ui';
 import {InstagramClient} from '../../client.js';
 
+export const description = 'Switch active profile to another Instagram account';
+
 export const args = zod.tuple([
 	zod.string().describe(
 		argument({

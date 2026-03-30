@@ -17,7 +17,7 @@ const package_ = await readPackageUp({cwd: scriptDir});
 
 const app = new Pastel({
 	importMeta: import.meta,
-	name: package_?.packageJson.name,
+	name: 'instagram-cli',
 	version: package_?.packageJson.version,
 	description: package_?.packageJson.description,
 });

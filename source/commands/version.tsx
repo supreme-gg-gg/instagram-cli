@@ -5,6 +5,8 @@ import {Text, Box} from 'ink';
 import {readPackageUp} from 'read-package-up';
 import {APP_VERSION} from 'instagram-private-api/dist/core/constants.js';
 
+export const description = 'Show version information';
+
 type VersionInfo = {
 	cliVersion: string;
 	apiVersion: string;

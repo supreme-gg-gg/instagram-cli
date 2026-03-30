@@ -9,6 +9,8 @@ import {InstagramClient} from '../../client.js';
 import {ConfigManager} from '../../config.js';
 import {createContextualLogger} from '../../utils/logger.js';
 
+export const description = 'Login to Instagram';
+
 const logger = createContextualLogger('LoginCommand');
 
 export const options = zod.object({

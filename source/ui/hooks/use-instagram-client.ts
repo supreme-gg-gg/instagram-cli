@@ -27,8 +27,8 @@ export function useInstagramClient(
 	useEffect(() => {
 		const initializeClient = async () => {
 			try {
+				// This is already initialized together with logger
 				const config = ConfigManager.getInstance();
-				await config.initialize();
 
 				let targetUsername = usernameArgument;
 				targetUsername ??=

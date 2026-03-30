@@ -4,6 +4,8 @@ import zod from 'zod';
 import StoryView from '../ui/views/story-view.js';
 import {useStories} from '../ui/hooks/use-stories.js';
 
+export const description = 'Fetch and display Instagram stories in TUI';
+
 export const args = zod.tuple([]);
 
 export const options = zod.object({});

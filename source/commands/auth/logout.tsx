@@ -6,6 +6,8 @@ import {Alert} from '@inkjs/ui';
 import {InstagramClient} from '../../client.js';
 import {ConfigManager} from '../../config.js';
 
+export const description = 'Logout from Instagram';
+
 export const args = zod.tuple([
 	zod
 		.string()

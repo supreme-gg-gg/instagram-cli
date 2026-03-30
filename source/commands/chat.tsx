@@ -9,6 +9,8 @@ import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 import AltScreen from '../ui/components/alt-screen.js';
 import {MouseProvider} from '../ui/context/mouse-context.js';
 
+export const description = 'Open Instagram direct messages TUI';
+
 export const args = zod.tuple([
 	zod
 		.string()

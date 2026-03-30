@@ -2,6 +2,8 @@ import React from 'react';
 import {Text} from 'ink';
 import {ConfigManager} from '../../config.js';
 
+export const description = 'Show current logged in user';
+
 export default function Whoami() {
 	const [username, setUsername] = React.useState<string | undefined>(undefined);
 
