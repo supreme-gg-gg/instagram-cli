@@ -1,11 +1,20 @@
 import process from 'node:process';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect} from 'react';
 import {Text} from 'ink';
 import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 import {type InstagramClient} from '../client.js';
 import {createContextualLogger} from './logger.js';
 
 const logger = createContextualLogger('OneTurn');
+
+const flushStdout = async (): Promise<void> =>
+	new Promise<void>(resolve => {
+		if (process.stdout.write('', 'utf-8')) {
+			resolve();
+		} else {
+			process.stdout.once('drain', resolve);
+		}
+	});
 
 type JsonSuccess<T> = {ok: true; data: T};
 type JsonError = {ok: false; error: string};
@@ -63,6 +72,10 @@ export async function resolveThread(
 	client: InstagramClient,
 	query: string,
 ): Promise<string> {
+	if (/^\d{20,}$/.test(query)) {
+		return query;
+	}
+
 	try {
 		const {threadId} = await resolveRecipient(client, query);
 		return threadId;
@@ -85,9 +98,9 @@ type OneTurnCommandProperties = {
 };
 
 /**
- * Wrapper component for non-interactive one-turn CLI commands.
+ * Thin wrapper for non-interactive one-turn CLI commands.
  * Initializes the Instagram client (no realtime), runs the provided callback,
- * prints output to stdout, and exits the process.
+ * writes output to stdout, and exits the process.
  */
 export function OneTurnCommand({
 	username,
@@ -97,18 +110,32 @@ export function OneTurnCommand({
 	const {client, isLoading, error} = useInstagramClient(username, {
 		realtime: false,
 	});
-	const [done, setDone] = useState(false);
 	const isJson = output === 'json';
 
 	useEffect(() => {
-		if (isLoading || !client) return;
+		if (isLoading) return;
 
 		const execute = async () => {
-			let hasError = false;
+			if (error) {
+				if (isJson) {
+					outputJson(jsonError(error));
+				} else {
+					outputText(`Error: ${error}`);
+				}
+
+				await flushStdout();
+				// eslint-disable-next-line unicorn/no-process-exit -- CLI command must exit on auth error
+				process.exit(1);
+			}
+
+			if (!client) return;
+
 			try {
 				await run(client);
+				await flushStdout();
+				// eslint-disable-next-line unicorn/no-process-exit -- CLI command must exit after one-turn execution
+				process.exit(0);
 			} catch (error_: unknown) {
-				hasError = true;
 				const message =
 					error_ instanceof Error ? error_.message : String(error_);
 				logger.error('Command failed', error_);
@@ -117,47 +144,15 @@ export function OneTurnCommand({
 				} else {
 					outputText(`Error: ${message}`);
 				}
-			} finally {
-				setDone(true);
-				setTimeout(() => {
-					// eslint-disable-next-line unicorn/no-process-exit -- CLI command must exit after one-turn execution
-					process.exit(hasError ? 1 : 0);
-				}, 50);
+
+				await flushStdout();
+				// eslint-disable-next-line unicorn/no-process-exit -- CLI command must exit after one-turn execution
+				process.exit(1);
 			}
 		};
 
 		void execute();
-	}, [client, isLoading, isJson, run]);
-
-	if (error) {
-		if (isJson) {
-			outputJson(jsonError(error));
-			setTimeout(() => {
-				// eslint-disable-next-line unicorn/no-process-exit -- CLI command must exit on auth error
-				process.exit(1);
-			}, 50);
-			return <Text> </Text>;
-		}
-
-		outputText(`Error: ${error}`);
-		setTimeout(() => {
-			// eslint-disable-next-line unicorn/no-process-exit -- CLI command must exit on auth error
-			process.exit(1);
-		}, 50);
-		return <Text> </Text>;
-	}
-
-	if (isLoading) {
-		if (isJson) {
-			return <Text> </Text>;
-		}
-
-		return <Text dimColor>Loading...</Text>;
-	}
-
-	if (done) {
-		return <Text> </Text>;
-	}
+	}, [client, isLoading, isJson, error, run]);
 
 	return <Text> </Text>;
 }

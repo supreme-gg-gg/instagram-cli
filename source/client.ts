@@ -15,6 +15,8 @@ import {
 	type AccountRepositoryLoginErrorResponseTwoFactorInfo,
 	type UserStoryFeedResponseItemsItem,
 	type ReelsTrayFeedResponseTrayItem,
+	type DirectThreadRepositoryBroadcastResponseRootObject,
+	type DirectThreadRepositoryBroadcastResponsePayload,
 } from 'instagram-private-api';
 import Fuse from 'fuse.js';
 import {
@@ -62,10 +64,16 @@ export type RealtimeStatus =
 	| 'connected'
 	| 'error';
 
-type BroadcastResult = {item_id?: string; status?: string};
+type BroadcastResponse =
+	| DirectThreadRepositoryBroadcastResponseRootObject
+	| DirectThreadRepositoryBroadcastResponsePayload;
 
-function isBroadcastResult(value: unknown): value is BroadcastResult {
-	return typeof value === 'object' && value !== null;
+function extractItemId(result: BroadcastResponse): string {
+	if ('payload' in result) {
+		return result.payload.item_id;
+	}
+
+	return result.item_id;
 }
 
 // eslint-disable-next-line unicorn/prefer-event-target
@@ -806,8 +814,7 @@ export class InstagramClient extends EventEmitter {
 			const result = await this.ig.entity
 				.directThread(threadId)
 				.broadcastText(text);
-			const r: unknown = result;
-			return isBroadcastResult(r) ? (r.item_id ?? '') : '';
+			return extractItemId(result);
 		} catch (error) {
 			this.logger.error('Failed to send message', error);
 			throw error;
@@ -822,13 +829,12 @@ export class InstagramClient extends EventEmitter {
 		try {
 			const result = await this.ig.entity
 				.directThread(threadId)
-				// The APi only requires item_id and client_context which are already present
+				// The API only requires item_id and client_context which are already present
 				.broadcastText(
 					text,
 					replyToMessage as unknown as DirectThreadFeedResponseItemsItem,
 				);
-			const r: unknown = result;
-			return isBroadcastResult(r) ? (r.item_id ?? '') : '';
+			return extractItemId(result);
 		} catch (error) {
 			this.logger.error('Failed to send reply', error);
 			throw error;
@@ -865,8 +871,7 @@ export class InstagramClient extends EventEmitter {
 				.broadcastPhoto({
 					file: fileBuffer,
 				});
-			const r: unknown = result;
-			return isBroadcastResult(r) ? (r.item_id ?? '') : '';
+			return extractItemId(result);
 		} catch (error) {
 			this.logger.error('Failed to send photo', error);
 			throw error;
@@ -881,8 +886,7 @@ export class InstagramClient extends EventEmitter {
 				.broadcastVideo({
 					video: fileBuffer,
 				});
-			const r: unknown = result;
-			return isBroadcastResult(r) ? (r.item_id ?? '') : '';
+			return extractItemId(result);
 		} catch (error) {
 			this.logger.error('Failed to send video', error);
 			throw error;

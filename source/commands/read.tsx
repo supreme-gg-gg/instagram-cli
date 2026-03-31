@@ -117,7 +117,7 @@ export default function Read({args: commandArgs, options}: Properties) {
 				let message;
 				let cursor: string | undefined;
 				let pages = 0;
-				const maxPages = options.maxPages ?? Number.POSITIVE_INFINITY;
+				const maxPages = options.maxPages ?? 10;
 
 				do {
 					// eslint-disable-next-line no-await-in-loop
@@ -130,7 +130,7 @@ export default function Read({args: commandArgs, options}: Properties) {
 
 				if (!message) {
 					throw new Error(
-						`Message ${options.messageId} not found in thread ${threadId}`,
+						`Message ${options.messageId} not found within ${maxPages} pages. The message may be too old or the ID may be invalid.`,
 					);
 				}
 
