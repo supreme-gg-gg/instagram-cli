@@ -5,6 +5,8 @@ import zod from 'zod';
 import {argument} from 'pastel';
 import {ConfigManager} from '../config.js';
 
+export const description = 'Configure Instagram CLI';
+
 export const args = zod.tuple([
 	zod
 		.string()

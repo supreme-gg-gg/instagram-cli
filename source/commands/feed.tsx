@@ -7,6 +7,8 @@ import MediaView from '../ui/views/media-view.js';
 import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 import {createContextualLogger} from '../utils/logger.js';
 
+export const description = 'Fetch and display Instagram feed in TUI';
+
 export const args = zod.tuple([
 	zod
 		.string()

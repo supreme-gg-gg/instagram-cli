@@ -12,6 +12,8 @@ import {createContextualLogger} from '../utils/logger.js';
 
 const logger = createContextualLogger('ProfileCommand');
 
+export const description = 'Fetch and display Instagram profile';
+
 export const args = zod.tuple([
 	zod.string().describe(
 		argument({

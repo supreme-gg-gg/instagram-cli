@@ -6,7 +6,6 @@ import {render} from 'ink-testing-library';
 import ThreadItem from '../source/ui/components/thread-item.js';
 import MessageList from '../source/ui/components/message-list.js';
 import {mockThreads, mockMessages} from '../source/mocks/mock-data.js';
-import type {TextMessage} from '../source/types/instagram.js';
 
 test('ThreadItem renders thread title and unread indicator', t => {
 	const unreadThread = mockThreads.find(th => th.unread)!;

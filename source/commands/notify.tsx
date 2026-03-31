@@ -8,6 +8,8 @@ import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 import {formatUsernamesInText} from '../utils/notifications.js';
 import {createContextualLogger} from '../utils/logger.js';
 
+export const description = 'Fetch and display Instagram notifications';
+
 export const args = zod.tuple([
 	zod
 		.string()

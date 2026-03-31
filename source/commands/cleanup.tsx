@@ -5,6 +5,8 @@ import zod from 'zod';
 import {argument} from 'pastel';
 import {InstagramClient} from '../client.js';
 
+export const description = 'Cleanup sessions, cache, or logs';
+
 export const args = zod.tuple([
 	zod
 		.string()
