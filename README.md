@@ -118,6 +118,8 @@ instagram-cli config edit                      # open config file in editor
 
 If you want to use Instagram CLI with AI agents, see [one-turn commands](#one-turn-commands-for-agents--automation) that are non-interactive and designed for agents.
 
+```bash
+npx skills add supreme-gg-gg/instagram-cli
 > [!TIP]
 > You can easily manage multiple accounts with Instagram CLI!
 > Your login for each account will be saved **locally** and you can switch between them using the `instagram-cli auth switch <username>` command or run a certain command with a specific account using the `--username` flag.
