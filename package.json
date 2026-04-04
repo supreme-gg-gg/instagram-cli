@@ -1,7 +1,7 @@
 {
 	"name": "@i7m/instagram-cli",
 	"description": "The unofficial CLI and terminal client for Instagram",
-	"version": "1.4.6",
+	"version": "1.5.0",
 	"license": "MIT",
 	"repository": {
 		"url": "git+https://github.com/supreme-gg-gg/instagram-cli.git"
