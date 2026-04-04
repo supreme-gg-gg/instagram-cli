@@ -77,7 +77,6 @@ We welcome contributions to add more installation methods.
 
 For installation from source, please refer to the [TypeScript Client Documentation](./DEVELOPMENT.md).
 
-
 ## CLI Commands
 
 The following commands will be available after installing the package:
