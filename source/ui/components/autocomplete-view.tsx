@@ -38,21 +38,23 @@ export function AutocompleteView({
 
 	return (
 		<Box flexDirection="column" marginTop={1}>
-			{hasMoreAbove && <Text dimColor>...</Text>}
+			{hasMoreAbove && <Text dimColor> ↑ more</Text>}
 			{visibleSuggestions.map((suggestion, index) => {
 				const actualIndex = startIndex + index;
+				const isSelected = actualIndex === selectedIndex;
 				return (
 					<Text
 						key={suggestion}
-						color={actualIndex === selectedIndex ? 'blue' : 'gray'}
+						color={isSelected ? 'magenta' : 'gray'}
+						bold={isSelected}
+						dimColor={!isSelected}
 					>
+						{isSelected ? '❯ ' : '  '}
 						{suggestion}
 					</Text>
 				);
 			})}
-			{hasMoreBelow && (
-				<Text dimColor>... (Scroll up or down with arrow keys)</Text>
-			)}
+			{hasMoreBelow && <Text dimColor> ↓ more</Text>}
 		</Box>
 	);
 }
