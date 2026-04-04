@@ -30,6 +30,7 @@ async function runBuild() {
 	const buildOptions = {
 		entryPoints,
 		bundle: true,
+		splitting: true,
 		platform: 'node',
 		format: 'esm',
 		outdir: 'dist',
