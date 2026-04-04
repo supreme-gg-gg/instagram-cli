@@ -42,6 +42,11 @@ pip install instagram-cli
 
 If you do not have Python installed, you can download and install it from the [official website](https://www.python.org/downloads/).
 
+Note that Python links to the `instagram` command, while TypeScript links to `instagram-cli`.
+
+> [!CAUTION]
+> We do not recommend using the TypeScript and Python client simultaneously with the same account to reduce the risk of account bans. We recommend using the TypeScript client when possible since it is much less likely to trigger Instagram's anti-bot mechanisms.
+
 ### Installation from Source
 
 ```bash

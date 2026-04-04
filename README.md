@@ -32,7 +32,7 @@ Instagram CLI allows you to use social media more intentionally -- to stay conne
 - Full keyboard navigation and shortcuts, no mouse, no touchscreens
 - Celebrate the art and simplicity of **terminal UI (TUI)**
 
-## Installation (TypeScript Client)
+## Installation
 
 ### NPM
 
@@ -50,6 +50,8 @@ brew install instagram-cli
 ```
 
 The formula is available [here](https://github.com/supreme-gg-gg/homebrew-tap/blob/main/Formula/instagram-cli.rb).
+
+We also ship a Python client with nostalgic UNIX vibes since Instagram CLI was first built in Python with `curses`. For installation and more information, see [Python Client Documentation](./instagram-py/README.md).
 
 ### Community Packages
 
@@ -75,20 +77,6 @@ We welcome contributions to add more installation methods.
 
 For installation from source, please refer to the [TypeScript Client Documentation](./DEVELOPMENT.md).
 
-## Installation (Python Client)
-
-The Python client is the original implementation of `instagram-cli` with nostalgic UNIX vibes.
-
-```bash
-pip install instagram-cli
-```
-
-Note that Python links to the `instagram` command, while TypeScript links to `instagram-cli`.
-
-> [!CAUTION]
-> We do not recommend using the TypeScript and Python client simultaneously with the same account to reduce the risk of account bans. We recommend using the TypeScript client when possible since it is much less likely to trigger Instagram's anti-bot mechanisms.
-
-For more information about the Python client, please refer to the [Python Client Documentation](./instagram-py/README.md).
 
 ## CLI Commands
 
@@ -118,8 +106,6 @@ instagram-cli config edit                      # open config file in editor
 
 If you want to use Instagram CLI with AI agents, see [one-turn commands](#one-turn-commands-for-agents--automation) that are non-interactive and designed for agents.
 
-```bash
-npx skills add supreme-gg-gg/instagram-cli
 > [!TIP]
 > You can easily manage multiple accounts with Instagram CLI!
 > Your login for each account will be saved **locally** and you can switch between them using the `instagram-cli auth switch <username>` command or run a certain command with a specific account using the `--username` flag.
@@ -169,9 +155,13 @@ instagram-cli unsend <thread> --message-id <id>
 `<thread>` accepts a thread ID, username, or fuzzy thread title. Prefer passing thread IDs (from `inbox -o json`) directly to avoid redundant lookups.
 
 > [!TIP]
-> **Building an AI agent that uses Instagram?** Load [`instagram-skill/SKILL.md`](./instagram-skill/SKILL.md)
+> **Building an AI agent that uses Instagram?** Load [`./skills/instagram-skill/SKILL.md`](./skills/instagram-skill/SKILL.md)
 > into your agent's workspace (or point your agent framework at it). It covers all commands, JSON
 > output format, thread resolution, multi-account usage, and a recommended workflow.
+
+```bash
+npx skills add supreme-gg-gg/instagram-cli
+```
 
 ## Configuration
 
