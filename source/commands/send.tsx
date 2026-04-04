@@ -7,7 +7,7 @@ import {
 	outputJson,
 	jsonSuccess,
 	outputText,
-	resolveRecipient,
+	resolveThread,
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
 
@@ -35,19 +35,10 @@ function detectMediaType(filePath: string): 'photo' | 'video' {
 export const args = zod.tuple([
 	zod.string().describe(
 		argument({
-			name: 'recipient',
-			description: 'Username of the recipient',
+			name: 'thread',
+			description: 'Thread ID, username, or thread title',
 		}),
 	),
-	zod
-		.string()
-		.optional()
-		.describe(
-			argument({
-				name: 'message',
-				description: 'Message text to send (omit when using --file)',
-			}),
-		),
 ]);
 
 export const options = zod.object({
@@ -67,6 +58,15 @@ export const options = zod.object({
 			option({
 				alias: 'o',
 				description: 'Output format (json)',
+			}),
+		),
+	text: zod
+		.string()
+		.optional()
+		.describe(
+			option({
+				alias: 't',
+				description: 'Message text to send (omit when using --file)',
 			}),
 		),
 	file: zod
@@ -96,10 +96,10 @@ type Properties = {
 export default function Send({args: commandArgs, options}: Properties) {
 	const run = useCallback(
 		async (client: InstagramClient) => {
-			const [recipient, message] = commandArgs;
+			const [recipient] = commandArgs;
 			const isJson = options.output === 'json';
 
-			const {threadId} = await resolveRecipient(client, recipient);
+			const {threadId} = await resolveThread(client, recipient);
 
 			if (options.file) {
 				const mediaType = options.type ?? detectMediaType(options.file);
@@ -127,13 +127,13 @@ export default function Send({args: commandArgs, options}: Properties) {
 				return;
 			}
 
-			if (!message) {
+			if (!options.text) {
 				throw new Error(
-					'A message is required when not using --file. Usage: send <recipient> <message>',
+					'A message is required when not using --file. Usage: send <thread> --text <message>',
 				);
 			}
 
-			const messageId = await client.sendMessage(threadId, message);
+			const messageId = await client.sendMessage(threadId, options.text);
 
 			if (isJson) {
 				outputJson(jsonSuccess({threadId, recipient, messageId, sent: true}));

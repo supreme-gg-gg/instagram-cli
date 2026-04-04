@@ -17,7 +17,7 @@ export const args = zod.tuple([
 	zod.string().describe(
 		argument({
 			name: 'thread',
-			description: 'Username or thread title to read messages from',
+			description: 'Thread ID, username, or thread title',
 		}),
 	),
 ]);
@@ -104,7 +104,7 @@ export default function Read({args: commandArgs, options}: Properties) {
 			const query = commandArgs[0];
 			const isJson = options.output === 'json';
 
-			const threadId = await resolveThread(client, query);
+			const {threadId} = await resolveThread(client, query);
 
 			// Download mode: find a specific message and download its media
 			if (options.download) {

@@ -116,6 +116,8 @@ instagram-cli config <key> <value>             # set config key to value
 instagram-cli config edit                      # open config file in editor
 ```
 
+If you want to use Instagram CLI with AI agents, see [one-turn commands](#one-turn-commands-for-agents--automation) that are non-interactive and designed for agents.
+
 > [!TIP]
 > You can easily manage multiple accounts with Instagram CLI!
 > Your login for each account will be saved **locally** and you can switch between them using the `instagram-cli auth switch <username>` command or run a certain command with a specific account using the `--username` flag.
@@ -147,6 +149,27 @@ Inside the chat interface and after selecting a thread, you can navigate all int
 > Use `tab` and `enter` to autocomplete file paths. You can include emojis in messages with `:emoji_name:` e.g. `:thumbsup:` = 👍 (with fuzzy matching).
 
 Instagram CLI supports mouse interactions as well, so you can click on messages to select them, scroll through the chat, and click to reposition the cursor when typing messages. We're gradually rolling out more mouse support in our TUI!
+
+## One-turn Commands (for AI Agents)
+
+These commands are non-interactive (no TUI) — they run once, print to stdout, and exit. They're designed for scripting, piping, and AI agent tool-use. All commands accept `-o json` for structured JSON output. Example usage includes:
+
+```bash
+# These are only example usages. Run -h / --help for full manual.
+instagram-cli inbox
+instagram-cli send <thread> --text "Hey, how are you?"
+instagram-cli read <thread> --limit 10 --mark-seen --output json
+instagram-cli read <thread> --message-id <id> --download "./photo.jpg"
+instagram-cli reply <thread> --message-id <id> --text "Hey, how are you?"
+instagram-cli unsend <thread> --message-id <id>
+```
+
+`<thread>` accepts a thread ID, username, or fuzzy thread title. Prefer passing thread IDs (from `inbox -o json`) directly to avoid redundant lookups.
+
+> [!TIP]
+> **Building an AI agent that uses Instagram?** Load [`instagram-skill/SKILL.md`](./instagram-skill/SKILL.md)
+> into your agent's workspace (or point your agent framework at it). It covers all commands, JSON
+> output format, thread resolution, multi-account usage, and a recommended workflow.
 
 ## Configuration
 
