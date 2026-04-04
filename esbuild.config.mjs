@@ -20,7 +20,11 @@ if (values.production) {
 }
 
 async function runBuild() {
-	const entryPoints = ['source/cli.ts', 'source/commands/**/*.tsx'];
+	const entryPoints = [
+		'source/cli.ts',
+		'source/commands/**/*.tsx',
+		'source/mocks/cli.mock.ts',
+	];
 
 	// Include mocks if not production
 	if (!values.production) {
