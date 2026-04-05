@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useRef, useCallback} from 'react';
-import {Box, useInput, type DOMElement, useApp} from 'ink';
+import {Box, Text, useInput, type DOMElement, useApp} from 'ink';
 import stringWidth from 'string-width';
 import wrapAnsi from 'wrap-ansi';
 import {
@@ -317,10 +317,10 @@ export default function InputBox({
 				const inputTextYMax = layout.y + layout.height - 2;
 				if (clickY < inputTextY || clickY > inputTextYMax) return false;
 
-				// Text starts 2 columns in (border + padding).
-				const inputTextX = layout.x + 2;
-				// Inner text area width: full box width minus 2 borders and 2 padding.
-				const lineWidth = Math.max(1, layout.width - 4);
+				// Text starts 4 columns in: border(1) + padding(1) + prompt "❯ "(2).
+				const inputTextX = layout.x + 4;
+				// Inner text area: full width minus 2 borders, 2 padding, 2 prompt chars.
+				const lineWidth = Math.max(1, layout.width - 6);
 				const lineIndex = clickY - inputTextY;
 				const colInLine = Math.max(0, clickX - inputTextX);
 				const cursorPos = clickToCharOffset(
@@ -336,23 +336,46 @@ export default function InputBox({
 		),
 	);
 
+	const modeTag =
+		autocomplete.isActive && autocomplete.type === 'command'
+			? ' CMD '
+			: autocomplete.isActive && autocomplete.type === 'filePath'
+				? ' FILE '
+				: null;
+
 	return (
 		<Box ref={boxRef} flexDirection="column">
-			<Box borderStyle="round" paddingX={1}>
-				<TextInput
-					key={inputKey}
-					cursorOffset={cursorOffset}
-					showCursor={!isDisabled}
-					value={message}
-					placeholder={
-						isDisabled
-							? 'Selection mode active - use j/k to navigate, Esc to exit'
-							: 'Type a message, : for commands, or # for files'
-					}
-					onChange={isDisabled ? () => {} : handleInputChange}
-					// OnSubmit is now handled by the master useInput hook
-					onSubmit={() => {}}
-				/>
+			<Box
+				borderStyle="round"
+				borderColor={isDisabled ? 'gray' : 'magenta'}
+				paddingX={1}
+				flexDirection="row"
+				alignItems="center"
+			>
+				<Text bold={!isDisabled} color={isDisabled ? 'gray' : 'magenta'}>
+					{isDisabled ? '⊘ ' : '❯ '}
+				</Text>
+				<Box flexGrow={1}>
+					<TextInput
+						key={inputKey}
+						cursorOffset={cursorOffset}
+						showCursor={!isDisabled}
+						value={message}
+						placeholder={
+							isDisabled
+								? 'Selection mode — j/k to navigate, Esc to exit'
+								: 'Message, : for commands, # for files'
+						}
+						onChange={isDisabled ? () => {} : handleInputChange}
+						// OnSubmit is now handled by the master useInput hook
+						onSubmit={() => {}}
+					/>
+				</Box>
+				{modeTag && (
+					<Text bold backgroundColor="magenta" color="white">
+						{modeTag}
+					</Text>
+				)}
 			</Box>
 			{autocomplete.isActive && (
 				<AutocompleteView

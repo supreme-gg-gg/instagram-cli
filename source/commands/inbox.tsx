@@ -59,10 +59,22 @@ export default function Inbox({options}: Properties) {
 			const isJson = options.output === 'json';
 
 			if (options.search) {
-				const results = await client.searchThreadsByTitle(options.search, {
-					maxThreadsToSearch: options.limit * 4,
+				// Combined search: username + title, dedup by thread ID
+				const [usernameResults, titleResults] = await Promise.all([
+					client.searchThreadByUsername(options.search).catch(() => []),
+					client.searchThreadsByTitle(options.search, {
+						maxThreadsToSearch: options.limit * 4,
+					}),
+				]);
+
+				const seen = new Set<string>();
+				const merged = [...usernameResults, ...titleResults].filter(r => {
+					if (seen.has(r.thread.id)) return false;
+					seen.add(r.thread.id);
+					return true;
 				});
-				const limited = results.slice(0, options.limit);
+				merged.sort((a, b) => b.score - a.score);
+				const limited = merged.slice(0, options.limit);
 
 				if (isJson) {
 					outputJson(

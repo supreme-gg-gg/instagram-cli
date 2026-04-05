@@ -32,7 +32,7 @@ Instagram CLI allows you to use social media more intentionally -- to stay conne
 - Full keyboard navigation and shortcuts, no mouse, no touchscreens
 - Celebrate the art and simplicity of **terminal UI (TUI)**
 
-## Installation (TypeScript Client)
+## Installation
 
 ### NPM
 
@@ -50,6 +50,8 @@ brew install instagram-cli
 ```
 
 The formula is available [here](https://github.com/supreme-gg-gg/homebrew-tap/blob/main/Formula/instagram-cli.rb).
+
+We also ship a Python client with nostalgic UNIX vibes since Instagram CLI was first built in Python with `curses`. For installation and more information, see [Python Client Documentation](./instagram-py/README.md).
 
 ### Community Packages
 
@@ -74,21 +76,6 @@ instagram-cli
 We welcome contributions to add more installation methods.
 
 For installation from source, please refer to the [TypeScript Client Documentation](./DEVELOPMENT.md).
-
-## Installation (Python Client)
-
-The Python client is the original implementation of `instagram-cli` with nostalgic UNIX vibes.
-
-```bash
-pip install instagram-cli
-```
-
-Note that Python links to the `instagram` command, while TypeScript links to `instagram-cli`.
-
-> [!CAUTION]
-> We do not recommend using the TypeScript and Python client simultaneously with the same account to reduce the risk of account bans. We recommend using the TypeScript client when possible since it is much less likely to trigger Instagram's anti-bot mechanisms.
-
-For more information about the Python client, please refer to the [Python Client Documentation](./instagram-py/README.md).
 
 ## CLI Commands
 
@@ -115,6 +102,8 @@ instagram-cli config                           # lists all config
 instagram-cli config <key> <value>             # set config key to value
 instagram-cli config edit                      # open config file in editor
 ```
+
+If you want to use Instagram CLI with AI agents, see [one-turn commands](#one-turn-commands-for-agents--automation) that are non-interactive and designed for agents.
 
 > [!TIP]
 > You can easily manage multiple accounts with Instagram CLI!
@@ -147,6 +136,31 @@ Inside the chat interface and after selecting a thread, you can navigate all int
 > Use `tab` and `enter` to autocomplete file paths. You can include emojis in messages with `:emoji_name:` e.g. `:thumbsup:` = 👍 (with fuzzy matching).
 
 Instagram CLI supports mouse interactions as well, so you can click on messages to select them, scroll through the chat, and click to reposition the cursor when typing messages. We're gradually rolling out more mouse support in our TUI!
+
+## One-turn Commands (for AI Agents)
+
+These commands are non-interactive (no TUI) — they run once, print to stdout, and exit. They're designed for scripting, piping, and AI agent tool-use. All commands accept `-o json` for structured JSON output. Example usage includes:
+
+```bash
+# These are only example usages. Run -h / --help for full manual.
+instagram-cli inbox
+instagram-cli send <thread> --text "Hey, how are you?"
+instagram-cli read <thread> --limit 10 --mark-seen --output json
+instagram-cli read <thread> --message-id <id> --download "./photo.jpg"
+instagram-cli reply <thread> --message-id <id> --text "Hey, how are you?"
+instagram-cli unsend <thread> --message-id <id>
+```
+
+`<thread>` accepts a thread ID, username, or fuzzy thread title. Prefer passing thread IDs (from `inbox -o json`) directly to avoid redundant lookups.
+
+> [!TIP]
+> **Building an AI agent that uses Instagram?** Load [`./skills/instagram-skill/SKILL.md`](./skills/instagram-skill/SKILL.md)
+> into your agent's workspace (or point your agent framework at it). It covers all commands, JSON
+> output format, thread resolution, multi-account usage, and a recommended workflow.
+
+```bash
+npx skills add supreme-gg-gg/instagram-cli
+```
 
 ## Configuration
 

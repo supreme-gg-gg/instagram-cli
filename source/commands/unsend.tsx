@@ -16,13 +16,7 @@ export const args = zod.tuple([
 	zod.string().describe(
 		argument({
 			name: 'thread',
-			description: 'Username or thread title',
-		}),
-	),
-	zod.string().describe(
-		argument({
-			name: 'message-id',
-			description: 'ID of the message to unsend',
+			description: 'Thread ID, username, or thread title',
 		}),
 	),
 ]);
@@ -46,6 +40,11 @@ export const options = zod.object({
 				description: 'Output format (json)',
 			}),
 		),
+	messageId: zod.string().describe(
+		option({
+			description: 'ID of the message to unsend',
+		}),
+	),
 });
 
 type Properties = {
@@ -56,17 +55,19 @@ type Properties = {
 export default function Unsend({args: commandArgs, options}: Properties) {
 	const run = useCallback(
 		async (client: InstagramClient) => {
-			const [threadQuery, messageId] = commandArgs;
+			const [threadQuery] = commandArgs;
 			const isJson = options.output === 'json';
 
-			const threadId = await resolveThread(client, threadQuery);
+			const {threadId} = await resolveThread(client, threadQuery);
 
-			await client.unsendMessage(threadId, messageId);
+			await client.unsendMessage(threadId, options.messageId);
 
 			if (isJson) {
-				outputJson(jsonSuccess({threadId, messageId, unsent: true}));
+				outputJson(
+					jsonSuccess({threadId, messageId: options.messageId, unsent: true}),
+				);
 			} else {
-				outputText(`Message ${messageId} unsent.`);
+				outputText(`Message ${options.messageId} unsent.`);
 			}
 		},
 		[commandArgs, options],

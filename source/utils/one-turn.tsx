@@ -38,54 +38,49 @@ export function outputText(text: string): void {
 }
 
 /**
- * Resolves a recipient username to a thread ID and user PK.
- * Handles the PENDING_ virtual thread ID by calling ensureThread.
- */
-export async function resolveRecipient(
-	client: InstagramClient,
-	recipient: string,
-): Promise<{threadId: string; userPk: string}> {
-	const results = await client.searchThreadByUsername(recipient, {
-		forceExact: true,
-	});
-	if (results.length === 0 || !results[0]) {
-		throw new Error(`User "${recipient}" not found`);
-	}
-
-	const {thread} = results[0];
-	let threadId = thread.id;
-	const userPk = thread.users[0]?.pk ?? '';
-	if (threadId.startsWith('PENDING_')) {
-		const pk = threadId.replace('PENDING_', '');
-		const realThread = await client.ensureThread(pk);
-		threadId = realThread.id;
-	}
-
-	return {threadId, userPk};
-}
-
-/**
- * Resolves a thread identifier (username or thread title) to a thread ID.
- * First tries username lookup, then falls back to fuzzy title search.
+ * Resolves a thread identifier to a thread ID (and optionally user PK).
+ *
+ * Resolution priority:
+ *   1. Raw numeric thread ID (20+ digits) → passthrough (zero API calls)
+ *   2. Exact username → searchThreadByUsername → handles PENDING_ virtual threads
+ *   3. Fuzzy thread title → searchThreadsByTitle
+ *
+ * @returns An object with threadId and an optional userPk (set only for username matches)
  */
 export async function resolveThread(
 	client: InstagramClient,
 	query: string,
-): Promise<string> {
+): Promise<{threadId: string; userPk?: string}> {
+	// 1. Raw thread ID passthrough
 	if (/^\d{20,}$/.test(query)) {
-		return query;
+		return {threadId: query};
 	}
 
+	// 2. Exact username lookup
 	try {
-		const {threadId} = await resolveRecipient(client, query);
-		return threadId;
+		const results = await client.searchThreadByUsername(query, {
+			forceExact: true,
+		});
+		if (results.length > 0 && results[0]) {
+			const {thread} = results[0];
+			let threadId = thread.id;
+			const userPk = thread.users[0]?.pk ?? '';
+			if (threadId.startsWith('PENDING_')) {
+				const pk = threadId.replace('PENDING_', '');
+				const realThread = await client.ensureThread(pk);
+				threadId = realThread.id;
+			}
+
+			return {threadId, userPk};
+		}
 	} catch {
 		// Fall through to title search
 	}
 
+	// 3. Fuzzy title search
 	const titleResults = await client.searchThreadsByTitle(query);
 	if (titleResults.length > 0 && titleResults[0]) {
-		return titleResults[0].thread.id;
+		return {threadId: titleResults[0].thread.id};
 	}
 
 	throw new Error(`No thread found matching "${query}"`);

@@ -24,12 +24,13 @@ async function runBuild() {
 
 	// Include mocks if not production
 	if (!values.production) {
-		entryPoints.push('source/mocks/**/*.ts');
+		entryPoints.push('source/mocks/cli.mock.ts');
 	}
 
 	const buildOptions = {
 		entryPoints,
 		bundle: true,
+		splitting: true,
 		platform: 'node',
 		format: 'esm',
 		outdir: 'dist',

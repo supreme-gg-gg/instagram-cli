@@ -16,19 +16,7 @@ export const args = zod.tuple([
 	zod.string().describe(
 		argument({
 			name: 'thread',
-			description: 'Username or thread title',
-		}),
-	),
-	zod.string().describe(
-		argument({
-			name: 'message-id',
-			description: 'ID of the message to reply to',
-		}),
-	),
-	zod.string().describe(
-		argument({
-			name: 'text',
-			description: 'Reply text',
+			description: 'Thread ID, username, or thread title',
 		}),
 	),
 ]);
@@ -52,6 +40,17 @@ export const options = zod.object({
 				description: 'Output format (json)',
 			}),
 		),
+	messageId: zod.string().describe(
+		option({
+			description: 'ID of the message to reply to',
+		}),
+	),
+	text: zod.string().describe(
+		option({
+			alias: 't',
+			description: 'Reply text',
+		}),
+	),
 });
 
 type Properties = {
@@ -62,10 +61,10 @@ type Properties = {
 export default function Reply({args: commandArgs, options}: Properties) {
 	const run = useCallback(
 		async (client: InstagramClient) => {
-			const [threadQuery, messageId, text] = commandArgs;
+			const [threadQuery] = commandArgs;
 			const isJson = options.output === 'json';
 
-			const threadId = await resolveThread(client, threadQuery);
+			const {threadId} = await resolveThread(client, threadQuery);
 
 			let replyToMessage;
 			let cursor: string | undefined;
@@ -74,7 +73,7 @@ export default function Reply({args: commandArgs, options}: Properties) {
 			do {
 				// eslint-disable-next-line no-await-in-loop
 				const result = await client.getMessages(threadId, cursor);
-				replyToMessage = result.messages.find(m => m.id === messageId);
+				replyToMessage = result.messages.find(m => m.id === options.messageId);
 				if (replyToMessage) break;
 				cursor = result.cursor;
 				pages++;
@@ -82,13 +81,13 @@ export default function Reply({args: commandArgs, options}: Properties) {
 
 			if (!replyToMessage) {
 				throw new Error(
-					`Message ${messageId} not found within ${maxPages} pages. The message may be too old or the ID may be invalid.`,
+					`Message ${options.messageId} not found within ${maxPages} pages. The message may be too old or the ID may be invalid.`,
 				);
 			}
 
 			const replyMessageId = await client.sendReply(
 				threadId,
-				text,
+				options.text,
 				replyToMessage,
 			);
 
@@ -96,7 +95,7 @@ export default function Reply({args: commandArgs, options}: Properties) {
 				outputJson(
 					jsonSuccess({
 						threadId,
-						replyToMessageId: messageId,
+						replyToMessageId: options.messageId,
 						messageId: replyMessageId,
 						sent: true,
 					}),

@@ -111,18 +111,14 @@ export default function TextInput({
 						nextCursorOffset + 1,
 					);
 				}
-			} else if (key.backspace) {
+				// Issue see: https://github.com/vadimdemedes/ink/issues/634
+				// Waiting for latest ink release, this is recently fixed in https://github.com/vadimdemedes/ink/commit/321a2e8cd306904d4e2aa21d432bae4de715e407
+			} else if (key.backspace || key.delete) {
 				if (internalCursorOffset > 0) {
 					nextValue =
 						originalValue.slice(0, internalCursorOffset - 1) +
 						originalValue.slice(internalCursorOffset);
 					nextCursorOffset = internalCursorOffset - 1;
-				}
-			} else if (key.delete) {
-				if (internalCursorOffset < originalValue.length) {
-					nextValue =
-						originalValue.slice(0, internalCursorOffset) +
-						originalValue.slice(internalCursorOffset + 1);
 				}
 			} else {
 				nextValue =
