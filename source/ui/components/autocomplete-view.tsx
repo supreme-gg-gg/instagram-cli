@@ -32,13 +32,8 @@ export function AutocompleteView({
 		visibleSuggestions = suggestions;
 	}
 
-	const hasMoreAbove = showScrollIndicators && startIndex > 0;
-	const hasMoreBelow =
-		showScrollIndicators && startIndex + MAX_SUGGESTIONS < suggestions.length;
-
 	return (
 		<Box flexDirection="column" marginTop={1}>
-			{hasMoreAbove && <Text dimColor> ↑ more</Text>}
 			{visibleSuggestions.map((suggestion, index) => {
 				const actualIndex = startIndex + index;
 				const isSelected = actualIndex === selectedIndex;
@@ -54,7 +49,6 @@ export function AutocompleteView({
 					</Text>
 				);
 			})}
-			{hasMoreBelow && <Text dimColor> ↓ more</Text>}
 		</Box>
 	);
 }
