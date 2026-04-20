@@ -1,4 +1,3 @@
-import process from 'node:process';
 import React, {useState, useEffect} from 'react';
 import {Box, Text} from 'ink';
 import {Alert, TextInput} from '@inkjs/ui';
@@ -15,29 +14,31 @@ export const description = 'Login to Instagram';
 const logger = createContextualLogger('LoginCommand');
 
 export const options = zod.object({
-	username: zod
+	refresh: zod
 		.boolean()
 		.default(false)
 		.describe(
 			option({
+				alias: 'r',
+				description: 'Force re-login with username/password (interactive form)',
+			}),
+		),
+	username: zod
+		.string()
+		.optional()
+		.describe(
+			option({
 				alias: 'u',
-				description: 'Login using username/password (interactive form)',
+				description: 'Username for non-interactive login (requires --password)',
 			}),
 		),
-	user: zod
+	password: zod
 		.string()
 		.optional()
 		.describe(
 			option({
-				description: 'Username for non-interactive login (requires --pass)',
-			}),
-		),
-	pass: zod
-		.string()
-		.optional()
-		.describe(
-			option({
-				description: 'Password for non-interactive login (requires --user)',
+				alias: 'p',
+				description: 'Password for non-interactive login (requires --username)',
 			}),
 		),
 	totp: zod
@@ -170,22 +171,21 @@ export default function Login({options}: Properties) {
 
 	useEffect(() => {
 		const run = async () => {
-			// Non-interactive mode: --user and --pass provided
-			if (options.user && options.pass) {
+			// Non-interactive mode: --username and --password provided
+			if (options.username && options.password) {
 				const nonInteractiveClient = new InstagramClient();
 				setClient(nonInteractiveClient);
-				setMessage(`Logging in as @${options.user}...`);
+				setMessage(`Logging in as @${options.username}...`);
 
 				const result = await nonInteractiveClient.login(
-					options.user,
-					options.pass,
+					options.username,
+					options.password,
 					{initializeRealtime: false},
 				);
 
 				if (result.success) {
 					setMessage(`Logged in as @${result.username}`);
 					setMode('success');
-					process.exit(0);
 					return;
 				}
 
@@ -201,13 +201,11 @@ export default function Login({options}: Properties) {
 						if (tfaResult.success) {
 							setMessage(`Logged in as @${tfaResult.username}`);
 							setMode('success');
-							process.exit(0);
 							return;
 						}
 
 						setMessage(`2FA login failed: ${tfaResult.error}`);
 						setMode('error');
-						process.exit(1);
 						return;
 					}
 
@@ -215,25 +213,22 @@ export default function Login({options}: Properties) {
 						'2FA required but no --totp code provided. Pass --totp <code> for non-interactive 2FA.',
 					);
 					setMode('error');
-					process.exit(1);
 					return;
 				}
 
 				if (result.badPassword) {
 					setMessage('Incorrect username or password.');
 					setMode('error');
-					process.exit(1);
 					return;
 				}
 
 				setMessage(`Login failed: ${result.error}`);
 				setMode('error');
-				process.exit(1);
 				return;
 			}
 
-			// If the user provided the -u flag, show interactive form
-			if (options.username) {
+			// If the user provided the --refresh flag, show interactive form
+			if (options.refresh) {
 				setClient(new InstagramClient());
 				setMode('form');
 				setMessage(undefined);
@@ -279,7 +274,7 @@ export default function Login({options}: Properties) {
 		};
 
 		void run();
-	}, [options.username, options.user, options.pass, options.totp]);
+	}, [options.refresh, options.username, options.password, options.totp]);
 
 	if (mode === 'error') {
 		return (
