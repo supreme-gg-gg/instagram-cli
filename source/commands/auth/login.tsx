@@ -14,13 +14,39 @@ export const description = 'Login to Instagram';
 const logger = createContextualLogger('LoginCommand');
 
 export const options = zod.object({
-	username: zod
+	refresh: zod
 		.boolean()
 		.default(false)
 		.describe(
 			option({
+				alias: 'r',
+				description: 'Force re-login with username/password (interactive form)',
+			}),
+		),
+	username: zod
+		.string()
+		.optional()
+		.describe(
+			option({
 				alias: 'u',
-				description: 'Login using username/password',
+				description: 'Username for non-interactive login (requires --password)',
+			}),
+		),
+	password: zod
+		.string()
+		.optional()
+		.describe(
+			option({
+				alias: 'p',
+				description: 'Password for non-interactive login (requires --username)',
+			}),
+		),
+	totp: zod
+		.string()
+		.optional()
+		.describe(
+			option({
+				description: 'TOTP code for non-interactive 2FA login',
 			}),
 		),
 });
@@ -145,15 +171,71 @@ export default function Login({options}: Properties) {
 
 	useEffect(() => {
 		const run = async () => {
-			// If the user provided a username, we assume they want to log in with username/password
-			if (options.username) {
+			// Non-interactive mode: --username and --password provided
+			if (options.username && options.password) {
+				const nonInteractiveClient = new InstagramClient();
+				setClient(nonInteractiveClient);
+				setMessage(`Logging in as @${options.username}...`);
+
+				const result = await nonInteractiveClient.login(
+					options.username,
+					options.password,
+					{initializeRealtime: false},
+				);
+
+				if (result.success) {
+					setMessage(`Logged in as @${result.username}`);
+					setMode('success');
+					return;
+				}
+
+				if (result.twoFactorInfo) {
+					if (options.totp) {
+						setMessage('Verifying TOTP code...');
+						const tfaResult = await nonInteractiveClient.twoFactorLogin({
+							verificationCode: options.totp,
+							twoFactorIdentifier: result.twoFactorInfo.two_factor_identifier,
+							totp_two_factor_on: result.twoFactorInfo.totp_two_factor_on,
+						});
+
+						if (tfaResult.success) {
+							setMessage(`Logged in as @${tfaResult.username}`);
+							setMode('success');
+							return;
+						}
+
+						setMessage(`2FA login failed: ${tfaResult.error}`);
+						setMode('error');
+						return;
+					}
+
+					setMessage(
+						'2FA required but no --totp code provided. Pass --totp <code> for non-interactive 2FA.',
+					);
+					setMode('error');
+					return;
+				}
+
+				if (result.badPassword) {
+					setMessage('Incorrect username or password.');
+					setMode('error');
+					return;
+				}
+
+				setMessage(`Login failed: ${result.error}`);
+				setMode('error');
+				return;
+			}
+
+			// If the user provided the --refresh flag, show interactive form
+			if (options.refresh) {
 				setClient(new InstagramClient());
 				setMode('form');
 				setMessage(undefined);
 				return;
 			}
 
-			// Otherwise we load the saved session and if failed redirect to pages
+			// Otherwise we load the saved session and if failed redirect to form
 			setMessage('Trying to log in with saved session...');
 			const config = ConfigManager.getInstance();
 			await config.initialize();
@@ -183,7 +265,6 @@ export default function Login({options}: Properties) {
 				setMessage('A code has been sent to you. Please enter it below.');
 				setMode('challenge');
 			} else if (result.error) {
-				// For all other errors, we redirect to the login form, if that also fails we show an error
 				setMessage(
 					'Could not log in with saved session. Please log in with your username and password.',
 				);
@@ -193,7 +274,7 @@ export default function Login({options}: Properties) {
 		};
 
 		void run();
-	}, [options.username]);
+	}, [options.refresh, options.username, options.password, options.totp]);
 
 	if (mode === 'error') {
 		return (
