@@ -142,6 +142,25 @@ export type AuthState = {
 	error?: string;
 };
 
+export type BaseMediaItem = {
+	id: string;
+	user: {
+		pk: number;
+		username: string;
+		profilePicUrl?: string;
+	};
+	image_versions2?: {
+		candidates: MediaCandidate[];
+	};
+	video_versions?: Array<{
+		url: string;
+		width: number;
+		height: number;
+	}>;
+	taken_at: number;
+	media_type: number;
+};
+
 export type CarouselItem = {
 	id: string;
 	media_type: number;
@@ -151,34 +170,17 @@ export type CarouselItem = {
 	video_versions?: MediaCandidate[];
 };
 
-export type Post = {
-	id: string;
-	user: {
-		pk: number;
-		username: string;
-		profilePicUrl?: string;
-	};
+export type Post = BaseMediaItem & {
 	caption?: {
 		text: string;
 	};
-	image_versions2?: {
-		candidates: MediaCandidate[];
-	};
 	like_count: number;
 	comment_count: number;
-	taken_at: number;
-	media_type: number;
-	video_versions?: Array<{
-		url: string;
-		width: number;
-		height: number;
-	}>;
 	carousel_media_count?: number;
 	carousel_media?: CarouselItem[];
 };
-
-export type FeedInstance = {
-	posts: Post[];
+export type Story = BaseMediaItem & {
+	reel_mentions?: ReelMention[];
 };
 
 export type ReelMention = {
@@ -190,33 +192,17 @@ export type ReelMention = {
 	};
 };
 
-export type Story = {
-	id: string;
-	user: {
-		pk: number;
-		username: string;
-		profilePicUrl?: string;
-	};
-	reel_mentions?: ReelMention[];
-	image_versions2?: {
-		candidates: MediaCandidate[];
-	};
-	video_versions?: Array<{
-		url: string;
-		width: number;
-		height: number;
-	}>;
-	taken_at: number;
-	media_type: number; // 1 for image, 2 for video
+export type StoryReel = {
+	user: Story['user'];
+	stories: Story[];
+};
+
+export type FeedInstance = {
+	posts: Post[];
 };
 
 export type MediaCandidate = {
 	url: string;
 	width: number;
 	height: number;
-};
-
-export type StoryReel = {
-	user: Story['user'];
-	stories: Story[];
 };
