@@ -142,26 +142,7 @@ export type AuthState = {
 	error?: string;
 };
 
-export type BaseMediaItem = {
-	id: string;
-	user: {
-		pk: number;
-		username: string;
-		profilePicUrl?: string;
-	};
-	image_versions2?: {
-		candidates: MediaCandidate[];
-	};
-	video_versions?: Array<{
-		url: string;
-		width: number;
-		height: number;
-	}>;
-	taken_at: number;
-	media_type: number;
-};
-
-export type CarouselItem = {
+export type BaseMedia = {
 	id: string;
 	media_type: number;
 	image_versions2?: {
@@ -170,18 +151,36 @@ export type CarouselItem = {
 	video_versions?: MediaCandidate[];
 };
 
-export type Post = BaseMediaItem & {
+export type MediaItemMetadata = {
+	user: {
+		pk: number;
+		username: string;
+		profilePicUrl?: string;
+	};
+	taken_at: number;
+};
+
+export type ListMediaItem<T extends BaseMedia = BaseMedia, M = undefined> = {
+	label: string;
+	content: T[];
+	additional_metadata?: M;
+};
+
+export type CarouselItem = BaseMedia & MediaItemMetadata;
+
+export type PostMetadata = {
 	caption?: {
 		text: string;
 	};
 	like_count: number;
 	comment_count: number;
 	carousel_media_count?: number;
-	carousel_media?: CarouselItem[];
 };
-export type Story = BaseMediaItem & {
-	reel_mentions?: ReelMention[];
-};
+
+export type Story = BaseMedia &
+	MediaItemMetadata & {
+		reel_mentions?: ReelMention[];
+	};
 
 export type ReelMention = {
 	user: {
@@ -192,14 +191,11 @@ export type ReelMention = {
 	};
 };
 
-export type StoryReel = {
-	user: Story['user'];
-	stories: Story[];
-};
-
-export type FeedInstance = {
-	posts: Post[];
-};
+export type Post = BaseMedia &
+	MediaItemMetadata &
+	PostMetadata & {
+		carousel_media?: CarouselItem[];
+	};
 
 export type MediaCandidate = {
 	url: string;
