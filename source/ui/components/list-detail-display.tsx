@@ -225,13 +225,13 @@ export default function ListDetailDisplay({
 	const sidebarContent = (
 		<>
 			{combinedItems.map((item, index) => (
-				<Box key={item.label} height={1} flexShrink={0}>
+				<Box key={item.pk} height={1} flexShrink={0}>
 					<Text
 						color={index === selectedIndex ? 'blue' : undefined}
 						wrap="truncate-end"
 					>
 						{index === selectedIndex ? '➜ ' : '   '}
-						{item.label}
+						{item.content[0]?.user?.username ?? 'Unknown'}
 					</Text>
 				</Box>
 			))}

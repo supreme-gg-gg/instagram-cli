@@ -160,8 +160,11 @@ export type MediaItemMetadata = {
 	taken_at: number;
 };
 
-export type ListMediaItem<T extends BaseMedia = BaseMedia, M = undefined> = {
-	label: string;
+export type ListMediaItem<
+	T extends BaseMedia & MediaItemMetadata = BaseMedia & MediaItemMetadata,
+	M = undefined,
+> = {
+	pk: number;
 	content: T[];
 	additional_metadata?: M;
 };

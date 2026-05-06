@@ -1,5 +1,9 @@
 import {useState, useEffect, useCallback} from 'react';
-import {type StoryReel} from '../../types/instagram.js';
+import {
+	type ListMediaItem,
+	type Story,
+	type StoryReel,
+} from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
 import {useInstagramClient as useInstagramClientImpl} from './use-instagram-client.js';
 
@@ -15,40 +19,42 @@ export function useStories(
 		error: clientError,
 		isLoading: clientLoading,
 	} = useInstagramClient(undefined, {realtime: false});
-	const [reels, setReels] = useState<StoryReel[]>([]);
+	const [reels, setReels] = useState<Array<ListMediaItem<Story>>>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | undefined>();
 
 	const loadStoriesForReel = useCallback(
-		async (index: number, currentReels: StoryReel[]) => {
-			if (!client || index < 0 || index >= currentReels.length) {
+		async (index: number, currentItems: Array<ListMediaItem<Story>>) => {
+			if (!client || index < 0 || index >= currentItems.length) {
 				return;
 			}
 
-			const reel = currentReels[index];
-			// Don't re-fetch if stories are already loaded
-			if (!reel || reel.stories.length > 0) {
+			const item = currentItems[index];
+			if (!item || item.content.length > 0) {
 				return;
 			}
 
 			try {
-				const stories = await client.getStoriesForUser(reel.user.pk);
+				const stories = await client.getStoriesForUser(item.pk);
 				if (stories.length > 0) {
-					setReels(previousReels => {
-						const newReels = [...previousReels];
-						const targetReel = newReels[index];
-						if (targetReel) {
-							targetReel.stories = stories;
+					setReels(previousItems => {
+						const newItems = [...previousItems];
+						const targetItem = newItems[index];
+						if (targetItem) {
+							newItems[index] = {
+								...targetItem,
+								content: stories,
+							};
 						}
 
-						return newReels;
+						return newItems;
 					});
 				}
 			} catch (error_) {
 				const errorMessage =
 					error_ instanceof Error ? error_.message : String(error_);
 				logger.error(
-					`Failed to load stories for user ${reel.user.username}: ${errorMessage}`,
+					`Failed to load stories for user ${item.pk}: ${errorMessage}`,
 				);
 			}
 		},
@@ -57,7 +63,6 @@ export function useStories(
 
 	useEffect(() => {
 		const fetchReelsTray = async () => {
-			// Don't try to fetch if client failed to initialize
 			if (!client || clientError) {
 				setIsLoading(false);
 				return;
@@ -67,13 +72,18 @@ export function useStories(
 				setIsLoading(true);
 				const reelsTray = await client.getReelsTray();
 				if (reelsTray.length > 0) {
-					setReels(reelsTray);
-					// Pre-fetch stories for the first 3 users (0, 1, 2)
-					await loadStoriesForReel(0, reelsTray);
-					// Pre-fetch next 2 in background
-					if (reelsTray.length > 1) {
-						// Fire and forget: explicitly ignore the promise result
-						void loadStoriesForReel(1, reelsTray).catch((error_: unknown) => {
+					const listItems: Array<ListMediaItem<Story>> = reelsTray.map(
+						reel => ({
+							pk: reel.user.pk,
+							content: reel.stories,
+						}),
+					);
+
+					setReels(listItems);
+					await loadStoriesForReel(0, listItems);
+
+					if (listItems.length > 1) {
+						void loadStoriesForReel(1, listItems).catch((error_: unknown) => {
 							const errorMessage =
 								error_ instanceof Error ? error_.message : String(error_);
 							logger.error(
@@ -82,9 +92,8 @@ export function useStories(
 						});
 					}
 
-					if (reelsTray.length > 2) {
-						// Fire and forget: explicitly ignore the promise result
-						void loadStoriesForReel(2, reelsTray).catch((error_: unknown) => {
+					if (listItems.length > 2) {
+						void loadStoriesForReel(2, listItems).catch((error_: unknown) => {
 							const errorMessage =
 								error_ instanceof Error ? error_.message : String(error_);
 							logger.error(
