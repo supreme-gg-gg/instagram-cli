@@ -75,6 +75,7 @@ export function useStories(
 					const listItems: Array<ListMediaItem<Story>> = reelsTray.map(
 						reel => ({
 							pk: reel.user.pk,
+							label: reel.user.username,
 							content: reel.stories,
 						}),
 					);

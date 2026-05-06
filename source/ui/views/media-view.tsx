@@ -1,12 +1,23 @@
 import React, {useState, useEffect} from 'react';
 import {TerminalInfoProvider} from 'ink-picture';
-import {type FeedInstance} from '../../types/instagram.js';
-import TimelineMediaDisplay from '../components/timeline-media-display.js';
-import ListMediaDisplay from '../components/list-media-display.js';
+import {
+	type ListMediaItem,
+	type Post,
+	type PostMetadata,
+} from '../../types/instagram.js';
+import ListDetailDisplay from '../components/list-detail-display.js';
 import {ConfigManager} from '../../config.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
 
-export default function MediaView({feed}: {readonly feed: FeedInstance}) {
+type FeedPost = Post & {
+	carousel_media?: Post[];
+};
+
+type FeedData = {
+	posts?: FeedPost[];
+};
+
+export default function MediaView({feed}: {readonly feed: FeedData}) {
 	const [feedType, setFeedType] = useState<'timeline' | 'list'>('list');
 	const imageProtocol = useImageProtocol();
 
@@ -16,13 +27,36 @@ export default function MediaView({feed}: {readonly feed: FeedInstance}) {
 		setFeedType(savedFeedType as 'timeline' | 'list');
 	}, [feed]);
 
-	return feedType === 'timeline' ? (
+	const listItems: Array<ListMediaItem<Post, PostMetadata>> = (
+		feed.posts ?? []
+	).map(post => ({
+		pk: post.user.pk,
+		content: post.carousel_media
+			? [
+					post,
+					...post.carousel_media.map(item => ({
+						...item,
+						user: post.user,
+						taken_at: post.taken_at,
+					})),
+				]
+			: [post],
+		additional_metadata: {
+			caption: post.caption,
+			like_count: post.like_count,
+			comment_count: post.comment_count,
+			carousel_media_count: post.carousel_media_count,
+		},
+	}));
+
+	return (
 		<TerminalInfoProvider>
-			<TimelineMediaDisplay feed={feed} protocol={imageProtocol} />
-		</TerminalInfoProvider>
-	) : (
-		<TerminalInfoProvider>
-			<ListMediaDisplay feed={feed} protocol={imageProtocol} />
+			<ListDetailDisplay
+				listItems={listItems}
+				loadMore={() => {}}
+				protocol={imageProtocol}
+				mode="post"
+			/>
 		</TerminalInfoProvider>
 	);
 }

@@ -165,6 +165,7 @@ export type ListMediaItem<
 	M = undefined,
 > = {
 	pk: number;
+	label: string;
 	content: T[];
 	additional_metadata?: M;
 };

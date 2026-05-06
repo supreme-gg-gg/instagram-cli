@@ -231,7 +231,7 @@ export default function ListDetailDisplay({
 						wrap="truncate-end"
 					>
 						{index === selectedIndex ? '➜ ' : '   '}
-						{item.content[0]?.user?.username ?? 'Unknown'}
+						{item.label}
 					</Text>
 				</Box>
 			))}
