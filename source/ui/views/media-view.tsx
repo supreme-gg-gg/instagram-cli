@@ -31,6 +31,7 @@ export default function MediaView({feed}: {readonly feed: FeedData}) {
 		feed.posts ?? []
 	).map(post => ({
 		pk: post.user.pk,
+		label: post.user.username,
 		content: post.carousel_media
 			? [
 					post,
