@@ -1,15 +1,14 @@
 import React from 'react';
 import {Box, Text} from 'ink';
 import Image, {type ImageProtocolName} from 'ink-picture';
-import {type FeedInstance} from '../../types/instagram.js';
+import {type Post} from '../../types/instagram.js';
 
 type Properties = {
-	readonly feed: FeedInstance;
+	readonly posts: Post[];
 	readonly protocol?: ImageProtocolName;
 };
 
-export default function TimelineMediaDisplay({feed, protocol}: Properties) {
-	const posts = feed.posts || [];
+export default function TimelineMediaDisplay({posts, protocol}: Properties) {
 	return (
 		<Box flexDirection="column" flexGrow={1} gap={1}>
 			<Text color="blue">Your Feed</Text>

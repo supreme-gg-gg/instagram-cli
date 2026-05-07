@@ -6,6 +6,7 @@ import {
 	type PostMetadata,
 } from '../../types/instagram.js';
 import ListDetailDisplay from '../components/list-detail-display.js';
+import TimelineMediaDisplay from '../components/timeline-media-display.js';
 import {ConfigManager} from '../../config.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
 
@@ -49,6 +50,16 @@ export default function MediaView({feed}: {readonly feed: FeedData}) {
 			carousel_media_count: post.carousel_media_count,
 		},
 	}));
+
+	const posts = feed.posts ?? [];
+
+	if (feedType === 'timeline') {
+		return (
+			<TerminalInfoProvider>
+				<TimelineMediaDisplay posts={posts} protocol={imageProtocol} />
+			</TerminalInfoProvider>
+		);
+	}
 
 	return (
 		<TerminalInfoProvider>
