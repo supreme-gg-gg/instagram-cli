@@ -34,14 +34,11 @@ export default function MediaView({feed}: {readonly feed: FeedData}) {
 		pk: post.user.pk,
 		label: post.user.username,
 		content: post.carousel_media
-			? [
-					post,
-					...post.carousel_media.map(item => ({
-						...item,
-						user: post.user,
-						taken_at: post.taken_at,
-					})),
-				]
+			? post.carousel_media.map(item => ({
+					...item,
+					user: post.user,
+					taken_at: post.taken_at,
+				}))
 			: [post],
 		additional_metadata: {
 			caption: post.caption,
