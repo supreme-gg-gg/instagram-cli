@@ -1,5 +1,5 @@
-import React, {useState, useEffect, useRef, useCallback} from 'react';
-import {Box, Text, useInput, measureElement, type DOMElement} from 'ink';
+import React, {useState, useRef, useCallback} from 'react';
+import {Box, Text, useInput, useBoxMetrics, type DOMElement} from 'ink';
 import type {Thread} from '../../types/instagram.js';
 import {useMouse} from '../context/mouse-context.js';
 import {
@@ -24,27 +24,17 @@ export default function ThreadList({
 }: ThreadListProperties) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
-	const [viewportSize, setViewportSize] = useState(10);
 
-	// Type null is required for these refs to work
-	// eslint-disable-next-line @typescript-eslint/no-restricted-types
-	const containerReference = useRef<DOMElement | null>(null);
+	const containerReference = useRef<DOMElement>(null as unknown as DOMElement);
 	// Item height is constant because content is always truncated to fit the height
 	const itemHeight = 4;
 
-	// Measure container and item height to determine viewport size
-	useEffect(() => {
-		// We only need to measure if there are threads to display
-		if (containerReference.current) {
-			const containerHeight = measureElement(containerReference.current).height;
-
-			const newViewportSize = Math.max(
-				1,
-				Math.floor(containerHeight / itemHeight),
-			);
-			setViewportSize(newViewportSize);
-		}
-	}, [threads]); // Rerun measurement when the list of threads changes
+	// useBoxMetrics re-renders automatically on layout changes (terminal resize, sibling changes, etc.)
+	const {height: containerHeight, hasMeasured} =
+		useBoxMetrics(containerReference);
+	const viewportSize = hasMeasured
+		? Math.max(1, Math.floor(containerHeight / itemHeight))
+		: 10; // sensible default until the first layout pass
 
 	useInput((input, key) => {
 		if (threads.length === 0) return;

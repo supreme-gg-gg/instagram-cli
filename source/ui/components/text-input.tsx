@@ -1,12 +1,10 @@
 /**
- * Custom TextInput component with cursor control support.
+ * Custom TextInput component with cursor control and mask support.
  *
  * Drop-in replacement for `ink-text-input` with an additional `cursorOffset`
  * prop that allows setting the cursor position directly (used by InputBox's
- * internal mouse click-to-cursor handler).
- *
- * Based on ink-text-input's implementation but with cursor position control
- * and mouse escape sequence filtering.
+ * internal mouse click-to-cursor handler), and a `mask` prop for password-style
+ * inputs that renders each character as the mask character.
  */
 import React, {useState, useEffect} from 'react';
 import {Text, useInput} from 'ink';
@@ -25,11 +23,14 @@ type TextInputProperties = {
 	readonly focus?: boolean;
 	/** Whether to show the cursor. */
 	readonly showCursor?: boolean;
+	/** Mask character for password-style inputs (e.g. '*'). When set, each character is displayed as this character instead of its actual value. */
+	readonly mask?: string;
 	/**
 	 * External cursor offset. When set, overrides the internal cursor position.
-	 * Uses a timestamp to distinguish repeated sets to the same offset.
+	 * A new object reference on every call is enough to re-trigger the effect —
+	 * no timestamp or counter needed.
 	 */
-	readonly cursorOffset?: {offset: number; timestamp: number};
+	readonly cursorOffset?: {offset: number};
 };
 
 export default function TextInput({
@@ -39,6 +40,7 @@ export default function TextInput({
 	placeholder = '',
 	focus = true,
 	showCursor = true,
+	mask,
 	cursorOffset: externalCursorOffset,
 }: TextInputProperties) {
 	const [internalCursorOffset, setInternalCursorOffset] = useState(
@@ -111,14 +113,18 @@ export default function TextInput({
 						nextCursorOffset + 1,
 					);
 				}
-				// Issue see: https://github.com/vadimdemedes/ink/issues/634
-				// Waiting for latest ink release, this is recently fixed in https://github.com/vadimdemedes/ink/commit/321a2e8cd306904d4e2aa21d432bae4de715e407
-			} else if (key.backspace || key.delete) {
+			} else if (key.backspace) {
 				if (internalCursorOffset > 0) {
 					nextValue =
 						originalValue.slice(0, internalCursorOffset - 1) +
 						originalValue.slice(internalCursorOffset);
 					nextCursorOffset = internalCursorOffset - 1;
+				}
+			} else if (key.delete) {
+				if (internalCursorOffset < originalValue.length) {
+					nextValue =
+						originalValue.slice(0, internalCursorOffset) +
+						originalValue.slice(internalCursorOffset + 1);
 				}
 			} else {
 				nextValue =
@@ -145,7 +151,10 @@ export default function TextInput({
 	// ── Rendering ──────────────────────────────────────────────────────────
 
 	const value = originalValue;
-	let renderedValue = value;
+	// If a mask character is provided, replace every character for display only.
+	// The real value is unchanged and still passed to onChange/onSubmit.
+	const displayValue = mask ? mask.repeat([...value].length) : value;
+	let renderedValue = displayValue;
 	let renderedPlaceholder: string | undefined = placeholder
 		? chalk.grey(placeholder)
 		: undefined;
@@ -156,15 +165,15 @@ export default function TextInput({
 				? chalk.inverse(placeholder[0]) + chalk.grey(placeholder.slice(1))
 				: chalk.inverse(' ');
 
-		renderedValue = value.length > 0 ? '' : chalk.inverse(' ');
+		renderedValue = displayValue.length > 0 ? '' : chalk.inverse(' ');
 
 		let i = 0;
-		for (const char of value) {
+		for (const char of displayValue) {
 			renderedValue += i === internalCursorOffset ? chalk.inverse(char) : char;
 			i++;
 		}
 
-		if (value.length > 0 && internalCursorOffset === value.length) {
+		if (displayValue.length > 0 && internalCursorOffset === value.length) {
 			renderedValue += chalk.inverse(' ');
 		}
 	}

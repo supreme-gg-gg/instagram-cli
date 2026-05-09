@@ -22,7 +22,7 @@ const app = new Pastel({
 	description: package_?.packageJson.description,
 });
 
-// Disable Ink's built-in Ctrl+C exit so the app can handle it internally
+// Disable Ink's built-in Ctrl+C exit so the app can handle it internally.
 // Ink reuses the same renderer instance per stdout stream, so calling
 // render() here before Pastel does ensures the shared instance is
 // created with exitOnCtrlC: false for the entire session.

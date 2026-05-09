@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useRef, useCallback} from 'react';
-import {Box, Text, useInput, type DOMElement, useApp} from 'ink';
+import {Box, Text, useInput, usePaste, type DOMElement, useApp} from 'ink';
 import stringWidth from 'string-width';
 import wrapAnsi from 'wrap-ansi';
 import {
@@ -130,7 +130,7 @@ export default function InputBox({
 
 	// Cursor offset state driven by mouse clicks
 	const [cursorOffset, setCursorOffset] = useState<
-		{offset: number; timestamp: number} | undefined
+		{offset: number} | undefined
 	>(undefined);
 
 	// By changing the key, we force the TextInput to re-mount, which resets its internal state (including cursor position after autocomplete selection)
@@ -297,7 +297,16 @@ export default function InputBox({
 		}
 	});
 
-	// Handle mouse click-to-cursor internally
+	// Handle paste events via Ink v7's usePaste hook.
+	// Bracketed paste mode is enabled automatically — pasted text arrives as a
+	// single string instead of firing individual useInput keypress events.
+	usePaste(pastedText => {
+		if (isDisabled) return;
+		handleInputChange(message + pastedText);
+		// move cursor to the end
+		setCursorOffset({offset: message.length + pastedText.length});
+	});
+
 	useMouse(
 		useCallback(
 			event => {
@@ -329,7 +338,7 @@ export default function InputBox({
 					lineIndex,
 					colInLine,
 				);
-				setCursorOffset({offset: cursorPos, timestamp: Date.now()});
+				setCursorOffset({offset: cursorPos});
 				return true;
 			},
 			[isDisabled],
