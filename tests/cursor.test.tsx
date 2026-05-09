@@ -60,257 +60,302 @@ test('clickToCharOffset: ASCII single line', (t: ExecutionContext) => {
 	t.is(clickToCharOffset('hello', 96, 0, 99), 5); // past end → clamp to end
 });
 
-test('clickToCharOffset: wide emoji (width 2)', (t: ExecutionContext) => {
-	// "😀ab" — emoji spans visual cols 0-1, 'a' at col 2, 'b' at col 3.
-	// Clicking any cell occupied by the emoji places the cursor at the emoji.
-	const string = '😀ab';
-	t.is(clickToCharOffset(string, 96, 0, 0), 0); // left cell of emoji → at emoji
-	t.is(clickToCharOffset(string, 96, 0, 1), 0); // right cell of emoji → still at emoji
-	t.is(clickToCharOffset(string, 96, 0, 2), 1); // 'a'
-	t.is(clickToCharOffset(string, 96, 0, 3), 2); // 'b'
-});
+test.serial(
+	'clickToCharOffset: wide emoji (width 2)',
+	(t: ExecutionContext) => {
+		// "😀ab" — emoji spans visual cols 0-1, 'a' at col 2, 'b' at col 3.
+		// Clicking any cell occupied by the emoji places the cursor at the emoji.
+		const string = '😀ab';
+		t.is(clickToCharOffset(string, 96, 0, 0), 0); // left cell of emoji → at emoji
+		t.is(clickToCharOffset(string, 96, 0, 1), 0); // right cell of emoji → still at emoji
+		t.is(clickToCharOffset(string, 96, 0, 2), 1); // 'a'
+		t.is(clickToCharOffset(string, 96, 0, 3), 2); // 'b'
+	},
+);
 
-test('clickToCharOffset: CJK wide character (width 2)', (t: ExecutionContext) => {
-	// "你好" — each char is width-2; clicking either cell places cursor at that char.
-	const string = '你好';
-	t.is(clickToCharOffset(string, 96, 0, 0), 0); // left cell of '你' → at '你'
-	t.is(clickToCharOffset(string, 96, 0, 1), 0); // right cell of '你' → still at '你'
-	t.is(clickToCharOffset(string, 96, 0, 2), 1); // left cell of '好' → at '好'
-	t.is(clickToCharOffset(string, 96, 0, 3), 1); // right cell of '好' → still at '好'
-	t.is(clickToCharOffset(string, 96, 0, 4), 2);
-});
+test.serial(
+	'clickToCharOffset: CJK wide character (width 2)',
+	(t: ExecutionContext) => {
+		// "你好" — each char is width-2; clicking either cell places cursor at that char.
+		const string = '你好';
+		t.is(clickToCharOffset(string, 96, 0, 0), 0); // left cell of '你' → at '你'
+		t.is(clickToCharOffset(string, 96, 0, 1), 0); // right cell of '你' → still at '你'
+		t.is(clickToCharOffset(string, 96, 0, 2), 1); // left cell of '好' → at '好'
+		t.is(clickToCharOffset(string, 96, 0, 3), 1); // right cell of '好' → still at '好'
+		t.is(clickToCharOffset(string, 96, 0, 4), 2);
+	},
+);
 
-test('clickToCharOffset: zero-width characters', (t: ExecutionContext) => {
-	// zero-width char \u200B between 'a' and 'b'
-	const string = 'a\u200Bb';
-	t.is(clickToCharOffset(string, 96, 0, 0), 0); // 'a'
-	t.is(clickToCharOffset(string, 96, 0, 1), 2); // 'b', zero-width char is skipped
-	t.is(clickToCharOffset(string, 96, 0, 2), 3);
-});
+test.serial(
+	'clickToCharOffset: zero-width characters',
+	(t: ExecutionContext) => {
+		// zero-width char \u200B between 'a' and 'b'
+		const string = 'a\u200Bb';
+		t.is(clickToCharOffset(string, 96, 0, 0), 0); // 'a'
+		t.is(clickToCharOffset(string, 96, 0, 1), 2); // 'b', zero-width char is skipped
+		t.is(clickToCharOffset(string, 96, 0, 2), 3);
+	},
+);
 
-test('clickToCharOffset: multi-line ASCII wrapping', (t: ExecutionContext) => {
-	// "abcde" with lineWidth=3: line 0 = "abc", line 1 = "de"
-	t.is(clickToCharOffset('abcde', 3, 0, 0), 0); // 'a'
-	t.is(clickToCharOffset('abcde', 3, 0, 2), 2); // 'c'
-	t.is(clickToCharOffset('abcde', 3, 1, 0), 3); // 'd' — first char on line 1
-	t.is(clickToCharOffset('abcde', 3, 1, 1), 4); // 'e'
-	t.is(clickToCharOffset('abcde', 3, 1, 2), 5);
-});
+test.serial(
+	'clickToCharOffset: multi-line ASCII wrapping',
+	(t: ExecutionContext) => {
+		// "abcde" with lineWidth=3: line 0 = "abc", line 1 = "de"
+		t.is(clickToCharOffset('abcde', 3, 0, 0), 0); // 'a'
+		t.is(clickToCharOffset('abcde', 3, 0, 2), 2); // 'c'
+		t.is(clickToCharOffset('abcde', 3, 1, 0), 3); // 'd' — first char on line 1
+		t.is(clickToCharOffset('abcde', 3, 1, 1), 4); // 'e'
+		t.is(clickToCharOffset('abcde', 3, 1, 2), 5);
+	},
+);
 
-test('clickToCharOffset: multi-line with wide emoji', (t: ExecutionContext) => {
-	// "😀ab" with lineWidth=2: line 0 = "😀", line 1 = "ab"
-	const string = '😀ab';
-	t.is(clickToCharOffset(string, 2, 0, 0), 0); // '😀'
-	t.is(clickToCharOffset(string, 2, 1, 0), 1); // 'a'
-	t.is(clickToCharOffset(string, 2, 1, 1), 2); // 'b'
+test.serial(
+	'clickToCharOffset: multi-line with wide emoji',
+	(t: ExecutionContext) => {
+		// "😀ab" with lineWidth=2: line 0 = "😀", line 1 = "ab"
+		const string = '😀ab';
+		t.is(clickToCharOffset(string, 2, 0, 0), 0); // '😀'
+		t.is(clickToCharOffset(string, 2, 1, 0), 1); // 'a'
+		t.is(clickToCharOffset(string, 2, 1, 1), 2); // 'b'
 
-	const string2 = 'a😀b';
-	t.is(clickToCharOffset(string2, 2, 0, 0), 0); // 'a'
-	t.is(clickToCharOffset(string2, 2, 0, 1), 1); // '😀'(wrapped to next line)
-	t.is(clickToCharOffset(string2, 2, 1, 0), 1); // '😀'
-	t.is(clickToCharOffset(string2, 2, 1, 1), 1); // '😀'
-	t.is(clickToCharOffset(string2, 2, 2, 0), 2); // 'b'
-});
+		const string2 = 'a😀b';
+		t.is(clickToCharOffset(string2, 2, 0, 0), 0); // 'a'
+		t.is(clickToCharOffset(string2, 2, 0, 1), 1); // '😀'(wrapped to next line)
+		t.is(clickToCharOffset(string2, 2, 1, 0), 1); // '😀'
+		t.is(clickToCharOffset(string2, 2, 1, 1), 1); // '😀'
+		t.is(clickToCharOffset(string2, 2, 2, 0), 2); // 'b'
+	},
+);
 
-test('clipkToCharOffset: multi-line with zero-width char', (t: ExecutionContext) => {
-	// "a\u200Bb" with lineWidth=2: line 0 = "a\u200B", line 1 = "b"
-	const string = 'a\u200Bb';
-	t.is(clickToCharOffset(string, 2, 0, 0), 0); // 'a'
-	t.is(clickToCharOffset(string, 2, 0, 1), 2); // zero-width char is skipped → 'b'
-});
+test.serial(
+	'clipkToCharOffset: multi-line with zero-width char',
+	(t: ExecutionContext) => {
+		// "a\u200Bb" with lineWidth=2: line 0 = "a\u200B", line 1 = "b"
+		const string = 'a\u200Bb';
+		t.is(clickToCharOffset(string, 2, 0, 0), 0); // 'a'
+		t.is(clickToCharOffset(string, 2, 0, 1), 2); // zero-width char is skipped → 'b'
+	},
+);
 
-test('clickToCharOffset: complex mixed string', (t: ExecutionContext) => {
-	// "a😀\u200B你好b" with lineWidth=4:
-	// line 0 = "a😀\u200B", line 1 = "你好", line 3 = "b"
-	const string = 'a😀\u200B你好b';
-	t.is(clickToCharOffset(string, 4, 0, 0), 0); // 'a'
-	t.is(clickToCharOffset(string, 4, 0, 1), 1); // '😀'
-	t.is(clickToCharOffset(string, 4, 0, 2), 1); // still '😀'
-	t.is(clickToCharOffset(string, 4, 0, 3), 3); // zero-width char is skipped → '你'
-	t.is(clickToCharOffset(string, 4, 1, 0), 3); // '你'
-	t.is(clickToCharOffset(string, 4, 1, 1), 3); // still '你'
-	t.is(clickToCharOffset(string, 4, 1, 2), 4); // '好'
-	t.is(clickToCharOffset(string, 4, 1, 3), 4); // still '好'
-	t.is(clickToCharOffset(string, 4, 2, 0), 5); // 'b'
-	t.is(clickToCharOffset(string, 4, 2, 1), 6); // end
-});
+test.serial(
+	'clickToCharOffset: complex mixed string',
+	(t: ExecutionContext) => {
+		// "a😀\u200B你好b" with lineWidth=4:
+		// line 0 = "a😀\u200B", line 1 = "你好", line 3 = "b"
+		const string = 'a😀\u200B你好b';
+		t.is(clickToCharOffset(string, 4, 0, 0), 0); // 'a'
+		t.is(clickToCharOffset(string, 4, 0, 1), 1); // '😀'
+		t.is(clickToCharOffset(string, 4, 0, 2), 1); // still '😀'
+		t.is(clickToCharOffset(string, 4, 0, 3), 3); // zero-width char is skipped → '你'
+		t.is(clickToCharOffset(string, 4, 1, 0), 3); // '你'
+		t.is(clickToCharOffset(string, 4, 1, 1), 3); // still '你'
+		t.is(clickToCharOffset(string, 4, 1, 2), 4); // '好'
+		t.is(clickToCharOffset(string, 4, 1, 3), 4); // still '好'
+		t.is(clickToCharOffset(string, 4, 2, 0), 5); // 'b'
+		t.is(clickToCharOffset(string, 4, 2, 1), 6); // end
+	},
+);
 
-test('clickToCharOffset: multiline string with explicit newlines', (t: ExecutionContext) => {
-	// "a\nb\nc" with lineWidth=1: line 0 = "a", line 1 = "b", line 2 = "c"
-	const string = 'a\nb\nc';
-	t.is(clickToCharOffset(string, 10, 0, 0), 0); // 'a'
-	t.is(clickToCharOffset(string, 10, 1, 0), 2); // 'b'
-	t.is(clickToCharOffset(string, 10, 2, 0), 4); // 'c'
-});
+test.serial(
+	'clickToCharOffset: multiline string with explicit newlines',
+	(t: ExecutionContext) => {
+		// "a\nb\nc" with lineWidth=1: line 0 = "a", line 1 = "b", line 2 = "c"
+		const string = 'a\nb\nc';
+		t.is(clickToCharOffset(string, 10, 0, 0), 0); // 'a'
+		t.is(clickToCharOffset(string, 10, 1, 0), 2); // 'b'
+		t.is(clickToCharOffset(string, 10, 2, 0), 4); // 'c'
+	},
+);
 
 // ── Integration tests: mouse click → cursor highlight in rendered frame ──────
 
-test('mouse click places cursor on correct ASCII character', async (t: ExecutionContext) => {
-	const {lastFrame, stdin, unmount} = render(
-		<MouseProvider>
-			<InputBox onSend={() => {}} />
-		</MouseProvider>,
-	);
+test.serial(
+	'mouse click places cursor on correct ASCII character',
+	async (t: ExecutionContext) => {
+		const {lastFrame, stdin, unmount} = render(
+			<MouseProvider>
+				<InputBox onSend={() => {}} />
+			</MouseProvider>,
+		);
 
-	stdin.write('hello');
-	await delay(100);
+		stdin.write('hello');
+		await delay(100);
 
-	// Click on 'l' (index 2, visual col 2)
-	stdin.write(clickAt(0, 2));
-	await delay(100);
+		// Click on 'l' (index 2, visual col 2)
+		stdin.write(clickAt(0, 2));
+		await delay(100);
 
-	const frame = lastFrame()!;
-	// Cursor is rendered as chalk.inverse(char) = ESC[7m{char}ESC[27m
-	t.true(
-		frame.includes('he\u001B[7ml\u001B[27mlo'),
-		`Expected cursor on "he[l]lo" but got: ${JSON.stringify(frame)}`,
-	);
-	unmount();
-});
+		const frame = lastFrame()!;
+		// Cursor is rendered as chalk.inverse(char) = ESC[7m{char}ESC[27m
+		t.true(
+			frame.includes('he\u001B[7ml\u001B[27mlo'),
+			`Expected cursor on "he[l]lo" but got: ${JSON.stringify(frame)}`,
+		);
+		unmount();
+	},
+);
 
-test('mouse click places cursor at start of text (col 0)', async (t: ExecutionContext) => {
-	const {lastFrame, stdin, unmount} = render(
-		<MouseProvider>
-			<InputBox onSend={() => {}} />
-		</MouseProvider>,
-	);
+test.serial(
+	'mouse click places cursor at start of text (col 0)',
+	async (t: ExecutionContext) => {
+		const {lastFrame, stdin, unmount} = render(
+			<MouseProvider>
+				<InputBox onSend={() => {}} />
+			</MouseProvider>,
+		);
 
-	stdin.write('hello');
-	await delay(100);
+		stdin.write('hello');
+		await delay(100);
 
-	stdin.write(clickAt(0, 0));
-	await delay(100);
+		stdin.write(clickAt(0, 0));
+		await delay(100);
 
-	const frame = lastFrame()!;
-	t.true(
-		frame.includes('\u001B[7mh\u001B[27m'),
-		`Expected cursor on "h" but got: ${JSON.stringify(frame)}`,
-	);
-	unmount();
-});
+		const frame = lastFrame()!;
+		t.true(
+			frame.includes('\u001B[7mh\u001B[27m'),
+			`Expected cursor on "h" but got: ${JSON.stringify(frame)}`,
+		);
+		unmount();
+	},
+);
 
-test('mouse click on left cell of emoji places cursor at emoji', async (t: ExecutionContext) => {
-	const {lastFrame, stdin, unmount} = render(
-		<MouseProvider>
-			<InputBox onSend={() => {}} />
-		</MouseProvider>,
-	);
+test.serial(
+	'mouse click on left cell of emoji places cursor at emoji',
+	async (t: ExecutionContext) => {
+		const {lastFrame, stdin, unmount} = render(
+			<MouseProvider>
+				<InputBox onSend={() => {}} />
+			</MouseProvider>,
+		);
 
-	stdin.write('\u{1F600}abc');
-	await delay(100);
+		stdin.write('\u{1F600}abc');
+		await delay(100);
 
-	// Emoji spans visual cols 0-1. Clicking col 0 (left cell) → cursor at emoji (index 0).
-	stdin.write(clickAt(0, 0));
-	await delay(100);
+		// Emoji spans visual cols 0-1. Clicking col 0 (left cell) → cursor at emoji (index 0).
+		stdin.write(clickAt(0, 0));
+		await delay(100);
 
-	const frame = lastFrame()!;
-	t.true(
-		frame.includes(`\u001B[7m\u{1F600}\u001B[27m`),
-		`Expected cursor on emoji but got: ${JSON.stringify(frame)}`,
-	);
-	unmount();
-});
+		const frame = lastFrame()!;
+		t.true(
+			frame.includes(`\u001B[7m\u{1F600}\u001B[27m`),
+			`Expected cursor on emoji but got: ${JSON.stringify(frame)}`,
+		);
+		unmount();
+	},
+);
 
-test('mouse click on right cell of emoji places cursor at emoji', async (t: ExecutionContext) => {
-	const {lastFrame, stdin, unmount} = render(
-		<MouseProvider>
-			<InputBox onSend={() => {}} />
-		</MouseProvider>,
-	);
+test.serial(
+	'mouse click on right cell of emoji places cursor at emoji',
+	async (t: ExecutionContext) => {
+		const {lastFrame, stdin, unmount} = render(
+			<MouseProvider>
+				<InputBox onSend={() => {}} />
+			</MouseProvider>,
+		);
 
-	stdin.write('\u{1F600}abc');
-	await delay(100);
+		stdin.write('\u{1F600}abc');
+		await delay(100);
 
-	// Emoji spans visual cols 0-1. Clicking col 1 (right cell) still places
-	// the cursor at the emoji (index 0) — not after it.
-	stdin.write(clickAt(0, 1));
-	await delay(100);
+		// Emoji spans visual cols 0-1. Clicking col 1 (right cell) still places
+		// the cursor at the emoji (index 0) — not after it.
+		stdin.write(clickAt(0, 1));
+		await delay(100);
 
-	const frame = lastFrame()!;
-	t.true(
-		frame.includes(`\u001B[7m\u{1F600}\u001B[27m`),
-		`Expected cursor on emoji but got: ${JSON.stringify(frame)}`,
-	);
-	unmount();
-});
+		const frame = lastFrame()!;
+		t.true(
+			frame.includes(`\u001B[7m\u{1F600}\u001B[27m`),
+			`Expected cursor on emoji but got: ${JSON.stringify(frame)}`,
+		);
+		unmount();
+	},
+);
 
-test('mouse click after emoji places cursor at correct character', async (t: ExecutionContext) => {
-	const {lastFrame, stdin, unmount} = render(
-		<MouseProvider>
-			<InputBox onSend={() => {}} />
-		</MouseProvider>,
-	);
+test.serial(
+	'mouse click after emoji places cursor at correct character',
+	async (t: ExecutionContext) => {
+		const {lastFrame, stdin, unmount} = render(
+			<MouseProvider>
+				<InputBox onSend={() => {}} />
+			</MouseProvider>,
+		);
 
-	stdin.write('\u{1F600}abc');
-	await delay(100);
+		stdin.write('\u{1F600}abc');
+		await delay(100);
 
-	// 'a' starts at visual col 2 (emoji takes cols 0-1)
-	stdin.write(clickAt(0, 2));
-	await delay(100);
+		// 'a' starts at visual col 2 (emoji takes cols 0-1)
+		stdin.write(clickAt(0, 2));
+		await delay(100);
 
-	const frame = lastFrame()!;
-	t.true(
-		frame.includes('\u001B[7ma\u001B[27m'),
-		`Expected cursor on "a" but got: ${JSON.stringify(frame)}`,
-	);
-	unmount();
-});
+		const frame = lastFrame()!;
+		t.true(
+			frame.includes('\u001B[7ma\u001B[27m'),
+			`Expected cursor on "a" but got: ${JSON.stringify(frame)}`,
+		);
+		unmount();
+	},
+);
 
-test('mouse click above text area is ignored', async (t: ExecutionContext) => {
-	const {lastFrame, stdin, unmount} = render(
-		<MouseProvider>
-			<InputBox onSend={() => {}} />
-		</MouseProvider>,
-	);
+test.serial(
+	'mouse click above text area is ignored',
+	async (t: ExecutionContext) => {
+		const {lastFrame, stdin, unmount} = render(
+			<MouseProvider>
+				<InputBox onSend={() => {}} />
+			</MouseProvider>,
+		);
 
-	stdin.write('hello');
-	await delay(100);
+		stdin.write('hello');
+		await delay(100);
 
-	// After typing, cursor should be at end of "hello"
-	const frameBefore = lastFrame()!;
+		// After typing, cursor should be at end of "hello"
+		const frameBefore = lastFrame()!;
 
-	// Click on the top border row (SGR row = INPUT_TEXT_Y, i.e. 0-indexed row 0
-	// which is the border — outside the text area)
-	stdin.write(sgrLeftPress(INPUT_TEXT_X + 3, INPUT_TEXT_Y));
-	await delay(100);
+		// Click on the top border row (SGR row = INPUT_TEXT_Y, i.e. 0-indexed row 0
+		// which is the border — outside the text area)
+		stdin.write(sgrLeftPress(INPUT_TEXT_X + 3, INPUT_TEXT_Y));
+		await delay(100);
 
-	// Frame should be unchanged — cursor still at end
-	t.is(lastFrame(), frameBefore);
-	unmount();
-});
+		// Frame should be unchanged — cursor still at end
+		t.is(lastFrame(), frameBefore);
+		unmount();
+	},
+);
 
-test('mouse click places cursor on correct character in multiline string', async (t: ExecutionContext) => {
-	const {lastFrame, stdin, unmount} = render(
-		<MouseProvider>
-			<InputBox onSend={() => {}} />
-		</MouseProvider>,
-	);
+test.serial(
+	'mouse click places cursor on correct character in multiline string',
+	async (t: ExecutionContext) => {
+		const {lastFrame, stdin, unmount} = render(
+			<MouseProvider>
+				<InputBox onSend={() => {}} />
+			</MouseProvider>,
+		);
 
-	stdin.write('hello');
-	await delay(100);
-	stdin.write('\n'); // '\r' submitted the message, so we use '\n' to insert a newline without submitting
-	await delay(100);
-	stdin.write('world');
-	await delay(100);
+		stdin.write('hello');
+		await delay(100);
+		stdin.write('\n'); // '\r' submitted the message, so we use '\n' to insert a newline without submitting
+		await delay(100);
+		stdin.write('world');
+		await delay(100);
 
-	// Click on 'l' (index 2, visual col 2)
-	stdin.write(clickAt(0, 2));
-	await delay(100);
+		// Click on 'l' (index 2, visual col 2)
+		stdin.write(clickAt(0, 2));
+		await delay(100);
 
-	const frame = lastFrame()!;
-	// Cursor is rendered as chalk.inverse(char) = ESC[7m{char}ESC[27m
-	t.true(
-		frame.includes('he\u001B[7ml\u001B[27mlo'),
-		`Expected cursor on "he[l]lo" but got: ${JSON.stringify(frame)}`,
-	);
+		const frame = lastFrame()!;
+		// Cursor is rendered as chalk.inverse(char) = ESC[7m{char}ESC[27m
+		t.true(
+			frame.includes('he\u001B[7ml\u001B[27mlo'),
+			`Expected cursor on "he[l]lo" but got: ${JSON.stringify(frame)}`,
+		);
 
-	stdin.write(clickAt(1, 2)); // Click on 'r' in "world"
-	await delay(100);
-	const frameAfterSecondClick = lastFrame()!;
+		stdin.write(clickAt(1, 2)); // Click on 'r' in "world"
+		await delay(100);
+		const frameAfterSecondClick = lastFrame()!;
 
-	t.true(
-		frameAfterSecondClick.includes('wo\u001B[7mr\u001B[27mld'),
-		`Expected cursor on "wo[r]ld" but got: ${JSON.stringify(frameAfterSecondClick)}`,
-	);
-	unmount();
-});
+		t.true(
+			frameAfterSecondClick.includes('wo\u001B[7mr\u001B[27mld'),
+			`Expected cursor on "wo[r]ld" but got: ${JSON.stringify(frameAfterSecondClick)}`,
+		);
+		unmount();
+	},
+);

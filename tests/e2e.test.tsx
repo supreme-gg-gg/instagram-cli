@@ -33,7 +33,7 @@ test('unknown command shows helpful error', (t: ExecutionContext) => {
 test('version command renders all version info', async (t: ExecutionContext) => {
 	const {lastFrame, unmount} = render(<Version />);
 
-	await delay(100);
+	await delay(500);
 
 	const output = lastFrame();
 	t.regex(
