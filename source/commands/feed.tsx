@@ -3,7 +3,7 @@ import {Alert} from '@inkjs/ui';
 import zod from 'zod';
 import {argument} from 'pastel';
 import {type FeedInstance} from '../types/instagram.js';
-import MediaView from '../ui/views/media-view.js';
+import FeedView from '../ui/views/feed-view.js';
 import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 import {createContextualLogger} from '../utils/logger.js';
 
@@ -73,5 +73,5 @@ export default function Feed({args}: Properties) {
 		return <Alert variant="error">{feedError}</Alert>;
 	}
 
-	return <MediaView feed={feed} />;
+	return <FeedView feed={feed} />;
 }

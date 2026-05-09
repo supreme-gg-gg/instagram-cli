@@ -18,7 +18,7 @@ type FeedData = {
 	posts?: FeedPost[];
 };
 
-export default function MediaView({feed}: {readonly feed: FeedData}) {
+export default function FeedView({feed}: {readonly feed: FeedData}) {
 	const [feedType, setFeedType] = useState<'timeline' | 'list'>('list');
 	const imageProtocol = useImageProtocol();
 
