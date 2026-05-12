@@ -36,7 +36,7 @@ Instagram CLI allows you to use social media more intentionally -- to stay conne
 
 ### NPM
 
-Requires Node.js v20 or higher.
+Requires Node.js v22 or higher.
 
 ```bash
 npm install -g @i7m/instagram-cli
@@ -184,7 +184,7 @@ Occasionally, Instagram may update their API or protocols which can cause certai
 
 ### Sister projects
 
-We contributed the following extensions to the Ink ecosystem for building Terminal UI apps:
+We contributed the following extensions to the [Ink](https://github.com/vadimdemedes/ink) open-source ecosystem for building Terminal UI apps:
 
 - [Ink Picture, Ink-native image component](https://github.com/endernoke/ink-picture)
 - [Wax, Ink routing framework](https://github.com/endernoke/wax).
