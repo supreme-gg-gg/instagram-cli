@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable ava/no-skip-test */
 
 import chalk from 'chalk';
 import React from 'react';
@@ -23,9 +22,9 @@ const LEFT_ARROW = '\u001B[D';
 const DELETE_KEY = '\u001B[3~';
 const BACKSPACE = '\u0008';
 
-// ── Delete key tests ──────────────────────────────────────────────────────────
+// ── Delete key tests ────────────────────────────────────────────────────────
 
-test.skip('delete key removes character to the right of cursor', async t => {
+test.serial('delete key removes character to the right of cursor', async t => {
 	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
@@ -53,7 +52,7 @@ test.skip('delete key removes character to the right of cursor', async t => {
 	unmount();
 });
 
-test.skip('delete key at end of string does nothing', async t => {
+test.serial('delete key at end of string does nothing', async t => {
 	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
@@ -73,7 +72,9 @@ test.skip('delete key at end of string does nothing', async t => {
 	unmount();
 });
 
-test.skip('backspace removes character to the left of cursor', async t => {
+// ── Backspace test.serials ───────────────────────────────────────────────────────────
+
+test.serial('backspace removes character to the left of cursor', async t => {
 	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />
@@ -101,7 +102,7 @@ test.skip('backspace removes character to the left of cursor', async t => {
 	unmount();
 });
 
-test.skip('backspace at start of string does nothing', async t => {
+test.serial('backspace at start of string does nothing', async t => {
 	const {lastFrame, stdin, unmount} = render(
 		<MouseProvider>
 			<InputBox onSend={() => {}} />

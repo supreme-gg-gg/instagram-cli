@@ -2,7 +2,6 @@ import React, {useState, useEffect, useMemo, useRef} from 'react';
 import {Box, Text, useInput, useApp, useStdout} from 'ink';
 import open from 'open';
 import {type ImageProtocolName} from 'ink-picture';
-import TextInput from 'ink-text-input';
 import {
 	type Story,
 	type MediaCandidate,
@@ -11,6 +10,7 @@ import {
 } from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
 import {type InstagramClient} from '../../client.js';
+import TextInput from './text-input.js';
 import SplitView from './split-view.js';
 import MediaPane from './media-pane.js';
 

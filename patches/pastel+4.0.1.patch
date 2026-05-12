@@ -1,0 +1,31 @@
+diff --git a/node_modules/pastel/build/generate-command.js b/node_modules/pastel/build/generate-command.js
+index b1f7551..506cf05 100644
+--- a/node_modules/pastel/build/generate-command.js
++++ b/node_modules/pastel/build/generate-command.js
+@@ -49,7 +49,7 @@ const generateCommand = (commanderCommand, pastelCommand, { appComponent }) => {
+                             maxIssuesInMessage: 1,
+                             prefix: '',
+                             prefixSeparator: '',
+-                        }).message }));
++                        }).message }), { exitOnCtrlC: false });
+                     // eslint-disable-next-line unicorn/no-process-exit
+                     process.exit(1);
+                 }
+@@ -65,7 +65,7 @@ const generateCommand = (commanderCommand, pastelCommand, { appComponent }) => {
+                             maxIssuesInMessage: 1,
+                             prefix: '',
+                             prefixSeparator: '',
+-                        }).message }));
++                        }).message }), { exitOnCtrlC: false });
+                     // eslint-disable-next-line unicorn/no-process-exit
+                     process.exit(1);
+                 }
+@@ -76,7 +76,7 @@ const generateCommand = (commanderCommand, pastelCommand, { appComponent }) => {
+                     options: parsedOptions,
+                     args: arguments_,
+                 },
+-            }));
++            }), { exitOnCtrlC: false });
+         });
+     }
+ };

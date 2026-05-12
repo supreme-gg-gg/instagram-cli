@@ -42,7 +42,7 @@ const xoConfig: FlatXoConfig = [
 			'react-hooks/exhaustive-deps': 'warn',
 			'react-hooks/refs': 'off',
 			'react-hooks/set-state-in-effect': 'off',
-			complexity: 'warn',
+			complexity: 'off',
 			'no-bitwise': 'off',
 			'unicorn/no-array-sort': 'off',
 			'unicorn/no-array-reverse': 'off',

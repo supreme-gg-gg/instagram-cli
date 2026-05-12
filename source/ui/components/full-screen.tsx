@@ -1,9 +1,8 @@
 import React from 'react';
-import {Box} from 'ink';
-import {useScreenSize} from '../hooks/use-screen-size.js';
+import {Box, useWindowSize} from 'ink';
 
 function FullScreen(properties: {children: React.ReactNode}) {
-	const {height, width} = useScreenSize();
+	const {columns: width, rows: height} = useWindowSize();
 	// Make height exactly one row less than screen height to fix flickering caused by stdin
 	return (
 		<Box height={height - 1} width={width} overflow="hidden">

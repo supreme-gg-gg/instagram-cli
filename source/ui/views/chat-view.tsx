@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useRef, useCallback} from 'react';
-import {Box, Text, useInput, useApp} from 'ink';
+import {Box, Text, useInput, useApp, useWindowSize} from 'ink';
 import {TerminalInfoProvider} from 'ink-picture';
 import type {
 	Thread,
@@ -18,7 +18,6 @@ import ScrollView, {type ScrollViewRef} from '../components/scroll-view.js';
 import {useClient} from '../context/client-context.js';
 import {parseAndDispatchChatCommand} from '../../utils/chat-commands.js';
 import FullScreen from '../components/full-screen.js';
-import {useScreenSize} from '../hooks/use-screen-size.js';
 import {preprocessMessage} from '../../utils/preprocess.js';
 import SearchInput from '../components/search-input.js';
 import SinglePostView from '../components/single-post-view.js';
@@ -38,7 +37,7 @@ export default function ChatView({
 }: ChatViewProps) {
 	const {exit} = useApp();
 	const client = useClient();
-	const {height, width} = useScreenSize();
+	const {columns: width, rows: height} = useWindowSize();
 	const scrollViewRef = useRef<ScrollViewRef | undefined>(undefined);
 
 	const [chatState, setChatState] = useState<ChatState>({
