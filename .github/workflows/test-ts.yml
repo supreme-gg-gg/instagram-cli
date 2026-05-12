@@ -5,39 +5,21 @@ on:
   push:
     branches:
       - main
-    paths: ['source/**', 'tests/**', 'package.json', 'package-lock.json']
+    paths:
+      ['**/*.md', 'source/**', 'tests/**', 'package.json', 'package-lock.json']
   pull_request:
     branches:
       - main
-    paths: ['source/**', 'tests/**', 'package.json', 'package-lock.json']
+    paths:
+      ['**/*.md', 'source/**', 'tests/**', 'package.json', 'package-lock.json']
 
 jobs:
-  lint:
-    name: Format and Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run Prettier check
-        run: npx prettier --check .
-
-      - name: Run XO lint
-        run: npx xo --ignore esbuild.config.mjs
-
   test:
-    name: Unit and E2E Tests
-    needs: lint
+    name: Lint and Test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['22', '23']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -45,11 +27,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests
-        run: npx ava
+      - name: Build
+        run: npm run build
+
+      - name: Run lint and test
+        run: npm run test

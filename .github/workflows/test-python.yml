@@ -24,34 +24,10 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Format and Lint
+  test:
+    name: Lint and Test
     runs-on: ubuntu-latest
     timeout-minutes: 5
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-dependency-glob: |
-            instagram-py/pyproject.toml
-            instagram-py/uv.lock
-
-      - name: Run Ruff linter
-        working-directory: instagram-py
-        run: uv run ruff check .
-
-      - name: Run Ruff formatter
-        working-directory: instagram-py
-        run: uv run ruff format --check
-
-  test:
-    name: Unit and E2E Tests
-    runs-on: ubuntu-latest
 
     strategy:
       matrix:
@@ -75,6 +51,14 @@ jobs:
       - name: Install dependencies
         working-directory: instagram-py
         run: uv sync
+
+      - name: Run Ruff linter
+        working-directory: instagram-py
+        run: uv run ruff check .
+
+      - name: Run Ruff formatter
+        working-directory: instagram-py
+        run: uv run ruff format --check
 
       - name: Run tests
         working-directory: instagram-py
