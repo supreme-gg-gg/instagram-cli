@@ -17,10 +17,10 @@ import SplitView from './split-view.js';
 import MediaPane from './media-pane.js';
 
 type Properties = {
-	readonly listItems: ListMediaItem[];
+	readonly listItems: Array<ListMediaItem<any, any>>;
 	readonly loadMore: (index: number) => void;
 	readonly protocol?: ImageProtocolName;
-	readonly client: InstagramClient | undefined;
+	readonly client?: InstagramClient | undefined;
 	readonly mode: 'story' | 'post';
 };
 
@@ -154,6 +154,7 @@ export default function ListDetailDisplay({
 			);
 			if (stories.length > 0 && stories[0]?.user) {
 				const newItem: ListMediaItem<Story> = {
+					pk: stories[0].user.pk,
 					label: stories[0].user.username,
 					content: stories,
 				};

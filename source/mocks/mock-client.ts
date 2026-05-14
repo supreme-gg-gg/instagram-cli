@@ -12,7 +12,7 @@ import type {
 	Message,
 	User,
 	Story,
-	StoryReel,
+	ListMediaItem,
 	ProfileInfo,
 } from '../types/instagram.js';
 import {createContextualLogger} from '../utils/logger.js';
@@ -460,7 +460,7 @@ class MockClient extends EventEmitter {
 		};
 	}
 
-	async getReelsTray(): Promise<StoryReel[]> {
+	async getReelsTray(): Promise<Array<ListMediaItem<Story>>> {
 		// Simulate network delay
 		await new Promise(resolve => {
 			setTimeout(resolve, 100);
@@ -474,11 +474,9 @@ class MockClient extends EventEmitter {
 		}
 
 		return [...usersWithStories.values()].map(user => ({
-			user: {
-				...user,
-				pk: typeof user.pk === 'string' ? Number(user.pk) : user.pk,
-			},
-			stories: [],
+			pk: typeof user.pk === 'string' ? Number(user.pk) : user.pk,
+			label: user.username,
+			content: [],
 		}));
 	}
 

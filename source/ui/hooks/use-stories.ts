@@ -1,9 +1,5 @@
 import {useState, useEffect, useCallback} from 'react';
-import {
-	type ListMediaItem,
-	type Story,
-	type StoryReel,
-} from '../../types/instagram.js';
+import {type ListMediaItem, type Story} from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
 import {useInstagramClient as useInstagramClientImpl} from './use-instagram-client.js';
 
@@ -70,16 +66,8 @@ export function useStories(
 
 			try {
 				setIsLoading(true);
-				const reelsTray = await client.getReelsTray();
-				if (reelsTray.length > 0) {
-					const listItems: Array<ListMediaItem<Story>> = reelsTray.map(
-						reel => ({
-							pk: reel.user.pk,
-							label: reel.user.username,
-							content: reel.stories,
-						}),
-					);
-
+				const listItems = await client.getReelsTray();
+				if (listItems.length > 0) {
 					setReels(listItems);
 					await loadStoriesForReel(0, listItems);
 

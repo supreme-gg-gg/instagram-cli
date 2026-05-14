@@ -10,12 +10,8 @@ import TimelineMediaDisplay from '../components/timeline-media-display.js';
 import {ConfigManager} from '../../config.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
 
-type FeedPost = Post & {
-	carousel_media?: Post[];
-};
-
-type FeedData = {
-	posts?: FeedPost[];
+export type FeedData = {
+	posts?: Post[];
 };
 
 export default function FeedView({feed}: {readonly feed: FeedData}) {
@@ -34,11 +30,13 @@ export default function FeedView({feed}: {readonly feed: FeedData}) {
 		pk: post.user.pk,
 		label: post.user.username,
 		content: post.carousel_media
-			? post.carousel_media.map(item => ({
+			? (post.carousel_media.map(item => ({
 					...item,
 					user: post.user,
 					taken_at: post.taken_at,
-				}))
+					like_count: post.like_count,
+					comment_count: post.comment_count,
+				})) as Post[])
 			: [post],
 		additional_metadata: {
 			caption: post.caption,
