@@ -100,7 +100,8 @@
 		},
 		"nodeArguments": [
 			"--loader=ts-node/esm"
-		]
+		],
+		"workerThreads": false
 	},
 	"prettier": "@vdemedes/prettier-config",
 	"lint-staged": {
