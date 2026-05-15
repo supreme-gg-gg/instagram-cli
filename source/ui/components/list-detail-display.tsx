@@ -1,7 +1,6 @@
 import React, {useState, useEffect, useMemo, useRef} from 'react';
 import {Box, Text, useInput, useApp, useStdout} from 'ink';
 import open from 'open';
-import TextInput from 'ink-text-input';
 import {type ImageProtocolName} from 'ink-picture';
 import {
 	type ListMediaItem,
@@ -15,6 +14,7 @@ import {createContextualLogger} from '../../utils/logger.js';
 import {type InstagramClient} from '../../client.js';
 import SplitView from './split-view.js';
 import MediaPane from './media-pane.js';
+import TextInput from './text-input.js';
 
 type Properties = {
 	readonly listItems: Array<ListMediaItem<any, any>>;
