@@ -3,25 +3,27 @@ import {Box, Text, useInput, useApp, useStdout} from 'ink';
 import open from 'open';
 import {type ImageProtocolName} from 'ink-picture';
 import {
-	type Story,
+	type ListMediaItem,
 	type MediaCandidate,
-	type StoryReel,
+	type Story,
+	type PostMetadata,
 	type ReelMention,
+	type BaseMedia,
 } from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
 import {type InstagramClient} from '../../client.js';
-import TextInput from './text-input.js';
 import SplitView from './split-view.js';
 import MediaPane from './media-pane.js';
+import TextInput from './text-input.js';
 
 type Properties = {
-	readonly reels: StoryReel[];
+	readonly listItems: Array<ListMediaItem<any, any>>;
 	readonly loadMore: (index: number) => void;
 	readonly protocol?: ImageProtocolName;
-	readonly client: InstagramClient | undefined;
+	readonly client?: InstagramClient | undefined;
+	readonly mode: 'story' | 'post';
 };
 
-// Helper function to get the best image candidate
 function getBestImage(
 	candidates: MediaCandidate[] | undefined,
 	containerWidth: number,
@@ -47,76 +49,83 @@ function getBestImage(
 	return bestCandidate.url;
 }
 
-const logger = createContextualLogger('StoryDisplay');
+const logger = createContextualLogger('ListDetailDisplay');
 
-export default function StoryDisplay({
-	reels: initialReels,
+export default function ListDetailDisplay({
+	listItems: initialItems,
 	loadMore,
 	protocol,
 	client,
+	mode,
 }: Properties) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
 	const [isSearchMode, setIsSearchMode] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [searchError, setSearchError] = useState<string | undefined>();
-	const [combinedReels, setCombinedReels] = useState<StoryReel[]>(initialReels);
+	const [combinedItems, setCombinedItems] =
+		useState<ListMediaItem[]>(initialItems);
 	const seenStories = useRef(new Set<string>());
 
 	const {exit} = useApp();
 	const {stdout} = useStdout();
 
 	useEffect(() => {
-		setCombinedReels(initialReels);
-	}, [initialReels]);
+		setCombinedItems(initialItems);
+	}, [initialItems]);
 
-	const currentReel = combinedReels[selectedIndex];
-	const currentStory = currentReel?.stories[carouselIndex];
+	const currentItem = combinedItems[selectedIndex];
+	const currentContentItem = currentItem?.content[carouselIndex];
 
-	// Trigger lazy loading and reset carousel when the user selects a new reel
+	// Trigger lazy loading and reset carousel when the user selects a new item
 	useEffect(() => {
-		if (selectedIndex >= 0 && selectedIndex < combinedReels.length) {
-			const reel = combinedReels[selectedIndex];
-			if (reel?.stories.length === 0) {
+		if (selectedIndex >= 0 && selectedIndex < combinedItems.length) {
+			const item = combinedItems[selectedIndex];
+			if (item?.content.length === 0) {
 				loadMore(selectedIndex);
 			}
 		}
 
-		// Reset carousel index when changing reels
+		// Reset carousel index when changing items
 		setCarouselIndex(0);
-	}, [selectedIndex, combinedReels, loadMore]);
+	}, [selectedIndex, combinedItems, loadMore]);
 
 	useEffect(() => {
-		if (currentStory && client && !seenStories.current.has(currentStory.id)) {
+		if (
+			mode === 'story' &&
+			currentContentItem &&
+			client &&
+			'id' in currentContentItem &&
+			!seenStories.current.has((currentContentItem as unknown as Story).id)
+		) {
 			// Fire and forget: explicitly ignore the promise result
 			void client
-				.markStoriesAsSeen([currentStory])
+				.markStoriesAsSeen([currentContentItem as unknown as Story])
 				.then(() => {
-					seenStories.current.add(currentStory.id);
+					seenStories.current.add((currentContentItem as unknown as Story).id);
 				})
 				.catch((error: unknown) => {
 					logger.error('Failed to mark story as seen:', error);
 				});
 		}
-	}, [currentStory, client]);
+	}, [currentContentItem, client, mode]);
 
-	// Helper function to get current image based on selection
-	const getCurrentImage = (story: Story): MediaCandidate | undefined => {
-		if (!story) return undefined;
-		return story.image_versions2?.candidates?.[0] ?? undefined;
+	const getCurrentImage = (item: BaseMedia): MediaCandidate | undefined => {
+		if (!item) return undefined;
+		return item.image_versions2?.candidates?.[0] ?? undefined;
 	};
 
-	const openMediaUrl = async (activeStory: Story) => {
-		if (!activeStory) return;
+	const openMediaUrl = async (activeItem: BaseMedia) => {
+		if (!activeItem) return;
 
 		let urlToOpen: string | undefined;
 
-		if (activeStory.media_type === 1) {
-			// Image story
-			urlToOpen = activeStory.image_versions2?.candidates?.[0]?.url;
-		} else if (activeStory.media_type === 2) {
-			// Video story
-			urlToOpen = activeStory.video_versions?.[0]?.url;
+		if (activeItem.media_type === 1) {
+			// Image
+			urlToOpen = activeItem.image_versions2?.candidates?.[0]?.url;
+		} else if (activeItem.media_type === 2) {
+			// Video
+			urlToOpen = activeItem.video_versions?.[0]?.url;
 		}
 
 		if (urlToOpen) {
@@ -130,6 +139,7 @@ export default function StoryDisplay({
 		}
 	};
 
+	// TODO: check that
 	const handleSearchSubmit = async () => {
 		if (!client || !searchQuery.trim()) {
 			setSearchError('Search query cannot be empty.');
@@ -143,8 +153,12 @@ export default function StoryDisplay({
 				searchQuery.trim(),
 			);
 			if (stories.length > 0 && stories[0]?.user) {
-				const newReel: StoryReel = {user: stories[0].user, stories};
-				setCombinedReels(prev => [newReel, ...prev]);
+				const newItem: ListMediaItem<Story> = {
+					pk: stories[0].user.pk,
+					label: stories[0].user.username,
+					content: stories,
+				};
+				setCombinedItems(prev => [newItem, ...prev]);
 				setSelectedIndex(0);
 			} else {
 				setSearchError(`No stories found for user "${searchQuery.trim()}".`);
@@ -170,52 +184,55 @@ export default function StoryDisplay({
 				void handleSearchSubmit();
 			}
 			// Input component handles other keys when focused
-		} else if (input === 's') {
+		} else if (input === 's' && mode === 'story') {
 			setIsSearchMode(true);
 		} else if (key.upArrow || input === 'k') {
 			setSelectedIndex(prev => Math.max(0, prev - 1));
 		} else if (key.downArrow || input === 'j') {
-			setSelectedIndex(prev => Math.min(prev + 1, combinedReels.length - 1));
+			setSelectedIndex(prev => Math.min(prev + 1, combinedItems.length - 1));
 		} else if (key.leftArrow || input === 'h') {
-			if (currentReel && currentReel.stories.length > 1) {
+			if (currentItem && currentItem.content.length > 1) {
 				setCarouselIndex(prev => Math.max(0, prev - 1));
 			}
 		} else if (key.rightArrow || input === 'l') {
-			if (currentReel && currentReel.stories.length > 1) {
+			if (currentItem && currentItem.content.length > 1) {
 				setCarouselIndex(prev =>
-					Math.min(prev + 1, currentReel.stories.length - 1),
+					Math.min(prev + 1, currentItem.content.length - 1),
 				);
 			}
 		} else if (input === 'o') {
-			if (currentStory) {
-				void openMediaUrl(currentStory);
+			if (currentContentItem) {
+				void openMediaUrl(currentContentItem);
 			}
 		} else if (key.escape || (key.ctrl && input === 'c')) {
 			exit();
 		}
 	});
 
-	const currentImageCandidate = currentStory
-		? getCurrentImage(currentStory)
+	const currentImageCandidate = currentContentItem
+		? getCurrentImage(currentContentItem)
 		: undefined;
 	const bestImageUrl = useMemo(
 		() =>
-			currentStory
-				? getBestImage(currentStory.image_versions2?.candidates, stdout.columns)
+			currentContentItem
+				? getBestImage(
+						currentContentItem.image_versions2?.candidates,
+						stdout.columns,
+					)
 				: undefined,
-		[currentStory, stdout.columns],
+		[currentContentItem, stdout.columns],
 	);
 
 	const sidebarContent = (
 		<>
-			{combinedReels.map((reel, index) => (
-				<Box key={reel.user.pk} height={1} flexShrink={0}>
+			{combinedItems.map((item, index) => (
+				<Box key={item.pk} height={1} flexShrink={0}>
 					<Text
 						color={index === selectedIndex ? 'blue' : undefined}
 						wrap="truncate-end"
 					>
 						{index === selectedIndex ? '➜ ' : '   '}
-						{reel.user?.username || 'Unknown'}
+						{item.label}
 					</Text>
 				</Box>
 			))}
@@ -224,7 +241,7 @@ export default function StoryDisplay({
 
 	const mainContent = (
 		<>
-			{isSearchMode ? (
+			{mode === 'story' && isSearchMode ? (
 				<Box flexDirection="row" alignItems="center" marginBottom={1}>
 					<Text>Search user: </Text>
 					<TextInput
@@ -234,35 +251,37 @@ export default function StoryDisplay({
 						onChange={setSearchQuery}
 					/>
 				</Box>
-			) : (
+			) : mode === 'story' ? (
 				<Box marginBottom={1}>
 					<Text dimColor>
 						Press &apos;s&apos; to search for a user&apos;s stories
 					</Text>
 				</Box>
-			)}
+			) : null}
 			{searchError && (
 				<Box marginBottom={1}>
 					<Text color="red">{searchError}</Text>
 				</Box>
 			)}
 
-			{combinedReels.length === 0 ? (
+			{combinedItems.length === 0 ? (
 				<Box flexGrow={1} justifyContent="center" alignItems="center">
-					<Text>⏳ Loading stories...</Text>
+					<Text>⏳ Loading {mode === 'story' ? 'stories' : 'posts'}...</Text>
 				</Box>
 			) : (
 				<Box flexDirection="row" flexGrow={1} gap={1}>
 					<MediaPane
 						imageUrl={bestImageUrl}
-						altText={`Story by ${currentStory?.user?.username}`}
+						altText={
+							currentContentItem ? `Media by ${currentItem?.label}` : undefined
+						}
 						protocol={protocol}
-						mediaType={currentStory?.media_type}
-						isLoading={!currentStory}
+						mediaType={currentContentItem?.media_type}
+						isLoading={!currentContentItem}
 						originalWidth={currentImageCandidate?.width}
 						originalHeight={currentImageCandidate?.height}
 						carouselIndex={carouselIndex}
-						carouselCount={currentReel?.stories.length ?? 0}
+						carouselCount={currentItem?.content.length ?? 0}
 					/>
 
 					{/* Caption and stats */}
@@ -274,35 +293,59 @@ export default function StoryDisplay({
 						justifyContent="flex-start"
 					>
 						<Box flexDirection="column" gap={1} marginBottom={1}>
-							<Text color="green">
-								👤 {currentStory?.user?.username ?? 'Unknown user'}
-							</Text>
+							<Text color="green">👤 {currentItem?.label ?? 'Unknown'}</Text>
 
-							{currentStory?.taken_at && (
+							{currentContentItem && 'taken_at' in currentContentItem && (
 								<Text color="gray">
-									{new Date(currentStory.taken_at * 1000).toLocaleString()}
+									{new Date(
+										(currentContentItem as unknown as Story).taken_at * 1000,
+									).toLocaleString()}
 								</Text>
 							)}
 
-							{(() => {
-								const mentions: ReelMention[] =
-									currentStory?.reel_mentions ?? [];
+							{/* Story-specific: mentions */}
+							{mode === 'story' &&
+								currentContentItem &&
+								'reel_mentions' in currentContentItem &&
+								(() => {
+									const mentions: ReelMention[] =
+										(currentContentItem as unknown as Story).reel_mentions ??
+										[];
 
-								if (mentions.length === 0) {
-									return null;
-								}
+									if (mentions.length === 0) {
+										return null;
+									}
 
-								return (
-									<>
-										<Text bold>Mentions:</Text>
-										{mentions.map((mention, index) => (
-											<Text key={index} color="blue">
-												@{mention.user.username} ({mention.user.full_name})
-											</Text>
-										))}
-									</>
-								);
-							})()}
+									return (
+										<>
+											<Text bold>Mentions:</Text>
+											{mentions.map((mention, index) => (
+												<Text key={index} color="blue">
+													@{mention.user.username} ({mention.user.full_name})
+												</Text>
+											))}
+										</>
+									);
+								})()}
+
+							{/* Post-specific: caption, likes, comments */}
+							{mode === 'post' &&
+								currentItem?.additional_metadata &&
+								(() => {
+									const metadata =
+										currentItem.additional_metadata as PostMetadata;
+									return (
+										<>
+											{currentItem.additional_metadata && metadata.caption && (
+												<Text wrap="wrap">{metadata.caption.text}</Text>
+											)}
+											<Box flexDirection="row" marginTop={1}>
+												<Text>♡ {metadata.like_count ?? 0} </Text>
+												<Text>🗨 {metadata.comment_count ?? 0}</Text>
+											</Box>
+										</>
+									);
+								})()}
 						</Box>
 					</Box>
 				</Box>
@@ -312,10 +355,14 @@ export default function StoryDisplay({
 
 	return (
 		<SplitView
-			sidebarTitle="✨ Stories"
+			sidebarTitle={mode === 'story' ? '✨ Stories' : '📜 Feed'}
 			sidebarContent={sidebarContent}
 			mainContent={mainContent}
-			footerText="j/k: users, h/l: stories, o: open, s: search, Esc: quit"
+			footerText={
+				mode === 'story'
+					? 'j/k: users, h/l: stories, o: open, s: search, Esc: quit'
+					: 'j/k: navigate posts, h/l: navigate carousel, o: open, Esc: quit'
+			}
 		/>
 	);
 }

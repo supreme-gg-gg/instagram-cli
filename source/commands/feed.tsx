@@ -2,8 +2,7 @@ import React from 'react';
 import {Alert} from '@inkjs/ui';
 import zod from 'zod';
 import {argument} from 'pastel';
-import {type FeedInstance} from '../types/instagram.js';
-import MediaView from '../ui/views/media-view.js';
+import FeedView, {type FeedData} from '../ui/views/feed-view.js';
 import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 import {createContextualLogger} from '../utils/logger.js';
 
@@ -31,7 +30,7 @@ export default function Feed({args}: Properties) {
 	const {client, isLoading, error} = useInstagramClient(args[0], {
 		realtime: false,
 	});
-	const [feed, setFeed] = React.useState<FeedInstance>({posts: []});
+	const [feed, setFeed] = React.useState<FeedData>({posts: []});
 	const [feedError, setFeedError] = React.useState<string | undefined>();
 
 	React.useEffect(() => {
@@ -48,7 +47,7 @@ export default function Feed({args}: Properties) {
 					// If no items, set an error or handle appropriately
 					// setError('No feed items found.'); // This would require adding setError to the hook or handling it here
 				} else {
-					setFeed({posts: items});
+					setFeed({posts: items as any});
 				}
 			} catch (error_) {
 				const errorMessage =
@@ -73,5 +72,5 @@ export default function Feed({args}: Properties) {
 		return <Alert variant="error">{feedError}</Alert>;
 	}
 
-	return <MediaView feed={feed} />;
+	return <FeedView feed={feed} />;
 }
