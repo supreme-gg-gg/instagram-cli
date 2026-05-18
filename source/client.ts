@@ -11,7 +11,6 @@ import {
 	IgLoginBadPasswordError,
 	type DirectInboxFeedResponseThreadsItem,
 	type DirectInboxFeedResponseUsersItem,
-	type DirectThreadFeedResponseItemsItem,
 	type AccountRepositoryLoginErrorResponseTwoFactorInfo,
 	type UserStoryFeedResponseItemsItem,
 	type ReelsTrayFeedResponseTrayItem,
@@ -24,6 +23,7 @@ import {
 	GraphQLSubscriptions,
 	SkywalkerSubscriptions,
 	type RealtimeClient,
+	type ParsedMessage,
 	IgApiClientExt,
 } from 'instagram_mqtt';
 import {SessionManager} from './session.js';
@@ -67,6 +67,42 @@ export type RealtimeStatus =
 type BroadcastResponse =
 	| DirectThreadRepositoryBroadcastResponseRootObject
 	| DirectThreadRepositoryBroadcastResponsePayload;
+
+type SendAckResponse = {
+	status?: string;
+	status_code?: string;
+	message?: string;
+	payload?: {
+		client_context?: string;
+		item_id?: string;
+		message?: string;
+	};
+};
+
+type RealtimeReceiveEvent = {
+	path?: string;
+};
+
+type RealtimeReceivePayload = Array<ParsedMessage<unknown>>;
+
+type DirectSendItemOptions = {
+	threadId: string;
+	itemType: string;
+	clientContext: string;
+	data: Record<string, string | undefined>;
+};
+
+type DirectWithSendItem = {
+	sendItem(options: DirectSendItemOptions): Promise<unknown>;
+};
+
+function parseSendAckResponse(value: unknown): SendAckResponse | undefined {
+	if (!value || typeof value !== 'object') {
+		return undefined;
+	}
+
+	return value as SendAckResponse;
+}
 
 function extractItemId(result: BroadcastResponse): string {
 	if ('payload' in result) {
@@ -800,21 +836,13 @@ export class InstagramClient extends EventEmitter {
 	}
 
 	public async sendMessage(threadId: string, text: string): Promise<string> {
-		// if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
-		// 	try {
-		// 		await this.realtime.direct.sendText({threadId, text});
-		// 		return;
-		// 	} catch {
-		// 		this.logger.warn('MQTT sendMessage failed, falling back to API.');
-		// 	}
-		// }
-
-		// Fallback to API if MQTT not available, failed, or not ready
 		try {
-			const result = await this.ig.entity
-				.directThread(threadId)
-				.broadcastText(text);
-			return extractItemId(result);
+			await this.ensureRealtimeForSend();
+			return await this.sendRealtimeTextItemWithRetries(
+				threadId,
+				{text},
+				'message',
+			);
 		} catch (error) {
 			this.logger.error('Failed to send message', error);
 			throw error;
@@ -827,14 +855,17 @@ export class InstagramClient extends EventEmitter {
 		replyToMessage: Message,
 	): Promise<string> {
 		try {
-			const result = await this.ig.entity
-				.directThread(threadId)
-				// The API only requires item_id and client_context which are already present
-				.broadcastText(
+			await this.ensureRealtimeForSend();
+			return await this.sendRealtimeTextItemWithRetries(
+				threadId,
+				{
 					text,
-					replyToMessage as unknown as DirectThreadFeedResponseItemsItem,
-				);
-			return extractItemId(result);
+					replied_to_action_source: 'swipe',
+					replied_to_item_id: replyToMessage.item_id ?? replyToMessage.id,
+					replied_to_client_context: replyToMessage.client_context,
+				},
+				'reply',
+			);
 		} catch (error) {
 			this.logger.error('Failed to send reply', error);
 			throw error;
@@ -1083,6 +1114,204 @@ export class InstagramClient extends EventEmitter {
 				`Failed to mark stories as seen for user ${stories[0]?.user?.pk}`,
 				error,
 			);
+		}
+	}
+
+	private makeClientContext(): string {
+		return `${Date.now()}${Math.floor(Math.random() * 1_000_000)
+			.toString()
+			.padStart(6, '0')}`;
+	}
+
+	private async waitForSendAck(
+		clientContext: string,
+		timeout = 10_000,
+	): Promise<string> {
+		return new Promise((resolve, reject) => {
+			if (!this.realtime) {
+				reject(
+					new Error(
+						'Real-time client not connected. Cannot confirm message send.',
+					),
+				);
+				return;
+			}
+
+			const cleanup = (result: Error | string) => {
+				clearTimeout(timeoutId);
+				this.realtime?.off('receive', handleReceive);
+
+				if (result instanceof Error) {
+					reject(result);
+				} else {
+					resolve(result);
+				}
+			};
+
+			const timeoutId = setTimeout(() => {
+				cleanup(
+					new Error('Timed out waiting for Instagram send acknowledgement.'),
+				);
+			}, timeout);
+
+			const handleReceive = (
+				event: RealtimeReceiveEvent,
+				payload: RealtimeReceivePayload = [],
+			) => {
+				if (event.path !== '/ig_send_message_response') {
+					return;
+				}
+
+				for (const entry of payload) {
+					const response = parseSendAckResponse(entry.data);
+					const responseClientContext = response?.payload?.client_context;
+
+					if (
+						response?.status === 'ok' &&
+						responseClientContext === clientContext
+					) {
+						cleanup(response.payload?.item_id ?? '');
+						return;
+					}
+
+					if (
+						response?.status === 'fail' &&
+						responseClientContext === clientContext
+					) {
+						const details =
+							response.message ?? response.payload?.message ?? 'No details';
+						cleanup(
+							new Error(
+								`Instagram rejected message send (${
+									response.status_code ?? 'unknown'
+								}): ${details}`,
+							),
+						);
+						return;
+					}
+				}
+			};
+
+			this.realtime.on('receive', handleReceive);
+		});
+	}
+
+	private async waitForMessagePersisted(
+		threadId: string,
+		itemId: string,
+		timeout = 8000,
+	): Promise<boolean> {
+		const deadline = Date.now() + timeout;
+		const poll = async (attempt: number): Promise<boolean> => {
+			try {
+				const thread = this.ig.feed.directThread({
+					thread_id: threadId,
+					oldest_cursor: '',
+				});
+				const items = await thread.items();
+				if (items.some(item => item.item_id === itemId)) {
+					return true;
+				}
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				this.logger.warn(
+					`Failed to verify sent message persistence: ${message}`,
+				);
+			}
+
+			if (Date.now() >= deadline) {
+				return false;
+			}
+
+			await new Promise(resolve => {
+				setTimeout(resolve, Math.min(1500, 500 + 250 * attempt));
+			});
+			return poll(attempt + 1);
+		};
+
+		return poll(0);
+	}
+
+	private async ensureRealtimeForSend(): Promise<void> {
+		if (this.realtimeStatus === 'connected' && this.realtime?.direct) {
+			return;
+		}
+
+		await this.initializeRealtime();
+
+		if (this.realtimeStatus !== 'connected' || !this.realtime?.direct) {
+			throw new Error(
+				'Real-time client not connected. Cannot reliably send text messages.',
+			);
+		}
+	}
+
+	private async sendRealtimeTextItem(
+		threadId: string,
+		data: Record<string, string | undefined>,
+	): Promise<string> {
+		const direct = this.realtime?.direct as unknown as
+			| DirectWithSendItem
+			| undefined;
+		if (!direct?.sendItem) {
+			throw new Error(
+				'Real-time direct sendItem is unavailable. Cannot reliably send text messages.',
+			);
+		}
+
+		const clientContext = this.makeClientContext();
+		const ack = this.waitForSendAck(clientContext);
+		await direct.sendItem({
+			threadId,
+			itemType: 'text',
+			clientContext,
+			data,
+		});
+
+		const itemId = await ack;
+		if (!itemId) {
+			throw new Error(
+				'Instagram acknowledged message send without an item id.',
+			);
+		}
+
+		if (!(await this.waitForMessagePersisted(threadId, itemId))) {
+			throw new Error(
+				`Instagram acknowledged message ${itemId} but it was not visible in the thread.`,
+			);
+		}
+
+		return itemId;
+	}
+
+	private async sendRealtimeTextItemWithRetries(
+		threadId: string,
+		data: Record<string, string | undefined>,
+		itemLabel: 'message' | 'reply',
+		attempt = 1,
+	): Promise<string> {
+		try {
+			return await this.sendRealtimeTextItem(threadId, data);
+		} catch (error) {
+			if (
+				attempt < 3 &&
+				error instanceof Error &&
+				error.message.includes('not visible in the thread')
+			) {
+				this.logger.warn(
+					`Instagram acknowledged a ${itemLabel} that did not persist; retrying (${
+						attempt + 1
+					}/3).`,
+				);
+				return this.sendRealtimeTextItemWithRetries(
+					threadId,
+					data,
+					itemLabel,
+					attempt + 1,
+				);
+			}
+
+			throw error;
 		}
 	}
 
