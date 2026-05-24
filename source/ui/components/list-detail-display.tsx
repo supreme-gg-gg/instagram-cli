@@ -9,6 +9,7 @@ import {
 	type PostMetadata,
 	type ReelMention,
 	type BaseMedia,
+	type MediaItemMetadata,
 } from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
 import {type InstagramClient} from '../../client.js';
@@ -16,8 +17,8 @@ import SplitView from './split-view.js';
 import MediaPane from './media-pane.js';
 import TextInput from './text-input.js';
 
-type Properties = {
-	readonly listItems: Array<ListMediaItem<any, any>>;
+type Properties<T extends BaseMedia & MediaItemMetadata, M = undefined> = {
+	readonly listItems: Array<ListMediaItem<T, M>>;
 	readonly loadMore: (index: number) => void;
 	readonly protocol?: ImageProtocolName;
 	readonly client?: InstagramClient | undefined;
@@ -51,20 +52,23 @@ function getBestImage(
 
 const logger = createContextualLogger('ListDetailDisplay');
 
-export default function ListDetailDisplay({
+export default function ListDetailDisplay<
+	T extends BaseMedia & MediaItemMetadata,
+	M = undefined,
+>({
 	listItems: initialItems,
 	loadMore,
 	protocol,
 	client,
 	mode,
-}: Properties) {
+}: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
 	const [isSearchMode, setIsSearchMode] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [searchError, setSearchError] = useState<string | undefined>();
 	const [combinedItems, setCombinedItems] =
-		useState<ListMediaItem[]>(initialItems);
+		useState<Array<ListMediaItem<T, M>>>(initialItems);
 	const seenStories = useRef(new Set<string>());
 
 	const {exit} = useApp();
@@ -96,13 +100,13 @@ export default function ListDetailDisplay({
 			currentContentItem &&
 			client &&
 			'id' in currentContentItem &&
-			!seenStories.current.has((currentContentItem as unknown as Story).id)
+			!seenStories.current.has((currentContentItem as Story).id)
 		) {
 			// Fire and forget: explicitly ignore the promise result
 			void client
-				.markStoriesAsSeen([currentContentItem as unknown as Story])
+				.markStoriesAsSeen([currentContentItem as Story])
 				.then(() => {
-					seenStories.current.add((currentContentItem as unknown as Story).id);
+					seenStories.current.add((currentContentItem as Story).id);
 				})
 				.catch((error: unknown) => {
 					logger.error('Failed to mark story as seen:', error);
@@ -139,7 +143,6 @@ export default function ListDetailDisplay({
 		}
 	};
 
-	// TODO: check that
 	const handleSearchSubmit = async () => {
 		if (!client || !searchQuery.trim()) {
 			setSearchError('Search query cannot be empty.');
@@ -153,10 +156,10 @@ export default function ListDetailDisplay({
 				searchQuery.trim(),
 			);
 			if (stories.length > 0 && stories[0]?.user) {
-				const newItem: ListMediaItem<Story> = {
+				const newItem: ListMediaItem<T, M> = {
 					pk: stories[0].user.pk,
 					label: stories[0].user.username,
-					content: stories,
+					content: stories as unknown as T[],
 				};
 				setCombinedItems(prev => [newItem, ...prev]);
 				setSelectedIndex(0);
@@ -298,7 +301,7 @@ export default function ListDetailDisplay({
 							{currentContentItem && 'taken_at' in currentContentItem && (
 								<Text color="gray">
 									{new Date(
-										(currentContentItem as unknown as Story).taken_at * 1000,
+										(currentContentItem as Story).taken_at * 1000,
 									).toLocaleString()}
 								</Text>
 							)}
@@ -309,8 +312,7 @@ export default function ListDetailDisplay({
 								'reel_mentions' in currentContentItem &&
 								(() => {
 									const mentions: ReelMention[] =
-										(currentContentItem as unknown as Story).reel_mentions ??
-										[];
+										(currentContentItem as Story).reel_mentions ?? [];
 
 									if (mentions.length === 0) {
 										return null;
@@ -333,7 +335,7 @@ export default function ListDetailDisplay({
 								currentItem?.additional_metadata &&
 								(() => {
 									const metadata =
-										currentItem.additional_metadata as PostMetadata;
+										currentItem.additional_metadata as unknown as PostMetadata;
 									return (
 										<>
 											{currentItem.additional_metadata && metadata.caption && (
