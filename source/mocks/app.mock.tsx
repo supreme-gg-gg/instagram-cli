@@ -5,7 +5,7 @@ import {ClientContext} from '../ui/context/client-context.js';
 import {ConfigManager} from '../config.js';
 import {initializeLogger} from '../utils/logger.js';
 import ChatView from '../ui/views/chat-view.js';
-import MediaView from '../ui/views/media-view.js';
+import FeedView from '../ui/views/feed-view.js';
 import StoryView from '../ui/views/story-view.js';
 import AltScreen from '../ui/components/alt-screen.js';
 import {MouseProvider} from '../ui/context/mouse-context.js';
@@ -47,7 +47,7 @@ export function AppMock({view}: {readonly view: 'chat' | 'feed' | 'story'}) {
 			}
 
 			case 'feed': {
-				return <MediaView feed={mockFeed} />;
+				return <FeedView feed={mockFeed} />;
 			}
 
 			case 'story': {

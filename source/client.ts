@@ -33,7 +33,7 @@ import type {
 	Message,
 	User,
 	Story,
-	StoryReel,
+	ListMediaItem,
 	ProfileInfo,
 } from './types/instagram.js';
 import {
@@ -968,9 +968,9 @@ export class InstagramClient extends EventEmitter {
 	/**
 	 * Fetches the reels tray, which contains a list of users who have active stories.
 	 *
-	 * @returns A promise that resolves to an array of `StoryReel` objects, each with user info but an empty `stories` array.
+	 * @returns A promise that resolves to an array of `ListMediaItem<Story>` objects, each with user info but an empty `content` array.
 	 */
-	public async getReelsTray(): Promise<StoryReel[]> {
+	public async getReelsTray(): Promise<Array<ListMediaItem<Story>>> {
 		try {
 			const ig = this.getInstagramClient();
 			// If first time, use cold_start (not documented, this is a guess...)
@@ -989,18 +989,15 @@ export class InstagramClient extends EventEmitter {
 				`Found ${reelsTrayItems.length} users with active stories.`,
 			);
 
-			const storyReels: StoryReel[] = reelsTrayItems
+			const storyReels: Array<ListMediaItem<Story>> = reelsTrayItems
 				.filter(
 					(item): item is ReelsTrayFeedResponseTrayItem =>
 						item.user !== undefined,
 				)
 				.map(item => ({
-					user: {
-						pk: item.user.pk,
-						username: item.user.username ?? `User_${item.user.pk}`,
-						profilePicUrl: item.user.profile_pic_url,
-					},
-					stories: [], // Stories will be lazy-loaded
+					pk: item.user.pk,
+					label: item.user.username ?? `User_${item.user.pk}`,
+					content: [], // Stories will be lazy-loaded
 				}));
 
 			return storyReels;

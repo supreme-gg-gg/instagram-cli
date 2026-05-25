@@ -18,10 +18,6 @@ type PrivacyConfig = {
 	invisibleMode: boolean;
 };
 
-type FeedConfig = {
-	feedType: 'timeline' | 'list';
-};
-
 type ImageConfig = {
 	protocol: string;
 };
@@ -42,7 +38,6 @@ type Config = {
 	login: LoginConfig;
 	chat: ChatConfig;
 	privacy: PrivacyConfig;
-	feed: FeedConfig;
 	image: ImageConfig;
 	advanced: AdvancedConfig;
 };
@@ -71,9 +66,6 @@ const DEFAULT_CONFIG: Config = {
 		generatedDir: path.join(DEFAULT_DATA_DIR, 'generated'),
 		logsDir: path.join(DEFAULT_DATA_DIR, 'logs'),
 		downloadDir: path.join(DEFAULT_DATA_DIR, 'downloads'),
-	},
-	feed: {
-		feedType: 'list',
 	},
 	image: {
 		protocol: 'ascii',
@@ -176,7 +168,6 @@ export class ConfigManager {
 			login: {...defaultConfig.login, ...loadedConfig.login},
 			chat: {...defaultConfig.chat, ...loadedConfig.chat},
 			privacy: {...defaultConfig.privacy, ...loadedConfig.privacy},
-			feed: {...defaultConfig.feed, ...loadedConfig.feed},
 			image: {...defaultConfig.image, ...loadedConfig.image},
 			advanced: {...defaultConfig.advanced, ...loadedConfig.advanced},
 		};

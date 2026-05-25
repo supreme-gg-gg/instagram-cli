@@ -3,7 +3,6 @@ import type {
 	Message,
 	User,
 	Post,
-	FeedInstance,
 	Reaction,
 	Story,
 } from '../types/instagram.js';
@@ -113,7 +112,7 @@ export const mockPosts: Post[] = [
 ];
 
 // Mock feed instance
-export const mockFeed: FeedInstance = {
+export const mockFeed = {
 	posts: mockPosts,
 };
 

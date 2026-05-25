@@ -169,7 +169,6 @@ You can view and modify configuration with `instagram-cli config`. The configura
 | Key            | Type   | Default     | Description                                                                                                 |
 | -------------- | ------ | ----------- | ----------------------------------------------------------------------------------------------------------- |
 | image.protocol | string | "halfBlock" | Protocol for rendering images. Options: "ascii", "halfBlock", "braille", "kitty", "iterm2", "sixel", or "". |
-| feed.feedType  | string | "list"      | Layout of feed display. Options: "timeline", "list", "".                                                    |
 
 > [!NOTE]
 > We automatically select the best image protocol based on your terminal. If you experience issues with image rendering, try changing the `image.protocol` setting. Make sure this is supported by your terminal (e.g. `sixel` and `iterm2` protocols won't work in Kitty).

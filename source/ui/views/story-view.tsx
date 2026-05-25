@@ -1,7 +1,7 @@
 import React from 'react';
 import {TerminalInfoProvider} from 'ink-picture';
-import {type StoryReel} from '../../types/instagram.js';
-import StoryDisplay from '../components/story-display.js';
+import {type ListMediaItem, type Story} from '../../types/instagram.js';
+import ListDetailDisplay from '../components/list-detail-display.js';
 import {type InstagramClient} from '../../client.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
 
@@ -10,7 +10,7 @@ export default function StoryView({
 	loadMore,
 	client,
 }: {
-	readonly reels: StoryReel[];
+	readonly reels: Array<ListMediaItem<Story>>;
 	readonly loadMore: (index: number) => void;
 	readonly client: InstagramClient | undefined;
 }) {
@@ -18,11 +18,12 @@ export default function StoryView({
 
 	return (
 		<TerminalInfoProvider>
-			<StoryDisplay
-				reels={reels}
+			<ListDetailDisplay
+				listItems={reels}
 				loadMore={loadMore}
 				protocol={imageProtocol}
 				client={client}
+				mode="story"
 			/>
 		</TerminalInfoProvider>
 	);
