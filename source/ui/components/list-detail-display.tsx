@@ -50,6 +50,10 @@ function getBestImage(
 	return bestCandidate.url;
 }
 
+function getPostMetadata(metadata: unknown): PostMetadata {
+	return metadata as PostMetadata;
+}
+
 const logger = createContextualLogger('ListDetailDisplay');
 
 export default function ListDetailDisplay<
@@ -334,8 +338,9 @@ export default function ListDetailDisplay<
 							{mode === 'post' &&
 								currentItem?.additional_metadata &&
 								(() => {
-									const metadata =
-										currentItem.additional_metadata as unknown as PostMetadata;
+									const metadata = getPostMetadata(
+										currentItem.additional_metadata,
+									);
 									return (
 										<>
 											{currentItem.additional_metadata && metadata.caption && (
