@@ -23,6 +23,9 @@ type Properties<T extends BaseMedia & MediaItemMetadata, M = undefined> = {
 	readonly protocol?: ImageProtocolName;
 	readonly client?: InstagramClient | undefined;
 	readonly mode: 'story' | 'post';
+	readonly handleSearchSubmit?: (
+		query: string,
+	) => Promise<ListMediaItem<T, M> | undefined>;
 };
 
 function getBestImage(
@@ -65,6 +68,7 @@ export default function ListDetailDisplay<
 	protocol,
 	client,
 	mode,
+	handleSearchSubmit,
 }: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
@@ -147,38 +151,35 @@ export default function ListDetailDisplay<
 		}
 	};
 
-	const handleSearchSubmit = async () => {
+	const handleSearch = () => {
+		if (!handleSearchSubmit) {
+			return;
+		}
+
 		if (!client || !searchQuery.trim()) {
 			setSearchError('Search query cannot be empty.');
 			return;
 		}
 
 		setSearchError(undefined);
-		try {
-			const stories = await client.getStoriesForUser(
-				undefined,
-				searchQuery.trim(),
-			);
-			if (stories.length > 0 && stories[0]?.user) {
-				const newItem: ListMediaItem<T, M> = {
-					pk: stories[0].user.pk,
-					label: stories[0].user.username,
-					content: stories as unknown as T[],
-				};
-				setCombinedItems(prev => [newItem, ...prev]);
-				setSelectedIndex(0);
-			} else {
-				setSearchError(`No stories found for user "${searchQuery.trim()}".`);
-			}
+		void handleSearchSubmit(searchQuery.trim())
+			.then(result => {
+				if (result) {
+					setCombinedItems(prev => [result, ...prev]);
+					setSelectedIndex(0);
+				} else {
+					setSearchError(`No stories found for user "${searchQuery.trim()}".`);
+				}
 
-			setSearchQuery('');
-			setIsSearchMode(false);
-		} catch (error: unknown) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			logger.error(`Search failed: ${errorMessage}`);
-			setSearchError(`Search failed: ${errorMessage}`);
-		}
+				setSearchQuery('');
+				setIsSearchMode(false);
+			})
+			.catch((error: unknown) => {
+				const errorMessage =
+					error instanceof Error ? error.message : String(error);
+				logger.error(`Search failed: ${errorMessage}`);
+				setSearchError(`Search failed: ${errorMessage}`);
+			});
 	};
 
 	useInput((input, key) => {
@@ -188,7 +189,7 @@ export default function ListDetailDisplay<
 				setSearchQuery('');
 				setSearchError(undefined);
 			} else if (key.return) {
-				void handleSearchSubmit();
+				handleSearch();
 			}
 			// Input component handles other keys when focused
 		} else if (input === 's' && mode === 'story') {
