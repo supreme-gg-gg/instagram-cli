@@ -16,6 +16,22 @@ export default function StoryView({
 }) {
 	const imageProtocol = useImageProtocol();
 
+	const handleSearchSubmit = async (
+		query: string,
+	): Promise<ListMediaItem<Story> | undefined> => {
+		const stories = await client!.getStoriesForUser(undefined, query);
+		if (stories.length > 0 && stories[0]?.user) {
+			const result: ListMediaItem<Story> = {
+				pk: stories[0].user.pk,
+				label: stories[0].user.username,
+				content: stories,
+			};
+			return result;
+		}
+
+		return undefined;
+	};
+
 	return (
 		<TerminalInfoProvider>
 			<ListDetailDisplay
@@ -24,6 +40,7 @@ export default function StoryView({
 				protocol={imageProtocol}
 				client={client}
 				mode="story"
+				handleSearchSubmit={handleSearchSubmit}
 			/>
 		</TerminalInfoProvider>
 	);
