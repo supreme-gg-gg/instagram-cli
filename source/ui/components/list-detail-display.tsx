@@ -1,5 +1,13 @@
 import React, {useState, useEffect, useMemo, useRef} from 'react';
-import {Box, Text, useInput, useApp, useStdout} from 'ink';
+import {
+	Box,
+	Text,
+	useInput,
+	useApp,
+	useStdout,
+	type DOMElement,
+	useBoxMetrics,
+} from 'ink';
 import open from 'open';
 import {type ImageProtocolName} from 'ink-picture';
 import {
@@ -71,6 +79,7 @@ export default function ListDetailDisplay<
 	handleSearchSubmit,
 }: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
+	const [scrollOffset, setScrollOffset] = useState(0);
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
 	const [isSearchMode, setIsSearchMode] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
@@ -78,9 +87,15 @@ export default function ListDetailDisplay<
 	const [combinedItems, setCombinedItems] =
 		useState<Array<ListMediaItem<T, M>>>(initialItems);
 	const seenStories = useRef(new Set<string>());
+	const sidebarRef = useRef<DOMElement>(null as unknown as DOMElement);
 
 	const {exit} = useApp();
 	const {stdout} = useStdout();
+
+	const {height: sidebarHeight, hasMeasured} = useBoxMetrics(sidebarRef);
+	const viewportSize = hasMeasured
+		? Math.max(1, Math.floor(sidebarHeight))
+		: 30;
 
 	useEffect(() => {
 		setCombinedItems(initialItems);
@@ -195,9 +210,23 @@ export default function ListDetailDisplay<
 		} else if (input === 's' && mode === 'story') {
 			setIsSearchMode(true);
 		} else if (key.upArrow || input === 'k') {
-			setSelectedIndex(prev => Math.max(0, prev - 1));
+			setSelectedIndex(prev => {
+				const newIndex = Math.max(0, prev - 1);
+				if (newIndex < scrollOffset) {
+					setScrollOffset(previous => previous - 1);
+				}
+
+				return newIndex;
+			});
 		} else if (key.downArrow || input === 'j') {
-			setSelectedIndex(prev => Math.min(prev + 1, combinedItems.length - 1));
+			setSelectedIndex(prev => {
+				const newIndex = Math.min(prev + 1, combinedItems.length - 1);
+				if (newIndex >= scrollOffset + viewportSize) {
+					setScrollOffset(previous => previous + 1);
+				}
+
+				return newIndex;
+			});
 		} else if (key.leftArrow || input === 'h') {
 			if (currentItem && currentItem.content.length > 1) {
 				setCarouselIndex(prev => Math.max(0, prev - 1));
@@ -231,20 +260,28 @@ export default function ListDetailDisplay<
 		[currentContentItem, stdout.columns],
 	);
 
+	const visibleItems = combinedItems.slice(
+		scrollOffset,
+		scrollOffset + viewportSize,
+	);
+
 	const sidebarContent = (
-		<>
-			{combinedItems.map((item, index) => (
-				<Box key={item.pk} height={1} flexShrink={0}>
-					<Text
-						color={index === selectedIndex ? 'blue' : undefined}
-						wrap="truncate-end"
-					>
-						{index === selectedIndex ? '➜ ' : '   '}
-						{item.label}
-					</Text>
-				</Box>
-			))}
-		</>
+		<Box ref={sidebarRef} flexDirection="column" flexGrow={1}>
+			{visibleItems.map((item, index) => {
+				const absoluteIndex = scrollOffset + index;
+				return (
+					<Box key={item.pk} height={1} flexShrink={0}>
+						<Text
+							color={absoluteIndex === selectedIndex ? 'blue' : undefined}
+							wrap="truncate-end"
+						>
+							{absoluteIndex === selectedIndex ? '➜ ' : '   '}
+							{item.label}
+						</Text>
+					</Box>
+				);
+			})}
+		</Box>
 	);
 
 	const mainContent = (
