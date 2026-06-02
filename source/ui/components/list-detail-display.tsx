@@ -212,8 +212,9 @@ export default function ListDetailDisplay<
 		} else if (key.upArrow || input === 'k') {
 			setSelectedIndex(prev => {
 				const newIndex = Math.max(0, prev - 1);
-				if (newIndex < scrollOffset) {
-					setScrollOffset(previous => previous - 1);
+				const margin = Math.floor(viewportSize / 2);
+				if (newIndex < scrollOffset + margin) {
+					setScrollOffset(previous => Math.max(0, previous - 1));
 				}
 
 				return newIndex;
@@ -221,8 +222,14 @@ export default function ListDetailDisplay<
 		} else if (key.downArrow || input === 'j') {
 			setSelectedIndex(prev => {
 				const newIndex = Math.min(prev + 1, combinedItems.length - 1);
-				if (newIndex >= scrollOffset + viewportSize) {
-					setScrollOffset(previous => previous + 1);
+				const margin = Math.floor(viewportSize / 2);
+				if (newIndex >= scrollOffset + margin) {
+					setScrollOffset(previous =>
+						Math.min(
+							previous + 1,
+							Math.max(0, combinedItems.length - viewportSize),
+						),
+					);
 				}
 
 				return newIndex;
