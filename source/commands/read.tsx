@@ -9,6 +9,7 @@ import {
 	resolveThread,
 } from '../utils/one-turn.js';
 import {type InstagramClient} from '../client.js';
+import {collectReadMessages} from '../utils/read-messages.js';
 
 export const description =
 	'Read messages from a thread, optionally marking as seen or downloading media';
@@ -156,15 +157,17 @@ export default function Read({args: commandArgs, options}: Properties) {
 			}
 
 			// Read mode: fetch and display messages
-			const {messages, cursor: nextCursor} = await client.getMessages(
+			const {messages: limited, cursor: nextCursor} = await collectReadMessages(
+				client,
 				threadId,
+				options.limit,
 				options.cursor,
+				options.maxPages,
 			);
-			const limited = messages.slice(0, options.limit);
 
 			// Mark as seen using the most recent message
 			if (options.markSeen && limited.length > 0) {
-				const mostRecentId = limited[0]!.id;
+				const mostRecentId = limited.at(-1)!.id;
 				await client.markThreadAsSeen(threadId, mostRecentId);
 			}
 
