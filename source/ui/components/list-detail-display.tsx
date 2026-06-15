@@ -98,7 +98,17 @@ export default function ListDetailDisplay<
 		: 30;
 
 	useEffect(() => {
-		setCombinedItems(initialItems);
+		const seen = new Set<(typeof initialItems)[number]['pk']>();
+		setCombinedItems(
+			initialItems.filter(item => {
+				if (seen.has(item.pk)) {
+					return false;
+				}
+
+				seen.add(item.pk);
+				return true;
+			}),
+		);
 	}, [initialItems]);
 
 	const currentItem = combinedItems[selectedIndex];
@@ -180,8 +190,26 @@ export default function ListDetailDisplay<
 		void handleSearchSubmit(searchQuery.trim())
 			.then(result => {
 				if (result) {
-					setCombinedItems(prev => [result, ...prev]);
-					setSelectedIndex(0);
+					const existingIndex = combinedItems.findIndex(
+						item => item.pk === result.pk,
+					);
+					const isExisting = existingIndex !== -1;
+					if (isExisting) {
+						setSelectedIndex(existingIndex);
+						setScrollOffset(
+							Math.max(
+								0,
+								Math.min(
+									existingIndex - Math.floor(viewportSize / 2),
+									Math.max(0, combinedItems.length - viewportSize),
+								),
+							),
+						);
+					} else {
+						setCombinedItems(prev => [result, ...prev]);
+						setSelectedIndex(0);
+						setScrollOffset(0);
+					}
 				} else {
 					setSearchError(`No stories found for user "${searchQuery.trim()}".`);
 				}

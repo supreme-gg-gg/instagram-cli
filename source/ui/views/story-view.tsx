@@ -22,7 +22,7 @@ export default function StoryView({
 		const stories = await client!.getStoriesForUser(undefined, query);
 		if (stories.length > 0 && stories[0]?.user) {
 			const result: ListMediaItem<Story> = {
-				pk: stories[0].user.pk,
+				pk: String(stories[0].user.pk),
 				label: stories[0].user.username,
 				content: stories,
 			};

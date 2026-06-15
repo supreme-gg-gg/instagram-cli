@@ -228,7 +228,7 @@ function buildPost(index: number): Post {
 	const hoursAgo = (index + 1) * 2;
 
 	const mockPost: Post = {
-		id: `post${index + 1}`,
+		id: String(100_000_000_000 + index),
 		user: {
 			pk: userPk,
 			username,

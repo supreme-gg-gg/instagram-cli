@@ -164,7 +164,7 @@ export type ListMediaItem<
 	T extends BaseMedia & MediaItemMetadata = BaseMedia & MediaItemMetadata,
 	M = undefined,
 > = {
-	pk: number;
+	pk: string;
 	label: string;
 	content: T[];
 	additional_metadata?: M;
