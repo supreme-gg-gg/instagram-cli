@@ -160,11 +160,11 @@ export default function Read({args: commandArgs, options}: Properties) {
 				threadId,
 				options.cursor,
 			);
-			const limited = messages.slice(0, options.limit);
+			const limited = messages.slice(-options.limit);
 
 			// Mark as seen using the most recent message
 			if (options.markSeen && limited.length > 0) {
-				const mostRecentId = limited[0]!.id;
+				const mostRecentId = limited.at(-1)!.id;
 				await client.markThreadAsSeen(threadId, mostRecentId);
 			}
 
