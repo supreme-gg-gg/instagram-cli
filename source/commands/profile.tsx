@@ -3,7 +3,7 @@ import {Alert} from '@inkjs/ui';
 import {Text} from 'ink';
 import zod from 'zod';
 import {argument} from 'pastel';
-import {TerminalInfoProvider} from 'ink-picture';
+import {InkPictureProvider} from 'ink-picture';
 import type {ProfileInfo} from '../types/instagram.js';
 import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
 import {useImageProtocol} from '../ui/hooks/use-image-protocol.js';
@@ -76,8 +76,8 @@ export default function Profile({args: [username]}: Props) {
 	}
 
 	return (
-		<TerminalInfoProvider>
+		<InkPictureProvider>
 			<ProfileView profile={profile} imageProtocol={imageProtocol} />
-		</TerminalInfoProvider>
+		</InkPictureProvider>
 	);
 }

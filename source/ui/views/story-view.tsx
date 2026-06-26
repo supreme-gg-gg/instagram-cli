@@ -1,5 +1,5 @@
 import React from 'react';
-import {TerminalInfoProvider} from 'ink-picture';
+import {InkPictureProvider} from 'ink-picture';
 import {type ListMediaItem, type Story} from '../../types/instagram.js';
 import ListDetailDisplay from '../components/list-detail-display.js';
 import {type InstagramClient} from '../../client.js';
@@ -33,7 +33,7 @@ export default function StoryView({
 	};
 
 	return (
-		<TerminalInfoProvider>
+		<InkPictureProvider>
 			<ListDetailDisplay
 				listItems={reels}
 				loadMore={loadMore}
@@ -42,6 +42,6 @@ export default function StoryView({
 				mode="story"
 				handleSearchSubmit={handleSearchSubmit}
 			/>
-		</TerminalInfoProvider>
+		</InkPictureProvider>
 	);
 }

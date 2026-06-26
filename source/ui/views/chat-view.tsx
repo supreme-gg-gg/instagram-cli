@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {Box, Text, useInput, useApp, useWindowSize} from 'ink';
-import {TerminalInfoProvider} from 'ink-picture';
+import {InkPictureProvider} from 'ink-picture';
 import type {
 	Thread,
 	ChatState,
@@ -883,19 +883,19 @@ export default function ChatView({
 
 	if (viewingPost) {
 		return (
-			<TerminalInfoProvider>
+			<InkPictureProvider>
 				<SinglePostView
 					post={viewingPost}
 					protocol={imageProtocol}
 					onClose={handleClosePostView}
 				/>
-			</TerminalInfoProvider>
+			</InkPictureProvider>
 		);
 	}
 
 	return (
 		<FullScreen>
-			<TerminalInfoProvider>
+			<InkPictureProvider>
 				<Box flexDirection="column" height="100%" width="100%">
 					<StatusBar
 						currentThread={chatState.currentThread}
@@ -920,7 +920,7 @@ export default function ChatView({
 						)}
 					</Box>
 				</Box>
-			</TerminalInfoProvider>
+			</InkPictureProvider>
 		</FullScreen>
 	);
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import {TerminalInfoProvider} from 'ink-picture';
+import {InkPictureProvider} from 'ink-picture';
 import {
 	type ListMediaItem,
 	type Post,
@@ -38,13 +38,13 @@ export default function FeedView({feed}: {readonly feed: FeedData}) {
 	}));
 
 	return (
-		<TerminalInfoProvider>
+		<InkPictureProvider>
 			<ListDetailDisplay
 				listItems={listItems}
 				loadMore={() => {}}
 				protocol={imageProtocol}
 				mode="post"
 			/>
-		</TerminalInfoProvider>
+		</InkPictureProvider>
 	);
 }

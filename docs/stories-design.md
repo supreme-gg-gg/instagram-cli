@@ -90,7 +90,7 @@ The `useStories` hook (`source/ui/hooks/use-stories.ts`) is the brain of the fea
 ### 2. Component Responsibilities
 
 - **`Stories` (Command)**: The top-level command component. Its only job is to invoke the `useStories` hook and pass the resulting state and functions down to the `StoryView`.
-- **`StoryView` (View)**: A simple container component that provides necessary context (like `TerminalInfoProvider`) and passes props to the main display component.
+- **`StoryView` (View)**: A simple container component that provides necessary context (like `InkPictureProvider`) and passes props to the main display component.
 - **`StoryDisplay` (Component)**: A "presentational" component that handles all UI rendering and user interaction. It receives data via props and calls functions like `loadMore` and `markStoryAsSeen` in response to user input, but it contains no business logic itself.
 
 ## Key Features Implementation
