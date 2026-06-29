@@ -238,30 +238,25 @@ export default function ListDetailDisplay<
 		} else if (input === 's' && mode === 'story') {
 			setIsSearchMode(true);
 		} else if (key.upArrow || input === 'k') {
-			setSelectedIndex(prev => {
-				const newIndex = Math.max(0, prev - 1);
-				const margin = Math.floor(viewportSize / 2);
-				if (newIndex < scrollOffset + margin) {
-					setScrollOffset(previous => Math.max(0, previous - 1));
-				}
+			const newIndex = Math.max(0, selectedIndex - 1);
+			const margin = Math.floor(viewportSize / 2);
 
-				return newIndex;
-			});
+			setSelectedIndex(newIndex);
+
+			if (newIndex < scrollOffset + margin) {
+				setScrollOffset(prev => Math.max(0, prev - 1));
+			}
 		} else if (key.downArrow || input === 'j') {
-			setSelectedIndex(prev => {
-				const newIndex = Math.min(prev + 1, combinedItems.length - 1);
-				const margin = Math.floor(viewportSize / 2);
-				if (newIndex >= scrollOffset + margin) {
-					setScrollOffset(previous =>
-						Math.min(
-							previous + 1,
-							Math.max(0, combinedItems.length - viewportSize),
-						),
-					);
-				}
+			const newIndex = Math.min(selectedIndex + 1, combinedItems.length - 1);
+			const margin = Math.floor(viewportSize / 2);
 
-				return newIndex;
-			});
+			setSelectedIndex(newIndex);
+
+			if (newIndex >= scrollOffset + margin) {
+				setScrollOffset(prev =>
+					Math.min(prev + 1, Math.max(0, combinedItems.length - viewportSize)),
+				);
+			}
 		} else if (key.leftArrow || input === 'h') {
 			if (currentItem && currentItem.content.length > 1) {
 				setCarouselIndex(prev => Math.max(0, prev - 1));
@@ -280,7 +275,6 @@ export default function ListDetailDisplay<
 			exit();
 		}
 	});
-
 	const currentImageCandidate = currentContentItem
 		? getCurrentImage(currentContentItem)
 		: undefined;
