@@ -283,7 +283,6 @@ function buildStory(index: number): Story[] {
 		const mLast = lastNames[mentionIdx]!;
 		const mentionImg = imageUrls[mentionIdx % imageUrls.length]!;
 
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 		stories[0]!.reel_mentions = [
 			{
 				user: {
