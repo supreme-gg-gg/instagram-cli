@@ -311,8 +311,9 @@ export const mockMessages: Message[] = [
 			media_type: 1,
 		},
 	},
+	// Last entry needs to be text for testing convenience
 	{
-		id: 'msg1',
+		id: 'msg11',
 		timestamp: new Date(Date.now()),
 		userId: 'user1',
 		username: 'alice_smith',

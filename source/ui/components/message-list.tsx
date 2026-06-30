@@ -76,13 +76,18 @@ export default function MessageList({
 									terminalHeight,
 									defaultVisibility,
 								}) => {
-									// Account for app header
-									if (position.row === 0) {
+									const HEADER_ROWS = 1;
+									// Heuristic for input box + footer
+									const FOOTER_ROWS = 9;
+									if (position.row < HEADER_ROWS) {
 										return 'partial';
 									}
 
-									// Heuristic for input box + footer
-									if (position.row + position.height > terminalHeight - 9) {
+									const visibleBottom = Math.max(
+										0,
+										terminalHeight - FOOTER_ROWS,
+									);
+									if (position.row + position.height > visibleBottom) {
 										return 'partial';
 									}
 
