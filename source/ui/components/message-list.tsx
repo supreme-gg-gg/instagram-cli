@@ -67,7 +67,28 @@ export default function MessageList({
 							height={17}
 							flexDirection="column"
 						>
-							<Image src={imageUrl} alt="Sent image" protocol={imageProtocol} />
+							<Image
+								src={imageUrl}
+								alt="Sent image"
+								protocol={{full: imageProtocol}}
+								getVisibility={({
+									position,
+									terminalHeight,
+									defaultVisibility,
+								}) => {
+									// Account for app header
+									if (position.row === 0) {
+										return 'partial';
+									}
+
+									// Heuristic for input box + footer
+									if (position.row + position.height > terminalHeight - 9) {
+										return 'partial';
+									}
+
+									return defaultVisibility;
+								}}
+							/>
 						</Box>
 					);
 				}
