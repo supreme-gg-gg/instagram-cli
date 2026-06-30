@@ -311,6 +311,16 @@ export const mockMessages: Message[] = [
 			media_type: 1,
 		},
 	},
+	{
+		id: 'msg1',
+		timestamp: new Date(Date.now()),
+		userId: 'user1',
+		username: 'alice_smith',
+		isOutgoing: true,
+		threadId: 'thread1',
+		itemType: 'text',
+		text: 'Hey, are you free tonight?',
+	},
 ];
 
 // Mock threads
