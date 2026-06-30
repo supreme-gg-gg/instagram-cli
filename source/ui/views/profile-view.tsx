@@ -1,11 +1,11 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import Image from 'ink-picture';
+import Image, {type ImageProtocolName} from 'ink-picture';
 import type {ProfileInfo} from '../../types/instagram.js';
 
 type Props = {
 	readonly profile: ProfileInfo;
-	readonly imageProtocol?: string;
+	readonly imageProtocol?: ImageProtocolName;
 };
 
 function formatCount(n: number): string {
