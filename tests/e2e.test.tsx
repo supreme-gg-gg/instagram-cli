@@ -96,8 +96,15 @@ test('chat view displays messages when thread is selected', async (t: ExecutionC
 
 	output = lastFrame();
 	t.truthy(output, 'Frame should render after thread selection');
-	const firstMessage = mockMessages[0]!;
-	const messageText = firstMessage.itemType === 'text' ? firstMessage.text : '';
-	t.true(output!.includes(messageText), 'First message should be visible');
+	const lastMessage = mockMessages.at(-1)!;
+	if (lastMessage.itemType === 'text') {
+		t.true(
+			output!.includes(lastMessage.text),
+			'First message should be visible',
+		);
+	} else {
+		t.fail('Expected last mock message to be text');
+	}
+
 	unmount();
 });

@@ -67,7 +67,33 @@ export default function MessageList({
 							height={17}
 							flexDirection="column"
 						>
-							<Image src={imageUrl} alt="Sent image" protocol={imageProtocol} />
+							<Image
+								src={imageUrl}
+								alt="Sent image"
+								protocol={{full: imageProtocol}}
+								getVisibility={({
+									position,
+									terminalHeight,
+									defaultVisibility,
+								}) => {
+									const HEADER_ROWS = 1;
+									// Heuristic for input box + footer
+									const FOOTER_ROWS = 9;
+									if (position.row < HEADER_ROWS) {
+										return 'partial';
+									}
+
+									const visibleBottom = Math.max(
+										0,
+										terminalHeight - FOOTER_ROWS,
+									);
+									if (position.row + position.height > visibleBottom) {
+										return 'partial';
+									}
+
+									return defaultVisibility;
+								}}
+							/>
 						</Box>
 					);
 				}

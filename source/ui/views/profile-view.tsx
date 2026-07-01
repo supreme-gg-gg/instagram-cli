@@ -1,11 +1,11 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import Image from 'ink-picture';
+import Image, {type ImageProtocolName} from 'ink-picture';
 import type {ProfileInfo} from '../../types/instagram.js';
 
 type Props = {
 	readonly profile: ProfileInfo;
-	readonly imageProtocol?: string;
+	readonly imageProtocol?: ImageProtocolName;
 };
 
 function formatCount(n: number): string {
@@ -20,10 +20,9 @@ export default function ProfileView({profile, imageProtocol}: Props) {
 
 	return (
 		<Box flexDirection="row" padding={1} gap={2}>
-			{/* Left: profile picture */}
 			{profile.profilePicUrl && imageProtocol ? (
 				<Box
-					width={24}
+					width={22}
 					height={12}
 					flexShrink={0}
 					borderStyle="round"
@@ -32,8 +31,9 @@ export default function ProfileView({profile, imageProtocol}: Props) {
 					<Image
 						src={profile.profilePicUrl}
 						alt={profile.username}
-						width={22}
+						width={20}
 						height={10}
+						protocol={{full: imageProtocol}}
 					/>
 				</Box>
 			) : (

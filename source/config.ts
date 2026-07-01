@@ -19,7 +19,7 @@ type PrivacyConfig = {
 };
 
 type ImageConfig = {
-	protocol: string;
+	protocol?: string;
 };
 
 type AdvancedConfig = {
@@ -67,9 +67,7 @@ const DEFAULT_CONFIG: Config = {
 		logsDir: path.join(DEFAULT_DATA_DIR, 'logs'),
 		downloadDir: path.join(DEFAULT_DATA_DIR, 'downloads'),
 	},
-	image: {
-		protocol: 'ascii',
-	},
+	image: {},
 };
 
 export class ConfigManager {

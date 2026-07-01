@@ -10,7 +10,9 @@ export function useImageProtocol() {
 	useEffect(() => {
 		const config = ConfigManager.getInstance();
 		const savedProtocol = config.get('image.protocol');
-		setProtocol(savedProtocol as ImageProtocolName);
+		if (savedProtocol) {
+			setProtocol(savedProtocol as ImageProtocolName);
+		}
 	}, []);
 
 	return protocol;
