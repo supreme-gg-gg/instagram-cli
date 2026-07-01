@@ -238,25 +238,38 @@ export default function ListDetailDisplay<
 		} else if (input === 's' && mode === 'story') {
 			setIsSearchMode(true);
 		} else if (key.upArrow || input === 'k') {
-			const newIndex = Math.max(0, selectedIndex - 1);
 			const margin = Math.floor(viewportSize / 2);
 
-			setSelectedIndex(newIndex);
+			setSelectedIndex(prev => {
+				const newIndex = Math.max(0, prev - 1);
 
-			if (newIndex < scrollOffset + margin) {
-				setScrollOffset(prev => Math.max(0, prev - 1));
-			}
+				setScrollOffset(prevScroll => {
+					if (newIndex < prevScroll + margin) {
+						return Math.max(0, prevScroll - 1);
+					}
+
+					return prevScroll;
+				});
+
+				return newIndex;
+			});
 		} else if (key.downArrow || input === 'j') {
-			const newIndex = Math.min(selectedIndex + 1, combinedItems.length - 1);
 			const margin = Math.floor(viewportSize / 2);
+			const maxScroll = Math.max(0, combinedItems.length - viewportSize);
 
-			setSelectedIndex(newIndex);
+			setSelectedIndex(prev => {
+				const newIndex = Math.min(prev + 1, combinedItems.length - 1);
 
-			if (newIndex >= scrollOffset + margin) {
-				setScrollOffset(prev =>
-					Math.min(prev + 1, Math.max(0, combinedItems.length - viewportSize)),
-				);
-			}
+				setScrollOffset(prevScroll => {
+					if (newIndex >= prevScroll + margin) {
+						return Math.min(prevScroll + 1, maxScroll);
+					}
+
+					return prevScroll;
+				});
+
+				return newIndex;
+			});
 		} else if (key.leftArrow || input === 'h') {
 			if (currentItem && currentItem.content.length > 1) {
 				setCarouselIndex(prev => Math.max(0, prev - 1));
