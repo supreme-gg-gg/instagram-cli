@@ -7,9 +7,14 @@ import {useImageProtocol} from '../hooks/use-image-protocol.js';
 type ThreadItemProperties = {
 	readonly thread: Thread;
 	readonly isSelected: boolean;
+	readonly isHovered: boolean;
 };
 
-export default function ThreadItem({thread, isSelected}: ThreadItemProperties) {
+export default function ThreadItem({
+	thread,
+	isSelected,
+	isHovered,
+}: ThreadItemProperties) {
 	const imageProtocol = useImageProtocol();
 	const formatTime = (date: Date) => {
 		const now = new Date();
@@ -66,11 +71,10 @@ export default function ThreadItem({thread, isSelected}: ThreadItemProperties) {
 	return (
 		<Box
 			paddingX={1}
-			paddingY={0}
+			paddingY={1}
 			width="100%"
 			flexDirection="row"
-			borderStyle={isSelected ? 'round' : undefined}
-			borderColor={isSelected ? 'cyan' : undefined}
+			backgroundColor={isSelected ? '#3a3a3a' : isHovered ? 'gray' : undefined}
 		>
 			{threadAvatar && (
 				<Box marginRight={1}>

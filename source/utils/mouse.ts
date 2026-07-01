@@ -54,14 +54,14 @@ export type MouseHandler = (event: MouseEvent) => void | boolean;
 
 // ── Escape sequence helpers ──────────────────────────────────────────────────
 
-/** Write to stdout to enable mouse button-event tracking + SGR extended mode. */
+/** Write to stdout to enable mouse any-event tracking + SGR extended mode. */
 export function enableMouseTracking(stdout: NodeJS.WriteStream): void {
-	stdout.write('\u001B[?1002h\u001B[?1006h');
+	stdout.write('\u001B[?1003h\u001B[?1006h');
 }
 
 /** Write to stdout to disable mouse tracking. */
 export function disableMouseTracking(stdout: NodeJS.WriteStream): void {
-	stdout.write('\u001B[?1006l\u001B[?1002l');
+	stdout.write('\u001B[?1006l\u001B[?1003l');
 }
 
 // ── Parsing ──────────────────────────────────────────────────────────────────
