@@ -111,6 +111,24 @@ export default function ListDetailDisplay<
 		);
 	}, [initialItems]);
 
+	useEffect(() => {
+		const clampedIndex = Math.min(
+			selectedIndex,
+			Math.max(0, combinedItems.length - 1),
+		);
+		const maxOffset = Math.max(0, combinedItems.length - viewportSize);
+		let newOffset = Math.min(scrollOffset, maxOffset);
+
+		if (clampedIndex < newOffset) {
+			newOffset = clampedIndex;
+		} else if (clampedIndex >= newOffset + viewportSize && viewportSize > 0) {
+			newOffset = clampedIndex - viewportSize + 1;
+		}
+
+		setSelectedIndex(clampedIndex);
+		setScrollOffset(newOffset);
+	}, [combinedItems.length, viewportSize, scrollOffset, selectedIndex]);
+
 	const currentItem = combinedItems[selectedIndex];
 	const currentContentItem = currentItem?.content[carouselIndex];
 
