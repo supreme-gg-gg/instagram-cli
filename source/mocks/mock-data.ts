@@ -14,6 +14,7 @@ export const mockUsers: User[] = [
 		username: 'alice_smith',
 		fullName: 'Alice Smith',
 		isVerified: false,
+		profilePicUrl: 'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
 	},
 	{
 		pk: 'user2',
@@ -26,6 +27,8 @@ export const mockUsers: User[] = [
 		username: 'charlie_brown',
 		fullName: 'Charlie Brown',
 		isVerified: false,
+		profilePicUrl:
+			'https://www.math.hkust.edu.hk/~masyleung/Teaching/CAS/MATLAB/image/images/cameraman.jpg',
 	},
 	{
 		pk: 'user4',
