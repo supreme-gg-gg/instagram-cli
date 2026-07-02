@@ -35,86 +35,318 @@ export const mockUsers: User[] = [
 		username: 'diana_prince',
 		fullName: 'Diana Prince',
 		isVerified: true,
-	},
+	}
+]
+ 
+export const MOCK_USER_COUNT = 75;
+
+const firstNames = [
+	'Alice',
+	'Bob',
+	'Charlie',
+	'Diana',
+	'Eva',
+	'Frank',
+	'Grace',
+	'Henry',
+	'Isabella',
+	'Jack',
+	'Katie',
+	'Liam',
+	'Mia',
+	'Noah',
+	'Olivia',
+	'Peter',
+	'Quinn',
+	'Rachel',
+	'Sam',
+	'Tina',
+	'Uma',
+	'Victor',
+	'Wendy',
+	'Xander',
+	'Yara',
+	'Zack',
+	'Aria',
+	'Ben',
+	'Clara',
+	'David',
+	'Ella',
+	'Finn',
+	'Gemma',
+	'Hugo',
+	'Ivy',
+	'Jake',
+	'Kira',
+	'Leo',
+	'Nora',
+	'Oscar',
+	'Paige',
+	'Riley',
+	'Sage',
+	'Theo',
+	'Violet',
+	'Wade',
+	'Zoe',
+	'Adam',
+	'Bella',
+	'Carter',
+	'Daisy',
+	'Ethan',
+	'Faith',
+	'Gavin',
+	'Hannah',
+	'Ian',
+	'Jade',
+	'Kai',
+	'Luna',
+	'Miles',
+	'Natalie',
+	'Owen',
+	'Phoebe',
+	'Quincy',
+	'Rose',
+	'Silas',
+	'Tessa',
+	'Uri',
+	'Vera',
+	'Wyatt',
+	'Xena',
+	'Yves',
+	'Zara',
+	'Aiden',
+	'Brooke',
 ];
 
-// Mock posts for feed
-export const mockPosts: Post[] = [
-	{
-		id: 'post1',
-		user: {
-			pk: 1001,
-			username: 'alice_smith',
-			profilePicUrl: 'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
-		},
-		caption: {
-			text: 'Beautiful sunset today! 🌅 #nature #photography',
-		},
-		image_versions2: {
-			candidates: [
-				{
-					url: 'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
-					width: 1080,
-					height: 1080,
-				},
-			],
-		},
-		like_count: 245,
-		comment_count: 12,
-		taken_at: Date.now() - 60_000 * 60 * 2, // 2 hours ago
-		media_type: 1, // Image
-	},
-	{
-		id: 'post2',
-		user: {
-			pk: 1002,
-			username: 'bob_johnson',
-			profilePicUrl:
-				'https://www.math.hkust.edu.hk/~masyleung/Teaching/CAS/MATLAB/image/images/cameraman.jpg',
-		},
-		caption: {
-			text: 'Working on some code today 💻 #coding #typescript',
-		},
-		image_versions2: {
-			candidates: [
-				{
-					url: 'https://www.math.hkust.edu.hk/~masyleung/Teaching/CAS/MATLAB/image/images/cameraman.jpg',
-					width: 512,
-					height: 512,
-				},
-			],
-		},
-		like_count: 89,
-		comment_count: 5,
-		taken_at: Date.now() - 60_000 * 60 * 4, // 4 hours ago
-		media_type: 1, // Image
-	},
-	{
-		id: 'post3',
-		user: {
-			pk: 1003,
-			username: 'charlie_brown',
-		},
-		caption: {
-			text: 'Great coffee this morning ☕',
-		},
-		image_versions2: {
-			candidates: [
-				{
-					url: 'https://upload.wikimedia.org/wikipedia/en/thumb/7/7d/Lenna_%28test_image%29.png/500px-Lenna_%28test_image%29.png',
-					width: 500,
-					height: 500,
-				},
-			],
-		},
-		like_count: 156,
-		comment_count: 8,
-		taken_at: Date.now() - 60_000 * 60 * 6, // 6 hours ago
-		media_type: 1, // Image
-	},
+const lastNames = [
+	'Smith',
+	'Johnson',
+	'Brown',
+	'Prince',
+	'Martinez',
+	'Lee',
+	'Kim',
+	'Chen',
+	'Torres',
+	'Wilson',
+	'Nguyen',
+	'Patel',
+	'Anderson',
+	'Thomas',
+	'White',
+	'Jackson',
+	'Harris',
+	'Garcia',
+	'Clark',
+	'Robinson',
+	'Lewis',
+	'Walker',
+	'Hall',
+	'Allen',
+	'Scott',
+	'Taylor',
+	'Moore',
+	'Davis',
+	'Miller',
+	'Wilson',
+	'Young',
+	'King',
+	'Wright',
+	'Hill',
+	'Green',
+	'Adams',
+	'Baker',
+	'Nelson',
+	'Carter',
+	'Mitchell',
+	'Roberts',
+	'Turner',
+	'Phillips',
+	'Campbell',
+	'Parker',
+	'Evans',
+	'Edwards',
+	'Collins',
+	'Stewart',
+	'Morris',
+	'Murphy',
+	'Cook',
+	'Rogers',
+	'Morgan',
+	'Peterson',
+	'Cooper',
+	'Reed',
+	'Bailey',
+	'Bell',
+	'Howard',
+	'Ward',
+	'Brooks',
+	'Kelly',
+	'Sanders',
+	'Price',
+	'Bennett',
+	'Wood',
+	'Barnes',
+	'Ross',
+	'Henderson',
+	'Coleman',
+	'Jenkins',
+	'Perry',
+	'Powell',
+	'Long',
 ];
 
-// Mock feed instance
+const imageUrls = [
+	'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
+	'https://www.math.hkust.edu.hk/~masyleung/Teaching/CAS/MATLAB/image/images/cameraman.jpg',
+	'https://upload.wikimedia.org/wikipedia/en/thumb/7/7d/Lenna_%28test_image%29.png/500px-Lenna_%28test_image%29.png',
+	'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/300px-PNG_transparency_demonstration_1.png',
+];
+
+const captions = [
+	'Beautiful sunset today! 🌅 #nature #photography',
+	'Working on some code today 💻 #coding #typescript',
+	'Great coffee this morning ☕',
+	'Morning yoga session 🧘‍♀️ #wellness #mindfulness',
+	'New recipe alert! Homemade pasta 🍝 #cooking #foodie',
+	'Hiked 12 miles today! 🏔️ #adventure #hiking',
+	'Just launched my new project! 🚀 #startup #tech',
+	'Weekend barbecue with the fam 🥩🔥 #family #weekend',
+	'Art exhibition opening night! 🎨 #art #culture',
+	'Fresh catch of the day 🎣 #fishing #outdoors',
+	'Book club meeting was amazing! 📚 #reading #books',
+	'Guitar practice paying off 🎸 #music #guitar',
+	'Adopted a new puppy! Meet Max 🐶 #dogsofinstagram #puppy',
+	'Sunrise surf session 🌊🏄 #surfing #ocean',
+	'Baking sourdough from scratch 🥖 #baking #homemade',
+	'Film set behind the scenes 🎬 #filmmaking #director',
+	'Farmers market finds! 🥕🌽 #organic #localfood',
+	'Finished my first marathon! 🏃‍♀️🎉 #marathon #fitness',
+	'Stargazing night ✨🌌 #astronomy #night',
+	'Jazz night at the Blue Note 🎷🎵 #jazz #music',
+	'Pottery class creations 🏺 #art #ceramics',
+	'Road trip across the country 🚗🛣️ #roadtrip #travel',
+	'Community garden volunteer day 🌻 #community #gardening',
+	'Chess tournament champion! ♟️🏆 #chess #strategy',
+	'sunset from the rooftop 🌇 #cityviews #sunset',
+	'Beach day with friends 🏖️ #summer #fun',
+	'New painting finished! 🖼️ #art #painting',
+	'Gardening update - look at these tomatoes! 🍅 #garden',
+	'Live concert tonight! 🎤 #concert #music',
+	'Snowy mountain views 🏔️❄️ #winter #travel',
+];
+
+const storyWidth = 1080;
+const storyHeight = 1920;
+
+function buildUser(index: number): User {
+	const first = firstNames[index]!;
+	const last = lastNames[index]!;
+	return {
+		pk: `user${index + 1}`,
+		username: `${first.toLowerCase()}_${last.toLowerCase()}`,
+		fullName: `${first} ${last}`,
+		isVerified: index % 5 === 1,
+	};
+}
+
+function buildPost(index: number): Post {
+	const first = firstNames[index]!;
+	const last = lastNames[index]!;
+	const username = `${first.toLowerCase()}_${last.toLowerCase()}`;
+	const userPk = 1001 + index;
+	const imgUrl = imageUrls[index % imageUrls.length]!;
+	const hoursAgo = (index + 1) * 2;
+
+	const mockPost: Post = {
+		id: String(100_000_000_000 + index),
+		user: {
+			pk: userPk,
+			username,
+			profilePicUrl: index % 3 === 0 ? undefined : imgUrl,
+		},
+		caption: {text: captions[index % captions.length]!},
+		image_versions2: {
+			candidates: [{url: imgUrl, width: storyWidth, height: storyHeight}],
+		},
+		like_count: 50 + Math.floor(Math.random() * 900),
+		comment_count: 3 + Math.floor(Math.random() * 60),
+		taken_at: Date.now() - 60_000 * 60 * hoursAgo,
+		media_type: 1,
+	};
+	return mockPost;
+}
+
+function buildStory(index: number): Story[] {
+	const first = firstNames[index]!;
+	const last = lastNames[index]!;
+	const username = `${first.toLowerCase()}_${last.toLowerCase()}`;
+	const userPk = 1001 + index;
+	const imgUrl = imageUrls[index % imageUrls.length]!;
+
+	const stories: Story[] = [
+		{
+			id: `story${index + 1}`,
+			user: {pk: userPk, username, profilePicUrl: imgUrl},
+			image_versions2: {
+				candidates: [{url: imgUrl, width: storyWidth, height: storyHeight}],
+			},
+			taken_at: Date.now(),
+			media_type: 1,
+		},
+	];
+
+	if (index % 3 === 0) {
+		stories.push({
+			id: `story${index + 1}b`,
+			user: {pk: userPk, username, profilePicUrl: imgUrl},
+			image_versions2: {
+				candidates: [{url: imgUrl, width: storyWidth, height: storyHeight}],
+			},
+			taken_at: Date.now(),
+			media_type: 1,
+		});
+	}
+
+	if (index % 5 === 0 && index + 1 < firstNames.length) {
+		const mentionIdx = (index + 3) % firstNames.length;
+		const mFirst = firstNames[mentionIdx]!;
+		const mLast = lastNames[mentionIdx]!;
+		const mentionImg = imageUrls[mentionIdx % imageUrls.length]!;
+
+		stories[0]!.reel_mentions = [
+			{
+				user: {
+					username: `${mFirst.toLowerCase()}_${mLast.toLowerCase()}`,
+					pk: 1001 + mentionIdx,
+					full_name: `${mFirst} ${mLast}`,
+					profile_pic_url: mentionImg,
+				},
+			},
+		];
+	}
+
+	return stories;
+}
+
+// Hardcoded first 4 — referenced by mockThreads / mockMessages below
+export const mockUsers: User[] = [
+	buildUser(0),
+	buildUser(1),
+	buildUser(2),
+	buildUser(3),
+];
+
+for (let i = 4; i < MOCK_USER_COUNT; i++) {
+	mockUsers.push(buildUser(i));
+}
+
+export const mockPosts: Post[] = [];
+
+for (let i = 0; i < MOCK_USER_COUNT; i++) {
+	mockPosts.push(buildPost(i));
+}
+
 export const mockFeed = {
 	posts: mockPosts,
 };
@@ -123,7 +355,7 @@ export const mockFeed = {
 export const mockMessages: Message[] = [
 	{
 		id: 'msg1',
-		timestamp: new Date(Date.now() - 60_000 * 5), // 5 minutes ago
+		timestamp: new Date(Date.now() - 60_000 * 5),
 		userId: 'user1',
 		username: 'alice_smith',
 		isOutgoing: true,
@@ -144,7 +376,7 @@ export const mockMessages: Message[] = [
 	},
 	{
 		id: 'msg2',
-		timestamp: new Date(Date.now() - 60_000 * 10), // 10 minutes ago
+		timestamp: new Date(Date.now() - 60_000 * 10),
 		userId: 'user2',
 		username: 'bob_johnson',
 		isOutgoing: false,
@@ -155,7 +387,7 @@ export const mockMessages: Message[] = [
 	},
 	{
 		id: 'msg3',
-		timestamp: new Date(Date.now() - 60_000 * 15), // 15 minutes ago
+		timestamp: new Date(Date.now() - 60_000 * 15),
 		userId: 'user1',
 		username: 'alice_smith',
 		isOutgoing: true,
@@ -184,7 +416,7 @@ export const mockMessages: Message[] = [
 	},
 	{
 		id: 'msg4',
-		timestamp: new Date(Date.now() - 60_000 * 20), // 20 minutes ago
+		timestamp: new Date(Date.now() - 60_000 * 20),
 		userId: 'user2',
 		username: 'bob_johnson',
 		isOutgoing: false,
@@ -212,7 +444,7 @@ export const mockMessages: Message[] = [
 	},
 	{
 		id: 'msg5',
-		timestamp: new Date(Date.now() - 60_000 * 25), // 25 minutes ago
+		timestamp: new Date(Date.now() - 60_000 * 25),
 		userId: 'user1',
 		username: 'alice_smith',
 		isOutgoing: true,
@@ -233,11 +465,10 @@ export const mockMessages: Message[] = [
 			original_width: 500,
 			original_height: 500,
 		},
-		// No reactions for this message
 	},
 	{
 		id: 'msg8',
-		timestamp: new Date(Date.now() - 60_000 * 3), // 3 minutes ago
+		timestamp: new Date(Date.now() - 60_000 * 3),
 		userId: 'user2',
 		username: 'bob_johnson',
 		isOutgoing: false,
@@ -250,7 +481,7 @@ export const mockMessages: Message[] = [
 	},
 	{
 		id: 'msg9',
-		timestamp: new Date(Date.now() - 60_000 * 2), // 2 minutes ago
+		timestamp: new Date(Date.now() - 60_000 * 2),
 		userId: 'user2',
 		username: 'bob_johnson',
 		isOutgoing: false,
@@ -277,13 +508,13 @@ export const mockMessages: Message[] = [
 			},
 			like_count: 15_234,
 			comment_count: 342,
-			taken_at: Math.floor(Date.now() / 1000) - 86_400, // 1 day ago
+			taken_at: Math.floor(Date.now() / 1000) - 86_400,
 			media_type: 1,
 		},
 	},
 	{
 		id: 'msg10',
-		timestamp: new Date(Date.now() - 60_000 * 1), // 1 minute ago
+		timestamp: new Date(Date.now() - 60_000 * 1),
 		userId: 'user1',
 		username: 'alice_smith',
 		isOutgoing: true,
@@ -310,7 +541,7 @@ export const mockMessages: Message[] = [
 			},
 			like_count: 89_432,
 			comment_count: 2345,
-			taken_at: Math.floor(Date.now() / 1000) - 43_200, // 12 hours ago
+			taken_at: Math.floor(Date.now() / 1000) - 43_200,
 			media_type: 1,
 		},
 	},
@@ -327,7 +558,6 @@ export const mockMessages: Message[] = [
 	},
 ];
 
-// Mock threads
 export const mockThreads: Thread[] = [
 	{
 		id: 'thread1',
@@ -342,7 +572,7 @@ export const mockThreads: Thread[] = [
 		title: 'Charlie Brown',
 		users: [mockUsers[2]!],
 		unread: false,
-		lastActivity: new Date(Date.now() - 60_000 * 120), // 2 hours ago
+		lastActivity: new Date(Date.now() - 60_000 * 120),
 		lastMessage: {
 			id: 'msg6',
 			timestamp: new Date(Date.now() - 60_000 * 120),
@@ -363,7 +593,7 @@ export const mockThreads: Thread[] = [
 		title: 'Diana Prince',
 		users: [mockUsers[3]!],
 		unread: true,
-		lastActivity: new Date(Date.now() - 60_000 * 30), // 30 minutes ago
+		lastActivity: new Date(Date.now() - 60_000 * 30),
 		lastMessage: {
 			id: 'msg7',
 			timestamp: new Date(Date.now() - 60_000 * 30),
@@ -381,7 +611,6 @@ export const mockThreads: Thread[] = [
 	},
 ];
 
-// Mock reaction emojis for easy testing
 export const mockEmojis = [
 	'❤️',
 	'😍',
@@ -409,165 +638,12 @@ export const mockEmojis = [
 	'🌟',
 ];
 
-// Mock stories grouped by user for generator pattern testing
-const storyImages: string[] = [
-	'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
-	'https://www.math.hkust.edu.hk/~masyleung/Teaching/CAS/MATLAB/image/images/cameraman.jpg',
-	'https://upload.wikimedia.org/wikipedia/en/thumb/7/7d/Lenna_%28test_image%29.png/500px-Lenna_%28test_image%29.png',
-];
+export const mockStories: Story[] = [];
 
-const timestamp = Date.now();
+for (let i = 0; i < MOCK_USER_COUNT; i++) {
+	mockStories.push(...buildStory(i));
+}
 
-export const mockStories: Story[] = [
-	// Alice's stories
-	{
-		id: 'story1',
-		user: {
-			pk: 1001,
-			username: 'alice_smith',
-			profilePicUrl: storyImages[0]!,
-		},
-		image_versions2: {
-			candidates: [
-				{
-					url: storyImages[0]!,
-					width: 1080,
-					height: 1920,
-				},
-			],
-		},
-		taken_at: timestamp,
-		media_type: 1,
-		reel_mentions: [
-			{
-				user: {
-					username: 'bob_johnson',
-					pk: 1002,
-					full_name: 'Bob Johnson',
-					profile_pic_url: storyImages[1]!,
-				},
-			},
-			{
-				user: {
-					username: 'charlie_brown',
-					pk: 1003,
-					full_name: 'Charlie Brown',
-					profile_pic_url: storyImages[2]!,
-				},
-			},
-		],
-	},
-	{
-		id: 'story1b',
-		user: {
-			pk: 1001,
-			username: 'alice_smith',
-			profilePicUrl: storyImages[0]!,
-		},
-		image_versions2: {
-			candidates: [
-				{
-					url: storyImages[0]!,
-					width: 1080,
-					height: 1920,
-				},
-			],
-		},
-		taken_at: timestamp,
-		media_type: 1,
-	},
-	// Bob's stories
-	{
-		id: 'story2',
-		user: {
-			pk: 1002,
-			username: 'bob_johnson',
-			profilePicUrl: storyImages[1]!,
-		},
-		image_versions2: {
-			candidates: [
-				{
-					url: storyImages[1]!,
-					width: 1080,
-					height: 1920,
-				},
-			],
-		},
-		taken_at: timestamp,
-		media_type: 1,
-	},
-	// Charlie's stories
-	{
-		id: 'story3',
-		user: {
-			pk: 1003,
-			username: 'charlie_brown',
-			profilePicUrl: storyImages[2]!,
-		},
-		image_versions2: {
-			candidates: [
-				{
-					url: storyImages[2]!,
-					width: 1080,
-					height: 1920,
-				},
-			],
-		},
-		taken_at: timestamp,
-		media_type: 1,
-	},
-	// Diana's stories
-	{
-		id: 'story4',
-		user: {
-			pk: 1004,
-			username: 'diana_prince',
-			profilePicUrl: storyImages[0]!,
-		},
-		image_versions2: {
-			candidates: [
-				{
-					url: storyImages[0]!,
-					width: 1080,
-					height: 1920,
-				},
-			],
-		},
-		taken_at: timestamp,
-		media_type: 1,
-		reel_mentions: [
-			{
-				user: {
-					username: 'alice_smith',
-					pk: 1001,
-					full_name: 'Alice Smith',
-					profile_pic_url: storyImages[0]!,
-				},
-			},
-		],
-	},
-	{
-		id: 'story4b',
-		user: {
-			pk: 1004,
-			username: 'diana_prince',
-			profilePicUrl: storyImages[0]!,
-		},
-		image_versions2: {
-			candidates: [
-				{
-					url: storyImages[0]!,
-					width: 1080,
-					height: 1920,
-				},
-			],
-		},
-		taken_at: timestamp,
-		media_type: 1,
-	},
-];
-
-// Helper functions to generate more data
 export function generateReactions(
 	senderIds: string[],
 	emojiCount = 1,

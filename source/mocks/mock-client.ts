@@ -474,7 +474,7 @@ class MockClient extends EventEmitter {
 		}
 
 		return [...usersWithStories.values()].map(user => ({
-			pk: typeof user.pk === 'string' ? Number(user.pk) : user.pk,
+			pk: typeof user.pk === 'string' ? user.pk : String(user.pk),
 			label: user.username,
 			content: [],
 		}));

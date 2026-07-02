@@ -18,7 +18,7 @@ export default function FeedView({feed}: {readonly feed: FeedData}) {
 	const listItems: Array<ListMediaItem<Post, PostMetadata>> = (
 		feed.posts ?? []
 	).map(post => ({
-		pk: post.user.pk,
+		pk: post.id,
 		label: post.user.username,
 		content: post.carousel_media
 			? (post.carousel_media.map(item => ({
