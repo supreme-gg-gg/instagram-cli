@@ -88,6 +88,8 @@ export default function ListDetailDisplay<
 		useState<Array<ListMediaItem<T, M>>>(initialItems);
 	const seenStories = useRef(new Set<string>());
 	const sidebarRef = useRef<DOMElement>(null as unknown as DOMElement);
+	const combinedItemsRef = useRef(combinedItems);
+	combinedItemsRef.current = combinedItems;
 
 	const {exit} = useApp();
 	const {stdout} = useStdout();
@@ -208,7 +210,8 @@ export default function ListDetailDisplay<
 		void handleSearchSubmit(searchQuery.trim())
 			.then(result => {
 				if (result) {
-					const existingIndex = combinedItems.findIndex(
+					const currentItems = combinedItemsRef.current;
+					const existingIndex = currentItems.findIndex(
 						item => item.pk === result.pk,
 					);
 					const isExisting = existingIndex !== -1;
@@ -219,7 +222,7 @@ export default function ListDetailDisplay<
 								0,
 								Math.min(
 									existingIndex - Math.floor(viewportSize / 2),
-									Math.max(0, combinedItems.length - viewportSize),
+									Math.max(0, currentItems.length - viewportSize),
 								),
 							),
 						);
