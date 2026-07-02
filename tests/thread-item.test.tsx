@@ -8,6 +8,10 @@ import ThreadItem from '../source/ui/components/thread-item.js';
 import MessageList from '../source/ui/components/message-list.js';
 import {mockThreads, mockMessages} from '../source/mocks/mock-data.js';
 
+// Force chalk to emit ANSI color codes so the cursor highlight is visible in
+// the captured frame output. This must be set before any rendering occurs.
+chalk.level = 3;
+
 test('ThreadItem renders thread title and unread indicator', t => {
 	const unreadThread = mockThreads.find(th => th.unread)!;
 
@@ -37,17 +41,15 @@ test("Read ThreadItem doesn't display unread indicator", t => {
 	unmount();
 });
 
-// eslint-disable-next-line ava/no-skip-test
-test.skip('ThreadItem renders selected state', t => {
+test('ThreadItem renders selected state', t => {
 	const thread = mockThreads[0]!;
 
 	const {lastFrame, unmount} = render(
 		<ThreadItem isSelected thread={thread} isHovered={false} />,
 	);
 	const output = lastFrame();
-
-	// Selected threads have rounded corners in the Box component
-	t.truthy(output?.includes('\u2500'), 'Should display selected state');
+	// Selected threads are highlighted with gray background
+	t.truthy(output?.includes('\u001B[48;2;58;58;58m'));
 	unmount();
 });
 
