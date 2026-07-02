@@ -1,5 +1,13 @@
 import React, {useState, useEffect, useMemo, useRef} from 'react';
-import {Box, Text, useInput, useApp, useStdout} from 'ink';
+import {
+	Box,
+	Text,
+	useInput,
+	useApp,
+	useStdout,
+	type DOMElement,
+	useBoxMetrics,
+} from 'ink';
 import open from 'open';
 import {type ImageProtocolName} from 'ink-picture';
 import {
@@ -71,6 +79,7 @@ export default function ListDetailDisplay<
 	handleSearchSubmit,
 }: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
+	const [scrollOffset, setScrollOffset] = useState(0);
 	const [carouselIndex, setCarouselIndex] = useState<number>(0);
 	const [isSearchMode, setIsSearchMode] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
@@ -78,13 +87,49 @@ export default function ListDetailDisplay<
 	const [combinedItems, setCombinedItems] =
 		useState<Array<ListMediaItem<T, M>>>(initialItems);
 	const seenStories = useRef(new Set<string>());
+	const sidebarRef = useRef<DOMElement>(null as unknown as DOMElement);
+	const combinedItemsRef = useRef(combinedItems);
+	combinedItemsRef.current = combinedItems;
 
 	const {exit} = useApp();
 	const {stdout} = useStdout();
 
+	const {height: sidebarHeight, hasMeasured} = useBoxMetrics(sidebarRef);
+	const viewportSize = hasMeasured
+		? Math.max(1, Math.floor(sidebarHeight))
+		: 30;
+
 	useEffect(() => {
-		setCombinedItems(initialItems);
+		const seen = new Set<(typeof initialItems)[number]['pk']>();
+		setCombinedItems(
+			initialItems.filter(item => {
+				if (seen.has(item.pk)) {
+					return false;
+				}
+
+				seen.add(item.pk);
+				return true;
+			}),
+		);
 	}, [initialItems]);
+
+	useEffect(() => {
+		const clampedIndex = Math.min(
+			selectedIndex,
+			Math.max(0, combinedItems.length - 1),
+		);
+		const maxOffset = Math.max(0, combinedItems.length - viewportSize);
+		let newOffset = Math.min(scrollOffset, maxOffset);
+
+		if (clampedIndex < newOffset) {
+			newOffset = clampedIndex;
+		} else if (clampedIndex >= newOffset + viewportSize && viewportSize > 0) {
+			newOffset = clampedIndex - viewportSize + 1;
+		}
+
+		setSelectedIndex(clampedIndex);
+		setScrollOffset(newOffset);
+	}, [combinedItems.length, viewportSize, scrollOffset, selectedIndex]);
 
 	const currentItem = combinedItems[selectedIndex];
 	const currentContentItem = currentItem?.content[carouselIndex];
@@ -165,8 +210,27 @@ export default function ListDetailDisplay<
 		void handleSearchSubmit(searchQuery.trim())
 			.then(result => {
 				if (result) {
-					setCombinedItems(prev => [result, ...prev]);
-					setSelectedIndex(0);
+					const currentItems = combinedItemsRef.current;
+					const existingIndex = currentItems.findIndex(
+						item => item.pk === result.pk,
+					);
+					const isExisting = existingIndex !== -1;
+					if (isExisting) {
+						setSelectedIndex(existingIndex);
+						setScrollOffset(
+							Math.max(
+								0,
+								Math.min(
+									existingIndex - Math.floor(viewportSize / 2),
+									Math.max(0, currentItems.length - viewportSize),
+								),
+							),
+						);
+					} else {
+						setCombinedItems(prev => [result, ...prev]);
+						setSelectedIndex(0);
+						setScrollOffset(0);
+					}
 				} else {
 					setSearchError(`No stories found for user "${searchQuery.trim()}".`);
 				}
@@ -195,9 +259,38 @@ export default function ListDetailDisplay<
 		} else if (input === 's' && mode === 'story') {
 			setIsSearchMode(true);
 		} else if (key.upArrow || input === 'k') {
-			setSelectedIndex(prev => Math.max(0, prev - 1));
+			const margin = Math.floor(viewportSize / 2);
+
+			setSelectedIndex(prev => {
+				const newIndex = Math.max(0, prev - 1);
+
+				setScrollOffset(prevScroll => {
+					if (newIndex < prevScroll + margin) {
+						return Math.max(0, prevScroll - 1);
+					}
+
+					return prevScroll;
+				});
+
+				return newIndex;
+			});
 		} else if (key.downArrow || input === 'j') {
-			setSelectedIndex(prev => Math.min(prev + 1, combinedItems.length - 1));
+			const margin = Math.floor(viewportSize / 2);
+			const maxScroll = Math.max(0, combinedItems.length - viewportSize);
+
+			setSelectedIndex(prev => {
+				const newIndex = Math.min(prev + 1, combinedItems.length - 1);
+
+				setScrollOffset(prevScroll => {
+					if (newIndex >= prevScroll + margin) {
+						return Math.min(prevScroll + 1, maxScroll);
+					}
+
+					return prevScroll;
+				});
+
+				return newIndex;
+			});
 		} else if (key.leftArrow || input === 'h') {
 			if (currentItem && currentItem.content.length > 1) {
 				setCarouselIndex(prev => Math.max(0, prev - 1));
@@ -216,7 +309,6 @@ export default function ListDetailDisplay<
 			exit();
 		}
 	});
-
 	const currentImageCandidate = currentContentItem
 		? getCurrentImage(currentContentItem)
 		: undefined;
@@ -231,20 +323,28 @@ export default function ListDetailDisplay<
 		[currentContentItem, stdout.columns],
 	);
 
+	const visibleItems = combinedItems.slice(
+		scrollOffset,
+		scrollOffset + viewportSize,
+	);
+
 	const sidebarContent = (
-		<>
-			{combinedItems.map((item, index) => (
-				<Box key={item.pk} height={1} flexShrink={0}>
-					<Text
-						color={index === selectedIndex ? 'blue' : undefined}
-						wrap="truncate-end"
-					>
-						{index === selectedIndex ? '➜ ' : '   '}
-						{item.label}
-					</Text>
-				</Box>
-			))}
-		</>
+		<Box ref={sidebarRef} flexDirection="column" flexGrow={1}>
+			{visibleItems.map((item, index) => {
+				const absoluteIndex = scrollOffset + index;
+				return (
+					<Box key={item.pk} height={1} flexShrink={0}>
+						<Text
+							color={absoluteIndex === selectedIndex ? 'blue' : undefined}
+							wrap="truncate-end"
+						>
+							{absoluteIndex === selectedIndex ? '➜ ' : '   '}
+							{item.label}
+						</Text>
+					</Box>
+				);
+			})}
+		</Box>
 	);
 
 	const mainContent = (

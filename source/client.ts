@@ -995,7 +995,7 @@ export class InstagramClient extends EventEmitter {
 						item.user !== undefined,
 				)
 				.map(item => ({
-					pk: item.user.pk,
+					pk: String(item.user.pk),
 					label: item.user.username ?? `User_${item.user.pk}`,
 					content: [], // Stories will be lazy-loaded
 				}));
