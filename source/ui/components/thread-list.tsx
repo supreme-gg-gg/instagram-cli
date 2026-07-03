@@ -24,6 +24,7 @@ export default function ThreadList({
 }: ThreadListProperties) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
+	const [hoveredIndex, setHoveredIndex] = useState(-1);
 
 	const containerReference = useRef<DOMElement>(null as unknown as DOMElement);
 	// Item height is constant because content is always truncated to fit the height
@@ -101,6 +102,28 @@ export default function ThreadList({
 					return true;
 				}
 
+				// Track hover position for mouse hover highlighting
+				if (event.name === 'move') {
+					const containerNode = containerReference.current;
+					if (!containerNode) return false;
+
+					const clickX = event.col - 1;
+					const clickY = event.row - 1;
+
+					const containerLayout = measureAbsoluteLayout(containerNode);
+					const relativeX = clickX - containerLayout.x;
+					const relativeY = clickY - containerLayout.y;
+
+					const visibleIndex = findChildAtPosition(
+						containerNode,
+						relativeX,
+						relativeY,
+					);
+
+					setHoveredIndex(visibleIndex >= 0 ? scrollOffset + visibleIndex : -1);
+					return false;
+				}
+
 				// Click to select and open a thread
 				if (event.name === 'left-press') {
 					const containerNode = containerReference.current;
@@ -154,18 +177,13 @@ export default function ThreadList({
 			{visibleThreads.map((thread, index) => {
 				// The actual index in the full threads array
 				const absoluteIndex = scrollOffset + index;
-				const isLastItem = index === visibleThreads.length - 1;
 
 				return (
-					<Box
-						key={thread.id}
-						flexDirection="column"
-						marginBottom={isLastItem ? 0 : 1}
-						flexShrink={0}
-					>
+					<Box key={thread.id} flexDirection="column" flexShrink={0}>
 						<ThreadItem
 							thread={thread}
 							isSelected={absoluteIndex === selectedIndex}
+							isHovered={absoluteIndex === hoveredIndex}
 						/>
 					</Box>
 				);
