@@ -7,38 +7,10 @@ import type {
 	Story,
 } from '../types/instagram.js';
 
-// Mock users
-export const mockUsers: User[] = [
-	{
-		pk: 'user1',
-		username: 'alice_smith',
-		fullName: 'Alice Smith',
-		isVerified: false,
-		profilePicUrl: 'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
-	},
-	{
-		pk: 'user2',
-		username: 'bob_johnson',
-		fullName: 'Bob Johnson',
-		isVerified: true,
-	},
-	{
-		pk: 'user3',
-		username: 'charlie_brown',
-		fullName: 'Charlie Brown',
-		isVerified: false,
-		profilePicUrl:
-			'https://www.math.hkust.edu.hk/~masyleung/Teaching/CAS/MATLAB/image/images/cameraman.jpg',
-	},
-	{
-		pk: 'user4',
-		username: 'diana_prince',
-		fullName: 'Diana Prince',
-		isVerified: true,
-	}
-]
- 
 export const MOCK_USER_COUNT = 75;
+
+const STORY_WIDTH = 1080;
+const STORY_HEIGHT = 1920;
 
 const firstNames = [
 	'Alice',
@@ -198,9 +170,9 @@ const lastNames = [
 
 const imageUrls = [
 	'https://sipi.usc.edu/database/preview/misc/4.1.01.png',
+	'https://sipi.usc.edu/database/preview/misc/4.1.02.png',
 	'https://www.math.hkust.edu.hk/~masyleung/Teaching/CAS/MATLAB/image/images/cameraman.jpg',
 	'https://upload.wikimedia.org/wikipedia/en/thumb/7/7d/Lenna_%28test_image%29.png/500px-Lenna_%28test_image%29.png',
-	'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/300px-PNG_transparency_demonstration_1.png',
 ];
 
 const captions = [
@@ -236,8 +208,32 @@ const captions = [
 	'Snowy mountain views 🏔️❄️ #winter #travel',
 ];
 
-const storyWidth = 1080;
-const storyHeight = 1920;
+export const mockEmojis = [
+	'❤️',
+	'😍',
+	'😂',
+	'😮',
+	'😢',
+	'😡',
+	'👍',
+	'👎',
+	'🔥',
+	'💯',
+	'🎉',
+	'✨',
+	'🙏',
+	'💪',
+	'👌',
+	'📸',
+	'📅',
+	'✅',
+	'🤔',
+	'😊',
+	'🥳',
+	'🎊',
+	'💕',
+	'🌟',
+];
 
 function buildUser(index: number): User {
 	const first = firstNames[index]!;
@@ -247,6 +243,8 @@ function buildUser(index: number): User {
 		username: `${first.toLowerCase()}_${last.toLowerCase()}`,
 		fullName: `${first} ${last}`,
 		isVerified: index % 5 === 1,
+		profilePicUrl:
+			index % 4 === 0 ? undefined : imageUrls[index % imageUrls.length],
 	};
 }
 
@@ -258,7 +256,7 @@ function buildPost(index: number): Post {
 	const imgUrl = imageUrls[index % imageUrls.length]!;
 	const hoursAgo = (index + 1) * 2;
 
-	const mockPost: Post = {
+	return {
 		id: String(100_000_000_000 + index),
 		user: {
 			pk: userPk,
@@ -267,14 +265,13 @@ function buildPost(index: number): Post {
 		},
 		caption: {text: captions[index % captions.length]!},
 		image_versions2: {
-			candidates: [{url: imgUrl, width: storyWidth, height: storyHeight}],
+			candidates: [{url: imgUrl, width: STORY_WIDTH, height: STORY_HEIGHT}],
 		},
 		like_count: 50 + Math.floor(Math.random() * 900),
 		comment_count: 3 + Math.floor(Math.random() * 60),
 		taken_at: Date.now() - 60_000 * 60 * hoursAgo,
 		media_type: 1,
 	};
-	return mockPost;
 }
 
 function buildStory(index: number): Story[] {
@@ -289,7 +286,7 @@ function buildStory(index: number): Story[] {
 			id: `story${index + 1}`,
 			user: {pk: userPk, username, profilePicUrl: imgUrl},
 			image_versions2: {
-				candidates: [{url: imgUrl, width: storyWidth, height: storyHeight}],
+				candidates: [{url: imgUrl, width: STORY_WIDTH, height: STORY_HEIGHT}],
 			},
 			taken_at: Date.now(),
 			media_type: 1,
@@ -301,7 +298,7 @@ function buildStory(index: number): Story[] {
 			id: `story${index + 1}b`,
 			user: {pk: userPk, username, profilePicUrl: imgUrl},
 			image_versions2: {
-				candidates: [{url: imgUrl, width: storyWidth, height: storyHeight}],
+				candidates: [{url: imgUrl, width: STORY_WIDTH, height: STORY_HEIGHT}],
 			},
 			taken_at: Date.now(),
 			media_type: 1,
@@ -329,29 +326,27 @@ function buildStory(index: number): Story[] {
 	return stories;
 }
 
-// Hardcoded first 4 — referenced by mockThreads / mockMessages below
-export const mockUsers: User[] = [
-	buildUser(0),
-	buildUser(1),
-	buildUser(2),
-	buildUser(3),
-];
+// Core User List (first 4 hardcoded references for threads/messages)
+export const mockUsers: User[] = Array.from({length: MOCK_USER_COUNT}, (_, i) =>
+	buildUser(i),
+);
 
-for (let i = 4; i < MOCK_USER_COUNT; i++) {
-	mockUsers.push(buildUser(i));
-}
-
-export const mockPosts: Post[] = [];
-
-for (let i = 0; i < MOCK_USER_COUNT; i++) {
-	mockPosts.push(buildPost(i));
-}
+// Core Posts & Feed List
+export const mockPosts: Post[] = Array.from({length: MOCK_USER_COUNT}, (_, i) =>
+	buildPost(i),
+);
 
 export const mockFeed = {
 	posts: mockPosts,
 };
 
-// Mock messages
+// Core Stories List
+export const mockStories: Story[] = Array.from(
+	{length: MOCK_USER_COUNT},
+	(_, i) => i,
+).flatMap(i => buildStory(i));
+
+// Static Messaging Mock Dataset
 export const mockMessages: Message[] = [
 	{
 		id: 'msg1',
@@ -548,7 +543,7 @@ export const mockMessages: Message[] = [
 	// Last entry needs to be text for testing convenience
 	{
 		id: 'msg11',
-		timestamp: new Date(Date.now()),
+		timestamp: new Date(),
 		userId: 'user1',
 		username: 'alice_smith',
 		isOutgoing: true,
@@ -558,6 +553,7 @@ export const mockMessages: Message[] = [
 	},
 ];
 
+// Core Thread Mock Dataset
 export const mockThreads: Thread[] = [
 	{
 		id: 'thread1',
@@ -610,39 +606,6 @@ export const mockThreads: Thread[] = [
 		},
 	},
 ];
-
-export const mockEmojis = [
-	'❤️',
-	'😍',
-	'😂',
-	'😮',
-	'😢',
-	'😡',
-	'👍',
-	'👎',
-	'🔥',
-	'💯',
-	'🎉',
-	'✨',
-	'🙏',
-	'💪',
-	'👌',
-	'📸',
-	'📅',
-	'✅',
-	'🤔',
-	'😊',
-	'🥳',
-	'🎊',
-	'💕',
-	'🌟',
-];
-
-export const mockStories: Story[] = [];
-
-for (let i = 0; i < MOCK_USER_COUNT; i++) {
-	mockStories.push(...buildStory(i));
-}
 
 export function generateReactions(
 	senderIds: string[],
