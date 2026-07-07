@@ -261,6 +261,7 @@ function buildPost(index: number): Post {
 		user: {
 			pk: userPk,
 			username,
+			full_name: `${first} ${last}`,
 			profilePicUrl: index % 3 === 0 ? undefined : imgUrl,
 		},
 		caption: {text: captions[index % captions.length]!},
@@ -284,7 +285,12 @@ function buildStory(index: number): Story[] {
 	const stories: Story[] = [
 		{
 			id: `story${index + 1}`,
-			user: {pk: userPk, username, profilePicUrl: imgUrl},
+			user: {
+				pk: userPk,
+				username,
+				full_name: `${first} ${last}`,
+				profilePicUrl: imgUrl,
+			},
 			image_versions2: {
 				candidates: [{url: imgUrl, width: STORY_WIDTH, height: STORY_HEIGHT}],
 			},
@@ -296,7 +302,12 @@ function buildStory(index: number): Story[] {
 	if (index % 3 === 0) {
 		stories.push({
 			id: `story${index + 1}b`,
-			user: {pk: userPk, username, profilePicUrl: imgUrl},
+			user: {
+				pk: userPk,
+				username,
+				full_name: `${first} ${last}`,
+				profilePicUrl: imgUrl,
+			},
 			image_versions2: {
 				candidates: [{url: imgUrl, width: STORY_WIDTH, height: STORY_HEIGHT}],
 			},
