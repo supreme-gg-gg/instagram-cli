@@ -66,16 +66,24 @@ export default function MediaPane({
 				<Text color="red">No media available</Text>
 			)}
 
-			<Text>{mediaType === 2 ? '▶ Video' : ''}</Text>
-			{carouselCount && carouselCount > 1 ? (
-				<Text dimColor>
-					<Text color={carouselIndex === 0 ? 'gray' : 'white'}>←</Text>{' '}
-					{(carouselIndex ?? 0) + 1}/{carouselCount}{' '}
-					<Text color={carouselIndex === carouselCount - 1 ? 'gray' : 'white'}>
-						→
-					</Text>
-				</Text>
-			) : null}
+			<Text>{mediaType === 2 ? '▶ Video ' : ' '}</Text>
+			<Text dimColor>
+				{carouselCount && carouselCount > 1 ? (
+					<>
+						<Text color={carouselIndex === 0 ? 'gray' : 'white'}>←</Text>{' '}
+						{String((carouselIndex ?? 0) + 1).padStart(2)}/
+						{String(carouselCount).padStart(2)}{' '}
+						<Text
+							color={carouselIndex === carouselCount - 1 ? 'gray' : 'white'}
+						>
+							{' '}
+							→
+						</Text>
+					</>
+				) : (
+					' '
+				)}
+			</Text>
 		</Box>
 	);
 }

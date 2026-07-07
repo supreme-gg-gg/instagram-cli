@@ -474,7 +474,7 @@ class MockClient extends EventEmitter {
 			if (user && !seen.has(user.pk)) {
 				seen.add(user.pk);
 				result.push({
-					pk: user.pk,
+					pk: `${user.pk}`,
 					label: user.username,
 					fullName: user.full_name,
 					content: [],
