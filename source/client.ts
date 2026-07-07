@@ -997,6 +997,7 @@ export class InstagramClient extends EventEmitter {
 				.map(item => ({
 					pk: String(item.user.pk),
 					label: item.user.username ?? `User_${item.user.pk}`,
+					fullName: item.user.full_name,
 					content: [], // Stories will be lazy-loaded
 				}));
 
@@ -1264,6 +1265,7 @@ export class InstagramClient extends EventEmitter {
 			user: {
 				pk: item.user.pk,
 				username: item.user.username,
+				full_name: item.user.full_name,
 				profilePicUrl: item.user.profile_pic_url,
 			},
 			// We validated that this field exists on the returned object

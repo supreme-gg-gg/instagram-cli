@@ -155,6 +155,7 @@ export type MediaItemMetadata = {
 	user: {
 		pk: number;
 		username: string;
+		full_name?: string;
 		profilePicUrl?: string;
 	};
 	taken_at: number;
@@ -166,6 +167,7 @@ export type ListMediaItem<
 > = {
 	pk: string;
 	label: string;
+	fullName?: string;
 	content: T[];
 	additional_metadata?: M;
 };

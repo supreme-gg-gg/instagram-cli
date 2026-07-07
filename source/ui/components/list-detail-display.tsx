@@ -401,7 +401,12 @@ export default function ListDetailDisplay<
 						justifyContent="flex-start"
 					>
 						<Box flexDirection="column" gap={1} marginBottom={1}>
-							<Text color="green">👤 {currentItem?.label ?? 'Unknown'}</Text>
+							<Text color="green" wrap="truncate-end">
+								👤 @{currentItem?.label ?? 'Unknown'}
+								{currentItem?.fullName && stdout.columns >= 100
+									? ` (${currentItem.fullName})`
+									: ''}
+							</Text>
 
 							{currentContentItem && 'taken_at' in currentContentItem && (
 								<Text color="gray">
