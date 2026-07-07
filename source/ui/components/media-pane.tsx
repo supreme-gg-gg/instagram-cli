@@ -68,8 +68,12 @@ export default function MediaPane({
 
 			<Text>{mediaType === 2 ? '▶ Video' : ''}</Text>
 			{carouselCount && carouselCount > 1 ? (
-				<Text color="gray">
-					Carousel {(carouselIndex ?? 0) + 1} of {carouselCount}
+				<Text dimColor>
+					<Text color={carouselIndex === 0 ? 'gray' : 'white'}>←</Text>{' '}
+					{(carouselIndex ?? 0) + 1}/{carouselCount}{' '}
+					<Text color={carouselIndex === carouselCount - 1 ? 'gray' : 'white'}>
+						→
+					</Text>
 				</Text>
 			) : null}
 		</Box>
