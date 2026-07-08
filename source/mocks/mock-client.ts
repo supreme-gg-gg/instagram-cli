@@ -466,18 +466,23 @@ class MockClient extends EventEmitter {
 			setTimeout(resolve, 100);
 		});
 
-		const usersWithStories = new Map<number, User>();
+		const seen = new Set<number>();
+		const result: Array<ListMediaItem<Story>> = [];
+
 		for (const story of mockStories) {
-			if (story.user && !usersWithStories.has(story.user.pk)) {
-				usersWithStories.set(story.user.pk, story.user as unknown as User);
+			const {user} = story;
+			if (user && !seen.has(user.pk)) {
+				seen.add(user.pk);
+				result.push({
+					pk: `${user.pk}`,
+					label: user.username,
+					fullName: user.full_name,
+					content: [],
+				});
 			}
 		}
 
-		return [...usersWithStories.values()].map(user => ({
-			pk: typeof user.pk === 'string' ? user.pk : String(user.pk),
-			label: user.username,
-			content: [],
-		}));
+		return result;
 	}
 
 	async getStoriesForUser(

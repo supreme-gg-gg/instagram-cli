@@ -20,6 +20,7 @@ export default function FeedView({feed}: {readonly feed: FeedData}) {
 	).map(post => ({
 		pk: post.id,
 		label: post.user.username,
+		fullName: post.user.full_name,
 		content: post.carousel_media
 			? (post.carousel_media.map(item => ({
 					...item,

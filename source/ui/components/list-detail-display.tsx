@@ -359,12 +359,6 @@ export default function ListDetailDisplay<
 						onChange={setSearchQuery}
 					/>
 				</Box>
-			) : mode === 'story' ? (
-				<Box marginBottom={1}>
-					<Text dimColor>
-						Press &apos;s&apos; to search for a user&apos;s stories
-					</Text>
-				</Box>
 			) : null}
 			{searchError && (
 				<Box marginBottom={1}>
@@ -401,7 +395,12 @@ export default function ListDetailDisplay<
 						justifyContent="flex-start"
 					>
 						<Box flexDirection="column" gap={1} marginBottom={1}>
-							<Text color="green">👤 {currentItem?.label ?? 'Unknown'}</Text>
+							<Text color="green" wrap="truncate-end">
+								👤 @{currentItem?.label ?? 'Unknown'}
+								{currentItem?.fullName && stdout.columns >= 100
+									? ` (${currentItem.fullName})`
+									: ''}
+							</Text>
 
 							{currentContentItem && 'taken_at' in currentContentItem && (
 								<Text color="gray">
@@ -468,7 +467,7 @@ export default function ListDetailDisplay<
 			mainContent={mainContent}
 			footerText={
 				mode === 'story'
-					? 'j/k: users, h/l: stories, o: open, s: search, Esc: quit'
+					? 'j/k: users, h/l: stories, o: open, s: search user, Esc: quit'
 					: 'j/k: navigate posts, h/l: navigate carousel, o: open, Esc: quit'
 			}
 		/>

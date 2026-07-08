@@ -24,6 +24,7 @@ export default function StoryView({
 			const result: ListMediaItem<Story> = {
 				pk: String(stories[0].user.pk),
 				label: stories[0].user.username,
+				fullName: stories[0].user.full_name,
 				content: stories,
 			};
 			return result;
