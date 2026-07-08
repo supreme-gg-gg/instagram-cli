@@ -54,7 +54,7 @@
 		"ink": "^7.0.0",
 		"ink-big-text": "^2.0.0",
 		"ink-gradient": "^3.0.0",
-		"ink-picture": "^2.0.1",
+		"ink-picture": "^2.1.0",
 		"ink-testing-library": "^4.0.0",
 		"instagram_mqtt": "^1.2.3",
 		"instagram-private-api": "^1.46.1",
