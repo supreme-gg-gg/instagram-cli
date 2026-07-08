@@ -33,6 +33,7 @@ export default function ProfileView({profile, imageProtocol}: Props) {
 						alt={profile.username}
 						width={20}
 						height={10}
+						objectFit="contain"
 						protocol={{full: imageProtocol}}
 					/>
 				</Box>
