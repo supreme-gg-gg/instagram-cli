@@ -70,11 +70,13 @@ export default function MediaPane({
 			<Text dimColor>
 				{carouselCount && carouselCount > 1 ? (
 					<>
-						<Text color={carouselIndex === 0 ? 'gray' : 'white'}>←</Text>{' '}
+						<Text color={(carouselIndex ?? 0) === 0 ? 'gray' : 'white'}>←</Text>{' '}
 						{String((carouselIndex ?? 0) + 1).padStart(2)}/
 						{String(carouselCount).padStart(2)}{' '}
 						<Text
-							color={carouselIndex === carouselCount - 1 ? 'gray' : 'white'}
+							color={
+								(carouselIndex ?? 0) === carouselCount - 1 ? 'gray' : 'white'
+							}
 						>
 							{' '}
 							→
