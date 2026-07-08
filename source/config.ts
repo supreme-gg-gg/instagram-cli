@@ -18,6 +18,10 @@ type PrivacyConfig = {
 	invisibleMode: boolean;
 };
 
+type StoriesConfig = {
+	markAsSeen: boolean;
+};
+
 type ImageConfig = {
 	protocol?: string;
 };
@@ -38,6 +42,7 @@ type Config = {
 	login: LoginConfig;
 	chat: ChatConfig;
 	privacy: PrivacyConfig;
+	stories: StoriesConfig;
 	image: ImageConfig;
 	advanced: AdvancedConfig;
 };
@@ -56,6 +61,9 @@ const DEFAULT_CONFIG: Config = {
 	},
 	privacy: {
 		invisibleMode: false,
+	},
+	stories: {
+		markAsSeen: false,
 	},
 	advanced: {
 		debugMode: false,
@@ -166,6 +174,7 @@ export class ConfigManager {
 			login: {...defaultConfig.login, ...loadedConfig.login},
 			chat: {...defaultConfig.chat, ...loadedConfig.chat},
 			privacy: {...defaultConfig.privacy, ...loadedConfig.privacy},
+			stories: {...defaultConfig.stories, ...loadedConfig.stories},
 			image: {...defaultConfig.image, ...loadedConfig.image},
 			advanced: {...defaultConfig.advanced, ...loadedConfig.advanced},
 		};

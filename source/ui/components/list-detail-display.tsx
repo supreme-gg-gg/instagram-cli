@@ -21,6 +21,7 @@ import {
 } from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
 import {type InstagramClient} from '../../client.js';
+import {ConfigManager} from '../../config.js';
 import SplitView from './split-view.js';
 import MediaPane from './media-pane.js';
 import TextInput from './text-input.js';
@@ -148,8 +149,12 @@ export default function ListDetailDisplay<
 	}, [selectedIndex, combinedItems, loadMore]);
 
 	useEffect(() => {
+		const config = ConfigManager.getInstance();
+		const markAsSeen = config.get<boolean>('stories.markAsSeen', false);
+
 		if (
 			mode === 'story' &&
+			markAsSeen &&
 			currentContentItem &&
 			client &&
 			'id' in currentContentItem &&
