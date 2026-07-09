@@ -22,7 +22,11 @@ import {preprocessMessage} from '../../utils/preprocess.js';
 import SearchInput from '../components/search-input.js';
 import SinglePostView from '../components/single-post-view.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
-import {updateThreadByMessage} from '../../utils/thread-utils.js';
+import {
+	updateThreadByMessage,
+	getMessagePreviewText,
+} from '../../utils/thread-utils.js';
+import {sendDesktopNotification} from '../../utils/desktop-notifier.js';
 
 type SearchMode = 'username' | 'title' | undefined;
 
@@ -50,6 +54,10 @@ export default function ChatView({
 		isSelectionMode: false,
 		recipientAlreadyRead: false,
 	});
+	// Kept in sync with chatState.threads so the message-event handler below
+	// can read the latest thread list without resubscribing on every update.
+	const threadsRef = useRef(chatState.threads);
+	threadsRef.current = chatState.threads;
 
 	const [currentView, setCurrentView] = useState<'threads' | 'chat'>('threads');
 	const [realtimeStatus, setRealtimeStatus] =
@@ -394,6 +402,17 @@ export default function ChatView({
 					markAsUnread: true,
 				}),
 			}));
+
+			if (!message.isOutgoing) {
+				const thread = threadsRef.current.find(t => t.id === message.threadId);
+				const senderName = thread?.title ?? `@${message.username}`;
+				const sender = thread?.users.find(u => u.pk === message.userId);
+				void sendDesktopNotification({
+					title: senderName,
+					message: getMessagePreviewText(message),
+					iconUrl: sender?.profilePicUrl,
+				});
+			}
 		};
 
 		client.on('message', handleMessage);

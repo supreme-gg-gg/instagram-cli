@@ -1,8 +1,9 @@
 import React from 'react';
 import {Box, Text} from 'ink';
 import Image from 'ink-picture';
-import type {Message, Thread} from '../../types/instagram.js';
+import type {Thread} from '../../types/instagram.js';
 import {useImageProtocol} from '../hooks/use-image-protocol.js';
+import {getMessagePreviewText} from '../../utils/thread-utils.js';
 
 type ThreadItemProperties = {
 	readonly thread: Thread;
@@ -34,36 +35,8 @@ export default function ThreadItem({
 		return `${days}d`;
 	};
 
-	const getLastMessageText = (message: Message): string => {
-		switch (message.itemType) {
-			case 'text': {
-				return message.text;
-			}
-
-			case 'media': {
-				return '[Media]';
-			}
-
-			case 'media_share': {
-				return `[Shared post by @${message.mediaSharePost.user.username}]`;
-			}
-
-			case 'link': {
-				return message.link.text;
-			}
-
-			case 'placeholder': {
-				return message.text;
-			}
-
-			default: {
-				return '[Unsupported Message]';
-			}
-		}
-	};
-
 	const lastMessageText = thread.lastMessage
-		? getLastMessageText(thread.lastMessage)
+		? getMessagePreviewText(thread.lastMessage)
 		: '';
 
 	const threadAvatar = thread.users[0]?.profilePicUrl;

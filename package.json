@@ -43,7 +43,8 @@
 	},
 	"files": [
 		"dist",
-		"patches"
+		"patches",
+		"resource/sounds"
 	],
 	"dependencies": {
 		"@inkjs/ui": "^2.0.0",
@@ -60,6 +61,7 @@
 		"instagram-private-api": "^1.46.1",
 		"js-yaml": "^4.1.0",
 		"meow": "^14.0.0",
+		"node-notifier": "^10.0.1",
 		"open": "^11.0.0",
 		"pastel": "^4.0.0",
 		"patch-package": "^8.0.1",
@@ -74,6 +76,7 @@
 		"@sindresorhus/tsconfig": "^8.1.0",
 		"@types/debug": "^4.1.12",
 		"@types/js-yaml": "^4.0.9",
+		"@types/node-notifier": "^8.0.5",
 		"@types/react": "^19.2.0",
 		"@vdemedes/prettier-config": "^2.0.1",
 		"ava": "^7.0.0",
