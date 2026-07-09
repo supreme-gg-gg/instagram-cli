@@ -162,12 +162,12 @@ npx skills add supreme-gg-gg/instagram-cli
 
 ## Displaying Images in TUI
 
-When rendering images in the terminal, we automatically select the best image protocol based on your terminal emulator. If you experience issues with image rendering or wish to customize the image protocol, you can change the config setting with `instagram-cli config image.protocol <option>`. The available options are `"ascii", "halfBlock", "braille", "kitty", "iterm2", "sixel"`. 
+When rendering images in the terminal, we automatically select the best image protocol based on your terminal emulator. If you experience issues with image rendering or wish to customize the image protocol, you can change the config setting with `instagram-cli config image.protocol <option>`. The available options are `"ascii", "halfBlock", "braille", "kitty", "iterm2", "sixel"`.
 
 > [!NOTE]
 > Make sure the configured protocol is supported by your terminal (e.g. `sixel` and `iterm2` protocols won't work in Kitty).
 
-We use [Ink Picture](https://github.com/infininight/ink-picture), our own open-source Ink `<Image>` component, for displaying images in the terminal. Any related issues or pull requests should be filed on the upstream repository.
+We use [Ink Picture](https://github.com/endernoke/ink-picture), our own open-source Ink `<Image>` component, for displaying images in the terminal. Any related issues or pull requests should be filed on the upstream repository.
 
 ## Contributing
 
