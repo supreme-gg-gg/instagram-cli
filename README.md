@@ -98,6 +98,7 @@ instagram-cli stories                          # view stories from people you fo
 instagram-cli notify                           # view notifications (inbox, followers, mentions)
 
 # Modify configuration
+# The configuration file is located at `~/.instagram-cli/config.ts.yaml`.
 instagram-cli config                           # lists all config
 instagram-cli config <key> <value>             # set config key to value
 instagram-cli config edit                      # open config file in editor
@@ -162,16 +163,14 @@ instagram-cli unsend <thread> --message-id <id>
 npx skills add supreme-gg-gg/instagram-cli
 ```
 
-## Configuration
+## Displaying Images in TUI
 
-You can view and modify configuration with `instagram-cli config`. The configuration file is located at `~/.instagram-cli/config.ts.yaml`. The following are common configuration options:
-
-| Key            | Type   | Default     | Description                                                                                                 |
-| -------------- | ------ | ----------- | ----------------------------------------------------------------------------------------------------------- |
-| image.protocol | string | "halfBlock" | Protocol for rendering images. Options: "ascii", "halfBlock", "braille", "kitty", "iterm2", "sixel", or "". |
+When rendering images in the terminal, we automatically select the best image protocol based on your terminal emulator. If you experience issues with image rendering or wish to customize the image protocol, you can change the config setting with `instagram-cli config image.protocol <option>`. The available options are `"ascii", "halfBlock", "braille", "kitty", "iterm2", "sixel"`. 
 
 > [!NOTE]
-> We automatically select the best image protocol based on your terminal. If you experience issues with image rendering, try changing the `image.protocol` setting. Make sure this is supported by your terminal (e.g. `sixel` and `iterm2` protocols won't work in Kitty).
+> Make sure the configured protocol is supported by your terminal (e.g. `sixel` and `iterm2` protocols won't work in Kitty).
+
+We use [Ink Picture](https://github.com/infininight/ink-picture), our own open-source Ink `<Image>` component, for displaying images in the terminal. Any related issues or pull requests should be filed on the upstream repository.
 
 ## Contributing
 
