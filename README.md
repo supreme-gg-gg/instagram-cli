@@ -12,7 +12,7 @@ $$
 [![PyPI Downloads](https://static.pepy.tech/badge/instagram-cli)](https://pepy.tech/projects/instagram-cli)
 [![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)
 
-https://github.com/user-attachments/assets/d9694b5b-e250-4412-a534-e2b78a2bd19c
+https://github.com/user-attachments/assets/ddcc5a2d-15da-4cd6-8747-9e7956b32c0b
 
 > [!WARNING]
 > This project is not affiliated with, authorized, or endorsed by Instagram. This is an independent and unofficial project. Using it might violate Meta's Terms of Service. Use at your own risk.
