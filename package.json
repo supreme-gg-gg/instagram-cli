@@ -58,7 +58,7 @@
 		"ink-testing-library": "^4.0.0",
 		"instagram_mqtt": "^1.2.3",
 		"instagram-private-api": "^1.46.1",
-		"js-yaml": "^4.1.0",
+		"js-yaml": "^5.2.1",
 		"meow": "^14.0.0",
 		"open": "^11.0.0",
 		"pastel": "^4.0.0",
@@ -87,7 +87,7 @@
 		"prettier": "^3.3.3",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.0.3",
-		"xo": "^2.0.1"
+		"xo": "^4.0.0"
 	},
 	"ava": {
 		"files": [
