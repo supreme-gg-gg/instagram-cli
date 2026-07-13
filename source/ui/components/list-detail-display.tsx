@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useMemo, useRef} from 'react';
+import React, {useState, useEffect, useMemo, useRef, useReducer} from 'react';
 import {
 	Box,
 	Text,
@@ -81,7 +81,8 @@ export default function ListDetailDisplay<
 }: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
-	const [carouselIndex, setCarouselIndex] = useState<number>(0);
+	const [, forceCarouselUpdate] = useReducer((x: number) => x + 1, 0);
+	const carouselRef = useRef<Map<string, number>>(new Map());
 	const [isSearchMode, setIsSearchMode] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [searchError, setSearchError] = useState<string | undefined>();
@@ -133,9 +134,11 @@ export default function ListDetailDisplay<
 	}, [combinedItems.length, viewportSize, scrollOffset, selectedIndex]);
 
 	const currentItem = combinedItems[selectedIndex];
+	const carouselIndex =
+		(currentItem ? carouselRef.current.get(currentItem.pk) : undefined) ?? 0;
 	const currentContentItem = currentItem?.content[carouselIndex];
 
-	// Trigger lazy loading and reset carousel when the user selects a new item
+	// Trigger lazy loading when the user selects a new item
 	useEffect(() => {
 		if (selectedIndex >= 0 && selectedIndex < combinedItems.length) {
 			const item = combinedItems[selectedIndex];
@@ -143,9 +146,6 @@ export default function ListDetailDisplay<
 				loadMore(selectedIndex);
 			}
 		}
-
-		// Reset carousel index when changing items
-		setCarouselIndex(0);
 	}, [selectedIndex, combinedItems, loadMore]);
 
 	useEffect(() => {
@@ -298,13 +298,16 @@ export default function ListDetailDisplay<
 			});
 		} else if (key.leftArrow || input === 'h') {
 			if (currentItem && currentItem.content.length > 1) {
-				setCarouselIndex(prev => Math.max(0, prev - 1));
+				carouselRef.current.set(currentItem.pk, Math.max(0, carouselIndex - 1));
+				forceCarouselUpdate();
 			}
 		} else if (key.rightArrow || input === 'l') {
 			if (currentItem && currentItem.content.length > 1) {
-				setCarouselIndex(prev =>
-					Math.min(prev + 1, currentItem.content.length - 1),
+				carouselRef.current.set(
+					currentItem.pk,
+					Math.min(carouselIndex + 1, currentItem.content.length - 1),
 				);
+				forceCarouselUpdate();
 			}
 		} else if (input === 'o') {
 			if (currentContentItem) {
