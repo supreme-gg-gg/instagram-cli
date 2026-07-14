@@ -2,7 +2,7 @@
 
 ## Data Structure
 
-**File:** `.instagram-cli/seen-stories_{username}.json`
+**File:** `.instagram-cli/storage/seen-stories_{username}.json`
 
 Stored alongside session data (already uses restricted permissions). One file per account — no cross-account leaking.
 

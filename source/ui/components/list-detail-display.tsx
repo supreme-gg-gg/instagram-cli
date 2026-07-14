@@ -22,6 +22,7 @@ import {
 import {createContextualLogger} from '../../utils/logger.js';
 import {type InstagramClient} from '../../client.js';
 import {ConfigManager} from '../../config.js';
+import {SeenStoriesManager} from '../../utils/seen-stories.js';
 import SplitView from './split-view.js';
 import MediaPane from './media-pane.js';
 import TextInput from './text-input.js';
@@ -89,6 +90,7 @@ export default function ListDetailDisplay<
 	const [combinedItems, setCombinedItems] =
 		useState<Array<ListMediaItem<T, M>>>(initialItems);
 	const seenStories = useRef(new Set<string>());
+	const seenStoriesManager = useRef<SeenStoriesManager | undefined>(undefined);
 	const sidebarRef = useRef<DOMElement>(null as unknown as DOMElement);
 	const combinedItemsRef = useRef(combinedItems);
 	combinedItemsRef.current = combinedItems;
@@ -114,6 +116,17 @@ export default function ListDetailDisplay<
 			}),
 		);
 	}, [initialItems]);
+
+	useEffect(() => {
+		if (mode === 'story' && client) {
+			const username = client.getUsername();
+			if (username && !seenStoriesManager.current) {
+				const manager = new SeenStoriesManager(username);
+				seenStoriesManager.current = manager;
+				void manager.load();
+			}
+		}
+	}, [client, mode]);
 
 	useEffect(() => {
 		const clampedIndex = Math.min(
@@ -269,6 +282,10 @@ export default function ListDetailDisplay<
 			setSelectedIndex(prev => {
 				const newIndex = Math.max(0, prev - 1);
 
+				if (seenStoriesManager.current && combinedItems[newIndex]) {
+					seenStoriesManager.current.registerUser(combinedItems[newIndex].pk);
+				}
+
 				setScrollOffset(prevScroll => {
 					if (newIndex < prevScroll + margin) {
 						return Math.max(0, prevScroll - 1);
@@ -286,6 +303,10 @@ export default function ListDetailDisplay<
 			setSelectedIndex(prev => {
 				const newIndex = Math.min(prev + 1, combinedItems.length - 1);
 
+				if (seenStoriesManager.current && combinedItems[newIndex]) {
+					seenStoriesManager.current.registerUser(combinedItems[newIndex].pk);
+				}
+
 				setScrollOffset(prevScroll => {
 					if (newIndex >= prevScroll + margin) {
 						return Math.min(prevScroll + 1, maxScroll);
@@ -296,17 +317,29 @@ export default function ListDetailDisplay<
 
 				return newIndex;
 			});
-		} else if (key.leftArrow || input === 'h') {
+		} else if (
+			key.leftArrow ||
+			input === 'h' ||
+			key.rightArrow ||
+			input === 'l'
+		) {
 			if (currentItem && currentItem.content.length > 1) {
-				carouselRef.current.set(currentItem.pk, Math.max(0, carouselIndex - 1));
-				forceCarouselUpdate();
-			}
-		} else if (key.rightArrow || input === 'l') {
-			if (currentItem && currentItem.content.length > 1) {
-				carouselRef.current.set(
-					currentItem.pk,
-					Math.min(carouselIndex + 1, currentItem.content.length - 1),
+				const direction = key.leftArrow || input === 'h' ? -1 : 1;
+				const newCarouselIndex = Math.min(
+					Math.max(0, carouselIndex + direction),
+					currentItem.content.length - 1,
 				);
+				carouselRef.current.set(currentItem.pk, newCarouselIndex);
+				if (
+					seenStoriesManager.current &&
+					currentItem.content[newCarouselIndex]
+				) {
+					seenStoriesManager.current.registerStoryId(
+						currentItem.pk,
+						(currentItem.content[newCarouselIndex] as Story).id,
+					);
+				}
+
 				forceCarouselUpdate();
 			}
 		} else if (input === 'o') {
