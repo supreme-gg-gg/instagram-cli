@@ -64,7 +64,7 @@ const DEFAULT_CONFIG: Config = {
 		invisibleMode: false,
 	},
 	notifications: {
-		desktop: true,
+		desktop: false,
 		sound: false,
 	},
 	advanced: {

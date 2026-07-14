@@ -1,16 +1,16 @@
 import fs from 'node:fs/promises';
 import path, {dirname} from 'node:path';
-import process from 'node:process';
 import {createHash} from 'node:crypto';
-import {spawn} from 'node:child_process';
 import {Buffer} from 'node:buffer';
 import {fileURLToPath} from 'node:url';
 import notifier from 'node-notifier';
+import playSound from 'play-sound';
 import {readPackageUp} from 'read-package-up';
 import {ConfigManager} from '../config.js';
 import {createContextualLogger} from './logger.js';
 
 const logger = createContextualLogger('DesktopNotifier');
+const player = playSound();
 
 export type DesktopNotificationOptions = {
 	readonly title: string;
@@ -49,23 +49,12 @@ async function playNotificationSound(): Promise<void> {
 		return;
 	}
 
-	if (process.platform === 'linux') {
-		spawn('paplay', [soundFile], {stdio: 'ignore'}).on('error', () => {
-			// PulseAudio/PipeWire unavailable; try ALSA directly instead.
-			spawn('aplay', [soundFile], {stdio: 'ignore'}).on('error', () => {
-				// No known audio player available; skip the sound silently.
-			});
-		});
-		return;
-	}
-
-	if (process.platform === 'darwin') {
-		spawn('afplay', [soundFile], {stdio: 'ignore'}).on('error', () => {
-			// afplay is always present on macOS, but skip silently just in case.
-		});
-	}
-
-	// On Windows, node-notifier's own `sound: true` option (used below) covers this.
+	player.play(soundFile, error => {
+		if (error) {
+			// No known audio player available on this system; skip silently.
+			logger.debug(`Failed to play notification sound: ${error.message}`);
+		}
+	});
 }
 
 /**
@@ -119,11 +108,11 @@ export async function sendDesktopNotification({
 	iconUrl,
 }: DesktopNotificationOptions): Promise<void> {
 	const config = ConfigManager.getInstance();
-	if (!config.get<boolean>('notifications.desktop', true)) {
+	if (!config.get<boolean>('notifications.desktop', false)) {
 		return;
 	}
 
-	const soundEnabled = config.get<boolean>('notifications.sound', true);
+	const soundEnabled = config.get<boolean>('notifications.sound', false);
 	const icon = await resolveIconPath(iconUrl);
 
 	notifier.notify(
@@ -131,8 +120,9 @@ export async function sendDesktopNotification({
 			title,
 			message,
 			icon,
-			// Linux has no native sound support in node-notifier; handled separately below.
-			sound: soundEnabled && process.platform !== 'linux',
+			// Sound is played separately via play-sound; node-notifier's own
+			// `sound` option is unreliable across platforms and OS versions.
+			sound: false,
 		},
 		error => {
 			if (error) {
