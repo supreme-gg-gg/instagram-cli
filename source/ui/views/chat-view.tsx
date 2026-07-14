@@ -405,13 +405,19 @@ export default function ChatView({
 
 			if (!message.isOutgoing) {
 				const thread = threadsRef.current.find(t => t.id === message.threadId);
-				const senderName = thread?.title ?? `@${message.username}`;
-				const sender = thread?.users.find(u => u.pk === message.userId);
-				void sendDesktopNotification({
-					title: senderName,
-					message: getMessagePreviewText(message),
-					iconUrl: sender?.profilePicUrl,
-				});
+				if (!thread?.muted) {
+					const senderName = thread?.title ?? `@${message.username}`;
+					// Realtime message pks don't always match the pk format cached from
+					// the inbox fetch, so fall back to the sole participant on 1:1 DMs.
+					const sender =
+						thread?.users.find(u => u.pk === message.userId) ??
+						(thread?.users.length === 1 ? thread.users[0] : undefined);
+					void sendDesktopNotification({
+						title: senderName,
+						message: getMessagePreviewText(message),
+						iconUrl: sender?.profilePicUrl,
+					});
+				}
 			}
 		};
 
