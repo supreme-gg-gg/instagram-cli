@@ -571,6 +571,7 @@ export const mockThreads: Thread[] = [
 		title: 'Alice Smith',
 		users: [mockUsers[0]!, mockUsers[1]!],
 		unread: true,
+		muted: false,
 		lastActivity: new Date(Date.now() - 60_000 * 5),
 		lastMessage: mockMessages[0],
 	},
@@ -579,6 +580,7 @@ export const mockThreads: Thread[] = [
 		title: 'Charlie Brown',
 		users: [mockUsers[2]!],
 		unread: false,
+		muted: true,
 		lastActivity: new Date(Date.now() - 60_000 * 120),
 		lastMessage: {
 			id: 'msg6',
@@ -600,6 +602,7 @@ export const mockThreads: Thread[] = [
 		title: 'Diana Prince',
 		users: [mockUsers[3]!],
 		unread: true,
+		muted: false,
 		lastActivity: new Date(Date.now() - 60_000 * 30),
 		lastMessage: {
 			id: 'msg7',

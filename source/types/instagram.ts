@@ -96,6 +96,7 @@ export type Thread = {
 	lastMessage?: Message;
 	lastActivity: Date;
 	unread: boolean;
+	muted: boolean;
 };
 
 export type User = {
