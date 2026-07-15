@@ -161,6 +161,32 @@ export default function ListDetailDisplay<
 		}
 	}, [selectedIndex, combinedItems, loadMore]);
 
+	const currentItemPk = currentItem?.pk;
+	const currentStory = currentItem?.content[carouselIndex] as Story | undefined;
+	const currentStoryId = currentStory?.id;
+
+	const markStoryAsSeenLocalFile = (
+		seenStoriesManager: SeenStoriesManager | undefined,
+		currentItemPk: string | undefined,
+		currentStoryId: string | undefined,
+	): void => {
+		if (!seenStoriesManager || !currentItemPk) return;
+
+		seenStoriesManager.registerUser(currentItemPk);
+
+		if (currentStoryId) {
+			seenStoriesManager.registerStoryId(currentItemPk, currentStoryId);
+		}
+	};
+
+	useEffect(() => {
+		markStoryAsSeenLocalFile(
+			seenStoriesManager.current,
+			currentItemPk,
+			currentStoryId,
+		);
+	}, [currentItemPk, currentStoryId]);
+
 	useEffect(() => {
 		const config = ConfigManager.getInstance();
 		const markAsSeen = config.get<boolean>('stories.markAsSeen', false);

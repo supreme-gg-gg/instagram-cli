@@ -41,6 +41,9 @@ User selects a reel
   → Find first story NOT in seenStories (by index order)
   → If none found → start from story 0 (replay)
   → If unseen exists → start from that index
+  → The list of stories per reel are checked by order, and in case a story is not available anymore, its deleted from the local storage file.
+    So for example, if we have [storyA, storyB, storyC], each item will be compared with the current reel in that order.
+    Let's say story B doesn't longer exist, so when comparing storyB with current reel, its deleted from the file, and then proceed to story C.
 ```
 
 ### View a story
@@ -55,7 +58,7 @@ User views a story
 
 ```
 On each load, before comparison:
-  → Strip any story IDs not present in the fetched media_ids
+  → Strip any user IDs not present in the fetched media_ids
 ```
 
 Expired/deleted stories automatically disappear from the file.
