@@ -57,6 +57,26 @@ export class SeenStoriesManager {
 		return this.data.users[userPk]?.seenStories ?? [];
 	}
 
+	syncUsers(currentlyActiveUserPks: string[]): void {
+		const activeSet = new Set(currentlyActiveUserPks);
+		const storedUserPks = Object.keys(this.data.users);
+		const newUsers: Record<string, {seenStories: string[]}> = {};
+		let changed = false;
+
+		for (const userPk of storedUserPks) {
+			if (activeSet.has(userPk)) {
+				newUsers[userPk] = this.data.users[userPk]!;
+			} else {
+				changed = true;
+			}
+		}
+
+		if (changed) {
+			this.data.users = newUsers;
+			this.scheduleSave();
+		}
+	}
+
 	private scheduleSave(): void {
 		if (this.saveTimeout) {
 			clearTimeout(this.saveTimeout);

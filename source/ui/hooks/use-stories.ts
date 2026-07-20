@@ -1,6 +1,7 @@
-import {useState, useEffect, useCallback} from 'react';
+import {useState, useEffect, useCallback, useRef} from 'react';
 import {type ListMediaItem, type Story} from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
+import {SeenStoriesManager} from '../../utils/seen-stories.js';
 import {useInstagramClient as useInstagramClientImpl} from './use-instagram-client.js';
 
 type UseInstagramClientHook = typeof useInstagramClientImpl;
@@ -18,6 +19,7 @@ export function useStories(
 	const [reels, setReels] = useState<Array<ListMediaItem<Story>>>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | undefined>();
+	const seenStoriesManager = useRef<SeenStoriesManager | undefined>(undefined);
 
 	const loadStoriesForReel = useCallback(
 		async (index: number, currentItems: Array<ListMediaItem<Story>>) => {
@@ -58,6 +60,17 @@ export function useStories(
 	);
 
 	useEffect(() => {
+		if (client && !seenStoriesManager.current) {
+			const username = client.getUsername();
+			if (username) {
+				const manager = new SeenStoriesManager(username);
+				seenStoriesManager.current = manager;
+				void manager.load();
+			}
+		}
+	}, [client]);
+
+	useEffect(() => {
 		const fetchReelsTray = async () => {
 			if (!client || clientError) {
 				setIsLoading(false);
@@ -67,6 +80,12 @@ export function useStories(
 			try {
 				setIsLoading(true);
 				const listItems = await client.getReelsTray();
+
+				if (seenStoriesManager.current) {
+					const currentUserPks = listItems.map(item => item.pk);
+					seenStoriesManager.current.syncUsers(currentUserPks);
+				}
+
 				if (listItems.length > 0) {
 					setReels(listItems);
 					await loadStoriesForReel(0, listItems);
