@@ -85,9 +85,15 @@ export class SeenStoriesManager {
 						changed = true;
 					}
 
-					newUsers[userPk] = {seenStories: filteredStories};
-				} else {
+					if (filteredStories.length > 0) {
+						newUsers[userPk] = {seenStories: filteredStories};
+					} else {
+						changed = true;
+					}
+				} else if (this.data.users[userPk]!.seenStories.length > 0) {
 					newUsers[userPk] = this.data.users[userPk]!;
+				} else {
+					changed = true;
 				}
 			} else {
 				changed = true;
