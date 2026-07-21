@@ -5,6 +5,10 @@ import {createContextualLogger} from './logger.js';
 
 const logger = createContextualLogger('SeenStories');
 
+// Story IDs come as "mediaPk_userPk" from API, but tray media_ids are just "mediaPk"
+// Then, the userPk part get removed when registering
+const normalizeStoryId = (id: string): string => id.split('_')[0]!;
+
 export type SeenStoriesData = {
 	lastUpdated: number;
 	users: Record<string, {seenStories: string[]}>;
@@ -46,9 +50,10 @@ export class SeenStoriesManager {
 	registerStoryId(userPk: string, storyId: string): void {
 		this.data.users[userPk] ||= {seenStories: []};
 
+		const normalized = normalizeStoryId(storyId);
 		const user = this.data.users[userPk];
-		if (user && !user.seenStories.includes(storyId)) {
-			user.seenStories.push(storyId);
+		if (user && !user.seenStories.includes(normalized)) {
+			user.seenStories.push(normalized);
 			this.scheduleSave();
 		}
 	}
@@ -57,7 +62,10 @@ export class SeenStoriesManager {
 		return this.data.users[userPk]?.seenStories ?? [];
 	}
 
-	syncUsers(currentlyActiveUserPks: string[]): void {
+	syncUsers(
+		currentlyActiveUserPks: string[],
+		mediaIdsByUser: Map<string, string[]>,
+	): void {
 		const activeSet = new Set(currentlyActiveUserPks);
 		const storedUserPks = Object.keys(this.data.users);
 		const newUsers: Record<string, {seenStories: string[]}> = {};
@@ -65,7 +73,22 @@ export class SeenStoriesManager {
 
 		for (const userPk of storedUserPks) {
 			if (activeSet.has(userPk)) {
-				newUsers[userPk] = this.data.users[userPk]!;
+				const currentMediaIds = mediaIdsByUser.get(userPk);
+				if (currentMediaIds) {
+					const currentMediaIdSet = new Set(currentMediaIds);
+					const user = this.data.users[userPk]!;
+					const filteredStories = user.seenStories.filter(id =>
+						currentMediaIdSet.has(id),
+					);
+
+					if (filteredStories.length !== user.seenStories.length) {
+						changed = true;
+					}
+
+					newUsers[userPk] = {seenStories: filteredStories};
+				} else {
+					newUsers[userPk] = this.data.users[userPk]!;
+				}
 			} else {
 				changed = true;
 			}

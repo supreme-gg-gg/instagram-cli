@@ -79,11 +79,11 @@ export function useStories(
 
 			try {
 				setIsLoading(true);
-				const listItems = await client.getReelsTray();
+				const {items: listItems, mediaIdsByUser} = await client.getReelsTray();
 
 				if (seenStoriesManager.current) {
 					const currentUserPks = listItems.map(item => item.pk);
-					seenStoriesManager.current.syncUsers(currentUserPks);
+					seenStoriesManager.current.syncUsers(currentUserPks, mediaIdsByUser);
 				}
 
 				if (listItems.length > 0) {
