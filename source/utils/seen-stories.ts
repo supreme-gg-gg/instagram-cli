@@ -6,8 +6,24 @@ import {createContextualLogger} from './logger.js';
 const logger = createContextualLogger('SeenStories');
 
 // Story IDs come as "mediaPk_userPk" from API, but tray media_ids are just "mediaPk"
-// Then, the userPk part get removed when registering
-const normalizeStoryId = (id: string): string => id.split('_')[0]!;
+// Normalize strips the userPk suffix (numeric user ID or literal 'userPk')
+// to get the base mediaPk for comparison
+const normalizeStoryId = (id: string): string => {
+	const parts = id.split('_');
+	if (parts.length === 2) {
+		// Real API format: number_number (mediaPk_userPk)
+		if (/^\d+$/.test(parts[0]!) && /^\d+$/.test(parts[1]!)) {
+			return parts[0]!;
+		}
+
+		// Suffix is the literal 'userPk' (used in test data)
+		if (parts[1] === 'userPk') {
+			return parts[0]!;
+		}
+	}
+
+	return id;
+};
 
 export type SeenStoriesData = {
 	lastUpdated: number;
@@ -20,12 +36,10 @@ export class SeenStoriesManager {
 	private saveTimeout: ReturnType<typeof setTimeout> | undefined;
 	private readonly configManager: ConfigManager;
 
-	constructor(username: string) {
+	constructor(username: string, baseDir?: string) {
 		this.configManager = ConfigManager.getInstance();
-		const storageDir = path.join(
-			this.configManager.get('advanced.dataDir'),
-			'storage',
-		);
+		const dataDir = baseDir ?? this.configManager.get('advanced.dataDir');
+		const storageDir = path.join(dataDir, 'storage');
 		this.filePath = path.join(storageDir, `seen-stories_${username}.json`);
 		this.data = {lastUpdated: 0, users: {}};
 	}

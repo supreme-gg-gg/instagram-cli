@@ -91,6 +91,7 @@ export default function ListDetailDisplay<
 		useState<Array<ListMediaItem<T, M>>>(initialItems);
 	const seenStories = useRef(new Set<string>());
 	const seenStoriesManager = useRef<SeenStoriesManager | undefined>(undefined);
+	const loadedIndicesRef = useRef(new Set<number>());
 	const sidebarRef = useRef<DOMElement>(null as unknown as DOMElement);
 	const combinedItemsRef = useRef(combinedItems);
 	combinedItemsRef.current = combinedItems;
@@ -155,7 +156,11 @@ export default function ListDetailDisplay<
 	useEffect(() => {
 		if (selectedIndex >= 0 && selectedIndex < combinedItems.length) {
 			const item = combinedItems[selectedIndex];
-			if (item?.content.length === 0) {
+			if (
+				item?.content.length === 0 &&
+				!loadedIndicesRef.current.has(selectedIndex)
+			) {
+				loadedIndicesRef.current.add(selectedIndex);
 				loadMore(selectedIndex);
 			}
 		}
