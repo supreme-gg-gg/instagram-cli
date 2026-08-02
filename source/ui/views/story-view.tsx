@@ -7,10 +7,14 @@ import {useImageProtocol} from '../hooks/use-image-protocol.js';
 
 export default function StoryView({
 	reels,
+	seenUserPks,
+	mediaIdsByUser,
 	loadMore,
 	client,
 }: {
 	readonly reels: Array<ListMediaItem<Story>>;
+	readonly seenUserPks?: ReadonlySet<string>;
+	readonly mediaIdsByUser?: ReadonlyMap<string, string[]>;
 	readonly loadMore: (index: number) => void;
 	readonly client: InstagramClient | undefined;
 }) {
@@ -41,6 +45,8 @@ export default function StoryView({
 				protocol={imageProtocol}
 				client={client}
 				mode="story"
+				seenUserPks={seenUserPks}
+				mediaIdsByUser={mediaIdsByUser}
 				handleSearchSubmit={handleSearchSubmit}
 			/>
 		</InkPictureProvider>

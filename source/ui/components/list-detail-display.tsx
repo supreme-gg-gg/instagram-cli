@@ -1,4 +1,11 @@
-import React, {useState, useEffect, useMemo, useRef, useReducer} from 'react';
+import React, {
+	useState,
+	useEffect,
+	useMemo,
+	useRef,
+	useReducer,
+	useCallback,
+} from 'react';
 import {
 	Box,
 	Text,
@@ -33,6 +40,8 @@ type Properties<T extends BaseMedia & MediaItemMetadata, M = undefined> = {
 	readonly protocol?: ImageProtocolName;
 	readonly client?: InstagramClient | undefined;
 	readonly mode: 'story' | 'post';
+	readonly seenUserPks?: ReadonlySet<string>;
+	readonly mediaIdsByUser?: ReadonlyMap<string, string[]>;
 	readonly handleSearchSubmit?: (
 		query: string,
 	) => Promise<ListMediaItem<T, M> | undefined>;
@@ -78,6 +87,8 @@ export default function ListDetailDisplay<
 	protocol,
 	client,
 	mode,
+	seenUserPks,
+	mediaIdsByUser,
 	handleSearchSubmit,
 }: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -91,10 +102,31 @@ export default function ListDetailDisplay<
 		useState<Array<ListMediaItem<T, M>>>(initialItems);
 	const seenStories = useRef(new Set<string>());
 	const seenStoriesManager = useRef<SeenStoriesManager | undefined>(undefined);
+	const seenLoadedRef = useRef(false);
+	const [liveSeenUserPks, setLiveSeenUserPks] = useState<ReadonlySet<string>>(
+		() => seenUserPks ?? new Set<string>(),
+	);
 	const loadedIndicesRef = useRef(new Set<number>());
 	const sidebarRef = useRef<DOMElement>(null as unknown as DOMElement);
 	const combinedItemsRef = useRef(combinedItems);
 	combinedItemsRef.current = combinedItems;
+
+	const refreshSeenUserPks = useCallback((): void => {
+		const manager = seenStoriesManager.current;
+		if (!manager || !seenLoadedRef.current || !mediaIdsByUser) {
+			return;
+		}
+
+		const seenPks = new Set<string>();
+		for (const item of combinedItemsRef.current) {
+			const mediaIds = mediaIdsByUser.get(item.pk);
+			if (mediaIds && manager.areAllStoriesSeen(item.pk, mediaIds)) {
+				seenPks.add(item.pk);
+			}
+		}
+
+		setLiveSeenUserPks(seenPks);
+	}, [mediaIdsByUser]);
 
 	const {exit} = useApp();
 	const {stdout} = useStdout();
@@ -124,10 +156,13 @@ export default function ListDetailDisplay<
 			if (username && !seenStoriesManager.current) {
 				const manager = new SeenStoriesManager(username);
 				seenStoriesManager.current = manager;
-				void manager.load();
+				void manager.load().then(() => {
+					seenLoadedRef.current = true;
+					refreshSeenUserPks();
+				});
 			}
 		}
-	}, [client, mode]);
+	}, [client, mode, refreshSeenUserPks]);
 
 	useEffect(() => {
 		return () => {
@@ -196,7 +231,8 @@ export default function ListDetailDisplay<
 			currentItemPk,
 			currentStoryId,
 		);
-	}, [currentItemPk, currentStoryId]);
+		refreshSeenUserPks();
+	}, [currentItemPk, currentStoryId, refreshSeenUserPks]);
 
 	useEffect(() => {
 		const config = ConfigManager.getInstance();
@@ -410,13 +446,16 @@ export default function ListDetailDisplay<
 		<Box ref={sidebarRef} flexDirection="column" flexGrow={1}>
 			{visibleItems.map((item, index) => {
 				const absoluteIndex = scrollOffset + index;
+				const isSelected = absoluteIndex === selectedIndex;
+				const isSeen =
+					mode === 'story' && !isSelected && liveSeenUserPks.has(item.pk);
 				return (
 					<Box key={item.pk} height={1} flexShrink={0}>
 						<Text
-							color={absoluteIndex === selectedIndex ? 'blue' : undefined}
+							color={isSelected ? 'blue' : isSeen ? 'gray' : undefined}
 							wrap="truncate-end"
 						>
-							{absoluteIndex === selectedIndex ? '➜ ' : '   '}
+							{isSelected ? '➜ ' : '   '}
 							{item.label}
 						</Text>
 					</Box>

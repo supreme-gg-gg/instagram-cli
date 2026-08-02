@@ -100,7 +100,7 @@ export class SeenStoriesManager {
 
 	syncUsers(
 		currentlyActiveUserPks: string[],
-		mediaIdsByUser: Map<string, string[]>,
+		mediaIdsByUser: ReadonlyMap<string, string[]>,
 	): void {
 		const activeSet = new Set(currentlyActiveUserPks);
 		const storedUserPks = Object.keys(this.data.users);
