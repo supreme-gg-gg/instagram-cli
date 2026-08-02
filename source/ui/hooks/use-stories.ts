@@ -17,6 +17,7 @@ export function useStories(
 		isLoading: clientLoading,
 	} = useInstagramClient(undefined, {realtime: false});
 	const [reels, setReels] = useState<Array<ListMediaItem<Story>>>([]);
+	const [seenUserPks, setSeenUserPks] = useState<Set<string>>(new Set());
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | undefined>();
 	const seenStoriesManager = useRef<SeenStoriesManager | undefined>(undefined);
@@ -84,6 +85,19 @@ export function useStories(
 				if (seenStoriesManager.current) {
 					const currentUserPks = listItems.map(item => item.pk);
 					seenStoriesManager.current.syncUsers(currentUserPks, mediaIdsByUser);
+
+					const seenPks = new Set<string>();
+					for (const item of listItems) {
+						const mediaIds = mediaIdsByUser.get(item.pk);
+						if (
+							mediaIds &&
+							seenStoriesManager.current.areAllStoriesSeen(item.pk, mediaIds)
+						) {
+							seenPks.add(item.pk);
+						}
+					}
+
+					setSeenUserPks(seenPks);
 				}
 
 				if (listItems.length > 0) {
@@ -153,6 +167,7 @@ export function useStories(
 
 	return {
 		reels,
+		seenUserPks,
 		isLoading: isLoading || clientLoading,
 		error: clientError ?? error,
 		loadMore,

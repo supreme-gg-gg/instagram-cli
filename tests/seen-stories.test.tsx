@@ -113,6 +113,7 @@ test('TC-003a: all reels already seen', async t => {
 	manager.syncUsers(['u1'], new Map([['u1', ['a', 'b', 'c']]]));
 
 	t.deepEqual(manager.getSeenStories('u1'), ['a', 'b', 'c']);
+	t.true(manager.areAllStoriesSeen('u1', ['a', 'b', 'c']));
 });
 
 test('TC-003b: some reels already seen, focus on first unseen', async t => {
@@ -131,6 +132,8 @@ test('TC-003b: some reels already seen, focus on first unseen', async t => {
 
 	t.deepEqual(manager.getSeenStories('u1'), ['a', 'c']);
 	t.deepEqual(manager.getSeenStories('u2'), ['d']);
+	t.false(manager.areAllStoriesSeen('u1', ['a', 'b', 'c', 'd']));
+	t.false(manager.areAllStoriesSeen('u2', ['d', 'e', 'f']));
 });
 
 test('TC-003c: no reels seen', async t => {
@@ -138,6 +141,7 @@ test('TC-003c: no reels seen', async t => {
 
 	manager.syncUsers(['u1'], new Map([['u1', ['a', 'b', 'c']]]));
 	t.deepEqual(manager.getSeenStories('u1'), []);
+	t.false(manager.areAllStoriesSeen('u1', ['a', 'b', 'c']));
 });
 
 test('TC-004: all stories seen in reel', async t => {
@@ -147,6 +151,8 @@ test('TC-004: all stories seen in reel', async t => {
 	manager.registerStoryId('u1', 'c');
 
 	t.deepEqual(manager.getSeenStories('u1'), ['a', 'b', 'c']);
+	t.true(manager.areAllStoriesSeen('u1', ['a', 'b', 'c']));
+	t.is(manager.getFirstUnseenIndex('u1', ['a', 'b', 'c']), 0);
 });
 
 test('TC-005: some stories unseen, carouselIndex at first unseen', async t => {
@@ -158,6 +164,8 @@ test('TC-005: some stories unseen, carouselIndex at first unseen', async t => {
 	const firstUnseenIndex = mediaIds.findIndex(id => !seen.includes(id));
 
 	t.is(firstUnseenIndex, 1);
+	t.is(manager.getFirstUnseenIndex('u1', mediaIds), 1);
+	t.false(manager.areAllStoriesSeen('u1', mediaIds));
 });
 
 test('TC-005a: stale seen stories evicted, carousel at first unseen', async t => {
@@ -204,6 +212,7 @@ test('TC-007: empty media_ids marks reel as seen', async t => {
 	manager.syncUsers(['u1'], new Map([['u1', []]]));
 
 	t.deepEqual(manager.getSeenStories('u1'), []);
+	t.false(manager.areAllStoriesSeen('u1', []));
 });
 
 // ── Marking Stories ──────────────────────────────────────────────────────────
@@ -264,7 +273,7 @@ test('TC-018: debounce persists data after settle', async t => {
 	manager.registerStoryId('u1', 'a');
 	manager.registerStoryId('u1', 'b');
 
-	await delay(600);
+	await manager.flush();
 
 	const content = JSON.parse(await fs.readFile(filePath, 'utf8'));
 	t.deepEqual(content.users.u1.seenStories, ['a', 'b']);
@@ -277,7 +286,7 @@ test('TC-021: data written to disk is readable after save', async t => {
 	manager.registerStoryId('u1', 'flush_test');
 	manager.registerStoryId('u2', 'another');
 
-	await delay(600);
+	await manager.flush();
 
 	const content = JSON.parse(await fs.readFile(filePath, 'utf8'));
 	t.is(content.users.u1.seenStories[0], 'flush_test');

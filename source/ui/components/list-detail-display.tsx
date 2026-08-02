@@ -130,6 +130,12 @@ export default function ListDetailDisplay<
 	}, [client, mode]);
 
 	useEffect(() => {
+		return () => {
+			void seenStoriesManager.current?.flush();
+		};
+	}, []);
+
+	useEffect(() => {
 		const clampedIndex = Math.min(
 			selectedIndex,
 			Math.max(0, combinedItems.length - 1),

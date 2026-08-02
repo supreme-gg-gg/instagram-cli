@@ -38,7 +38,8 @@ export class SeenStoriesManager {
 
 	constructor(username: string, baseDir?: string) {
 		this.configManager = ConfigManager.getInstance();
-		const dataDir = baseDir ?? this.configManager.get('advanced.dataDir');
+		const defaultDataDir = this.configManager.get('advanced.dataDir');
+		const dataDir = baseDir ?? defaultDataDir;
 		const storageDir = path.join(dataDir, 'storage');
 		this.filePath = path.join(storageDir, `seen-stories_${username}.json`);
 		this.data = {lastUpdated: 0, users: {}};
@@ -74,6 +75,27 @@ export class SeenStoriesManager {
 
 	getSeenStories(userPk: string): string[] {
 		return this.data.users[userPk]?.seenStories ?? [];
+	}
+
+	areAllStoriesSeen(userPk: string, mediaIds: string[]): boolean {
+		if (mediaIds.length === 0) return false;
+		const seen = new Set(
+			this.getSeenStories(userPk).map(id => normalizeStoryId(id)),
+		);
+		return mediaIds.every(id => seen.has(normalizeStoryId(id)));
+	}
+
+	getFirstUnseenIndex(userPk: string, storyIds: string[]): number {
+		const seen = new Set(
+			this.getSeenStories(userPk).map(id => normalizeStoryId(id)),
+		);
+		for (const [index, id] of storyIds.entries()) {
+			if (!seen.has(normalizeStoryId(id))) {
+				return index;
+			}
+		}
+
+		return 0;
 	}
 
 	syncUsers(
@@ -118,6 +140,15 @@ export class SeenStoriesManager {
 			this.data.users = newUsers;
 			this.scheduleSave();
 		}
+	}
+
+	async flush(): Promise<void> {
+		if (this.saveTimeout) {
+			clearTimeout(this.saveTimeout);
+			this.saveTimeout = undefined;
+		}
+
+		await this.save();
 	}
 
 	private scheduleSave(): void {

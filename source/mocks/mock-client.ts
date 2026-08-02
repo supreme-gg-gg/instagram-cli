@@ -460,7 +460,10 @@ class MockClient extends EventEmitter {
 		};
 	}
 
-	async getReelsTray(): Promise<Array<ListMediaItem<Story>>> {
+	async getReelsTray(): Promise<{
+		items: Array<ListMediaItem<Story>>;
+		mediaIdsByUser: Map<string, string[]>;
+	}> {
 		// Simulate network delay
 		await new Promise(resolve => {
 			setTimeout(resolve, 100);
@@ -468,21 +471,29 @@ class MockClient extends EventEmitter {
 
 		const seen = new Set<number>();
 		const result: Array<ListMediaItem<Story>> = [];
+		const mediaIdsByUser = new Map<string, string[]>();
 
 		for (const story of mockStories) {
 			const {user} = story;
 			if (user && !seen.has(user.pk)) {
 				seen.add(user.pk);
+				const pk = `${user.pk}`;
 				result.push({
-					pk: `${user.pk}`,
+					pk,
 					label: user.username,
 					fullName: user.full_name,
 					content: [],
 				});
+
+				const userStories = mockStories.filter(s => s.user?.pk === user.pk);
+				mediaIdsByUser.set(
+					pk,
+					userStories.map(s => s.id),
+				);
 			}
 		}
 
-		return result;
+		return {items: result, mediaIdsByUser};
 	}
 
 	async getStoriesForUser(
