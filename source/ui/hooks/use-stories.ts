@@ -87,11 +87,11 @@ export function useStories(
 					await client.getReelsTray();
 				setMediaIdsByUser(idsByUser);
 
+				const seenPks = new Set<string>();
 				if (seenStoriesManager.current) {
 					const currentUserPks = listItems.map(item => item.pk);
 					seenStoriesManager.current.syncUsers(currentUserPks, idsByUser);
 
-					const seenPks = new Set<string>();
 					for (const item of listItems) {
 						const mediaIds = idsByUser.get(item.pk);
 						if (
@@ -105,28 +105,45 @@ export function useStories(
 					setSeenUserPks(seenPks);
 				}
 
-				if (listItems.length > 0) {
-					setReels(listItems);
-					await loadStoriesForReel(0, listItems);
+				const unseenItems: Array<ListMediaItem<Story>> = [];
+				const seenItems: Array<ListMediaItem<Story>> = [];
 
-					if (listItems.length > 1) {
-						void loadStoriesForReel(1, listItems).catch((error_: unknown) => {
-							const errorMessage =
-								error_ instanceof Error ? error_.message : String(error_);
-							logger.error(
-								`Failed to load stories for reel 1: ${errorMessage}`,
-							);
-						});
+				for (const item of listItems) {
+					if (seenPks.has(item.pk)) {
+						seenItems.push(item);
+					} else {
+						unseenItems.push(item);
+					}
+				}
+
+				const orderedItems = [...unseenItems, ...seenItems];
+
+				if (orderedItems.length > 0) {
+					setReels(orderedItems);
+					await loadStoriesForReel(0, orderedItems);
+
+					if (orderedItems.length > 1) {
+						void loadStoriesForReel(1, orderedItems).catch(
+							(error_: unknown) => {
+								const errorMessage =
+									error_ instanceof Error ? error_.message : String(error_);
+								logger.error(
+									`Failed to load stories for reel 1: ${errorMessage}`,
+								);
+							},
+						);
 					}
 
-					if (listItems.length > 2) {
-						void loadStoriesForReel(2, listItems).catch((error_: unknown) => {
-							const errorMessage =
-								error_ instanceof Error ? error_.message : String(error_);
-							logger.error(
-								`Failed to load stories for reel 2: ${errorMessage}`,
-							);
-						});
+					if (orderedItems.length > 2) {
+						void loadStoriesForReel(2, orderedItems).catch(
+							(error_: unknown) => {
+								const errorMessage =
+									error_ instanceof Error ? error_.message : String(error_);
+								logger.error(
+									`Failed to load stories for reel 2: ${errorMessage}`,
+								);
+							},
+						);
 					}
 				}
 			} catch (error_) {
