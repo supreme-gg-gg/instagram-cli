@@ -999,7 +999,7 @@ export class InstagramClient extends EventEmitter {
 			const storyReels: Array<ListMediaItem<Story>> = reelsTrayItems
 				.filter(
 					(item): item is ReelsTrayFeedResponseTrayItem =>
-						item.user !== undefined,
+						item.user !== undefined && item.reel_type === 'user_reel',
 				)
 				.map(item => {
 					const pk = String(item.user.pk);

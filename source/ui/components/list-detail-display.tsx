@@ -102,7 +102,8 @@ export default function ListDetailDisplay<
 		useState<Array<ListMediaItem<T, M>>>(initialItems);
 	const seenStories = useRef(new Set<string>());
 	const seenStoriesManager = useRef<SeenStoriesManager | undefined>(undefined);
-	const seenLoadedRef = useRef(false);
+	const [seenLoaded, setSeenLoaded] = useState(false);
+	const carouselInitializedRef = useRef(new Set<string>());
 	const [liveSeenUserPks, setLiveSeenUserPks] = useState<ReadonlySet<string>>(
 		() => seenUserPks ?? new Set<string>(),
 	);
@@ -113,7 +114,7 @@ export default function ListDetailDisplay<
 
 	const refreshSeenUserPks = useCallback((): void => {
 		const manager = seenStoriesManager.current;
-		if (!manager || !seenLoadedRef.current || !mediaIdsByUser) {
+		if (!manager || !seenLoaded || !mediaIdsByUser) {
 			return;
 		}
 
@@ -126,7 +127,7 @@ export default function ListDetailDisplay<
 		}
 
 		setLiveSeenUserPks(seenPks);
-	}, [mediaIdsByUser]);
+	}, [mediaIdsByUser, seenLoaded]);
 
 	const {exit} = useApp();
 	const {stdout} = useStdout();
@@ -157,7 +158,7 @@ export default function ListDetailDisplay<
 				const manager = new SeenStoriesManager(username);
 				seenStoriesManager.current = manager;
 				void manager.load().then(() => {
-					seenLoadedRef.current = true;
+					setSeenLoaded(true);
 					refreshSeenUserPks();
 				});
 			}
@@ -206,6 +207,33 @@ export default function ListDetailDisplay<
 			}
 		}
 	}, [selectedIndex, combinedItems, loadMore]);
+
+	useEffect(() => {
+		if (mode !== 'story' || !seenStoriesManager.current || !seenLoaded) {
+			return;
+		}
+
+		for (const item of combinedItems) {
+			if (
+				item.content.length === 0 ||
+				carouselInitializedRef.current.has(item.pk)
+			) {
+				continue;
+			}
+
+			carouselInitializedRef.current.add(item.pk);
+			const storyIds = (item.content as Story[]).map(story => story.id);
+			const firstUnseen = seenStoriesManager.current.getFirstUnseenIndex(
+				item.pk,
+				storyIds,
+			);
+
+			if (firstUnseen > 0) {
+				carouselRef.current.set(item.pk, firstUnseen);
+				forceCarouselUpdate();
+			}
+		}
+	}, [combinedItems, mode, seenLoaded, forceCarouselUpdate]);
 
 	const currentItemPk = currentItem?.pk;
 	const currentStory = currentItem?.content[carouselIndex] as Story | undefined;
