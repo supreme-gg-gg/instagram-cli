@@ -58,7 +58,12 @@ export default function MediaPane({
 					width={dynamicImageSize.width}
 					height={dynamicImageSize.height}
 				>
-					<Image src={imageUrl} alt={altText} protocol={{full: protocol}} />
+					<Image
+						src={imageUrl}
+						alt={altText}
+						objectFit="contain"
+						protocol={{full: protocol}}
+					/>
 				</Box>
 			) : mediaType === 2 ? (
 				<Text color="yellow">▶ Video (no preview)</Text>
@@ -70,11 +75,13 @@ export default function MediaPane({
 			<Text dimColor>
 				{carouselCount && carouselCount > 1 ? (
 					<>
-						<Text color={carouselIndex === 0 ? 'gray' : 'white'}>←</Text>{' '}
+						<Text color={(carouselIndex ?? 0) === 0 ? 'gray' : 'white'}>←</Text>{' '}
 						{String((carouselIndex ?? 0) + 1).padStart(2)}/
 						{String(carouselCount).padStart(2)}{' '}
 						<Text
-							color={carouselIndex === carouselCount - 1 ? 'gray' : 'white'}
+							color={
+								(carouselIndex ?? 0) === carouselCount - 1 ? 'gray' : 'white'
+							}
 						>
 							{' '}
 							→
