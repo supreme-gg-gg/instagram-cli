@@ -71,3 +71,59 @@ Expired/deleted stories automatically disappear from the file.
 | Unseen (any story unseen) | Normal text |
 
 Two states only — no gradient rings or partial indicators.
+
+## Flow Diagram
+
+flowchart TD
+Start([Start CLI System]) --> LoadData[Check seen-stories JSON]
+
+    FileCheck{File exists?}
+    LoadData --> FileCheck
+    FileCheck -->|No| InitJSON[Create empty JSON structure]
+    FileCheck -->|Yes| ReadJSON[Read seenStories into memory]
+
+    ReadJSON --> ValidateJSON{Is JSON<br/>malformed?}
+    ValidateJSON -->|Yes| BackupJSON[Backup corrupted file<br/>as seen-stories.corrupt]
+    BackupJSON --> InitJSON
+    ValidateJSON -->|No| TrayFetch[Fetch reelsTray API]
+
+    InitJSON --> TrayFetch
+
+    subgraph Tray Fetch & Processing
+        TrayFetch --> PerReel[For each reel in tray]
+        PerReel --> Cleanup[Cleanup: Filter out saved IDs<br/>not in fetched media_ids]
+        Cleanup --> ComputeUnseen[Compute unseen set per user<br/>using mediaIdsByUser]
+        ComputeUnseen --> CompareLoop{Are ALL fetched<br/>media_ids in seenStories?}
+
+        CompareLoop -->|Yes| MarkSeen[Mark reel as seen <br/>Set carouselIndex = 0]
+        CompareLoop -->|No| MarkUnseen[Set carouselIndex = first unseen index]
+    end
+
+    MarkSeen --> PreFetch[Pre-fetch stories for first 3 users<br/>via getStoriesForUser]
+    MarkUnseen --> PreFetch
+    PreFetch --> RenderSidebar[Render Sidebar <br/> Display with dimmed text reels with all stories seen]
+
+    RenderSidebar --> NavLoop{Keyboard Input}
+
+    %% Navigation Choices
+    NavLoop -->|Up / Down| SwitchReel[Step selectedIndex +/- 1 <br/> Switch selected reel]
+    NavLoop -->|Left / Right| StepStory[Step carouselIndex +/- 1]
+    NavLoop -->|Exit / Quit| Exit[Flush & Exit]
+
+    %% Display & Marking
+    SwitchReel --> LoadCheck{Stories loaded<br/>for this reel?}
+    LoadCheck -->|No| LoadStories[Load stories via<br/>getStoriesForUser]
+    LoadCheck -->|Yes| RenderViewer[Render active story]
+    LoadStories --> RenderViewer
+
+    StepStory --> RenderViewer
+
+    RenderViewer --> AutoMark[Add story ID to seenStories<br/>Debounced disk write - 500ms]
+    AutoMark --> CheckSeen{Are ALL media_ids<br/>for this reel in seenStories?}
+    CheckSeen -->|Yes| DimReel[Mark reel as seen]
+    CheckSeen -->|No| RenderSidebar
+    DimReel --> RenderSidebar
+
+    %% Termination
+    Exit --> FlushDisk[Flush pending writes to JSON]
+    FlushDisk --> End([End])
