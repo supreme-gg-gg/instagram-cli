@@ -13,7 +13,7 @@ export default function Stories(): React.ReactElement {
 	const {
 		reels,
 		seenUserPks,
-		mediaIdsByUser,
+		latestReelMediaByUser,
 		isLoading,
 		error,
 		loadMore,
@@ -36,7 +36,7 @@ export default function Stories(): React.ReactElement {
 		<StoryView
 			reels={reels}
 			seenUserPks={seenUserPks}
-			mediaIdsByUser={mediaIdsByUser}
+			latestReelMediaByUser={latestReelMediaByUser}
 			loadMore={loadMore}
 			client={client}
 		/>

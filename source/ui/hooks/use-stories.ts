@@ -18,8 +18,8 @@ export function useStories(
 	} = useInstagramClient(undefined, {realtime: false});
 	const [reels, setReels] = useState<Array<ListMediaItem<Story>>>([]);
 	const [seenUserPks, setSeenUserPks] = useState<Set<string>>(new Set());
-	const [mediaIdsByUser, setMediaIdsByUser] = useState<
-		ReadonlyMap<string, string[]>
+	const [latestReelMediaByUser, setLatestReelMediaByUser] = useState<
+		ReadonlyMap<string, number>
 	>(new Map());
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | undefined>();
@@ -83,20 +83,23 @@ export function useStories(
 
 			try {
 				setIsLoading(true);
-				const {items: listItems, mediaIdsByUser: idsByUser} =
+				const {items: listItems, latestReelMediaByUser: latestByUser} =
 					await client.getReelsTray();
-				setMediaIdsByUser(idsByUser);
+				setLatestReelMediaByUser(latestByUser);
 
 				const seenPks = new Set<string>();
 				if (seenStoriesManager.current) {
 					const currentUserPks = listItems.map(item => item.pk);
-					seenStoriesManager.current.syncUsers(currentUserPks, idsByUser);
+					seenStoriesManager.current.syncUsers(currentUserPks);
 
 					for (const item of listItems) {
-						const mediaIds = idsByUser.get(item.pk);
+						const latestReelMedia = latestByUser.get(item.pk);
 						if (
-							mediaIds &&
-							seenStoriesManager.current.areAllStoriesSeen(item.pk, mediaIds)
+							latestReelMedia &&
+							seenStoriesManager.current.areAllStoriesSeen(
+								item.pk,
+								latestReelMedia,
+							)
 						) {
 							seenPks.add(item.pk);
 						}
@@ -190,7 +193,7 @@ export function useStories(
 	return {
 		reels,
 		seenUserPks,
-		mediaIdsByUser,
+		latestReelMediaByUser,
 		isLoading: isLoading || clientLoading,
 		error: clientError ?? error,
 		loadMore,

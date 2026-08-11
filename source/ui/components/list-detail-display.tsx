@@ -41,7 +41,7 @@ type Properties<T extends BaseMedia & MediaItemMetadata, M = undefined> = {
 	readonly client?: InstagramClient | undefined;
 	readonly mode: 'story' | 'post';
 	readonly seenUserPks?: ReadonlySet<string>;
-	readonly mediaIdsByUser?: ReadonlyMap<string, string[]>;
+	readonly latestReelMediaByUser?: ReadonlyMap<string, number>;
 	readonly handleSearchSubmit?: (
 		query: string,
 	) => Promise<ListMediaItem<T, M> | undefined>;
@@ -88,7 +88,7 @@ export default function ListDetailDisplay<
 	client,
 	mode,
 	seenUserPks,
-	mediaIdsByUser,
+	latestReelMediaByUser,
 	handleSearchSubmit,
 }: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -114,20 +114,23 @@ export default function ListDetailDisplay<
 
 	const refreshSeenUserPks = useCallback((): void => {
 		const manager = seenStoriesManager.current;
-		if (!manager || !seenLoaded || !mediaIdsByUser) {
+		if (!manager || !seenLoaded || !latestReelMediaByUser) {
 			return;
 		}
 
 		const seenPks = new Set<string>();
 		for (const item of combinedItemsRef.current) {
-			const mediaIds = mediaIdsByUser.get(item.pk);
-			if (mediaIds && manager.areAllStoriesSeen(item.pk, mediaIds)) {
+			const latestReelMedia = latestReelMediaByUser.get(item.pk);
+			if (
+				latestReelMedia &&
+				manager.areAllStoriesSeen(item.pk, latestReelMedia)
+			) {
 				seenPks.add(item.pk);
 			}
 		}
 
 		setLiveSeenUserPks(seenPks);
-	}, [mediaIdsByUser, seenLoaded]);
+	}, [latestReelMediaByUser, seenLoaded]);
 
 	const {exit} = useApp();
 	const {stdout} = useStdout();
@@ -222,10 +225,10 @@ export default function ListDetailDisplay<
 			}
 
 			carouselInitializedRef.current.add(item.pk);
-			const storyIds = (item.content as Story[]).map(story => story.id);
+			const stories = item.content as Story[];
 			const firstUnseen = seenStoriesManager.current.getFirstUnseenIndex(
 				item.pk,
-				storyIds,
+				stories,
 			);
 
 			if (firstUnseen > 0) {
@@ -237,30 +240,35 @@ export default function ListDetailDisplay<
 
 	const currentItemPk = currentItem?.pk;
 	const currentStory = currentItem?.content[carouselIndex] as Story | undefined;
-	const currentStoryId = currentStory?.id;
+	const currentStoryTakenAt = currentStory?.taken_at;
 
 	const markStoryAsSeenLocalFile = (
 		seenStoriesManager: SeenStoriesManager | undefined,
 		currentItemPk: string | undefined,
-		currentStoryId: string | undefined,
+		currentStoryTakenAt: number | undefined,
 	): void => {
-		if (!seenStoriesManager || !currentItemPk) return;
-
-		seenStoriesManager.registerUser(currentItemPk);
-
-		if (currentStoryId) {
-			seenStoriesManager.registerStoryId(currentItemPk, currentStoryId);
+		if (
+			!seenStoriesManager ||
+			!currentItemPk ||
+			currentStoryTakenAt === undefined
+		) {
+			return;
 		}
+
+		seenStoriesManager.registerSeenTimestamp(
+			currentItemPk,
+			currentStoryTakenAt,
+		);
 	};
 
 	useEffect(() => {
 		markStoryAsSeenLocalFile(
 			seenStoriesManager.current,
 			currentItemPk,
-			currentStoryId,
+			currentStoryTakenAt,
 		);
 		refreshSeenUserPks();
-	}, [currentItemPk, currentStoryId, refreshSeenUserPks]);
+	}, [currentItemPk, currentStoryTakenAt, refreshSeenUserPks]);
 
 	useEffect(() => {
 		const config = ConfigManager.getInstance();
@@ -383,10 +391,6 @@ export default function ListDetailDisplay<
 			setSelectedIndex(prev => {
 				const newIndex = Math.max(0, prev - 1);
 
-				if (seenStoriesManager.current && combinedItems[newIndex]) {
-					seenStoriesManager.current.registerUser(combinedItems[newIndex].pk);
-				}
-
 				setScrollOffset(prevScroll => {
 					if (newIndex < prevScroll + margin) {
 						return Math.max(0, prevScroll - 1);
@@ -403,10 +407,6 @@ export default function ListDetailDisplay<
 
 			setSelectedIndex(prev => {
 				const newIndex = Math.min(prev + 1, combinedItems.length - 1);
-
-				if (seenStoriesManager.current && combinedItems[newIndex]) {
-					seenStoriesManager.current.registerUser(combinedItems[newIndex].pk);
-				}
 
 				setScrollOffset(prevScroll => {
 					if (newIndex >= prevScroll + margin) {
@@ -431,13 +431,17 @@ export default function ListDetailDisplay<
 					currentItem.content.length - 1,
 				);
 				carouselRef.current.set(currentItem.pk, newCarouselIndex);
+				const targetStory = currentItem.content[newCarouselIndex] as
+					| Story
+					| undefined;
 				if (
 					seenStoriesManager.current &&
-					currentItem.content[newCarouselIndex]
+					targetStory &&
+					targetStory.taken_at !== undefined
 				) {
-					seenStoriesManager.current.registerStoryId(
+					seenStoriesManager.current.registerSeenTimestamp(
 						currentItem.pk,
-						(currentItem.content[newCarouselIndex] as Story).id,
+						targetStory.taken_at,
 					);
 				}
 

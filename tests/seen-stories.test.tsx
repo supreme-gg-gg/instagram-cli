@@ -27,10 +27,14 @@ async function createManager(
 	return {manager, dir};
 }
 
-const makeStory = (id: string, userPk = 1): Story => ({
+const makeStory = (
+	id: string,
+	userPk = 1,
+	takenAt = Math.floor(Date.now() / 1000),
+): Story => ({
 	id,
 	media_type: 1,
-	taken_at: Math.floor(Date.now() / 1000),
+	taken_at: takenAt,
 	user: {pk: userPk, username: `user${userPk}`},
 	image_versions2: {
 		candidates: [
@@ -78,18 +82,18 @@ test('TC-001: file exists with valid JSON', async t => {
 		filePath,
 		JSON.stringify({
 			lastUpdated: 1000,
-			users: {u1: {seenStories: ['a', 'b', 'c']}},
+			users: {u1: 1000},
 		}),
 	);
 	await manager.load();
 
-	t.deepEqual(manager.getSeenStories('u1'), ['a', 'b', 'c']);
+	t.is(manager.getSeenTimestamp('u1'), 1000);
 });
 
 test('TC-002: file does not exist creates empty structure', async t => {
 	const {manager} = await createManager();
 
-	t.deepEqual(manager.getSeenStories('nonexistent'), []);
+	t.is(manager.getSeenTimestamp('nonexistent'), 0);
 });
 
 test('TC-003: malformed JSON handled gracefully', async t => {
@@ -99,199 +103,153 @@ test('TC-003: malformed JSON handled gracefully', async t => {
 	await fs.writeFile(filePath, 'not valid json {{{');
 	await manager.load();
 
-	t.deepEqual(manager.getSeenStories('u1'), []);
+	t.is(manager.getSeenTimestamp('u1'), 0);
 });
 
-// ── Sync & State ─────────────────────────────────────────────────────────────
+// ── Tray-level seen state ────────────────────────────────────────────────────
+// Reel R1: stories at 100, 200 -> latest_reel_media 200
+// Reel R2: stories at 300, 400 -> latest_reel_media 400
+// Reel R3: stories at 500 ->      latest_reel_media 500
+
+const buildTrayFixture = (): Map<string, Story[]> => {
+	const r1 = [makeStory('a', 1, 100), makeStory('b', 1, 200)];
+	const r2 = [makeStory('c', 2, 300), makeStory('d', 2, 400)];
+	const r3 = [makeStory('e', 3, 500)];
+	return new Map([
+		['R1', r1],
+		['R2', r2],
+		['R3', r3],
+	]);
+};
+
+const latestFor = (stories: Story[]): number =>
+	Math.max(...stories.map(story => story.taken_at));
 
 test('TC-003a: all reels already seen', async t => {
 	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'a');
-	manager.registerStoryId('u1', 'b');
-	manager.registerStoryId('u1', 'c');
+	const tray = buildTrayFixture();
 
-	manager.syncUsers(['u1'], new Map([['u1', ['a', 'b', 'c']]]));
+	manager.registerSeenTimestamp('R1', 200);
+	manager.registerSeenTimestamp('R2', 400);
+	manager.registerSeenTimestamp('R3', 500);
 
-	t.deepEqual(manager.getSeenStories('u1'), ['a', 'b', 'c']);
-	t.true(manager.areAllStoriesSeen('u1', ['a', 'b', 'c']));
+	for (const [pk, stories] of tray) {
+		t.true(manager.areAllStoriesSeen(pk, latestFor(stories)));
+		t.is(manager.getFirstUnseenIndex(pk, stories), 0);
+	}
 });
 
 test('TC-003b: some reels already seen, focus on first unseen', async t => {
 	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'a');
-	manager.registerStoryId('u1', 'c');
-	manager.registerStoryId('u2', 'd');
+	const tray = buildTrayFixture();
 
-	manager.syncUsers(
-		['u1', 'u2'],
-		new Map([
-			['u1', ['a', 'b', 'c', 'd']],
-			['u2', ['d', 'e', 'f']],
-		]),
+	// R1 and R3 fully seen, R2 only partially (story "c" seen, "d" not)
+	manager.registerSeenTimestamp('R1', 200);
+	manager.registerSeenTimestamp('R2', 300);
+	manager.registerSeenTimestamp('R3', 500);
+
+	t.true(manager.areAllStoriesSeen('R1', latestFor(tray.get('R1')!)));
+	t.false(manager.areAllStoriesSeen('R2', latestFor(tray.get('R2')!)));
+	t.true(manager.areAllStoriesSeen('R3', latestFor(tray.get('R3')!)));
+
+	// Focus lands on the first reel that is not fully seen
+	const firstUnseenReel = [...tray.keys()].find(
+		pk => !manager.areAllStoriesSeen(pk, latestFor(tray.get(pk)!)),
 	);
-
-	t.deepEqual(manager.getSeenStories('u1'), ['a', 'c']);
-	t.deepEqual(manager.getSeenStories('u2'), ['d']);
-	t.false(manager.areAllStoriesSeen('u1', ['a', 'b', 'c', 'd']));
-	t.false(manager.areAllStoriesSeen('u2', ['d', 'e', 'f']));
+	t.is(firstUnseenReel, 'R2');
+	t.is(manager.getFirstUnseenIndex('R2', tray.get('R2')!), 1);
 });
 
 test('TC-003c: no reels seen', async t => {
 	const {manager} = await createManager();
+	const tray = buildTrayFixture();
 
-	manager.syncUsers(['u1'], new Map([['u1', ['a', 'b', 'c']]]));
-	t.deepEqual(manager.getSeenStories('u1'), []);
-	t.false(manager.areAllStoriesSeen('u1', ['a', 'b', 'c']));
+	for (const [pk, stories] of tray) {
+		t.false(manager.areAllStoriesSeen(pk, latestFor(stories)));
+		t.is(manager.getFirstUnseenIndex(pk, stories), 0);
+	}
 });
 
-test('TC-004: all stories seen in reel', async t => {
-	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'a');
-	manager.registerStoryId('u1', 'b');
-	manager.registerStoryId('u1', 'c');
+// ── Story-level (carousel) ───────────────────────────────────────────────────
 
-	t.deepEqual(manager.getSeenStories('u1'), ['a', 'b', 'c']);
-	t.true(manager.areAllStoriesSeen('u1', ['a', 'b', 'c']));
-	t.is(manager.getFirstUnseenIndex('u1', ['a', 'b', 'c']), 0);
+test('TC-004: all stories seen in reel, carousel starts at 0 (replay)', async t => {
+	const {manager} = await createManager();
+	manager.registerSeenTimestamp('u1', 300);
+
+	const stories = [
+		makeStory('a', 1, 100),
+		makeStory('b', 1, 200),
+		makeStory('c', 1, 300),
+	];
+
+	t.true(manager.areAllStoriesSeen('u1', latestFor(stories)));
+	t.is(manager.getFirstUnseenIndex('u1', stories), 0);
 });
 
 test('TC-005: some stories unseen, carouselIndex at first unseen', async t => {
 	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'a');
+	manager.registerSeenTimestamp('u1', 100);
 
-	const seen = manager.getSeenStories('u1');
-	const mediaIds = ['a', 'b', 'c'];
-	const firstUnseenIndex = mediaIds.findIndex(id => !seen.includes(id));
+	const stories = [
+		makeStory('a', 1, 100),
+		makeStory('b', 1, 200),
+		makeStory('c', 1, 300),
+	];
 
-	t.is(firstUnseenIndex, 1);
-	t.is(manager.getFirstUnseenIndex('u1', mediaIds), 1);
-	t.false(manager.areAllStoriesSeen('u1', mediaIds));
+	t.false(manager.areAllStoriesSeen('u1', latestFor(stories)));
+	t.is(manager.getFirstUnseenIndex('u1', stories), 1);
 });
 
-test('TC-005a: stale seen stories evicted, carousel at first unseen', async t => {
+test('TC-005a: some stories became unavailable, no eviction needed', async t => {
 	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'a');
-	manager.registerStoryId('u1', 'b');
-	manager.registerStoryId('u1', 'c');
+	// Old reel [a(100), b(200), c(300)] fully viewed
+	manager.registerSeenTimestamp('u1', 300);
 
-	manager.syncUsers(['u1'], new Map([['u1', ['c', 'd', 'e']]]));
+	// Tray now [c(300), d(400), e(500)]: stale [a, b] are simply gone,
+	// the seen timestamp still identifies "c" as seen
+	const stories = [
+		makeStory('c', 1, 300),
+		makeStory('d', 1, 400),
+		makeStory('e', 1, 500),
+	];
 
-	const seen = manager.getSeenStories('u1');
-	const mediaIds = ['c', 'd', 'e'];
-	const firstUnseenIndex = mediaIds.findIndex(id => !seen.includes(id));
-
-	t.deepEqual(seen, ['c']);
-	t.is(firstUnseenIndex, 1);
+	t.is(manager.getFirstUnseenIndex('u1', stories), 1);
+	t.is(manager.getSeenTimestamp('u1'), 300);
 });
 
-test('TC-005b: all seen stories stale, cleared to none', async t => {
+test('TC-005b: all seen stories are gone, none seen', async t => {
 	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'a');
-	manager.registerStoryId('u1', 'b');
+	// Old reel [a(100), b(200)] fully viewed
+	manager.registerSeenTimestamp('u1', 200);
 
-	manager.syncUsers(['u1'], new Map([['u1', ['c', 'd', 'e']]]));
+	// Tray now [c(300), d(400), e(500)]: nothing carried over
+	const stories = [
+		makeStory('c', 1, 300),
+		makeStory('d', 1, 400),
+		makeStory('e', 1, 500),
+	];
 
-	const seen = manager.getSeenStories('u1');
-
-	t.deepEqual(seen, []);
+	t.false(manager.areAllStoriesSeen('u1', latestFor(stories)));
+	t.is(manager.getFirstUnseenIndex('u1', stories), 0);
 });
+
+// ── Boundary ─────────────────────────────────────────────────────────────────
 
 test('TC-006: empty tray response handled gracefully', async t => {
 	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'a');
+	manager.registerSeenTimestamp('u1', 100);
 
-	manager.syncUsers([], new Map());
+	manager.syncUsers([]);
 
-	t.deepEqual(manager.getSeenStories('u1'), []);
+	t.is(manager.getSeenTimestamp('u1'), 0);
 });
 
-test('TC-007: empty media_ids marks reel as seen', async t => {
+test('TC-007: empty media_ids list is not treated as seen', async t => {
 	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'a');
+	manager.registerSeenTimestamp('u1', 300);
 
-	manager.syncUsers(['u1'], new Map([['u1', []]]));
-
-	t.deepEqual(manager.getSeenStories('u1'), []);
-	t.false(manager.areAllStoriesSeen('u1', []));
-});
-
-// ── Marking Stories ──────────────────────────────────────────────────────────
-
-test('TC-017: story ID added to seenStories on view', async t => {
-	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'story_123');
-
-	t.true(manager.getSeenStories('u1').includes('story_123'));
-});
-
-test('TC-017: story ID with userPk suffix normalized', async t => {
-	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'mediaPk_userPk');
-
-	t.true(manager.getSeenStories('u1').includes('mediaPk'));
-});
-
-test('TC-019: all stories become seen marks reel as seen', async t => {
-	const {manager} = await createManager();
-	const ids = ['a', 'b', 'c'];
-
-	for (const id of ids) {
-		manager.registerStoryId('u1', id);
-	}
-
-	t.deepEqual(manager.getSeenStories('u1'), ids);
-});
-
-test('TC-022: single story reel, first view marks and seen', async t => {
-	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'only_story');
-
-	t.deepEqual(manager.getSeenStories('u1'), ['only_story']);
-});
-
-// ── Cleanup ──────────────────────────────────────────────────────────────────
-
-test('TC-020: stale saved IDs cleaned up on sync', async t => {
-	const {manager} = await createManager();
-	manager.registerStoryId('u1', 'stale_1');
-	manager.registerStoryId('u1', 'stale_2');
-	manager.registerStoryId('u1', 'valid_1');
-	manager.registerStoryId('u2', 'stale_for_inactive');
-
-	manager.syncUsers(['u1'], new Map([['u1', ['valid_1', 'new_1', 'new_2']]]));
-
-	t.deepEqual(manager.getSeenStories('u1'), ['valid_1']);
-	t.deepEqual(manager.getSeenStories('u2'), []);
-});
-
-// ── Persistence & Debounce ───────────────────────────────────────────────────
-
-test('TC-018: debounce persists data after settle', async t => {
-	const {manager, dir} = await createManager();
-	const filePath = path.join(dir, 'storage', 'seen-stories_testuser.json');
-
-	manager.registerStoryId('u1', 'a');
-	manager.registerStoryId('u1', 'b');
-
-	await manager.flush();
-
-	const content = JSON.parse(await fs.readFile(filePath, 'utf8'));
-	t.deepEqual(content.users.u1.seenStories, ['a', 'b']);
-});
-
-test('TC-021: data written to disk is readable after save', async t => {
-	const {manager, dir} = await createManager();
-	const filePath = path.join(dir, 'storage', 'seen-stories_testuser.json');
-
-	manager.registerStoryId('u1', 'flush_test');
-	manager.registerStoryId('u2', 'another');
-
-	await manager.flush();
-
-	const content = JSON.parse(await fs.readFile(filePath, 'utf8'));
-	t.is(content.users.u1.seenStories[0], 'flush_test');
-	t.is(content.users.u2.seenStories[0], 'another');
-	t.true(typeof content.lastUpdated === 'number');
+	// A reel with no stories has no latest_reel_media -> nothing to mark seen
+	t.false(manager.areAllStoriesSeen('u1', 0));
 });
 
 // ── Pre-fetch ────────────────────────────────────────────────────────────────

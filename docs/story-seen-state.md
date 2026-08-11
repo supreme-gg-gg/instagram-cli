@@ -6,19 +6,26 @@
 
 Stored alongside session data (already uses restricted permissions). One file per account — no cross-account leaking.
 
+Seen state is tracked per user as a single timestamp: the `taken_at` of the last viewed story — mirroring the API's per-reel `seen` value. Everything else is derived from it.
+
 ```json
 {
 	"lastUpdated": 1712345678,
 	"users": {
-		"12345": {
-			"seenStories": ["123456789012345_1", "123456789012345_2"]
-		},
-		"67890": {
-			"seenStories": ["987654321098765_1"]
-		}
+		"12345": 1712345600,
+		"67890": 1712345400
 	}
 }
 ```
+
+## Deriving State
+
+| Question            | Derivation                                         |
+| ------------------- | -------------------------------------------------- |
+| All stories seen?   | `seen >= latest_reel_media` (tray item field)      |
+| First unseen index? | First story with `taken_at > seen` (else replay 0) |
+
+No per-story bookkeeping: the timestamp only moves forward, and expired/deleted stories are naturally ignored (no ID pruning needed).
 
 ## Flow
 
@@ -26,48 +33,43 @@ Stored alongside session data (already uses restricted permissions). One file pe
 
 ```
 Fetch reelsTray
-  → For each reel, compare media_ids against local seenStories
-  → If ALL media_ids match → dimmed text in sidebar
+  → For each reel, compare seen against latest_reel_media
+  → If seen >= latest_reel_media → dimmed text in sidebar
   → Otherwise → normal text
 ```
 
-The tray item already contains `media_ids: string[]` — no lazy-loading needed for the dimming decision. Current code discards this, keep it.
+The tray item already contains `latest_reel_media` (timestamp of the newest story) — no lazy-loading needed for the dimming decision. `getReelsTray` exposes it as `latestReelMediaByUser`.
 
 ### Select a reel
 
 ```
 User selects a reel
   → Load stories via getStoriesForUser()
-  → Find first story NOT in seenStories (by index order)
+  → Find first story with taken_at > seen (by index order)
   → If none found → start from story 0 (replay)
   → If unseen exists → start from that index
-  → The list of stories per reel are checked by order, and in case a story is not available anymore, its deleted from the local storage file.
-    So for example, if we have [storyA, storyB, storyC], each item will be compared with the current reel in that order.
-    Let's say story B doesn't longer exist, so when comparing storyB with current reel, its deleted from the file, and then proceed to story C.
 ```
 
 ### View a story
 
 ```
 User views a story
-  → Add story id to seenStories set
+  → seen = max(seen, story.taken_at)
   → Persist to disk (debounced 500ms + flush on exit)
 ```
 
 ### Cleanup
 
 ```
-On each load, before comparison:
-  → Strip any user IDs not present in the fetched media_ids
+On each successful tray fetch:
+  → Strip any user IDs no longer present in the tray
 ```
-
-Expired/deleted stories automatically disappear from the file.
 
 ## Display
 
 | State                     | Sidebar     |
 | ------------------------- | ----------- |
-| Seen (all stories match)  | Dimmed text |
+| Seen (all stories seen)   | Dimmed text |
 | Unseen (any story unseen) | Normal text |
 
 Two states only — no gradient rings or partial indicators.
@@ -80,7 +82,7 @@ Start([Start CLI System]) --> LoadData[Check seen-stories JSON]
     FileCheck{File exists?}
     LoadData --> FileCheck
     FileCheck -->|No| InitJSON[Create empty JSON structure]
-    FileCheck -->|Yes| ReadJSON[Read seenStories into memory]
+    FileCheck -->|Yes| ReadJSON[Read seen stories JSON into memory]
 
     ReadJSON --> ValidateJSON{Is JSON<br/>malformed?}
     ValidateJSON -->|Yes| BackupJSON[Backup corrupted file<br/>as seen-stories.corrupt]
@@ -91,12 +93,11 @@ Start([Start CLI System]) --> LoadData[Check seen-stories JSON]
 
     subgraph Tray Fetch & Processing
         TrayFetch --> PerReel[For each reel in tray]
-        PerReel --> Cleanup[Cleanup: Filter out saved IDs<br/>not in fetched media_ids]
-        Cleanup --> ComputeUnseen[Compute unseen set per user<br/>using mediaIdsByUser]
-        ComputeUnseen --> CompareLoop{Are ALL fetched<br/>media_ids in seenStories?}
+        PerReel --> Cleanup[Cleanup: Strip stored users<br/>not in current tray]
+        Cleanup --> CompareSeen{seen >=<br/>latest_reel_media?}
 
-        CompareLoop -->|Yes| MarkSeen[Mark reel as seen <br/>Set carouselIndex = 0]
-        CompareLoop -->|No| MarkUnseen[Set carouselIndex = first unseen index]
+        CompareSeen -->|Yes| MarkSeen[Mark reel as seen <br/>Set carouselIndex = 0]
+        CompareSeen -->|No| MarkUnseen[Set carouselIndex = first story<br/>with taken_at > seen]
     end
 
     MarkSeen --> PreFetch[Pre-fetch stories for first 3 users<br/>via getStoriesForUser]
@@ -118,8 +119,8 @@ Start([Start CLI System]) --> LoadData[Check seen-stories JSON]
 
     StepStory --> RenderViewer
 
-    RenderViewer --> AutoMark[Add story ID to seenStories<br/>Debounced disk write - 500ms]
-    AutoMark --> CheckSeen{Are ALL media_ids<br/>for this reel in seenStories?}
+    RenderViewer --> AutoMark[seen = max(seen, story.taken_at)<br/>Debounced disk write - 500ms]
+    AutoMark --> CheckSeen{seen >=<br/>latest_reel_media?}
     CheckSeen -->|Yes| DimReel[Mark reel as seen]
     CheckSeen -->|No| RenderSidebar
     DimReel --> RenderSidebar

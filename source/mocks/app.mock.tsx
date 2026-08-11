@@ -23,7 +23,7 @@ function MockStoryWrapper() {
 	const {
 		reels,
 		seenUserPks,
-		mediaIdsByUser,
+		latestReelMediaByUser,
 		isLoading,
 		error,
 		loadMore,
@@ -46,7 +46,7 @@ function MockStoryWrapper() {
 		<StoryView
 			reels={reels}
 			seenUserPks={seenUserPks}
-			mediaIdsByUser={mediaIdsByUser}
+			latestReelMediaByUser={latestReelMediaByUser}
 			loadMore={loadMore}
 			client={client}
 		/>

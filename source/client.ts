@@ -970,11 +970,11 @@ export class InstagramClient extends EventEmitter {
 	 *
 	 * @returns A promise that resolves to an object with:
 	 *   - items: Array of `ListMediaItem<Story>` objects with user info but empty `content` arrays
-	 *   - mediaIdsByUser: Map of user PK to their current active media IDs
+	 *   - latestReelMediaByUser: Map of user PK to the `taken_at` of their newest active story
 	 */
 	public async getReelsTray(): Promise<{
 		items: Array<ListMediaItem<Story>>;
-		mediaIdsByUser: Map<string, string[]>;
+		latestReelMediaByUser: Map<string, number>;
 	}> {
 		try {
 			const ig = this.getInstagramClient();
@@ -987,14 +987,14 @@ export class InstagramClient extends EventEmitter {
 
 			if (!Array.isArray(reelsTrayItems) || reelsTrayItems.length === 0) {
 				this.logger.warn('No users with active stories found in reels tray.');
-				return {items: [], mediaIdsByUser: new Map()};
+				return {items: [], latestReelMediaByUser: new Map()};
 			}
 
 			this.logger.info(
 				`Found ${reelsTrayItems.length} users with active stories.`,
 			);
 
-			const mediaIdsByUser = new Map<string, string[]>();
+			const latestReelMediaByUser = new Map<string, number>();
 
 			const storyReels: Array<ListMediaItem<Story>> = reelsTrayItems
 				.filter(
@@ -1003,8 +1003,8 @@ export class InstagramClient extends EventEmitter {
 				)
 				.map(item => {
 					const pk = String(item.user.pk);
-					if (item.media_ids) {
-						mediaIdsByUser.set(pk, item.media_ids);
+					if (item.latest_reel_media) {
+						latestReelMediaByUser.set(pk, item.latest_reel_media);
 					}
 
 					return {
@@ -1015,7 +1015,7 @@ export class InstagramClient extends EventEmitter {
 					};
 				});
 
-			return {items: storyReels, mediaIdsByUser};
+			return {items: storyReels, latestReelMediaByUser};
 		} catch (error) {
 			this.logger.error('Failed to fetch reels tray', error);
 			throw error;

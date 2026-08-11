@@ -5,29 +5,14 @@ import {createContextualLogger} from './logger.js';
 
 const logger = createContextualLogger('SeenStories');
 
-// Story IDs come as "mediaPk_userPk" from API, but tray media_ids are just "mediaPk"
-// Normalize strips the userPk suffix (numeric user ID or literal 'userPk')
-// to get the base mediaPk for comparison
-const normalizeStoryId = (id: string): string => {
-	const parts = id.split('_');
-	if (parts.length === 2) {
-		// Real API format: number_number (mediaPk_userPk)
-		if (/^\d+$/.test(parts[0]!) && /^\d+$/.test(parts[1]!)) {
-			return parts[0]!;
-		}
-
-		// Suffix is the literal 'userPk' (used in test data)
-		if (parts[1] === 'userPk') {
-			return parts[0]!;
-		}
-	}
-
-	return id;
-};
-
+// Seen state is tracked per user as the `taken_at` of the last viewed story,
+// mirroring the API's per-reel `seen` value. Everything else is derived:
+//   - all stories seen   -> seen >= latest_reel_media
+//   - first unseen index -> first story with taken_at > seen
+// Timestamps use the API `taken_at` unit (seconds).
 export type SeenStoriesData = {
 	lastUpdated: number;
-	users: Record<string, {seenStories: string[]}>;
+	users: Record<string, number>;
 };
 
 export class SeenStoriesManager {
@@ -55,88 +40,42 @@ export class SeenStoriesManager {
 		}
 	}
 
-	registerUser(userPk: string): void {
-		if (!this.data.users[userPk]) {
-			this.data.users[userPk] = {seenStories: []};
+	registerSeenTimestamp(userPk: string, takenAt: number): void {
+		if (takenAt > (this.data.users[userPk] ?? 0)) {
+			this.data.users[userPk] = takenAt;
 			this.scheduleSave();
 		}
 	}
 
-	registerStoryId(userPk: string, storyId: string): void {
-		this.data.users[userPk] ||= {seenStories: []};
-
-		const normalized = normalizeStoryId(storyId);
-		const user = this.data.users[userPk];
-		if (user && !user.seenStories.includes(normalized)) {
-			user.seenStories.push(normalized);
-			this.scheduleSave();
-		}
+	getSeenTimestamp(userPk: string): number {
+		return this.data.users[userPk] ?? 0;
 	}
 
-	getSeenStories(userPk: string): string[] {
-		return this.data.users[userPk]?.seenStories ?? [];
+	areAllStoriesSeen(userPk: string, latestReelMedia: number): boolean {
+		if (latestReelMedia <= 0) return false;
+		return this.getSeenTimestamp(userPk) >= latestReelMedia;
 	}
 
-	areAllStoriesSeen(userPk: string, mediaIds: string[]): boolean {
-		if (mediaIds.length === 0) return false;
-		const seen = new Set(
-			this.getSeenStories(userPk).map(id => normalizeStoryId(id)),
-		);
-		return mediaIds.every(id => seen.has(normalizeStoryId(id)));
+	getFirstUnseenIndex(
+		userPk: string,
+		stories: ReadonlyArray<{taken_at: number}>,
+	): number {
+		const seen = this.getSeenTimestamp(userPk);
+		const index = stories.findIndex(story => story.taken_at > seen);
+		return index === -1 ? 0 : index;
 	}
 
-	getFirstUnseenIndex(userPk: string, storyIds: string[]): number {
-		const seen = new Set(
-			this.getSeenStories(userPk).map(id => normalizeStoryId(id)),
-		);
-		for (const [index, id] of storyIds.entries()) {
-			if (!seen.has(normalizeStoryId(id))) {
-				return index;
-			}
-		}
-
-		return 0;
-	}
-
-	syncUsers(
-		currentlyActiveUserPks: string[],
-		mediaIdsByUser: ReadonlyMap<string, string[]>,
-	): void {
+	syncUsers(currentlyActiveUserPks: string[]): void {
 		const activeSet = new Set(currentlyActiveUserPks);
-		const storedUserPks = Object.keys(this.data.users);
-		const newUsers: Record<string, {seenStories: string[]}> = {};
-		let changed = false;
+		const newUsers: Record<string, number> = {};
 
-		for (const userPk of storedUserPks) {
+		for (const [userPk, seen] of Object.entries(this.data.users)) {
 			if (activeSet.has(userPk)) {
-				const currentMediaIds = mediaIdsByUser.get(userPk);
-				if (currentMediaIds) {
-					const currentMediaIdSet = new Set(currentMediaIds);
-					const user = this.data.users[userPk]!;
-					const filteredStories = user.seenStories.filter(id =>
-						currentMediaIdSet.has(id),
-					);
-
-					if (filteredStories.length !== user.seenStories.length) {
-						changed = true;
-					}
-
-					if (filteredStories.length > 0) {
-						newUsers[userPk] = {seenStories: filteredStories};
-					} else {
-						changed = true;
-					}
-				} else if (this.data.users[userPk]!.seenStories.length > 0) {
-					newUsers[userPk] = this.data.users[userPk]!;
-				} else {
-					changed = true;
-				}
-			} else {
-				changed = true;
+				newUsers[userPk] = seen;
 			}
 		}
 
-		if (changed) {
+		if (Object.keys(newUsers).length !== Object.keys(this.data.users).length) {
 			this.data.users = newUsers;
 			this.scheduleSave();
 		}
