@@ -1,61 +1,18 @@
 import fs from 'node:fs/promises';
-import path, {dirname} from 'node:path';
+import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {Buffer} from 'node:buffer';
-import {fileURLToPath} from 'node:url';
 import notifier from 'node-notifier';
-import playSound from 'play-sound';
-import {readPackageUp} from 'read-package-up';
 import {ConfigManager} from '../config.js';
 import {createContextualLogger} from './logger.js';
 
 const logger = createContextualLogger('DesktopNotifier');
-const player = playSound();
 
 export type DesktopNotificationOptions = {
 	readonly title: string;
 	readonly message: string;
 	readonly iconUrl?: string;
 };
-
-let soundFilePromise: Promise<string | undefined> | undefined;
-
-/**
- * Resolves the bundled notification chime, relative to the package root
- * (not `import.meta.url`'s own directory, since bundling flattens file layout).
- */
-async function getSoundFilePath(): Promise<string | undefined> {
-	soundFilePromise ??= (async () => {
-		const scriptDir = dirname(fileURLToPath(import.meta.url));
-		const package_ = await readPackageUp({cwd: scriptDir});
-		if (!package_) {
-			return undefined;
-		}
-
-		return path.join(
-			dirname(package_.path),
-			'resource',
-			'sounds',
-			'notification.wav',
-		);
-	})();
-
-	return soundFilePromise;
-}
-
-async function playNotificationSound(): Promise<void> {
-	const soundFile = await getSoundFilePath();
-	if (!soundFile) {
-		return;
-	}
-
-	player.play(soundFile, error => {
-		if (error) {
-			// No known audio player available on this system; skip silently.
-			logger.debug(`Failed to play notification sound: ${error.message}`);
-		}
-	});
-}
 
 /**
  * Downloads and caches a remote avatar so it can be used as a local notification
@@ -120,9 +77,7 @@ export async function sendDesktopNotification({
 			title,
 			message,
 			icon,
-			// Sound is played separately via play-sound; node-notifier's own
-			// `sound` option is unreliable across platforms and OS versions.
-			sound: false,
+			sound: soundEnabled,
 		},
 		error => {
 			if (error) {
@@ -130,8 +85,4 @@ export async function sendDesktopNotification({
 			}
 		},
 	);
-
-	if (soundEnabled) {
-		void playNotificationSound();
-	}
 }
