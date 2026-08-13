@@ -43,8 +43,7 @@
 	},
 	"files": [
 		"dist",
-		"patches",
-		"resource/sounds"
+		"patches"
 	],
 	"dependencies": {
 		"@inkjs/ui": "^2.0.0",
