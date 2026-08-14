@@ -1,5 +1,37 @@
 import type {Thread, Message} from '../types/instagram.js';
 
+/**
+ * Returns a short, human-readable preview of a message's content,
+ * suitable for thread list previews and notifications.
+ */
+export function getMessagePreviewText(message: Message): string {
+	switch (message.itemType) {
+		case 'text': {
+			return message.text;
+		}
+
+		case 'media': {
+			return '[Media]';
+		}
+
+		case 'media_share': {
+			return `[Shared post by @${message.mediaSharePost.user.username}]`;
+		}
+
+		case 'link': {
+			return message.link.text;
+		}
+
+		case 'placeholder': {
+			return message.text;
+		}
+
+		default: {
+			return '[Unsupported Message]';
+		}
+	}
+}
+
 export type UpdateThreadByMessageOptions = {
 	/**
 	 * Whether to mark the thread as unread

@@ -366,6 +366,7 @@ class MockClient extends EventEmitter {
 					users: [user],
 					lastActivity: new Date(),
 					unread: false,
+					muted: false,
 				};
 
 				return {
@@ -399,6 +400,7 @@ class MockClient extends EventEmitter {
 			users: [user],
 			lastActivity: new Date(),
 			unread: false,
+			muted: false,
 		};
 
 		this.threads.push(newThread);
