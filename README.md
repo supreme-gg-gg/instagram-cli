@@ -186,4 +186,4 @@ We contributed the following extensions to the [Ink](https://github.com/vadimdem
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=supreme-gg-gg/instagram-cli&type=date&legend=top-left)](https://www.star-history.com/#supreme-gg-gg/instagram-cli&type=date&legend=top-left)
+[![Star History Chart](https://star-history.dera.page/svg?repos=supreme-gg-gg/instagram-cli&type=date&legend=top-left)](https://star-history.dera.page/#supreme-gg-gg/instagram-cli&type=date&legend=top-left)
