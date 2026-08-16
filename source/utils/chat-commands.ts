@@ -6,6 +6,7 @@ import type {ScrollViewRef} from '../ui/components/scroll-view.js';
 import {ConfigManager} from '../config.js';
 import {preprocessMessage} from './preprocess.js';
 import {createContextualLogger} from './logger.js';
+import {resolveUserPath, validateFilePath} from './path-utils.js';
 import {getEmojiByName} from './emoji.js';
 
 const logger = createContextualLogger('ChatCommands');
@@ -158,17 +159,23 @@ export const chatCommands: Record<string, ChatCommand> = {
 				return;
 			}
 
+			const absolutePath = resolveUserPath(filePath);
+			const validation = await validateFilePath(absolutePath, 'media');
+			if (!validation.allowed) {
+				return `Upload blocked: ${validation.reason}`;
+			}
+
 			const lowerPath = filePath.toLowerCase();
 			const isImage = /\.(jpg|jpeg|png|gif)$/.test(lowerPath);
 			const isVideo = /\.(mp4|mov|avi|mkv)$/.test(lowerPath);
 
 			if (isImage) {
-				await client.sendPhoto(chatState.currentThread.id, filePath);
+				await client.sendPhoto(chatState.currentThread.id, absolutePath);
 				return `Image uploaded: ${filePath}`;
 			}
 
 			if (isVideo) {
-				await client.sendVideo(chatState.currentThread.id, filePath);
+				await client.sendVideo(chatState.currentThread.id, absolutePath);
 				return `Video uploaded: ${filePath}`;
 			}
 
