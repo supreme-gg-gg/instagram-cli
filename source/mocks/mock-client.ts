@@ -463,6 +463,7 @@ class MockClient extends EventEmitter {
 	async getReelsTray(): Promise<{
 		items: Array<ListMediaItem<Story>>;
 		latestReelMediaByUser: Map<string, number>;
+		reelSeenByUser: Map<string, number>;
 	}> {
 		// Simulate network delay
 		await new Promise(resolve => {
@@ -472,6 +473,7 @@ class MockClient extends EventEmitter {
 		const seen = new Set<number>();
 		const result: Array<ListMediaItem<Story>> = [];
 		const latestReelMediaByUser = new Map<string, number>();
+		const reelSeenByUser = new Map<string, number>();
 
 		for (const story of mockStories) {
 			const {user} = story;
@@ -490,10 +492,12 @@ class MockClient extends EventEmitter {
 					pk,
 					Math.max(...userStories.map(s => s.taken_at)),
 				);
+
+				reelSeenByUser.set(pk, 0);
 			}
 		}
 
-		return {items: result, latestReelMediaByUser};
+		return {items: result, latestReelMediaByUser, reelSeenByUser};
 	}
 
 	async getStoriesForUser(

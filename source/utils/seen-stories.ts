@@ -20,17 +20,28 @@ export class SeenStoriesManager {
 	private readonly filePath: string;
 	private saveTimeout: ReturnType<typeof setTimeout> | undefined;
 	private readonly configManager: ConfigManager;
+	private readonly memoryOnly: boolean;
 
-	constructor(username: string, baseDir?: string) {
+	constructor(username: string, baseDir?: string, memoryOnly = false) {
+		this.memoryOnly = memoryOnly;
 		this.configManager = ConfigManager.getInstance();
-		const defaultDataDir = this.configManager.get('advanced.dataDir');
-		const dataDir = baseDir ?? defaultDataDir;
-		const storageDir = path.join(dataDir, 'storage');
-		this.filePath = path.join(storageDir, `seen-stories_${username}.json`);
+		if (memoryOnly) {
+			this.filePath = '';
+		} else {
+			const defaultDataDir = this.configManager.get('advanced.dataDir');
+			const dataDir = baseDir ?? defaultDataDir;
+			const storageDir = path.join(dataDir, 'storage');
+			this.filePath = path.join(storageDir, `seen-stories_${username}.json`);
+		}
+
 		this.data = {lastUpdated: 0, users: {}};
 	}
 
 	async load(): Promise<void> {
+		if (this.memoryOnly) {
+			return;
+		}
+
 		try {
 			await fs.mkdir(path.dirname(this.filePath), {recursive: true});
 			const content = await fs.readFile(this.filePath, 'utf8');
@@ -82,6 +93,10 @@ export class SeenStoriesManager {
 	}
 
 	async flush(): Promise<void> {
+		if (this.memoryOnly) {
+			return;
+		}
+
 		if (this.saveTimeout) {
 			clearTimeout(this.saveTimeout);
 			this.saveTimeout = undefined;

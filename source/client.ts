@@ -971,10 +971,12 @@ export class InstagramClient extends EventEmitter {
 	 * @returns A promise that resolves to an object with:
 	 *   - items: Array of `ListMediaItem<Story>` objects with user info but empty `content` arrays
 	 *   - latestReelMediaByUser: Map of user PK to the `taken_at` of their newest active story
+	 *   - reelSeenByUser: Map of user PK to the `seen` timestamp from the API
 	 */
 	public async getReelsTray(): Promise<{
 		items: Array<ListMediaItem<Story>>;
 		latestReelMediaByUser: Map<string, number>;
+		reelSeenByUser: Map<string, number>;
 	}> {
 		try {
 			const ig = this.getInstagramClient();
@@ -987,7 +989,11 @@ export class InstagramClient extends EventEmitter {
 
 			if (!Array.isArray(reelsTrayItems) || reelsTrayItems.length === 0) {
 				this.logger.warn('No users with active stories found in reels tray.');
-				return {items: [], latestReelMediaByUser: new Map()};
+				return {
+					items: [],
+					latestReelMediaByUser: new Map(),
+					reelSeenByUser: new Map(),
+				};
 			}
 
 			this.logger.info(
@@ -995,6 +1001,7 @@ export class InstagramClient extends EventEmitter {
 			);
 
 			const latestReelMediaByUser = new Map<string, number>();
+			const reelSeenByUser = new Map<string, number>();
 
 			const storyReels: Array<ListMediaItem<Story>> = reelsTrayItems
 				.filter(
@@ -1007,6 +1014,8 @@ export class InstagramClient extends EventEmitter {
 						latestReelMediaByUser.set(pk, item.latest_reel_media);
 					}
 
+					reelSeenByUser.set(pk, item.seen);
+
 					return {
 						pk,
 						label: item.user.username ?? `User_${item.user.pk}`,
@@ -1015,7 +1024,7 @@ export class InstagramClient extends EventEmitter {
 					};
 				});
 
-			return {items: storyReels, latestReelMediaByUser};
+			return {items: storyReels, latestReelMediaByUser, reelSeenByUser};
 		} catch (error) {
 			this.logger.error('Failed to fetch reels tray', error);
 			throw error;

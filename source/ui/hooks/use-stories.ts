@@ -2,6 +2,7 @@ import {useState, useEffect, useCallback, useRef} from 'react';
 import {type ListMediaItem, type Story} from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
 import {SeenStoriesManager} from '../../utils/seen-stories.js';
+import {ConfigManager} from '../../config.js';
 import {useInstagramClient as useInstagramClientImpl} from './use-instagram-client.js';
 
 type UseInstagramClientHook = typeof useInstagramClientImpl;
@@ -21,9 +22,17 @@ export function useStories(
 	const [latestReelMediaByUser, setLatestReelMediaByUser] = useState<
 		ReadonlyMap<string, number>
 	>(new Map());
+	const [reelSeenByUser, setReelSeenByUser] = useState<
+		ReadonlyMap<string, number>
+	>(new Map());
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | undefined>();
 	const seenStoriesManager = useRef<SeenStoriesManager | undefined>(undefined);
+
+	const markAsSeen = ConfigManager.getInstance().get<boolean>(
+		'stories.markAsSeen',
+		false,
+	);
 
 	const loadStoriesForReel = useCallback(
 		async (index: number, currentItems: Array<ListMediaItem<Story>>) => {
@@ -67,12 +76,14 @@ export function useStories(
 		if (client && !seenStoriesManager.current) {
 			const username = client.getUsername();
 			if (username) {
-				const manager = new SeenStoriesManager(username);
+				const manager = new SeenStoriesManager(username, undefined, markAsSeen);
 				seenStoriesManager.current = manager;
-				void manager.load();
+				if (!markAsSeen) {
+					void manager.load();
+				}
 			}
 		}
-	}, [client]);
+	}, [client, markAsSeen]);
 
 	useEffect(() => {
 		const fetchReelsTray = async () => {
@@ -83,12 +94,22 @@ export function useStories(
 
 			try {
 				setIsLoading(true);
-				const {items: listItems, latestReelMediaByUser: latestByUser} =
-					await client.getReelsTray();
+				const {
+					items: listItems,
+					latestReelMediaByUser: latestByUser,
+					reelSeenByUser: apiSeenByUser,
+				} = await client.getReelsTray();
 				setLatestReelMediaByUser(latestByUser);
+				setReelSeenByUser(apiSeenByUser);
 
 				const seenPks = new Set<string>();
 				if (seenStoriesManager.current) {
+					if (markAsSeen) {
+						for (const [pk, seen] of apiSeenByUser) {
+							seenStoriesManager.current.registerSeenTimestamp(pk, seen);
+						}
+					}
+
 					const currentUserPks = listItems.map(item => item.pk);
 					seenStoriesManager.current.syncUsers(currentUserPks);
 
@@ -160,7 +181,7 @@ export function useStories(
 		};
 
 		void fetchReelsTray();
-	}, [client, clientError, loadStoriesForReel]);
+	}, [client, clientError, loadStoriesForReel, markAsSeen]);
 
 	const loadMore = useCallback(
 		async (index: number) => {
@@ -194,6 +215,8 @@ export function useStories(
 		reels,
 		seenUserPks,
 		latestReelMediaByUser,
+		reelSeenByUser,
+		markAsSeen,
 		isLoading: isLoading || clientLoading,
 		error: clientError ?? error,
 		loadMore,

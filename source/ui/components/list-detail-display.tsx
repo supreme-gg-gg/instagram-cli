@@ -28,7 +28,6 @@ import {
 } from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
 import {type InstagramClient} from '../../client.js';
-import {ConfigManager} from '../../config.js';
 import {SeenStoriesManager} from '../../utils/seen-stories.js';
 import SplitView from './split-view.js';
 import MediaPane from './media-pane.js';
@@ -42,6 +41,8 @@ type Properties<T extends BaseMedia & MediaItemMetadata, M = undefined> = {
 	readonly mode: 'story' | 'post';
 	readonly seenUserPks?: ReadonlySet<string>;
 	readonly latestReelMediaByUser?: ReadonlyMap<string, number>;
+	readonly reelSeenByUser?: ReadonlyMap<string, number>;
+	readonly markAsSeen?: boolean;
 	readonly handleSearchSubmit?: (
 		query: string,
 	) => Promise<ListMediaItem<T, M> | undefined>;
@@ -89,6 +90,8 @@ export default function ListDetailDisplay<
 	mode,
 	seenUserPks,
 	latestReelMediaByUser,
+	reelSeenByUser,
+	markAsSeen = false,
 	handleSearchSubmit,
 }: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -158,21 +161,37 @@ export default function ListDetailDisplay<
 		if (mode === 'story' && client) {
 			const username = client.getUsername();
 			if (username && !seenStoriesManager.current) {
-				const manager = new SeenStoriesManager(username);
+				const manager = new SeenStoriesManager(
+					username,
+					undefined,
+					Boolean(markAsSeen),
+				);
 				seenStoriesManager.current = manager;
-				void manager.load().then(() => {
+
+				if (markAsSeen && reelSeenByUser) {
+					for (const [pk, seen] of reelSeenByUser) {
+						manager.registerSeenTimestamp(pk, seen);
+					}
+
 					setSeenLoaded(true);
 					refreshSeenUserPks();
-				});
+				} else {
+					void manager.load().then(() => {
+						setSeenLoaded(true);
+						refreshSeenUserPks();
+					});
+				}
 			}
 		}
-	}, [client, mode, refreshSeenUserPks]);
+	}, [client, mode, refreshSeenUserPks, markAsSeen, reelSeenByUser]);
 
 	useEffect(() => {
 		return () => {
-			void seenStoriesManager.current?.flush();
+			if (!markAsSeen) {
+				void seenStoriesManager.current?.flush();
+			}
 		};
-	}, []);
+	}, [markAsSeen]);
 
 	useEffect(() => {
 		const clampedIndex = Math.min(
@@ -242,57 +261,52 @@ export default function ListDetailDisplay<
 	const currentStory = currentItem?.content[carouselIndex] as Story | undefined;
 	const currentStoryTakenAt = currentStory?.taken_at;
 
-	const markStoryAsSeenLocalFile = (
-		seenStoriesManager: SeenStoriesManager | undefined,
-		currentItemPk: string | undefined,
-		currentStoryTakenAt: number | undefined,
-	): void => {
-		if (
-			!seenStoriesManager ||
-			!currentItemPk ||
-			currentStoryTakenAt === undefined
-		) {
-			return;
-		}
+	const markStoryAsSeen = useCallback(
+		(pk: string, story: Story | undefined): void => {
+			if (
+				!seenStoriesManager.current ||
+				!story ||
+				story.taken_at === undefined
+			) {
+				return;
+			}
 
-		seenStoriesManager.registerSeenTimestamp(
-			currentItemPk,
-			currentStoryTakenAt,
-		);
-	};
+			seenStoriesManager.current.registerSeenTimestamp(pk, story.taken_at);
+			refreshSeenUserPks();
+
+			if (
+				mode === 'story' &&
+				markAsSeen &&
+				client &&
+				!seenStories.current.has(story.id)
+			) {
+				void client
+					.markStoriesAsSeen([story])
+					.then(() => {
+						seenStories.current.add(story.id);
+					})
+					.catch((error: unknown) => {
+						logger.error('Failed to mark story as seen:', error);
+					});
+			}
+		},
+		[mode, markAsSeen, client, refreshSeenUserPks],
+	);
 
 	useEffect(() => {
-		markStoryAsSeenLocalFile(
-			seenStoriesManager.current,
-			currentItemPk,
-			currentStoryTakenAt,
-		);
-		refreshSeenUserPks();
-	}, [currentItemPk, currentStoryTakenAt, refreshSeenUserPks]);
-
-	useEffect(() => {
-		const config = ConfigManager.getInstance();
-		const markAsSeen = config.get<boolean>('stories.markAsSeen', false);
-
-		if (
-			mode === 'story' &&
-			markAsSeen &&
-			currentContentItem &&
-			client &&
-			'id' in currentContentItem &&
-			!seenStories.current.has((currentContentItem as Story).id)
-		) {
-			// Fire and forget: explicitly ignore the promise result
-			void client
-				.markStoriesAsSeen([currentContentItem as Story])
-				.then(() => {
-					seenStories.current.add((currentContentItem as Story).id);
-				})
-				.catch((error: unknown) => {
-					logger.error('Failed to mark story as seen:', error);
-				});
+		if (currentItemPk && currentStory) {
+			markStoryAsSeen(currentItemPk, currentStory);
 		}
-	}, [currentContentItem, client, mode]);
+	}, [
+		currentItemPk,
+		currentStoryTakenAt,
+		currentStory,
+		client,
+		mode,
+		markAsSeen,
+		refreshSeenUserPks,
+		markStoryAsSeen,
+	]);
 
 	const getCurrentImage = (item: BaseMedia): MediaCandidate | undefined => {
 		if (!item) return undefined;
@@ -434,17 +448,7 @@ export default function ListDetailDisplay<
 				const targetStory = currentItem.content[newCarouselIndex] as
 					| Story
 					| undefined;
-				if (
-					seenStoriesManager.current &&
-					targetStory &&
-					targetStory.taken_at !== undefined
-				) {
-					seenStoriesManager.current.registerSeenTimestamp(
-						currentItem.pk,
-						targetStory.taken_at,
-					);
-				}
-
+				markStoryAsSeen(currentItem.pk, targetStory);
 				forceCarouselUpdate();
 			}
 		} else if (input === 'o') {

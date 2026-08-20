@@ -14,6 +14,8 @@ export default function Stories(): React.ReactElement {
 		reels,
 		seenUserPks,
 		latestReelMediaByUser,
+		reelSeenByUser,
+		markAsSeen,
 		isLoading,
 		error,
 		loadMore,
@@ -37,6 +39,8 @@ export default function Stories(): React.ReactElement {
 			reels={reels}
 			seenUserPks={seenUserPks}
 			latestReelMediaByUser={latestReelMediaByUser}
+			reelSeenByUser={reelSeenByUser}
+			markAsSeen={markAsSeen}
 			loadMore={loadMore}
 			client={client}
 		/>
