@@ -24,6 +24,8 @@ function MockStoryWrapper() {
 		reels,
 		seenUserPks,
 		latestReelMediaByUser,
+		reelSeenByUser,
+		markAsSeen,
 		isLoading,
 		error,
 		loadMore,
