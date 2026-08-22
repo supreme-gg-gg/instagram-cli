@@ -106,6 +106,10 @@ export class SeenStoriesManager {
 	}
 
 	private scheduleSave(): void {
+		if (this.memoryOnly) {
+			return;
+		}
+
 		if (this.saveTimeout) {
 			clearTimeout(this.saveTimeout);
 		}
