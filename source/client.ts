@@ -54,6 +54,12 @@ export type LoginResult = {
 	badPassword?: boolean;
 };
 
+export type BrowserCookies = {
+	sessionId: string;
+	csrfToken: string;
+	dsUserId: string;
+};
+
 export type SearchResult = {
 	thread: Thread;
 	score: number;
@@ -267,6 +273,53 @@ export class InstagramClient extends EventEmitter {
 				success: false,
 				error: error instanceof Error ? error.message : 'Unknown login error',
 			};
+		}
+	}
+
+	public async loginWithCookies(
+		cookies: BrowserCookies,
+		options?: {initializeRealtime: boolean},
+	): Promise<LoginResult> {
+		try {
+			const normalizedCookies = validateBrowserCookies(cookies);
+			await this.configManager.initialize();
+			this.ig.state.generateDevice(normalizedCookies.dsUserId);
+
+			const host = this.ig.state.constants.HOST;
+			this.ig.state.cookieJar.setCookie(
+				`sessionid=${normalizedCookies.sessionId}; Path=/; Secure; HttpOnly`,
+				host,
+			);
+			this.ig.state.cookieJar.setCookie(
+				`csrftoken=${normalizedCookies.csrfToken}; Path=/; Secure`,
+				host,
+			);
+			this.ig.state.cookieJar.setCookie(
+				`ds_user_id=${normalizedCookies.dsUserId}; Path=/; Secure`,
+				host,
+			);
+
+			const user = await this.ig.account.currentUser();
+			if (String(user.pk) !== normalizedCookies.dsUserId) {
+				throw new Error(
+					'The ds_user_id does not match the authenticated account',
+				);
+			}
+
+			this.username = user.username;
+			this.sessionManager = new SessionManager(user.username);
+			this.ig.request.end$.subscribe(async () => {
+				await this.saveSessionState();
+			});
+
+			await this.postLoginSetup(user.username, {
+				initializeRealtime: options?.initializeRealtime ?? false,
+			});
+			return {success: true, username: user.username};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Unknown error';
+			this.logger.error(`Cookie login failed: ${message}`);
+			return {success: false, error: message};
 		}
 	}
 
@@ -1383,4 +1436,34 @@ export class InstagramClient extends EventEmitter {
 			})(),
 		]);
 	}
+}
+
+export function validateBrowserCookies(
+	cookies: BrowserCookies,
+): BrowserCookies {
+	const normalized = {
+		sessionId: cookies.sessionId.trim(),
+		csrfToken: cookies.csrfToken.trim(),
+		dsUserId: cookies.dsUserId.trim(),
+	};
+
+	for (const [name, value] of Object.entries(normalized)) {
+		if (!value) {
+			throw new Error(`${name} cannot be empty`);
+		}
+
+		const containsInvalidCharacter = [...value].some(character => {
+			const codePoint = character.codePointAt(0) ?? 0;
+			return character === ';' || codePoint <= 31 || codePoint === 127;
+		});
+		if (containsInvalidCharacter) {
+			throw new Error(`${name} contains invalid cookie characters`);
+		}
+	}
+
+	if (!/^\d+$/.test(normalized.dsUserId)) {
+		throw new Error('dsUserId must contain only digits');
+	}
+
+	return normalized;
 }

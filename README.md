@@ -84,6 +84,7 @@ instagram-cli --help                           # view available commands
 
 # Authentication
 instagram-cli auth login --username            # login with username and password
+instagram-cli auth cookie-login                # experimental masked browser-cookie login
 instagram-cli auth logout                      # logout and removes session
 instagram-cli auth switch <username>           # switch to another saved account
 instagram-cli auth whoami                      # display current default user
@@ -101,6 +102,18 @@ instagram-cli config                           # lists all config
 instagram-cli config <key> <value>             # set config key to value
 instagram-cli config edit                      # open config file in editor
 ```
+
+### Experimental Browser-Cookie Login
+
+If password login is unavailable, `instagram-cli auth cookie-login` can try to
+import an existing Instagram web session. In your browser developer tools, open
+the cookies for `instagram.com` and locate `sessionid`, `csrftoken`, and
+`ds_user_id`. Paste each value only into the command's masked prompts.
+
+Browser cookies may not be accepted by Instagram's private mobile API. Treat
+`sessionid` like a password: never pass it as a command-line argument, commit it,
+or share it. A validated session is stored under `~/.instagram-cli/users/` with
+owner-only permissions.
 
 If you want to use Instagram CLI with AI agents, see [one-turn commands](#one-turn-commands-for-ai-agents) that are non-interactive and designed for agents.
 
