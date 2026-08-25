@@ -25,12 +25,10 @@ export default function CookieLogin() {
 		[client],
 	);
 
-	const handleSubmit = async (cookies: BrowserCookies) => {
+	const handleSubmit = async (username: string, cookies: BrowserCookies) => {
 		setIsLoading(true);
 		setResult(undefined);
-		const loginResult = await client.loginWithCookies(cookies, {
-			initializeRealtime: false,
-		});
+		const loginResult = await client.loginWithCookies(username, cookies);
 		setResult(loginResult);
 		setIsLoading(false);
 	};
@@ -47,8 +45,8 @@ export default function CookieLogin() {
 		<Box flexDirection="column">
 			{result?.error && <Alert variant="error">{result.error}</Alert>}
 			<CookieLoginForm
-				onSubmit={cookies => {
-					void handleSubmit(cookies);
+				onSubmit={(username, cookies) => {
+					void handleSubmit(username, cookies);
 				}}
 			/>
 		</Box>

@@ -15,6 +15,7 @@ import {
 	type AccountRepositoryLoginErrorResponseTwoFactorInfo,
 	type UserStoryFeedResponseItemsItem,
 	type ReelsTrayFeedResponseTrayItem,
+	type SavedFeedResponseMedia,
 	type DirectThreadRepositoryBroadcastResponseRootObject,
 	type DirectThreadRepositoryBroadcastResponsePayload,
 } from 'instagram-private-api';
@@ -58,6 +59,17 @@ export type BrowserCookies = {
 	sessionId: string;
 	csrfToken: string;
 	dsUserId: string;
+};
+
+type BrowserSession = {
+	username: string;
+	cookies: BrowserCookies;
+};
+
+type BrowserSavedFeedResponse = {
+	items?: Array<{media?: SavedFeedResponseMedia} | SavedFeedResponseMedia>;
+	status?: string;
+	message?: string;
 };
 
 export type SearchResult = {
@@ -165,6 +177,7 @@ export class InstagramClient extends EventEmitter {
 	private realtimeStatus: RealtimeStatus = 'disconnected';
 
 	private sessionManager: SessionManager | undefined = undefined;
+	private browserCookies: BrowserCookies | undefined;
 	private readonly configManager: ConfigManager;
 	private username: string | undefined = undefined;
 	private readonly userCache = new Map<string, string>();
@@ -277,45 +290,37 @@ export class InstagramClient extends EventEmitter {
 	}
 
 	public async loginWithCookies(
+		username: string,
 		cookies: BrowserCookies,
-		options?: {initializeRealtime: boolean},
 	): Promise<LoginResult> {
 		try {
+			const normalizedUsername = username.trim();
+			if (!/^[\w.]+$/.test(normalizedUsername)) {
+				throw new Error('Enter a valid Instagram username');
+			}
+
 			const normalizedCookies = validateBrowserCookies(cookies);
 			await this.configManager.initialize();
-			this.ig.state.generateDevice(normalizedCookies.dsUserId);
+			await this.getWebSavedPosts(normalizedCookies);
 
-			const host = this.ig.state.constants.HOST;
-			this.ig.state.cookieJar.setCookie(
-				`sessionid=${normalizedCookies.sessionId}; Path=/; Secure; HttpOnly`,
-				host,
-			);
-			this.ig.state.cookieJar.setCookie(
-				`csrftoken=${normalizedCookies.csrfToken}; Path=/; Secure`,
-				host,
-			);
-			this.ig.state.cookieJar.setCookie(
-				`ds_user_id=${normalizedCookies.dsUserId}; Path=/; Secure`,
-				host,
-			);
-
-			const user = await this.ig.account.currentUser();
-			if (String(user.pk) !== normalizedCookies.dsUserId) {
-				throw new Error(
-					'The ds_user_id does not match the authenticated account',
+			this.username = normalizedUsername;
+			this.browserCookies = normalizedCookies;
+			this.sessionManager = new SessionManager(normalizedUsername);
+			await this.sessionManager.saveSession({
+				browserSession: {
+					username: normalizedUsername,
+					cookies: normalizedCookies,
+				} satisfies BrowserSession,
+			});
+			await this.configManager.set('login.currentUsername', normalizedUsername);
+			if (!this.configManager.get('login.defaultUsername')) {
+				await this.configManager.set(
+					'login.defaultUsername',
+					normalizedUsername,
 				);
 			}
 
-			this.username = user.username;
-			this.sessionManager = new SessionManager(user.username);
-			this.ig.request.end$.subscribe(async () => {
-				await this.saveSessionState();
-			});
-
-			await this.postLoginSetup(user.username, {
-				initializeRealtime: options?.initializeRealtime ?? false,
-			});
-			return {success: true, username: user.username};
+			return {success: true, username: normalizedUsername};
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Unknown error';
 			this.logger.error(`Cookie login failed: ${message}`);
@@ -405,6 +410,13 @@ export class InstagramClient extends EventEmitter {
 
 			if (!this.username) {
 				return {success: false, error: 'No username set for session login'};
+			}
+
+			const browserSession = getBrowserSession(sessionData);
+			if (browserSession) {
+				this.username = browserSession.username;
+				this.browserCookies = browserSession.cookies;
+				return {success: true, username: browserSession.username};
 			}
 
 			this.ig.state.generateDevice(this.username);
@@ -535,15 +547,12 @@ export class InstagramClient extends EventEmitter {
 	}
 
 	public async getSavedPosts(): Promise<Post[]> {
+		if (this.browserCookies) {
+			return this.getWebSavedPosts(this.browserCookies);
+		}
+
 		const items = await this.ig.feed.saved().items();
-		return items.map(item => ({
-			...item,
-			carousel_media: item.carousel_media?.map(carouselItem => ({
-				...carouselItem,
-				user: item.user,
-				taken_at: item.taken_at,
-			})),
-		}));
+		return items.map(item => mapSavedPost(item));
 	}
 
 	public async getThreads(
@@ -1256,6 +1265,39 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
+	private async getWebSavedPosts(cookies: BrowserCookies): Promise<Post[]> {
+		const response = await fetch(
+			'https://www.instagram.com/api/v1/feed/saved/posts/',
+			{
+				headers: {
+					Cookie: `sessionid=${cookies.sessionId}; csrftoken=${cookies.csrfToken}; ds_user_id=${cookies.dsUserId}`,
+					Referer: 'https://www.instagram.com/',
+					'User-Agent':
+						'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36',
+					'X-CSRFToken': cookies.csrfToken,
+					'X-IG-App-ID': '936619743392459',
+					'X-Requested-With': 'XMLHttpRequest',
+				},
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(
+				`Instagram web saved feed returned HTTP ${response.status}`,
+			);
+		}
+
+		const body = (await response.json()) as BrowserSavedFeedResponse;
+		if (body.status === 'fail') {
+			throw new Error(body.message ?? 'Instagram rejected the browser session');
+		}
+
+		return (body.items ?? [])
+			.map(item => ('media' in item ? item.media : item))
+			.filter((item): item is SavedFeedResponseMedia => item !== undefined)
+			.map(item => mapSavedPost(item));
+	}
+
 	private getThreadTitle(thread: DirectInboxFeedResponseThreadsItem): string {
 		if (thread.thread_title) {
 			return thread.thread_title;
@@ -1466,4 +1508,33 @@ export function validateBrowserCookies(
 	}
 
 	return normalized;
+}
+
+function getBrowserSession(
+	state: Record<string, any>,
+): BrowserSession | undefined {
+	const browserSession = state['browserSession'] as BrowserSession | undefined;
+	if (
+		!browserSession ||
+		typeof browserSession.username !== 'string' ||
+		typeof browserSession.cookies !== 'object'
+	) {
+		return undefined;
+	}
+
+	return {
+		username: browserSession.username,
+		cookies: validateBrowserCookies(browserSession.cookies),
+	};
+}
+
+function mapSavedPost(item: SavedFeedResponseMedia): Post {
+	return {
+		...item,
+		carousel_media: item.carousel_media?.map(carouselItem => ({
+			...carouselItem,
+			user: item.user,
+			taken_at: item.taken_at,
+		})),
+	};
 }

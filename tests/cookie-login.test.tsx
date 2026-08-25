@@ -49,9 +49,11 @@ test('validateBrowserCookies rejects unsafe or malformed values', t => {
 
 test.serial('CookieLoginForm masks and submits all cookie values', async t => {
 	let submitted: BrowserCookies | undefined;
+	let submittedUsername: string | undefined;
 	const {lastFrame, stdin, unmount} = render(
 		<CookieLoginForm
-			onSubmit={cookies => {
+			onSubmit={(username, cookies) => {
+				submittedUsername = username;
 				submitted = cookies;
 			}}
 		/>,
@@ -60,6 +62,11 @@ test.serial('CookieLoginForm masks and submits all cookie values', async t => {
 	const sessionId = '123%3Afake-session';
 	const csrfToken = 'fake-csrf';
 	const dsUserId = '123';
+
+	stdin.write('test.user');
+	await delay(20);
+	stdin.write('\r');
+	await delay(20);
 
 	stdin.write(sessionId);
 	await delay(20);
@@ -80,5 +87,6 @@ test.serial('CookieLoginForm masks and submits all cookie values', async t => {
 	await delay(20);
 
 	t.deepEqual(submitted, {sessionId, csrfToken, dsUserId});
+	t.is(submittedUsername, 'test.user');
 	unmount();
 });

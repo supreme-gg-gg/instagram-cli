@@ -113,7 +113,8 @@ the cookies for `instagram.com` and locate `sessionid`, `csrftoken`, and
 Browser cookies may not be accepted by Instagram's private mobile API. Treat
 `sessionid` like a password: never pass it as a command-line argument, commit it,
 or share it. A validated session is stored under `~/.instagram-cli/users/` with
-owner-only permissions.
+owner-only permissions. Browser-cookie sessions currently support the `saved`
+command only.
 
 If you want to use Instagram CLI with AI agents, see [one-turn commands](#one-turn-commands-for-ai-agents) that are non-interactive and designed for agents.
 
