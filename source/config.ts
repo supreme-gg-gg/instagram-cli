@@ -22,6 +22,11 @@ type StoriesConfig = {
 	markAsSeen: boolean;
 };
 
+type NotificationsConfig = {
+	desktop: boolean;
+	sound: boolean;
+};
+
 type ImageConfig = {
 	protocol?: string;
 };
@@ -43,6 +48,7 @@ type Config = {
 	chat: ChatConfig;
 	privacy: PrivacyConfig;
 	stories: StoriesConfig;
+	notifications: NotificationsConfig;
 	image: ImageConfig;
 	advanced: AdvancedConfig;
 };
@@ -64,6 +70,10 @@ const DEFAULT_CONFIG: Config = {
 	},
 	stories: {
 		markAsSeen: false,
+	},
+	notifications: {
+		desktop: false,
+		sound: false,
 	},
 	advanced: {
 		debugMode: false,
@@ -175,6 +185,7 @@ export class ConfigManager {
 			chat: {...defaultConfig.chat, ...loadedConfig.chat},
 			privacy: {...defaultConfig.privacy, ...loadedConfig.privacy},
 			stories: {...defaultConfig.stories, ...loadedConfig.stories},
+			notifications: {...defaultConfig.notifications, ...loadedConfig.notifications},
 			image: {...defaultConfig.image, ...loadedConfig.image},
 			advanced: {...defaultConfig.advanced, ...loadedConfig.advanced},
 		};

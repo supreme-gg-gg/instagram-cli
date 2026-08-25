@@ -514,6 +514,7 @@ export class InstagramClient extends EventEmitter {
 				lastActivity: new Date(Number(thread.last_activity_at) / 1000),
 				// This field is not documented but appears to indicate unread status
 				unread: (thread as any).read_state === 1,
+				muted: Boolean(thread.muted),
 			}));
 
 			// Update threads cache
@@ -580,6 +581,7 @@ export class InstagramClient extends EventEmitter {
 					lastMessage: undefined,
 					lastActivity: new Date(),
 					unread: false,
+					muted: false,
 				};
 
 				return [{thread, score: 1}];
@@ -628,6 +630,7 @@ export class InstagramClient extends EventEmitter {
 					lastMessage: undefined,
 					lastActivity: new Date(),
 					unread: false,
+					muted: false,
 				};
 
 				let score = 0; // Default score as per request "assign score = 0"
@@ -688,6 +691,7 @@ export class InstagramClient extends EventEmitter {
 				),
 				lastActivity: new Date(Number(thread.last_activity_at) / 1000),
 				unread: (thread as any).read_state === 1,
+				muted: Boolean((thread as any).muted),
 			};
 		} catch (error) {
 			this.logger.error('Failed to ensure thread', error);
