@@ -91,6 +91,7 @@ instagram-cli auth whoami                      # display current default user
 # Launches TUI interfaces
 instagram-cli chat -u <username> -t <title>    # start chat interface
 instagram-cli feed                             # view posts from people you follow
+instagram-cli saved                           # view posts you have saved
 instagram-cli stories                          # view stories from people you follow (BETA)
 instagram-cli notify                           # view notifications (inbox, followers, mentions)
 
