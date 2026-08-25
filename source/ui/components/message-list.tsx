@@ -70,7 +70,6 @@ export default function MessageList({
 							<Image
 								src={imageUrl}
 								alt="Sent image"
-								objectFit="contain"
 								protocol={{full: imageProtocol}}
 								getVisibility={({
 									position,

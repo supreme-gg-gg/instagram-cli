@@ -58,12 +58,7 @@ export default function MediaPane({
 					width={dynamicImageSize.width}
 					height={dynamicImageSize.height}
 				>
-					<Image
-						src={imageUrl}
-						alt={altText}
-						objectFit="contain"
-						protocol={{full: protocol}}
-					/>
+					<Image src={imageUrl} alt={altText} protocol={{full: protocol}} />
 				</Box>
 			) : mediaType === 2 ? (
 				<Text color="yellow">▶ Video (no preview)</Text>

@@ -47,10 +47,10 @@ export class SeenStoriesManager {
 			const content = await fs.readFile(this.filePath, 'utf8');
 			try {
 				this.data = JSON.parse(content) as SeenStoriesData;
-			} catch (error) {
+			} catch {
 				const corruptPath = `${this.filePath}.corrupt-${Date.now()}`;
 				await fs.rename(this.filePath, corruptPath).catch(() => {});
-				logger.warn('Malformed seen stories JSON; reset and backed up:', error);
+				logger.warn('Malformed seen stories JSON; reset and backed up');
 				this.data = {lastUpdated: 0, users: {}};
 			}
 		} catch {
