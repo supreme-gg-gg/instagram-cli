@@ -290,7 +290,7 @@ test('TC-009: fewer than 3 users, loading does not crash', async t => {
 
 	await delay(100);
 
-	t.true(loadedIndices.length >= 0);
+	t.true(loadedIndices.includes(0));
 	t.truthy(lastFrame());
 	unmount();
 });
