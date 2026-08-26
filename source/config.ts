@@ -185,7 +185,10 @@ export class ConfigManager {
 			chat: {...defaultConfig.chat, ...loadedConfig.chat},
 			privacy: {...defaultConfig.privacy, ...loadedConfig.privacy},
 			stories: {...defaultConfig.stories, ...loadedConfig.stories},
-			notifications: {...defaultConfig.notifications, ...loadedConfig.notifications},
+			notifications: {
+				...defaultConfig.notifications,
+				...loadedConfig.notifications,
+			},
 			image: {...defaultConfig.image, ...loadedConfig.image},
 			advanced: {...defaultConfig.advanced, ...loadedConfig.advanced},
 		};
