@@ -972,9 +972,16 @@ export class InstagramClient extends EventEmitter {
 	/**
 	 * Fetches the reels tray, which contains a list of users who have active stories.
 	 *
-	 * @returns A promise that resolves to an array of `ListMediaItem<Story>` objects, each with user info but an empty `content` array.
+	 * @returns A promise that resolves to an object with:
+	 *   - items: Array of `ListMediaItem<Story>` objects with user info but empty `content` arrays
+	 *   - latestReelMediaByUser: Map of user PK to the `taken_at` of their newest active story
+	 *   - reelSeenByUser: Map of user PK to the `seen` timestamp from the API
 	 */
-	public async getReelsTray(): Promise<Array<ListMediaItem<Story>>> {
+	public async getReelsTray(): Promise<{
+		items: Array<ListMediaItem<Story>>;
+		latestReelMediaByUser: Map<string, number>;
+		reelSeenByUser: Map<string, number>;
+	}> {
 		try {
 			const ig = this.getInstagramClient();
 			// If first time, use cold_start (not documented, this is a guess...)
@@ -986,26 +993,42 @@ export class InstagramClient extends EventEmitter {
 
 			if (!Array.isArray(reelsTrayItems) || reelsTrayItems.length === 0) {
 				this.logger.warn('No users with active stories found in reels tray.');
-				return [];
+				return {
+					items: [],
+					latestReelMediaByUser: new Map(),
+					reelSeenByUser: new Map(),
+				};
 			}
 
 			this.logger.info(
 				`Found ${reelsTrayItems.length} users with active stories.`,
 			);
 
+			const latestReelMediaByUser = new Map<string, number>();
+			const reelSeenByUser = new Map<string, number>();
+
 			const storyReels: Array<ListMediaItem<Story>> = reelsTrayItems
 				.filter(
 					(item): item is ReelsTrayFeedResponseTrayItem =>
-						item.user !== undefined,
+						item.user !== undefined && item.reel_type === 'user_reel',
 				)
-				.map(item => ({
-					pk: String(item.user.pk),
-					label: item.user.username ?? `User_${item.user.pk}`,
-					fullName: item.user.full_name,
-					content: [], // Stories will be lazy-loaded
-				}));
+				.map(item => {
+					const pk = String(item.user.pk);
+					if (item.latest_reel_media) {
+						latestReelMediaByUser.set(pk, item.latest_reel_media);
+					}
 
-			return storyReels;
+					reelSeenByUser.set(pk, item.seen);
+
+					return {
+						pk,
+						label: item.user.username ?? `User_${item.user.pk}`,
+						fullName: item.user.full_name,
+						content: [], // Stories will be lazy-loaded
+					};
+				});
+
+			return {items: storyReels, latestReelMediaByUser, reelSeenByUser};
 		} catch (error) {
 			this.logger.error('Failed to fetch reels tray', error);
 			throw error;

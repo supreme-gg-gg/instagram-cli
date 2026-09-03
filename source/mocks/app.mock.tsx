@@ -20,9 +20,15 @@ import {mockClient, mockFeed} from './index.js';
  */
 function MockStoryWrapper() {
 	// Use the REAL useStories hook with the MOCK client hook
-	const {reels, isLoading, error, loadMore, client} = useStories(
-		useMockInstagramClient,
-	);
+	const {
+		reels,
+		seenUserPks,
+		latestReelMediaByUser,
+		isLoading,
+		error,
+		loadMore,
+		client,
+	} = useStories(useMockInstagramClient);
 
 	if (isLoading) {
 		return <Alert variant="info">Fetching Instagram stories...</Alert>;
@@ -36,7 +42,16 @@ function MockStoryWrapper() {
 		return <Alert variant="info">No stories to display.</Alert>;
 	}
 
-	return <StoryView reels={reels} loadMore={loadMore} client={client} />;
+	return (
+		<StoryView
+			reels={reels}
+			seenUserPks={seenUserPks}
+			latestReelMediaByUser={latestReelMediaByUser}
+			markAsSeen={false}
+			loadMore={loadMore}
+			client={client}
+		/>
+	);
 }
 
 export function AppMock({view}: {readonly view: 'chat' | 'feed' | 'story'}) {
