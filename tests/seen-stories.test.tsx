@@ -6,7 +6,10 @@ import os from 'node:os';
 import test, {type ExecutionContext} from 'ava';
 import React from 'react';
 import {render} from 'ink-testing-library';
-import {SeenStoriesManager} from '../source/utils/seen-stories.js';
+import {
+	SeenStoriesManager,
+	type SeenStoriesData,
+} from '../source/utils/seen-stories.js';
 import ListDetailDisplay from '../source/ui/components/list-detail-display.js';
 import type {ListMediaItem, Story} from '../source/types/instagram.js';
 
@@ -254,7 +257,7 @@ test('TC-007: empty media_ids list is not treated as seen', async t => {
 
 // ── Pre-fetch ────────────────────────────────────────────────────────────────
 
-test('TC-008: first 3 users trigger loadMore on mount', async t => {
+test('TC-008: first item triggers loadMore on mount', async t => {
 	const loadedIndices: number[] = [];
 	const items = buildReels(5, 0);
 
@@ -270,7 +273,8 @@ test('TC-008: first 3 users trigger loadMore on mount', async t => {
 
 	await delay(100);
 
-	t.true(loadedIndices.includes(0));
+	t.true(loadedIndices.includes(0), 'index 0 pre-fetched on mount');
+	t.false(loadedIndices.includes(3), 'index 3 not pre-fetched');
 	unmount();
 });
 
@@ -433,19 +437,26 @@ test('TC-013: right arrow advances carouselIndex', async t => {
 	);
 
 	await delay(50);
-	t.truthy(lastFrame()?.includes('User 1'), 'First user rendered');
+	t.truthy(lastFrame()?.includes('1/ 3'), 'Starts at first story');
 
 	stdin.write('\u001B[C');
 	await delay(50);
+	t.truthy(lastFrame()?.includes('2/ 3'), 'Advances to second story');
+
 	stdin.write('\u001B[C');
 	await delay(50);
+	t.truthy(lastFrame()?.includes('3/ 3'), 'Advances to third story');
 
 	unmount();
 });
 
 test('TC-014: left arrow at carouselIndex 0 stays at 0', async t => {
 	const items = buildReels(2, 1);
-	(items[0] as any).content = [makeStory('r0_s1'), makeStory('r0_s2')];
+	(items[0] as any).content = [
+		makeStory('r0_s1'),
+		makeStory('r0_s2'),
+		makeStory('r0_s3'),
+	];
 	(items[1] as any).content = [makeStory('r1_s1')];
 
 	const {lastFrame, stdin, unmount} = render(
@@ -457,17 +468,25 @@ test('TC-014: left arrow at carouselIndex 0 stays at 0', async t => {
 	);
 
 	await delay(50);
-	t.truthy(lastFrame()?.includes('User 1'));
+	t.truthy(lastFrame()?.includes('1/ 3'), 'Starts at first story');
 
 	stdin.write('\u001B[D');
 	await delay(50);
+	t.truthy(
+		lastFrame()?.includes('1/ 3'),
+		'Stays at first story after left at boundary',
+	);
 
 	unmount();
 });
 
 test('TC-015: right arrow at max carouselIndex stays at max', async t => {
 	const items = buildReels(2, 1);
-	(items[0] as any).content = [makeStory('r0_s1'), makeStory('r0_s2')];
+	(items[0] as any).content = [
+		makeStory('r0_s1'),
+		makeStory('r0_s2'),
+		makeStory('r0_s3'),
+	];
 	(items[1] as any).content = [makeStory('r1_s1')];
 
 	const {lastFrame, stdin, unmount} = render(
@@ -479,19 +498,29 @@ test('TC-015: right arrow at max carouselIndex stays at max', async t => {
 	);
 
 	await delay(50);
-	t.truthy(lastFrame()?.includes('User 1'));
+	stdin.write('\u001B[C');
+	await delay(50);
+	stdin.write('\u001B[C');
+	await delay(50);
+	t.truthy(lastFrame()?.includes('3/ 3'), 'Reaches last story');
 
 	stdin.write('\u001B[C');
 	await delay(50);
-	stdin.write('\u001B[C');
-	await delay(50);
+	t.truthy(
+		lastFrame()?.includes('3/ 3'),
+		'Stays at last story after right at boundary',
+	);
 
 	unmount();
 });
 
 test('TC-013/TC-014: h/l keys navigate carousel', async t => {
 	const items = buildReels(2, 1);
-	(items[0] as any).content = [makeStory('r0_s1'), makeStory('r0_s2')];
+	(items[0] as any).content = [
+		makeStory('r0_s1'),
+		makeStory('r0_s2'),
+		makeStory('r0_s3'),
+	];
 	(items[1] as any).content = [makeStory('r1_s1')];
 
 	const {lastFrame, stdin, unmount} = render(
@@ -503,12 +532,15 @@ test('TC-013/TC-014: h/l keys navigate carousel', async t => {
 	);
 
 	await delay(50);
-	t.truthy(lastFrame()?.includes('User 1'));
+	t.truthy(lastFrame()?.includes('1/ 3'), 'Starts at first story');
 
 	stdin.write('l');
 	await delay(50);
+	t.truthy(lastFrame()?.includes('2/ 3'), 'l advances carousel');
+
 	stdin.write('h');
 	await delay(50);
+	t.truthy(lastFrame()?.includes('1/ 3'), 'h goes back carousel');
 
 	unmount();
 });
@@ -587,4 +619,156 @@ test('TC-008/TC-009(integration): full story view renders without crashing', asy
 	t.truthy(hasContent, 'Should show story content');
 
 	unmount();
+});
+
+// ── Auto-mark seen ──────────────────────────────────────────────────────────
+
+test('TC-017: registerSeenTimestamp propagates max timestamp', async t => {
+	const {manager} = await createManager();
+
+	// Simulate viewing story at taken_at=200
+	manager.registerSeenTimestamp('u1', 200);
+	t.is(manager.getSeenTimestamp('u1'), 200);
+
+	// Simulate viewing story at taken_at=100 (older) -> no update
+	manager.registerSeenTimestamp('u1', 100);
+	t.is(manager.getSeenTimestamp('u1'), 200);
+
+	// Simulate viewing story at taken_at=500 (newer) -> updates
+	manager.registerSeenTimestamp('u1', 500);
+	t.is(manager.getSeenTimestamp('u1'), 500);
+});
+
+// ── Debounce ────────────────────────────────────────────────────────────────
+
+test('TC-018: debounce writes to disk once after 500ms settle', async t => {
+	const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'seen-stories-test-'));
+	const storageDir = path.join(dir, 'storage');
+	await fs.mkdir(storageDir, {recursive: true});
+
+	const manager = new SeenStoriesManager('debounce-user', dir);
+	await manager.load();
+
+	// Rapid-fire updates — the debounce should collapse these into one write
+	for (let i = 1; i <= 5; i++) {
+		manager.registerSeenTimestamp('u1', i * 100);
+	}
+
+	const filePath = path.join(storageDir, 'seen-stories_debounce-user.json');
+
+	// File should NOT exist yet (debounce hasn't fired)
+	await t.throwsAsync(async () => fs.access(filePath), {instanceOf: Error});
+
+	// After 600ms the debounced save has fired
+	await delay(600);
+	const content = JSON.parse(
+		await fs.readFile(filePath, 'utf8'),
+	) as SeenStoriesData;
+	t.is(content.users.u1, 500, 'File contains only the final value');
+});
+
+// ── All stories become seen → replay ────────────────────────────────────────
+
+test('TC-019: viewing last unseen story marks reel seen, carousel resets to 0', async t => {
+	const {manager} = await createManager();
+
+	// Reel with stories at 100, 200, 300 — first story already seen
+	manager.registerSeenTimestamp('u1', 100);
+	const stories = [
+		makeStory('a', 1, 100),
+		makeStory('b', 1, 200),
+		makeStory('c', 1, 300),
+	];
+
+	t.false(manager.areAllStoriesSeen('u1', 300));
+	t.is(manager.getFirstUnseenIndex('u1', stories), 1);
+
+	// View the last unseen story (taken_at=300)
+	manager.registerSeenTimestamp('u1', 300);
+
+	t.true(manager.areAllStoriesSeen('u1', 300));
+	t.is(manager.getFirstUnseenIndex('u1', stories), 0, 'Carousel resets to 0');
+});
+
+// ── Cleanup inactive users ──────────────────────────────────────────────────
+
+test('TC-020: syncUsers prunes users not in active tray', async t => {
+	const {manager} = await createManager();
+
+	manager.registerSeenTimestamp('u1', 100);
+	manager.registerSeenTimestamp('u2', 200);
+	manager.registerSeenTimestamp('u3', 300);
+
+	// Tray now only has u1 and u3 — u2 left
+	manager.syncUsers(['u1', 'u3']);
+
+	t.is(manager.getSeenTimestamp('u1'), 100);
+	t.is(manager.getSeenTimestamp('u2'), 0, 'u2 pruned');
+	t.is(manager.getSeenTimestamp('u3'), 300);
+});
+
+test('TC-020: syncUsers with empty array clears all users', async t => {
+	const {manager} = await createManager();
+
+	manager.registerSeenTimestamp('u1', 100);
+	manager.registerSeenTimestamp('u2', 200);
+
+	manager.syncUsers([]);
+
+	t.is(manager.getSeenTimestamp('u1'), 0);
+	t.is(manager.getSeenTimestamp('u2'), 0);
+});
+
+// ── Flush on exit ───────────────────────────────────────────────────────────
+
+test('TC-021: flush writes pending debounced data to disk immediately', async t => {
+	const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'seen-stories-test-'));
+	const storageDir = path.join(dir, 'storage');
+	await fs.mkdir(storageDir, {recursive: true});
+
+	// Seed the file with initial data
+	const filePath = path.join(storageDir, 'seen-stories_flush-user.json');
+	await fs.writeFile(
+		filePath,
+		JSON.stringify({lastUpdated: 0, users: {u1: 100}}),
+	);
+
+	const manager = new SeenStoriesManager('flush-user', dir);
+	await manager.load();
+
+	// Register update — triggers debounced save, file still has old data
+	manager.registerSeenTimestamp('u1', 999);
+
+	const beforeFlush = JSON.parse(
+		await fs.readFile(filePath, 'utf8'),
+	) as SeenStoriesData;
+	t.is(beforeFlush.users.u1, 100, 'File still has old data before flush');
+
+	// Flush forces immediate write
+	await manager.flush();
+
+	const afterFlush = JSON.parse(
+		await fs.readFile(filePath, 'utf8'),
+	) as SeenStoriesData;
+	t.is(afterFlush.users.u1, 999, 'File updated after flush');
+});
+
+// ── Single story reel ───────────────────────────────────────────────────────
+
+test('TC-022: single story reel, first view marks seen and carousel stays at 0', async t => {
+	const {manager} = await createManager();
+
+	const stories = [makeStory('only', 1, 1000)];
+	const latestReelMedia = 1000;
+
+	// Initially unseen
+	t.false(manager.areAllStoriesSeen('u1', latestReelMedia));
+	t.is(manager.getFirstUnseenIndex('u1', stories), 0);
+
+	// View the single story
+	manager.registerSeenTimestamp('u1', 1000);
+
+	// Now fully seen, carousel stays at 0 (replay)
+	t.true(manager.areAllStoriesSeen('u1', latestReelMedia));
+	t.is(manager.getFirstUnseenIndex('u1', stories), 0);
 });
