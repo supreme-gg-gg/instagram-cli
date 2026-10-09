@@ -3,7 +3,6 @@ import {Box, Text} from 'ink';
 import {Alert, TextInput} from '@inkjs/ui';
 import zod from 'zod';
 import {option} from 'pastel';
-import {type AccountRepositoryLoginErrorResponseTwoFactorInfo} from 'instagram-private-api';
 import LoginForm from '../../ui/components/login-form.js';
 import {InstagramClient} from '../../client.js';
 import {ConfigManager} from '../../config.js';
@@ -61,9 +60,6 @@ export default function Login({options}: Properties) {
 	const [mode, setMode] = useState<
 		'session' | 'form' | 'challenge' | '2fa' | 'success' | 'error'
 	>('session');
-	const [twoFactorInfo, setTwoFactorInfo] = useState<
-		AccountRepositoryLoginErrorResponseTwoFactorInfo | undefined
-	>(undefined);
 
 	// Effect to handle client shutdown when the component unmounts
 	useEffect(() => {
@@ -79,6 +75,8 @@ export default function Login({options}: Properties) {
 
 		logger.info(`Login attempt for user: ${username}`);
 		setMessage(`Logging in as @${username}...`);
+		// Leave the form so a repeated Enter cannot start a concurrent login
+		setMode('session');
 		try {
 			const result = await client.login(username, password, {
 				initializeRealtime: false,
@@ -86,15 +84,9 @@ export default function Login({options}: Properties) {
 			if (result.success) {
 				setMessage(`Logged in as @${result.username}`);
 				setMode('success');
-			} else if (result.twoFactorInfo) {
-				logger.info('2FA required for login');
-				setTwoFactorInfo(result.twoFactorInfo);
-				const {totp_two_factor_on} = result.twoFactorInfo;
-				const verificationMethod = totp_two_factor_on ? 'TOTP' : 'SMS';
-				const smsHint = totp_two_factor_on
-					? ''
-					: ' If you do not receive a code, go to Instagram Settings → Accounts Center → Password and security → Two-factor authentication → Additional methods, and turn off "Login requests". This can prevent the SMS code from being sent.';
-				setMessage(`Enter code received via ${verificationMethod}.${smsHint}`);
+			} else if (result.verificationMessage) {
+				logger.info('Verification code required for login');
+				setMessage(result.verificationMessage);
 				setMode('2fa');
 			} else if (result.checkpointError) {
 				logger.warn('Checkpoint challenge required');
@@ -102,11 +94,6 @@ export default function Login({options}: Properties) {
 				await client.startChallenge();
 				setMessage('A code has been sent to you. Please enter it below.');
 				setMode('challenge');
-			} else if (result.badPassword) {
-				setMessage(
-					"You have entered an incorrect username or password. If you're sure your credentials are correct, this might be caused by Instagram's IP blocking system, try again in a few hours.",
-				);
-				setMode('error');
 			} else {
 				setMessage(`Login failed: ${result.error}`);
 				setMode('error');
@@ -125,12 +112,9 @@ export default function Login({options}: Properties) {
 		if (!client) return;
 
 		setMessage('Verifying 2FA code...');
+		setMode('session');
 		try {
-			const result = await client.twoFactorLogin({
-				verificationCode: code,
-				twoFactorIdentifier: twoFactorInfo!.two_factor_identifier,
-				totp_two_factor_on: twoFactorInfo!.totp_two_factor_on,
-			});
+			const result = await client.submitLoginCode(code);
 			if (result.success) {
 				setMessage(`Logged in as @${result.username}`);
 				setMode('success');
@@ -150,6 +134,7 @@ export default function Login({options}: Properties) {
 		if (!client) return;
 
 		setMessage('Verifying code...');
+		setMode('session');
 		try {
 			const result = await client.sendChallengeCode(code);
 			if (result.success) {
@@ -189,14 +174,12 @@ export default function Login({options}: Properties) {
 					return;
 				}
 
-				if (result.twoFactorInfo) {
+				if (result.verificationMessage) {
 					if (options.totp) {
 						setMessage('Verifying TOTP code...');
-						const tfaResult = await nonInteractiveClient.twoFactorLogin({
-							verificationCode: options.totp,
-							twoFactorIdentifier: result.twoFactorInfo.two_factor_identifier,
-							totp_two_factor_on: result.twoFactorInfo.totp_two_factor_on,
-						});
+						const tfaResult = await nonInteractiveClient.submitLoginCode(
+							options.totp,
+						);
 
 						if (tfaResult.success) {
 							setMessage(`Logged in as @${tfaResult.username}`);
@@ -212,12 +195,6 @@ export default function Login({options}: Properties) {
 					setMessage(
 						'2FA required but no --totp code provided. Pass --totp <code> for non-interactive 2FA.',
 					);
-					setMode('error');
-					return;
-				}
-
-				if (result.badPassword) {
-					setMessage('Incorrect username or password.');
 					setMode('error');
 					return;
 				}

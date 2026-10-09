@@ -538,11 +538,7 @@ class MockClient extends EventEmitter {
 		return {success: true, username};
 	}
 
-	async twoFactorLogin(_options: {
-		verificationCode: string;
-		twoFactorIdentifier: string;
-		totp_two_factor_on: boolean;
-	}): Promise<LoginResult> {
+	async submitLoginCode(_code: string): Promise<LoginResult> {
 		await new Promise(resolve => {
 			setTimeout(resolve, 300);
 		});
