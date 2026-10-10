@@ -37,14 +37,18 @@ export function resolveUserPath(
 
 /**
  * Converts a message that consists solely of a raw drag-and-dropped absolute
- * file path (spaces escaped as `\ ` by the terminal) into the existing `#path`
- * syntax handled by preprocessMessage. Anything else, including paths inside
- * other text and paths that are not existing files, is returned unchanged.
+ * file path into the existing `#path` syntax handled by preprocessMessage.
+ * Terminals insert the path either with spaces escaped as `\ ` (Ghostty,
+ * Terminal.app) or wrapped in quotes (VS Code). Anything else, including paths
+ * inside other text and paths that are not existing files, is returned
+ * unchanged.
  */
 export async function normalizeDroppedPath(text: string): Promise<string> {
-	if (!/^\/(?:\\ |\S)*$/.test(text)) return text;
+	const quotedPath = (/^'(\/[^']*)'$/.exec(text) ??
+		/^"(\/[^"]*)"$/.exec(text))?.[1];
+	if (quotedPath === undefined && !/^\/(?:\\ |\S)*$/.test(text)) return text;
 
-	const filePath = text.replaceAll(String.raw`\ `, ' ');
+	const filePath = quotedPath ?? text.replaceAll(String.raw`\ `, ' ');
 	try {
 		const stats = await fs.stat(filePath);
 		if (!stats.isFile()) return text;

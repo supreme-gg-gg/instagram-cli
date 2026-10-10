@@ -103,11 +103,66 @@ test('existing #path syntax is left unchanged', async t => {
 	t.is(await normalizeDroppedPath(text), text);
 });
 
+// Mirrors how VS Code's terminal inserts a dropped file.
+const quoted = (name: string, quote = "'") =>
+	`${quote}${directory}/${name}${quote}`;
+
+test('single-quoted dropped path becomes #"path"', async t => {
+	t.is(
+		await normalizeDroppedPath(quoted('drop test.txt')),
+		`#"${directory}/drop test.txt"`,
+	);
+});
+
+test('double-quoted dropped path becomes #"path"', async t => {
+	t.is(
+		await normalizeDroppedPath(quoted('drop test.txt', '"')),
+		`#"${directory}/drop test.txt"`,
+	);
+});
+
+test("single-quoted dropped path with a double quote uses #'path'", async t => {
+	t.is(
+		await normalizeDroppedPath(quoted('say "hi".txt')),
+		`#'${directory}/say "hi".txt'`,
+	);
+});
+
+test('mismatched quotes are left unchanged', async t => {
+	const text = `'${directory}/notes.txt"`;
+	t.is(await normalizeDroppedPath(text), text);
+});
+
+test('quoted text that is not just a path is left unchanged', async t => {
+	const text = `'check ${directory}/notes.txt'`;
+	t.is(await normalizeDroppedPath(text), text);
+});
+
+test('quoted non-existent path is left unchanged', async t => {
+	const text = quoted('missing.txt');
+	t.is(await normalizeDroppedPath(text), text);
+});
+
+test('backslashes inside quotes are taken literally', async t => {
+	const text = `'${dropped('drop test.txt')}'`;
+	t.is(await normalizeDroppedPath(text), text);
+});
+
 // ── preprocessMessage ────────────────────────────────────────────────────────
 
 test('dropped image path is uploaded and removed from the message', async t => {
 	const {client, photos} = makeClient();
 	const result = await preprocessMessage(dropped('photo one.png'), {
+		client,
+		threadId: 'thread_1',
+	});
+	t.deepEqual(photos, [`${directory}/photo one.png`]);
+	t.is(result, '');
+});
+
+test('single-quoted dropped image is uploaded and removed from the message', async t => {
+	const {client, photos} = makeClient();
+	const result = await preprocessMessage(quoted('photo one.png'), {
 		client,
 		threadId: 'thread_1',
 	});
