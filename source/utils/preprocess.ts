@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileTypeFromFile} from 'file-type';
 import type {InstagramClient} from '../client.js';
-import {resolveUserPath} from './path-utils.js';
+import {normalizeDroppedPath, resolveUserPath} from './path-utils.js';
 import {getEmojiByName} from './emoji.js';
 import {createContextualLogger} from './logger.js';
 
@@ -23,7 +23,8 @@ export async function preprocessMessage(
 	text: string,
 	context: PreprocessContext,
 ): Promise<string> {
-	let processedText = text;
+	// A message that is only a drag-and-dropped file path becomes #"path".
+	let processedText = await normalizeDroppedPath(text);
 	const textContents: string[] = [];
 
 	// 1. Emoji Handling: Replace :emoji_name: with actual emojis
