@@ -309,6 +309,88 @@ function bloksPayload(result: JsonObject): JsonObject {
 	return (layout?.['bloks_payload'] as JsonObject | undefined) ?? {};
 }
 
+/** Skip placeholder nodes until Instagram supplies a non-empty login context. */
+export function extractLoginContext(result: JsonObject): string {
+	const {data} = bloksPayload(result);
+	if (!Array.isArray(data)) return '';
+	for (const node of data as JsonObject[]) {
+		const payload = node?.['data'] as JsonObject | undefined;
+		if (payload?.['key'] !== 'CAA_ACCOUNT_ACCESS_CONTEXT:aac') continue;
+		const {initial} = payload;
+		if (typeof initial === 'string' && initial.trim()) return initial;
+
+		const lispy = payload['initial_lispy'];
+		if (typeof lispy !== 'string') continue;
+		const quote = lispy.indexOf('"');
+		const value =
+			quote === -1 ? '' : (readJsonString(lispy, quote)?.value ?? '');
+		if (value.trim()) return value;
+	}
+
+	return '';
+}
+
+/** Only emit fixed field names, types, counts and known markers, never response values. */
+export function summarizeCaaResponse(result: unknown) {
+	const object = (value: unknown): JsonObject =>
+		value !== null && typeof value === 'object' && !Array.isArray(value)
+			? (value as JsonObject)
+			: {};
+	const describe = (value: unknown) => ({
+		type:
+			value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value,
+		...(typeof value === 'string'
+			? {length: value.length, nonEmpty: Boolean(value.trim())}
+			: {}),
+	});
+	const root = object(result);
+	const layout = object(root['layout']);
+	const payload = object(layout['bloks_payload']);
+	const {data} = payload;
+	const nodes = Array.isArray(data) ? data : [];
+	const contextNodes = nodes
+		.map(node => object(object(node)['data']))
+		.filter(node => node['key'] === 'CAA_ACCOUNT_ACCESS_CONTEXT:aac');
+	const strings = allStrings(result);
+	const markers = [
+		'CAA_ACCOUNT_ACCESS_CONTEXT:aac',
+		'CAA_LOGIN_FALLBACK:',
+		apEntrypoint,
+		apCodeEntry,
+		apCodeEntryAsync,
+		twoStepEntrypoint,
+		'challenge_required',
+		'needs_upgrade',
+		'login_required',
+	].filter(marker => strings.some(text => text.includes(marker)));
+
+	return {
+		response: describe(result),
+		layout: describe(root['layout']),
+		bloksPayload: describe(layout['bloks_payload']),
+		data: describe(data),
+		dataNodeCount: nodes.length,
+		action: describe(payload['action']),
+		status:
+			typeof root['status'] === 'string' &&
+			['ok', 'fail'].includes(root['status'])
+				? root['status']
+				: describe(root['status']),
+		errorFields: Object.fromEntries(
+			['message', 'error_type', 'error', 'errors', 'challenge'].map(key => [
+				key,
+				describe(root[key]),
+			]),
+		),
+		contextNodeCount: contextNodes.length,
+		contextNodes: contextNodes.slice(0, 10).map(node => ({
+			initial: describe(node['initial']),
+			initialLispy: describe(node['initial_lispy']),
+		})),
+		markers,
+	};
+}
+
 type EmbeddedLogin = {
 	loginResponse: JsonObject;
 	headers: Record<string, string>;
@@ -390,6 +472,9 @@ export class CaaLogin {
 		password: string,
 	): Promise<CaaLoginOutcome> {
 		this.pending = undefined;
+		this.logger.debug(
+			`Starting CAA login (app=${this.ig.state.appVersion}, bloks=${this.ig.state.bloksVersionId})`,
+		);
 		await this.prepare(username);
 		if (!this.aac) {
 			return {
@@ -415,6 +500,7 @@ export class CaaLogin {
 		}
 
 		if (this.applyLoginResponse(result)) {
+			this.logger.debug('CAA credential login returned a session');
 			return this.successOutcome(result);
 		}
 
@@ -434,9 +520,11 @@ export class CaaLogin {
 
 		if (this.applyLoginResponse(result)) {
 			this.pending = undefined;
+			this.logger.debug('CAA verification returned a session');
 			return this.successOutcome(result);
 		}
 
+		this.warnResponse('verification returned no session', result);
 		return {
 			status: 'error',
 			error: 'Instagram did not accept the verification code.',
@@ -482,13 +570,29 @@ export class CaaLogin {
 					);
 					if (submitContext) {
 						this.pending = {kind: 'profile_code', submitContext};
+						this.logger.debug('CAA profile-code verification required');
 						return {
 							status: 'code_required',
 							message:
 								'Instagram sent a security code to your email or phone. Enter it below.',
 						};
 					}
+
+					this.warnResponse(
+						'profile-code screen missing submit context',
+						codeEntry,
+					);
+				} else {
+					this.warnResponse(
+						'profile-code entrypoint missing code context',
+						entry,
+					);
 				}
+			} else {
+				this.warnResponse(
+					'profile-code redirect missing entry context',
+					result,
+				);
 			}
 		}
 
@@ -498,6 +602,9 @@ export class CaaLogin {
 			const smsOn = this.flag(result, 'sms_two_factor_on');
 			const totpOn = this.flag(result, 'totp_two_factor_on');
 			const challenge = smsOn && !totpOn ? 'sms' : 'totp';
+			this.logger.debug(
+				`CAA two-step verification required (method=${challenge})`,
+			);
 			await this.openTwoStepScreens(twoStepContext, challenge);
 			this.pending = {kind: 'two_step', context: twoStepContext, challenge};
 			return {
@@ -512,8 +619,9 @@ export class CaaLogin {
 		const markers = strings.filter(
 			text => text.startsWith('CAA_') && text.includes(':'),
 		);
-		this.logger.warn(
-			`CAA login returned no session. Markers: ${markers.join(', ') || 'none'}`,
+		this.warnResponse(
+			'login returned no session or supported verification',
+			result,
 		);
 		return {
 			status: 'error',
@@ -596,6 +704,12 @@ export class CaaLogin {
 		return this.ig.state.extractCookie('mid')?.value ?? '';
 	}
 
+	private warnResponse(stage: string, result: unknown): void {
+		this.logger.warn(
+			`CAA ${stage}; response summary: ${JSON.stringify(summarizeCaaResponse(result))}`,
+		);
+	}
+
 	private async post(
 		url: string,
 		form: Record<string, string>,
@@ -606,22 +720,42 @@ export class CaaLogin {
 		const cookie = this.ig.state.cookieJar.getCookieString(cookieUrl);
 		if (cookie) headers['Cookie'] = cookie;
 
-		const response = await this.transport.post(url, form, headers);
-		this.logger.debug(`POST ${url} -> ${response.statusCode}`);
+		const startedAt = Date.now();
+		const response = await this.transport
+			.post(url, form, headers)
+			.catch((error: unknown) => {
+				this.logger.warn(
+					`POST ${url} transport failed after ${Date.now() - startedAt}ms`,
+				);
+				throw error;
+			});
+		this.logger.debug(
+			`POST ${url} -> ${response.statusCode} (${Date.now() - startedAt}ms, ${Buffer.byteLength(response.body)} bytes)`,
+		);
 		this.updateState(response.headers, cookieUrl);
 		// Let the client persist session state, as instagram-private-api requests do
 		this.ig.request.end$.next();
 
-		// GraphQL and some Bloks responses carry no `status: ok`, so accept any HTTP 200
-		if (response.statusCode !== 200) {
+		let result: unknown;
+		try {
+			result = JSON.parse(response.body);
+		} catch {
+			this.logger.warn(
+				`POST ${url} returned invalid JSON (HTTP ${response.statusCode})`,
+			);
 			throw new CaaHttpError('POST', url, response);
 		}
 
-		try {
-			return JSON.parse(response.body) as JsonObject;
-		} catch {
+		// GraphQL and some Bloks responses carry no `status: ok`, so accept any HTTP 200
+		if (response.statusCode !== 200) {
+			this.warnResponse(
+				`POST ${url} rejected (HTTP ${response.statusCode})`,
+				result,
+			);
 			throw new CaaHttpError('POST', url, response);
 		}
+
+		return result as JsonObject;
 	}
 
 	/** Header set of the current Android app, as sent by instagrapi. */
@@ -889,25 +1023,11 @@ export class CaaLogin {
 			},
 		);
 
-		const {data} = bloksPayload(result);
-		this.aac = '';
-		if (!Array.isArray(data)) return;
-		for (const node of data as JsonObject[]) {
-			const payload = node?.['data'] as JsonObject | undefined;
-			if (payload?.['key'] !== 'CAA_ACCOUNT_ACCESS_CONTEXT:aac') continue;
-			const {initial} = payload;
-			if (typeof initial === 'string' && initial.trim()) {
-				this.aac = initial;
-				return;
-			}
-
-			const lispy = payload['initial_lispy'];
-			if (typeof lispy === 'string') {
-				const quote = lispy.indexOf('"');
-				this.aac =
-					quote === -1 ? '' : (readJsonString(lispy, quote)?.value ?? '');
-				return;
-			}
+		this.aac = extractLoginContext(result);
+		if (this.aac) {
+			this.logger.debug('CAA preflight extracted a login context');
+		} else {
+			this.warnResponse('preflight missing aac', result);
 		}
 	}
 
@@ -923,6 +1043,9 @@ export class CaaLogin {
 		);
 		const nonce = result['challenge_nonce'];
 		this.attestationNonce = typeof nonce === 'string' ? nonce : '';
+		if (!this.attestationNonce) {
+			this.warnResponse('keystore response missing attestation nonce', result);
+		}
 	}
 
 	private networkInfo(): JsonObject {

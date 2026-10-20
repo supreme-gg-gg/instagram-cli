@@ -114,6 +114,22 @@ Added debug logs for non-standard login scenarios:
 
 Logs are written to `~/.instagram-cli/logs/session-{timestamp}.log`
 
+CAA login logs include the app and Bloks versions, request status codes, duration,
+response size, and the selected verification flow. Unexpected responses produce
+a warning with field types, counts, and known flow markers; response bodies,
+context values, cookies, passwords, and verification codes are not included in
+these summaries. Detailed summaries are only emitted on failures.
+
+For a missing `aac`, check the context-node count and value types in the warning.
+Instagram can return placeholder nodes before a populated context; the parser
+skips empty values and continues searching. HTTP 200 alone does not confirm that
+the expected context or session was returned.
+
+After checking out changes to `patches/`, run `npm ci` to reapply dependency
+patches, then `npm run build`. A build alone does not update the installed app
+profile. Compare the app and Bloks versions in the startup log with the patch
+when troubleshooting null-payload errors.
+
 ## Configuration
 
 Login-related config keys:
