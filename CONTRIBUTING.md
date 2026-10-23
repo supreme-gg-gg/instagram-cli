@@ -2,15 +2,6 @@
 
 Thank you for contributing to instagram-cli!
 
-## Project Structure
-
-This repository contains **two separate clients** for Instagram:
-
-- **TypeScript Client** (`./source` folder in root)
-- **Python Client** (`instagram-py/` folder)
-
-The team is primarily focused on actively developing the TypeScript client. However, both clients are maintained actively. Choose the client to work on based on the tag on the issue (typescript / python). If the issue is untagged, we always prefer developing the TypeScript client.
-
 ## How to Contribute
 
 > If you are experienced in contributing to open-source projects, jump ahead to [DEVELOPMENT.md](./DEVELOPMENT.md) for setup and code contribution instructions.
@@ -76,10 +67,7 @@ Once you're done with your changes:
 
 You don't need to worry about changing version numbers; maintainers will handle that during the release process.
 
-Releases are created manually through GitHub's release page. We use different tag conventions for each client:
-
-- **Python Client**: Use `v1.4.2`, `v1.5.0`, etc.
-- **TypeScript Client**: Use `ts-v1.0.0`, `ts-v1.1.0-beta`, etc.
+Releases are created manually through GitHub's release page. TypeScript client is tagged with `ts-vX.Y.Z`.
 
 **Semantic Versioning:**
 

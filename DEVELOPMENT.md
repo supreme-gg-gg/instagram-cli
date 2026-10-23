@@ -1,10 +1,6 @@
 # Development
 
-FAQ: Why are there two different codebases for TypeScript and Python? This has to do with our history! At first, the project was built in pure python with curses, a python binding for ncurses in C commonly used for UNIX terminal UI apps. However, as the project grew, we found that developing with Typescript gave us several advantages such as React-based UI with Ink (better DX and modern outlook), and better API library that supports MQTT protocol.
-
-## TypeScript Development
-
-### Getting Started
+## Getting Started
 
 If you do not have Node.js installed, you can download and install it from the [official website](https://nodejs.org/). We recommend using Node.js version 20 or above. We recommend using `nvm` to manage your Node.js versions, see [nvm-sh/nvm](https://github.com/nvm-sh/nvm).
 
@@ -23,7 +19,7 @@ npm run format # only runs prettier
 npm run lint-check # you should ALWAYS run this before committing if it's not automatic
 ```
 
-### Development
+## Development
 
 To run the CLI in development mode:
 
@@ -45,7 +41,7 @@ npm run start -- auth login # = instagram-cli auth login
 npm run start -- chat --username some_username # = instagram-cli chat --username some_username
 ```
 
-### Error Logs
+## Error Logs
 
 If Ink/React errors go to stderr rather than our logger, it will not be visible. Instead, run the CLI with this command and stream the logs to a file:
 
@@ -53,7 +49,7 @@ If Ink/React errors go to stderr rather than our logger, it will not be visible.
 npm run start chat 2> error.log
 ```
 
-### Using mocks
+## Using mocks
 
 To avoid exhausting Instagram's API calls during development, you can use the mock system to test your UI changes. This would not work if you are changing API-related code, but for pure UI changes this is very useful.
 
@@ -63,7 +59,7 @@ npm run start:mock -- --chat | --feed | --story
 
 Similarly, you should update the mock data when making changes to relevant client endpoints.
 
-### Local Build
+## Local Build
 
 To build for production locally, this will exclude tests and mocks:
 
@@ -73,11 +69,11 @@ npm run build
 
 We use `esbuild` for both production and development builds. You can find the configuration in `esbuild.config.mjs`.
 
-### Debugging APIs
+## Debugging APIs
 
 Refer to [this document](docs/api-debugging.md) for several utilities that can help with your development.
 
-### Install
+## Install
 
 This will link the `instagram-cli` executable to your global `node_modules`, so you can run `instagram-cli` from anywhere. If you have it installed from NPM, this will override it.
 
@@ -85,13 +81,13 @@ This will link the `instagram-cli` executable to your global `node_modules`, so 
 npm link
 ```
 
-### Testing
+## Testing
 
 Unit tests are not required. But if you're adding new commands that render terminal UI (views), please add basic tests to ensure they run without errors in `tests`. These are run using `ava` during CI.
 
-### Notes
+## Notes
 
-#### Pastel
+### Pastel
 
 - We use [pastel](https://github.com/vadimdemedes/pastel) for building CLI commands
 - `pastel` supports `tsx` for each commands, so you can just render UI directly in there
@@ -106,7 +102,7 @@ Unit tests are not required. But if you're adding new commands that render termi
 
 We use `ink-picture` and `wax` for image rendering and routing. They are developed in-house but are open-source as well. For those issues, you can open issues in their respective repositories.
 
-### Structure
+## Structure
 
 ```plaintext
 source/
@@ -134,47 +130,4 @@ source/
 └── types/              # All TypeScript type definitions
     ├── instagram.ts
     └── ui.ts
-```
-
-## Python Development
-
-**You need to cd into the `instagram-py` directory for Python client development:**
-
-```bash
-cd instagram-py
-```
-
-We have migrated to `uv` for managing Python versions and virtual environments. Refer to [astral-sh/uv](https://github.com/astral-sh/uv) for installation instructions. The simplest way is to install using `pip install uv` but you may prefer other installation methods.
-
-Create a virtual environment to isolate your dependencies:
-
-```bash
-uv venv .venv
-uv sync
-source .venv/bin/activate
-```
-
-This installs all deps (including dev, you can use `--no-dev` flag to skip those) and builds the package in editable mode.
-
-You can then run the CLI using:
-
-```bash
-uv run instagram <command>
-```
-
-### Manual Code Quality Checks
-
-We have removed automatic pre-commit hooks for Python code. Please run the following commands manually to ensure code quality before committing your changes.
-
-```bash
-uv ruff check .
-uv ruff format .
-```
-
-### Tests
-
-Basics tests are in `instagram-py/tests`. Run them using:
-
-```bash
-uv run pytest tests/
 ```
