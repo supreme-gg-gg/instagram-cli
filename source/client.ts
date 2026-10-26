@@ -222,9 +222,9 @@ export class InstagramClient extends EventEmitter {
 	public async login(
 		username: string,
 		password: string,
-		options?: {initializeRealtime: boolean},
+		options?: {initializeRealtime?: boolean; otpMethod?: 'sms' | 'totp'},
 	): Promise<LoginResult> {
-		const loginOptions = options ?? {initializeRealtime: true};
+		const loginOptions = {initializeRealtime: true, ...options};
 		try {
 			this.username = username;
 			this.sessionManager = new SessionManager(username);
@@ -245,7 +245,9 @@ export class InstagramClient extends EventEmitter {
 			// The legacy accounts/login endpoint now always answers needs_upgrade,
 			// so log in through the app's current Bloks (CAA) flow instead.
 			this.caaLogin = new CaaLogin(this.ig);
-			const outcome = await this.caaLogin.login(username, password);
+			const outcome = await this.caaLogin.login(username, password, {
+				otpMethod: loginOptions.otpMethod,
+			});
 			return await this.handleCaaOutcome(outcome, username, loginOptions);
 		} catch (error) {
 			if (error instanceof IgCheckpointError) {
@@ -1274,7 +1276,14 @@ export class InstagramClient extends EventEmitter {
 	 */
 	private async preLoginFlow(): Promise<boolean> {
 		try {
-			await this.ig.launcher.preLoginSync();
+			await Promise.race([
+				this.ig.launcher.preLoginSync(),
+				new Promise((_, reject) => {
+					setTimeout(() => {
+						reject(new Error('launcher preLoginSync timed out'));
+					}, 15_000);
+				}),
+			]);
 			return true;
 		} catch (error) {
 			this.logger.error('Pre login flow failed', error);

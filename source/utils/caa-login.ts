@@ -450,9 +450,10 @@ export class CaaLogin {
 	public async login(
 		username: string,
 		password: string,
+		options?: {otpMethod?: 'sms' | 'totp'},
 	): Promise<CaaLoginOutcome> {
 		try {
-			return await this.runLogin(username, password);
+			return await this.runLogin(username, password, options);
 		} finally {
 			this.transport.close();
 		}
@@ -470,9 +471,10 @@ export class CaaLogin {
 	private async runLogin(
 		username: string,
 		password: string,
+		options?: {otpMethod?: 'sms' | 'totp'},
 	): Promise<CaaLoginOutcome> {
 		this.pending = undefined;
-		this.logger.debug(
+		this.logger.info(
 			`Starting CAA login (app=${this.ig.state.appVersion}, bloks=${this.ig.state.bloksVersionId})`,
 		);
 		await this.prepare(username);
@@ -504,7 +506,7 @@ export class CaaLogin {
 			return this.successOutcome(result);
 		}
 
-		return this.routeVerification(result);
+		return this.routeVerification(result, options?.otpMethod);
 	}
 
 	private async runSubmitCode(code: string): Promise<CaaLoginOutcome> {
@@ -544,6 +546,7 @@ export class CaaLogin {
 
 	private async routeVerification(
 		result: JsonObject,
+		preferredMethod?: 'sms' | 'totp',
 	): Promise<CaaLoginOutcome> {
 		const strings = allStrings(result);
 
@@ -601,9 +604,22 @@ export class CaaLogin {
 		if (twoStepContext) {
 			const smsOn = this.flag(result, 'sms_two_factor_on');
 			const totpOn = this.flag(result, 'totp_two_factor_on');
-			const challenge = smsOn && !totpOn ? 'sms' : 'totp';
-			this.logger.debug(
-				`CAA two-step verification required (method=${challenge})`,
+
+			let challenge: string;
+			if (preferredMethod === 'sms' && smsOn) {
+				challenge = 'sms';
+			} else if (preferredMethod === 'totp' && totpOn) {
+				challenge = 'totp';
+			} else if (smsOn && !totpOn) {
+				challenge = 'sms';
+			} else if (preferredMethod === 'sms') {
+				challenge = 'sms';
+			} else {
+				challenge = 'totp';
+			}
+
+			this.logger.info(
+				`CAA two-step verification required (method=${challenge}, smsOn=${smsOn}, totpOn=${totpOn})`,
 			);
 			await this.openTwoStepScreens(twoStepContext, challenge);
 			this.pending = {kind: 'two_step', context: twoStepContext, challenge};
@@ -611,8 +627,8 @@ export class CaaLogin {
 				status: 'code_required',
 				message:
 					challenge === 'sms'
-						? 'Enter the two-factor code sent to you via SMS (or an 8-digit backup code).'
-						: 'Enter the code from your authenticator app (or an 8-digit backup code).',
+						? 'Instagram sent a verification code to your phone via SMS. Enter the code below (or an 8-digit backup code):'
+						: 'Two-factor authentication is required. Enter the 6-digit code from your Authenticator App (Google Authenticator, Duo, etc.) or an 8-digit backup code.\n(Note: If you expected an SMS instead, re-run with the --sms flag)',
 			};
 		}
 
@@ -713,49 +729,76 @@ export class CaaLogin {
 	private async post(
 		url: string,
 		form: Record<string, string>,
-		options: {headers?: Record<string, string>} = {},
+		options: {
+			headers?: Record<string, string>;
+			retryable?: boolean;
+			timeoutMs?: number;
+		} = {},
 	): Promise<JsonObject> {
-		const cookieUrl = `https://${caaDomain}${url}`;
-		const headers = {...this.requestHeaders(), ...options.headers};
-		const cookie = this.ig.state.cookieJar.getCookieString(cookieUrl);
-		if (cookie) headers['Cookie'] = cookie;
+		const execute = async (): Promise<JsonObject> => {
+			const cookieUrl = `https://${caaDomain}${url}`;
+			const headers = {...this.requestHeaders(), ...options.headers};
+			const cookie = this.ig.state.cookieJar.getCookieString(cookieUrl);
+			if (cookie) headers['Cookie'] = cookie;
 
-		const startedAt = Date.now();
-		const response = await this.transport
-			.post(url, form, headers)
-			.catch((error: unknown) => {
+			const startedAt = Date.now();
+			const response = await this.transport
+				.post(url, form, headers, {timeoutMs: options.timeoutMs})
+				.catch((error: unknown) => {
+					this.logger.warn(
+						`POST ${url} transport failed after ${Date.now() - startedAt}ms`,
+					);
+					throw error;
+				});
+			this.logger.debug(
+				`POST ${url} -> ${response.statusCode} (${Date.now() - startedAt}ms, ${Buffer.byteLength(response.body)} bytes)`,
+			);
+			this.updateState(response.headers, cookieUrl);
+			// Let the client persist session state, as instagram-private-api requests do
+			this.ig.request.end$.next();
+
+			let result: unknown;
+			try {
+				result = JSON.parse(response.body);
+			} catch {
 				this.logger.warn(
-					`POST ${url} transport failed after ${Date.now() - startedAt}ms`,
+					`POST ${url} returned invalid JSON (HTTP ${response.statusCode})`,
 				);
-				throw error;
-			});
-		this.logger.debug(
-			`POST ${url} -> ${response.statusCode} (${Date.now() - startedAt}ms, ${Buffer.byteLength(response.body)} bytes)`,
-		);
-		this.updateState(response.headers, cookieUrl);
-		// Let the client persist session state, as instagram-private-api requests do
-		this.ig.request.end$.next();
+				throw new CaaHttpError('POST', url, response);
+			}
 
-		let result: unknown;
+			// GraphQL and some Bloks responses carry no `status: ok`, so accept any HTTP 200
+			if (response.statusCode !== 200) {
+				this.warnResponse(
+					`POST ${url} rejected (HTTP ${response.statusCode})`,
+					result,
+				);
+				throw new CaaHttpError('POST', url, response);
+			}
+
+			return result as JsonObject;
+		};
+
+		if (!options.retryable) {
+			return execute();
+		}
+
 		try {
-			result = JSON.parse(response.body);
-		} catch {
+			return await execute();
+		} catch (error) {
+			if (error instanceof CaaHttpError) {
+				throw error;
+			}
+
 			this.logger.warn(
-				`POST ${url} returned invalid JSON (HTTP ${response.statusCode})`,
+				`POST ${url} preflight step failed (${error instanceof Error ? error.message : String(error)}); reconnecting and retrying once...`,
 			);
-			throw new CaaHttpError('POST', url, response);
+			this.transport.close();
+			await new Promise(resolve => {
+				setTimeout(resolve, 1000);
+			});
+			return execute();
 		}
-
-		// GraphQL and some Bloks responses carry no `status: ok`, so accept any HTTP 200
-		if (response.statusCode !== 200) {
-			this.warnResponse(
-				`POST ${url} rejected (HTTP ${response.statusCode})`,
-				result,
-			);
-			throw new CaaHttpError('POST', url, response);
-		}
-
-		return result as JsonObject;
 	}
 
 	/** Header set of the current Android app, as sent by instagrapi. */
@@ -858,6 +901,7 @@ export class CaaLogin {
 		name: string,
 		parameters: JsonObject,
 		headers: Record<string, string> = {},
+		options: {retryable?: boolean; timeoutMs?: number} = {},
 	): Promise<JsonObject> {
 		const bloksVersion = this.ig.state.bloksVersionId;
 		return this.post(
@@ -876,14 +920,38 @@ export class CaaLogin {
 					'X-FB-Friendly-Name': `IgApi: bloks/${kind}/${name}/`,
 					...headers,
 				},
+				...options,
 			},
 		);
 	}
 
-	private async prepare(username: string): Promise<void> {
-		if (!this.ig.state.passwordEncryptionPubKey) {
-			await this.ig.qe.syncLoginExperiments();
+	private async syncPasswordEncryptionKeys(): Promise<void> {
+		if (this.ig.state.passwordEncryptionPubKey) {
+			this.ig.state.passwordEncryptionKeyId ??= 1;
+			return;
 		}
+
+		this.logger.info(
+			'Fetching password encryption public key from Instagram...',
+		);
+		try {
+			const headers = this.requestHeaders();
+			const response = await this.transport.get('/api/v1/qe/sync/', headers, {
+				timeoutMs: 10_000,
+			});
+			this.updateState(
+				response.headers,
+				`https://${caaDomain}/api/v1/qe/sync/`,
+			);
+		} catch (error) {
+			this.logger.warn(
+				`Failed to fetch encryption keys via CAA transport: ${String(error)}`,
+			);
+		}
+	}
+
+	private async prepare(username: string): Promise<void> {
+		await this.syncPasswordEncryptionKeys();
 
 		await this.registerUsdid();
 		await this.processClientData();
@@ -907,6 +975,7 @@ export class CaaLogin {
 	}
 
 	private async registerUsdid(): Promise<void> {
+		this.logger.info('[1/5] Registering USDID device identity...');
 		const appId = this.ig.state.fbAnalyticsApplicationId;
 		const now = Math.floor(Date.now() / 1000);
 		const publicKey = this.usdidKeys.publicKey.export({
@@ -975,6 +1044,7 @@ export class CaaLogin {
 						'X-Root-Field-Name': 'usdid_registration',
 						'X-Graphql-Client-Library': 'pando',
 					},
+					retryable: true,
 				},
 			);
 			const data = (result['data'] as JsonObject | undefined) ?? {};
@@ -991,6 +1061,9 @@ export class CaaLogin {
 	}
 
 	private async processClientData(): Promise<void> {
+		this.logger.info(
+			'[2/5] Fetching CAA account access context (process_client_data)...',
+		);
 		this.waterfallId = crypto.randomUUID();
 		const result = await this.bloks(
 			'async_action',
@@ -1021,6 +1094,8 @@ export class CaaLogin {
 				sim_phone_numbers: [],
 				is_from_registration_reminder: false,
 			},
+			{},
+			{retryable: true},
 		);
 
 		this.aac = extractLoginContext(result);
@@ -1032,6 +1107,7 @@ export class CaaLogin {
 	}
 
 	private async createAndroidKeystore(): Promise<void> {
+		this.logger.info('[3/5] Requesting Android keystore attestation nonce...');
 		const result = await this.post(
 			'/api/v1/attestation/create_android_keystore/',
 			{app_scoped_device_id: this.ig.state.uuid, key_hash: ''},
@@ -1039,6 +1115,7 @@ export class CaaLogin {
 				headers: {
 					'X-FB-Friendly-Name': 'IgApi: attestation/create_android_keystore/',
 				},
+				retryable: true,
 			},
 		);
 		const nonce = result['challenge_nonce'];
@@ -1076,6 +1153,7 @@ export class CaaLogin {
 	}
 
 	private async oauthTokenFetch(username: string): Promise<void> {
+		this.logger.info(`[4/5] Preflight OAuth token fetch for @${username}...`);
 		await this.bloks(
 			'async_action',
 			'com.bloks.www.caa.login.oauth.token.fetch.async',
@@ -1106,6 +1184,8 @@ export class CaaLogin {
 					qe_device_id: this.ig.state.uuid,
 				},
 			},
+			{},
+			{retryable: true},
 		);
 	}
 
@@ -1113,6 +1193,24 @@ export class CaaLogin {
 		username: string,
 		password: string,
 	): Promise<JsonObject> {
+		this.logger.info(
+			`[5/5] Encrypting password and sending CAA login request for @${username}...`,
+		);
+		if (
+			!this.ig.state.passwordEncryptionPubKey ||
+			!this.ig.state.passwordEncryptionKeyId
+		) {
+			await this.syncPasswordEncryptionKeys();
+			if (
+				!this.ig.state.passwordEncryptionPubKey ||
+				!this.ig.state.passwordEncryptionKeyId
+			) {
+				throw new Error(
+					'Instagram did not provide password encryption public key. Please try again.',
+				);
+			}
+		}
+
 		const {encrypted, time} = this.ig.account.encryptPassword(password);
 		// Recent login screens use short base36-like text input ids
 		const textInputId = `${crypto.randomBytes(2).toString('hex')}ig`;
