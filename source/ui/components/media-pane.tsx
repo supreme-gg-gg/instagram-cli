@@ -59,6 +59,7 @@ export default function MediaPane({
 					height={dynamicImageSize.height}
 				>
 					<Image
+						key={imageUrl}
 						src={imageUrl}
 						alt={altText}
 						objectFit="contain"

@@ -28,7 +28,7 @@ If applicable, add screenshots to help explain your problem.
 - OS: [e.g. Ubuntu 22.04]
 - Terminal: [e.g. Kitty 0.26.5]
 - Client: [TypeScript or Python]
-- Instagram CLI Version: (for TypeScript client, paste in the entire output of `instagram-cli version`)
+- Instagram CLI Version: (paste in the entire output of `instagram-cli version`)
 
 **Logs (optional)**
 

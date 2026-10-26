@@ -48,30 +48,6 @@ brew install instagram-cli
 
 The formula is available [here](https://github.com/supreme-gg-gg/homebrew-tap/blob/main/Formula/instagram-cli.rb).
 
-We also ship a Python client with nostalgic UNIX vibes since Instagram CLI was first built in Python with `curses`. For installation and more information, see [Python Client Documentation](./instagram-py/README.md).
-
-### Community Packages
-
-The following packages are supported by the community. The maintainers of Instagram CLI do not provide support for these packages.
-
-#### AUR (Arch Linux)
-
-```bash
-yay -S instagram-cli
-```
-
-#### Snap (Linux)
-
-```bash
-snapcraft pack
-sudo snap install instagram-cli_1.4.0_amd64.snap --dangerous
-snap run instagram-cli.instagram-cli
-# OR, since /snap/bin is in PATH
-instagram-cli
-```
-
-We welcome contributions to add more installation methods.
-
 For installation from source, please refer to the [TypeScript Client Documentation](./DEVELOPMENT.md).
 
 ## CLI Commands
