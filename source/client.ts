@@ -32,6 +32,7 @@ import type {
 	Story,
 	ListMediaItem,
 	ProfileInfo,
+	Post,
 } from './types/instagram.js';
 import {
 	parseMessageItem,
@@ -454,6 +455,18 @@ export class InstagramClient extends EventEmitter {
 			mediaCount: info.media_count,
 			externalUrl: info.external_url ?? undefined,
 		};
+	}
+
+	public async getSavedPosts(): Promise<Post[]> {
+		const items = await this.ig.feed.saved().items();
+		return items.map(item => ({
+			...item,
+			carousel_media: item.carousel_media?.map(carouselItem => ({
+				...carouselItem,
+				user: item.user,
+				taken_at: item.taken_at,
+			})),
+		}));
 	}
 
 	public async getThreads(

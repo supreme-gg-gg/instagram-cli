@@ -39,7 +39,11 @@ function MockStoryWrapper() {
 	return <StoryView reels={reels} loadMore={loadMore} client={client} />;
 }
 
-export function AppMock({view}: {readonly view: 'chat' | 'feed' | 'story'}) {
+export function AppMock({
+	view,
+}: {
+	readonly view: 'chat' | 'feed' | 'saved' | 'story';
+}) {
 	const renderView = () => {
 		switch (view) {
 			case 'chat': {
@@ -48,6 +52,10 @@ export function AppMock({view}: {readonly view: 'chat' | 'feed' | 'story'}) {
 
 			case 'feed': {
 				return <FeedView feed={mockFeed} />;
+			}
+
+			case 'saved': {
+				return <FeedView feed={mockFeed} title="🔖 Saved posts" />;
 			}
 
 			case 'story': {
@@ -69,7 +77,9 @@ export function AppMock({view}: {readonly view: 'chat' | 'feed' | 'story'}) {
 	);
 }
 
-export const run = async (view: 'chat' | 'feed' | 'story' = 'chat') => {
+export const run = async (
+	view: 'chat' | 'feed' | 'saved' | 'story' = 'chat',
+) => {
 	// Initialize logger and config like regular commands
 	await initializeLogger();
 	const configManager = ConfigManager.getInstance();
