@@ -61,10 +61,7 @@ export type SearchResult = {
 };
 
 export type RealtimeStatus =
-	| 'disconnected'
-	| 'connecting'
-	| 'connected'
-	| 'error';
+	'disconnected' | 'connecting' | 'connected' | 'error';
 
 type BroadcastResponse =
 	| DirectThreadRepositoryBroadcastResponseRootObject
@@ -171,8 +168,7 @@ export class InstagramClient extends EventEmitter {
 
 	// Inbox feed instance for pagination
 	private inboxFeed:
-		| ReturnType<IgApiClientExt['feed']['directInbox']>
-		| undefined = undefined;
+		ReturnType<IgApiClientExt['feed']['directInbox']> | undefined = undefined;
 
 	// Threads cache for search functionality
 	private threadsCache: Thread[] = [];
