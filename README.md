@@ -1,16 +1,13 @@
 # Instagram CLI
 
-The ultimate weapon against brainrot. The fastest, lightest, and most portable Instagram client.
+The ultimate weapon against brainrot. The distraction-free, lightweight, portable Instagram client in your terminal.
 
-$$
-\text{Instagram}_{\text{CLI}} = \lim_{\text{screen time} \to 0} \text{Productivity} \to \infty
-$$
+<a href="https://trendshift.io/repositories/16231?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-16231" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/16231" alt="supreme-gg-gg%2Finstagram-cli | Trendshift" width="250" height="55"/></a>
 
 [![npm](https://img.shields.io/npm/v/@i7m/instagram-cli?style=flat-square)](https://www.npmjs.com/package/@i7m/instagram-cli)
 [![downloads](https://img.shields.io/npm/dm/@i7m/instagram-cli?style=flat-square)](https://www.npmjs.com/package/@i7m/instagram-cli)
 ![PyPI](https://img.shields.io/pypi/v/instagram-cli)
 [![PyPI Downloads](https://static.pepy.tech/badge/instagram-cli)](https://pepy.tech/projects/instagram-cli)
-[![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)
 
 https://github.com/user-attachments/assets/ddcc5a2d-15da-4cd6-8747-9e7956b32c0b
 
