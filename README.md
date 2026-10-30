@@ -8,7 +8,6 @@ The ultimate weapon against brainrot. The distraction-free, lightweight, portabl
 [![downloads](https://img.shields.io/npm/dm/@i7m/instagram-cli?style=flat-square)](https://www.npmjs.com/package/@i7m/instagram-cli)
 ![PyPI](https://img.shields.io/pypi/v/instagram-cli)
 [![PyPI Downloads](https://static.pepy.tech/badge/instagram-cli)](https://pepy.tech/projects/instagram-cli)
-<!--[![GitHub issues](https://img.shields.io/github/issues/supreme-gg-gg/instagram-cli.svg)](https://github.com/supreme-gg-gg/instagram-cli/issues)-->
 
 https://github.com/user-attachments/assets/ddcc5a2d-15da-4cd6-8747-9e7956b32c0b
 
