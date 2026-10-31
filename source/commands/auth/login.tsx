@@ -135,9 +135,10 @@ export default function Login({options}: Properties) {
 				setMessage(`Logged in as @${result.username}`);
 				setMode('success');
 			} else if (result.verificationMessage) {
+				const isTotpChallenge = result.verificationMethod === 'totp';
 				const secret =
 					options.totpSecret ?? process.env['INSTAGRAM_CLI_TOTP_SECRET'];
-				if (secret && isValidBase32Secret(secret)) {
+				if (isTotpChallenge && secret && isValidBase32Secret(secret)) {
 					const generated = generateTotp(secret);
 					logger.info(
 						'Automatically submitting TOTP code generated from secret',
@@ -240,9 +241,14 @@ export default function Login({options}: Properties) {
 				}
 
 				if (result.verificationMessage) {
+					const isTotpChallenge = result.verificationMethod === 'totp';
 					const code =
 						options.totp ??
 						(() => {
+							if (!isTotpChallenge) {
+								return undefined;
+							}
+
 							const secret =
 								options.totpSecret ?? process.env['INSTAGRAM_CLI_TOTP_SECRET'];
 							if (secret && isValidBase32Secret(secret)) {
@@ -271,7 +277,9 @@ export default function Login({options}: Properties) {
 					}
 
 					setMessage(
-						'2FA required but no --totp code or valid --totp-secret provided. Pass --totp <code> or --totp-secret <secret> (or set INSTAGRAM_CLI_TOTP_SECRET).',
+						isTotpChallenge
+							? '2FA required but no --totp code or valid --totp-secret provided. Pass --totp <code> or --totp-secret <secret> (or set INSTAGRAM_CLI_TOTP_SECRET).'
+							: `Verification code required: ${result.verificationMessage}`,
 					);
 					setMode('error');
 					return;

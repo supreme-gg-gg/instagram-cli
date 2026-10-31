@@ -19,7 +19,7 @@ test.serial('CaaTransport resets session when stream times out', async t => {
 	const originalConnect = http2.connect;
 	let connectCount = 0;
 
-	(http2 as unknown as {connect: typeof http2.connect}).connect = (() => {
+	http2.connect = (() => {
 		connectCount++;
 		const mockSession = {
 			closed: false,
@@ -71,8 +71,7 @@ test.serial('CaaTransport resets session when stream times out', async t => {
 
 		t.is(connectCount, 2, 'Should have reconnected for subsequent request');
 	} finally {
-		(http2 as unknown as {connect: typeof http2.connect}).connect =
-			originalConnect;
+		http2.connect = originalConnect;
 		transport.close();
 	}
 });
@@ -84,7 +83,7 @@ test.serial('CaaTransport resets session when stream emits error', async t => {
 	const originalConnect = http2.connect;
 	let connectCount = 0;
 
-	(http2 as unknown as {connect: typeof http2.connect}).connect = (() => {
+	http2.connect = (() => {
 		connectCount++;
 		const mockSession = {
 			closed: false,
@@ -139,8 +138,7 @@ test.serial('CaaTransport resets session when stream emits error', async t => {
 
 		t.is(connectCount, 2, 'Should reconnect for next request');
 	} finally {
-		(http2 as unknown as {connect: typeof http2.connect}).connect =
-			originalConnect;
+		http2.connect = originalConnect;
 		transport.close();
 	}
 });
@@ -149,7 +147,7 @@ test.serial('CaaTransport handles GET request correctly', async t => {
 	const transport = new CaaTransport('example.com');
 	const originalConnect = http2.connect;
 
-	(http2 as unknown as {connect: typeof http2.connect}).connect = (() => {
+	http2.connect = (() => {
 		const mockSession = {
 			closed: false,
 			destroyed: false,
@@ -195,8 +193,7 @@ test.serial('CaaTransport handles GET request correctly', async t => {
 		t.is(res.headers['ig-set-password-encryption-key-id'], '179');
 		t.is(res.headers['ig-set-password-encryption-pub-key'], 'mockpubkey');
 	} finally {
-		(http2 as unknown as {connect: typeof http2.connect}).connect =
-			originalConnect;
+		http2.connect = originalConnect;
 		transport.close();
 	}
 });

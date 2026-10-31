@@ -66,7 +66,11 @@ export function applyCurrentDevice(ig: IgApiClient, seed: string): void {
 
 export type CaaLoginOutcome =
 	| {status: 'success'; username?: string}
-	| {status: 'code_required'; message: string}
+	| {
+			status: 'code_required';
+			message: string;
+			method?: 'totp' | 'sms' | 'security_code';
+	  }
 	| {status: 'error'; error: string};
 
 type PendingVerification =
@@ -576,6 +580,7 @@ export class CaaLogin {
 						this.logger.debug('CAA profile-code verification required');
 						return {
 							status: 'code_required',
+							method: 'security_code',
 							message:
 								'Instagram sent a security code to your email or phone. Enter it below.',
 						};
@@ -625,6 +630,7 @@ export class CaaLogin {
 			this.pending = {kind: 'two_step', context: twoStepContext, challenge};
 			return {
 				status: 'code_required',
+				method: challenge === 'sms' ? 'sms' : 'totp',
 				message:
 					challenge === 'sms'
 						? 'Instagram sent a verification code to your phone via SMS. Enter the code below (or an 8-digit backup code):'

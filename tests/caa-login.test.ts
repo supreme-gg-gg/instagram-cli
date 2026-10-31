@@ -417,15 +417,20 @@ test('routeVerification: respects preferredMethod for SMS vs TOTP', async t => {
 	};
 
 	// When sms preferred
-	const outcomeSms = await (
+	const outcomeSms = (await (
 		login as unknown as {
 			routeVerification: (
 				r: unknown,
 				m?: 'sms' | 'totp',
-			) => Promise<{status: string; message: string}>;
+			) => Promise<{status: string; message: string; method?: string}>;
 		}
-	).routeVerification(mockResponseWithBoth, 'sms');
+	).routeVerification(mockResponseWithBoth, 'sms')) as {
+		status: string;
+		message: string;
+		method?: string;
+	};
 	t.is(outcomeSms.status, 'code_required');
+	t.is(outcomeSms.method, 'sms');
 	t.is(
 		(login as unknown as {pending: {challenge: string}}).pending.challenge,
 		'sms',
@@ -433,15 +438,20 @@ test('routeVerification: respects preferredMethod for SMS vs TOTP', async t => {
 	t.true(outcomeSms.message.includes('via SMS'));
 
 	// When totp preferred
-	const outcomeTotp = await (
+	const outcomeTotp = (await (
 		login as unknown as {
 			routeVerification: (
 				r: unknown,
 				m?: 'sms' | 'totp',
-			) => Promise<{status: string; message: string}>;
+			) => Promise<{status: string; message: string; method?: string}>;
 		}
-	).routeVerification(mockResponseWithBoth, 'totp');
+	).routeVerification(mockResponseWithBoth, 'totp')) as {
+		status: string;
+		message: string;
+		method?: string;
+	};
 	t.is(outcomeTotp.status, 'code_required');
+	t.is(outcomeTotp.method, 'totp');
 	t.is(
 		(login as unknown as {pending: {challenge: string}}).pending.challenge,
 		'totp',
@@ -449,17 +459,56 @@ test('routeVerification: respects preferredMethod for SMS vs TOTP', async t => {
 	t.true(outcomeTotp.message.includes('Authenticator App'));
 
 	// When no preference specified but both on -> defaults to totp
-	const outcomeDefault = await (
+	const outcomeDefault = (await (
 		login as unknown as {
 			routeVerification: (
 				r: unknown,
 				m?: 'sms' | 'totp',
-			) => Promise<{status: string; message: string}>;
+			) => Promise<{status: string; message: string; method?: string}>;
 		}
-	).routeVerification(mockResponseWithBoth);
+	).routeVerification(mockResponseWithBoth)) as {
+		status: string;
+		message: string;
+		method?: string;
+	};
 	t.is(outcomeDefault.status, 'code_required');
+	t.is(outcomeDefault.method, 'totp');
 	t.is(
 		(login as unknown as {pending: {challenge: string}}).pending.challenge,
 		'totp',
 	);
+});
+
+test('routeVerification: returns security_code method for profile code entrypoint', async t => {
+	const ig = new IgApiClient();
+	ig.state.generateDevice('mock-login');
+	const login = new CaaLogin(ig);
+
+	const mockProfileResponse = {
+		action: `(bk.action.core.Navigate "com.bloks.www.ap.two_step_verification.entrypoint_async" (f4i (dkc "context_data") (dkc "entry-ctx")))`,
+	};
+
+	(login as unknown as Record<string, unknown>)['apEntrypoint'] = async () => ({
+		action: `(bk.action.core.Navigate "com.bloks.www.ap.two_step_verification.code_entry" (f4i (dkc "context_data") (dkc "code-ctx")))`,
+	});
+
+	(login as unknown as Record<string, unknown>)['apCodeEntry'] = async () => ({
+		action: `(bk.action.core.Navigate "com.bloks.www.ap.two_step_verification.code_entry_async" (f4i (dkc "context_data") (dkc "submit-ctx-123")))`,
+	});
+
+	const outcome = await (
+		login as unknown as {
+			routeVerification: (
+				r: unknown,
+			) => Promise<{status: string; message: string; method?: string}>;
+		}
+	).routeVerification(mockProfileResponse);
+
+	t.is(outcome.status, 'code_required');
+	t.is(outcome.method, 'security_code');
+	t.true(outcome.message.includes('security code'));
+	t.deepEqual((login as unknown as {pending: unknown}).pending, {
+		kind: 'profile_code',
+		submitContext: 'submit-ctx-123',
+	});
 });

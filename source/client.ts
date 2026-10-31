@@ -53,6 +53,7 @@ export type LoginResult = {
 	checkpointError?: IgCheckpointError;
 	/** Set when Instagram asks for a verification code; pass it to `submitLoginCode` */
 	verificationMessage?: string;
+	verificationMethod?: 'totp' | 'sms' | 'security_code';
 };
 
 export type SearchResult = {
@@ -1275,11 +1276,12 @@ export class InstagramClient extends EventEmitter {
 	 *
 	 */
 	private async preLoginFlow(): Promise<boolean> {
+		let timeoutId: NodeJS.Timeout | undefined;
 		try {
 			await Promise.race([
 				this.ig.launcher.preLoginSync(),
 				new Promise((_, reject) => {
-					setTimeout(() => {
+					timeoutId = setTimeout(() => {
 						reject(new Error('launcher preLoginSync timed out'));
 					}, 15_000);
 				}),
@@ -1288,6 +1290,10 @@ export class InstagramClient extends EventEmitter {
 		} catch (error) {
 			this.logger.error('Pre login flow failed', error);
 			return false;
+		} finally {
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
 		}
 	}
 
@@ -1321,7 +1327,11 @@ export class InstagramClient extends EventEmitter {
 			}
 
 			case 'code_required': {
-				return {success: false, verificationMessage: outcome.message};
+				return {
+					success: false,
+					verificationMessage: outcome.message,
+					verificationMethod: outcome.method,
+				};
 			}
 
 			case 'error': {
