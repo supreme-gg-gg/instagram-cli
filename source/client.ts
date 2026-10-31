@@ -53,6 +53,7 @@ export type LoginResult = {
 	checkpointError?: IgCheckpointError;
 	/** Set when Instagram asks for a verification code; pass it to `submitLoginCode` */
 	verificationMessage?: string;
+	verificationMethod?: 'totp' | 'sms' | 'security_code';
 };
 
 export type SearchResult = {
@@ -222,9 +223,9 @@ export class InstagramClient extends EventEmitter {
 	public async login(
 		username: string,
 		password: string,
-		options?: {initializeRealtime: boolean},
+		options?: {initializeRealtime?: boolean; otpMethod?: 'sms' | 'totp'},
 	): Promise<LoginResult> {
-		const loginOptions = options ?? {initializeRealtime: true};
+		const loginOptions = {initializeRealtime: true, ...options};
 		try {
 			this.username = username;
 			this.sessionManager = new SessionManager(username);
@@ -245,7 +246,9 @@ export class InstagramClient extends EventEmitter {
 			// The legacy accounts/login endpoint now always answers needs_upgrade,
 			// so log in through the app's current Bloks (CAA) flow instead.
 			this.caaLogin = new CaaLogin(this.ig);
-			const outcome = await this.caaLogin.login(username, password);
+			const outcome = await this.caaLogin.login(username, password, {
+				otpMethod: loginOptions.otpMethod,
+			});
 			return await this.handleCaaOutcome(outcome, username, loginOptions);
 		} catch (error) {
 			if (error instanceof IgCheckpointError) {
@@ -1273,12 +1276,24 @@ export class InstagramClient extends EventEmitter {
 	 *
 	 */
 	private async preLoginFlow(): Promise<boolean> {
+		let timeoutId: NodeJS.Timeout | undefined;
 		try {
-			await this.ig.launcher.preLoginSync();
+			await Promise.race([
+				this.ig.launcher.preLoginSync(),
+				new Promise((_, reject) => {
+					timeoutId = setTimeout(() => {
+						reject(new Error('launcher preLoginSync timed out'));
+					}, 15_000);
+				}),
+			]);
 			return true;
 		} catch (error) {
 			this.logger.error('Pre login flow failed', error);
 			return false;
+		} finally {
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
 		}
 	}
 
@@ -1312,7 +1327,11 @@ export class InstagramClient extends EventEmitter {
 			}
 
 			case 'code_required': {
-				return {success: false, verificationMessage: outcome.message};
+				return {
+					success: false,
+					verificationMessage: outcome.message,
+					verificationMethod: outcome.method,
+				};
 			}
 
 			case 'error': {

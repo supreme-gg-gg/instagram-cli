@@ -1,3 +1,4 @@
+import process from 'node:process';
 import React, {useState, useEffect} from 'react';
 import {Box, Text} from 'ink';
 import {Alert, TextInput} from '@inkjs/ui';
@@ -6,7 +7,8 @@ import {option} from 'pastel';
 import LoginForm from '../../ui/components/login-form.js';
 import {InstagramClient} from '../../client.js';
 import {ConfigManager} from '../../config.js';
-import {createContextualLogger} from '../../utils/logger.js';
+import {createContextualLogger, getLogger} from '../../utils/logger.js';
+import {generateTotp, isValidBase32Secret} from '../../utils/totp.js';
 
 export const description = 'Login to Instagram';
 
@@ -48,6 +50,32 @@ export const options = zod.object({
 				description: 'TOTP code for non-interactive 2FA login',
 			}),
 		),
+	totpSecret: zod
+		.string()
+		.optional()
+		.describe(
+			option({
+				description:
+					'Base32 2FA secret to automatically generate TOTP code (or set INSTAGRAM_CLI_TOTP_SECRET)',
+			}),
+		),
+	sms: zod
+		.boolean()
+		.default(false)
+		.describe(
+			option({
+				description:
+					'Request 2FA code via SMS to your phone instead of authenticator app',
+			}),
+		),
+	verbose: zod
+		.boolean()
+		.default(false)
+		.describe(
+			option({
+				description: 'Display live verbose log output directly in the terminal',
+			}),
+		),
 });
 
 type Properties = {
@@ -60,6 +88,27 @@ export default function Login({options}: Properties) {
 	const [mode, setMode] = useState<
 		'session' | 'form' | 'challenge' | '2fa' | 'success' | 'error'
 	>('session');
+	const [logLines, setLogLines] = useState<string[]>([]);
+
+	const isVerbose =
+		options.verbose ||
+		Boolean(process.env['DEBUG']) ||
+		Boolean(process.env['INSTAGRAM_CLI_VERBOSE']);
+
+	useEffect(() => {
+		if (isVerbose) {
+			getLogger().enableVerbose();
+		}
+
+		const unsubscribe = getLogger().onLog(entry => {
+			const time = entry.timestamp.split('T')[1]?.split('.')[0] ?? '';
+			const context = entry.context ? `[${entry.context}] ` : '';
+			const line = `${time} ${entry.level.toUpperCase()} ${context}${entry.message}`;
+			setLogLines(previous => [...previous.slice(-25), line]);
+		});
+
+		return unsubscribe;
+	}, [isVerbose]);
 
 	// Effect to handle client shutdown when the component unmounts
 	useEffect(() => {
@@ -80,11 +129,25 @@ export default function Login({options}: Properties) {
 		try {
 			const result = await client.login(username, password, {
 				initializeRealtime: false,
+				otpMethod: options.sms ? 'sms' : undefined,
 			});
 			if (result.success) {
 				setMessage(`Logged in as @${result.username}`);
 				setMode('success');
 			} else if (result.verificationMessage) {
+				const isTotpChallenge = result.verificationMethod === 'totp';
+				const secret =
+					options.totpSecret ?? process.env['INSTAGRAM_CLI_TOTP_SECRET'];
+				if (isTotpChallenge && secret && isValidBase32Secret(secret)) {
+					const generated = generateTotp(secret);
+					logger.info(
+						'Automatically submitting TOTP code generated from secret',
+					);
+					setMessage('Generated TOTP from secret. Verifying code...');
+					await handle2FASubmit(generated);
+					return;
+				}
+
 				logger.info('Verification code required for login');
 				setMessage(result.verificationMessage);
 				setMode('2fa');
@@ -165,7 +228,10 @@ export default function Login({options}: Properties) {
 				const result = await nonInteractiveClient.login(
 					options.username,
 					options.password,
-					{initializeRealtime: false},
+					{
+						initializeRealtime: false,
+						otpMethod: options.sms ? 'sms' : undefined,
+					},
 				);
 
 				if (result.success) {
@@ -175,11 +241,29 @@ export default function Login({options}: Properties) {
 				}
 
 				if (result.verificationMessage) {
-					if (options.totp) {
-						setMessage('Verifying TOTP code...');
-						const tfaResult = await nonInteractiveClient.submitLoginCode(
-							options.totp,
-						);
+					const isTotpChallenge = result.verificationMethod === 'totp';
+					const code =
+						options.totp ??
+						(() => {
+							if (!isTotpChallenge) {
+								return undefined;
+							}
+
+							const secret =
+								options.totpSecret ?? process.env['INSTAGRAM_CLI_TOTP_SECRET'];
+							if (secret && isValidBase32Secret(secret)) {
+								logger.info(
+									'Automatically generating TOTP code from secret for non-interactive login',
+								);
+								return generateTotp(secret);
+							}
+
+							return undefined;
+						})();
+
+					if (code) {
+						setMessage('Verifying 2FA code...');
+						const tfaResult = await nonInteractiveClient.submitLoginCode(code);
 
 						if (tfaResult.success) {
 							setMessage(`Logged in as @${tfaResult.username}`);
@@ -193,7 +277,9 @@ export default function Login({options}: Properties) {
 					}
 
 					setMessage(
-						'2FA required but no --totp code provided. Pass --totp <code> for non-interactive 2FA.',
+						isTotpChallenge
+							? '2FA required but no --totp code or valid --totp-secret provided. Pass --totp <code> or --totp-secret <secret> (or set INSTAGRAM_CLI_TOTP_SECRET).'
+							: `Verification code required: ${result.verificationMessage}`,
 					);
 					setMode('error');
 					return;
@@ -251,48 +337,100 @@ export default function Login({options}: Properties) {
 		};
 
 		void run();
-	}, [options.refresh, options.username, options.password, options.totp]);
+	}, [
+		options.refresh,
+		options.username,
+		options.password,
+		options.totp,
+		options.totpSecret,
+		options.sms,
+		options.verbose,
+	]);
+
+	const renderVerboseLogs = (isError = false) => {
+		if (!isVerbose && !isError) return null;
+		if (logLines.length === 0) return null;
+
+		return (
+			<Box
+				flexDirection="column"
+				marginTop={1}
+				borderStyle="round"
+				borderColor={isError ? 'red' : 'gray'}
+				paddingX={1}
+			>
+				<Text bold color={isError ? 'red' : 'cyan'}>
+					{isError ? 'Recent Diagnostics' : 'Verbose Logs'} (Log file:{' '}
+					{getLogger().getLogFilePath()}):
+				</Text>
+				{logLines.slice(-10).map((line, index) => {
+					let color = 'gray';
+					if (line.includes('ERROR')) color = 'red';
+					else if (line.includes('WARN')) color = 'yellow';
+					else if (line.includes('INFO')) color = 'white';
+
+					return (
+						<Text key={index} color={color}>
+							{line}
+						</Text>
+					);
+				})}
+			</Box>
+		);
+	};
 
 	if (mode === 'error') {
 		return (
-			<Box>
+			<Box flexDirection="column">
 				<Alert variant="error">{message}</Alert>
+				<Box marginTop={1}>
+					<Text color="gray">
+						Detailed session log saved to:{' '}
+						<Text bold color="white">
+							{getLogger().getLogFilePath()}
+						</Text>
+					</Text>
+				</Box>
+				{renderVerboseLogs(true)}
 			</Box>
 		);
 	}
 
 	if (mode === 'success') {
 		return (
-			<Box>
+			<Box flexDirection="column">
 				<Alert variant="success">{message}</Alert>
+				{renderVerboseLogs()}
 			</Box>
 		);
 	}
 
 	if (mode === 'session') {
 		return (
-			<Box>
+			<Box flexDirection="column">
 				<Alert variant="info">{message}</Alert>
+				{renderVerboseLogs()}
 			</Box>
 		);
 	}
 
 	if (mode === 'form') {
 		return (
-			<>
+			<Box flexDirection="column">
 				{message && <Text>{message}</Text>}
 				<LoginForm
 					onSubmit={(username, password) => {
 						void handleLoginSubmit(username, password);
 					}}
 				/>
-			</>
+				{renderVerboseLogs()}
+			</Box>
 		);
 	}
 
 	if (mode === 'challenge' || mode === '2fa') {
 		return (
-			<>
+			<Box flexDirection="column">
 				{message && <Text>{message}</Text>}
 				<Box>
 					<Text>Enter verification code: </Text>
@@ -301,7 +439,8 @@ export default function Login({options}: Properties) {
 						onSubmit={mode === '2fa' ? handle2FASubmit : handleChallengeSubmit}
 					/>
 				</Box>
-			</>
+				{renderVerboseLogs()}
+			</Box>
 		);
 	}
 
