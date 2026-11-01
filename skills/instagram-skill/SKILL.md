@@ -139,6 +139,17 @@ instagram-cli unsend <thread> --message-id <id> [--output json]
 instagram-cli unsend johndoe --message-id 340282366...
 ```
 
+### Share a saved collection with a thread
+
+Creates a collaborative copy of a saved collection, linked to the thread (every member can view and add posts). The original collection is left untouched.
+
+```bash
+instagram-cli collection share <collection> <thread> [--name <name>] [--clean-dm] [--output json]
+```
+
+> [!WARNING]
+> Instagram posts every item added to a collaborative collection into the linked thread. Pass `--clean-dm` to unsend those auto-posts right after. A collaborative collection cannot be made private again.
+
 ---
 
 ## Multi-Account Support

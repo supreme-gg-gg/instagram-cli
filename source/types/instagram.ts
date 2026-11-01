@@ -209,3 +209,16 @@ export type MediaCandidate = {
 	width: number;
 	height: number;
 };
+
+export type SavedCollection = {
+	id: string;
+	name: string;
+	mediaCount: number;
+};
+
+export type ThreadItemSummary = {
+	item_id: string;
+	item_type: string;
+	user_id: string | number;
+	timestamp: string;
+};
