@@ -12,6 +12,7 @@ import {
 	type DirectThreadFeedResponseItemsItem,
 	type UserStoryFeedResponseItemsItem,
 	type ReelsTrayFeedResponseTrayItem,
+	type SavedFeedResponseMedia,
 	type DirectThreadRepositoryBroadcastResponseRootObject,
 	type DirectThreadRepositoryBroadcastResponsePayload,
 } from 'instagram-private-api';
@@ -32,6 +33,7 @@ import type {
 	Story,
 	ListMediaItem,
 	ProfileInfo,
+	Post,
 } from './types/instagram.js';
 import {
 	parseMessageItem,
@@ -53,6 +55,23 @@ export type LoginResult = {
 	checkpointError?: IgCheckpointError;
 	/** Set when Instagram asks for a verification code; pass it to `submitLoginCode` */
 	verificationMessage?: string;
+};
+
+export type BrowserCookies = {
+	sessionId: string;
+	csrfToken: string;
+	dsUserId: string;
+};
+
+type BrowserSession = {
+	username: string;
+	cookies: BrowserCookies;
+};
+
+type BrowserSavedFeedResponse = {
+	items?: Array<{media?: SavedFeedResponseMedia} | SavedFeedResponseMedia>;
+	status?: string;
+	message?: string;
 };
 
 export type SearchResult = {
@@ -160,6 +179,7 @@ export class InstagramClient extends EventEmitter {
 	private realtimeStatus: RealtimeStatus = 'disconnected';
 
 	private sessionManager: SessionManager | undefined = undefined;
+	private browserCookies: BrowserCookies | undefined;
 	private readonly configManager: ConfigManager;
 	private username: string | undefined = undefined;
 	private readonly userCache = new Map<string, string>();
@@ -260,6 +280,45 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
+	public async loginWithCookies(
+		username: string,
+		cookies: BrowserCookies,
+	): Promise<LoginResult> {
+		try {
+			const normalizedUsername = username.trim();
+			if (!/^[\w.]+$/.test(normalizedUsername)) {
+				throw new Error('Enter a valid Instagram username');
+			}
+
+			const normalizedCookies = validateBrowserCookies(cookies);
+			await this.configManager.initialize();
+			await this.getWebSavedPosts(normalizedCookies);
+
+			this.username = normalizedUsername;
+			this.browserCookies = normalizedCookies;
+			this.sessionManager = new SessionManager(normalizedUsername);
+			await this.sessionManager.saveSession({
+				browserSession: {
+					username: normalizedUsername,
+					cookies: normalizedCookies,
+				} satisfies BrowserSession,
+			});
+			await this.configManager.set('login.currentUsername', normalizedUsername);
+			if (!this.configManager.get('login.defaultUsername')) {
+				await this.configManager.set(
+					'login.defaultUsername',
+					normalizedUsername,
+				);
+			}
+
+			return {success: true, username: normalizedUsername};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Unknown error';
+			this.logger.error(`Cookie login failed: ${message}`);
+			return {success: false, error: message};
+		}
+	}
+
 	/**
 	 * Completes a login that returned `verificationMessage` (two-factor or
 	 * security code challenge) by submitting the code the user received.
@@ -327,6 +386,13 @@ export class InstagramClient extends EventEmitter {
 
 			if (!this.username) {
 				return {success: false, error: 'No username set for session login'};
+			}
+
+			const browserSession = getBrowserSession(sessionData);
+			if (browserSession) {
+				this.username = browserSession.username;
+				this.browserCookies = browserSession.cookies;
+				return {success: true, username: browserSession.username};
 			}
 
 			this.ig.state.generateDevice(this.username);
@@ -454,6 +520,15 @@ export class InstagramClient extends EventEmitter {
 			mediaCount: info.media_count,
 			externalUrl: info.external_url ?? undefined,
 		};
+	}
+
+	public async getSavedPosts(): Promise<Post[]> {
+		if (this.browserCookies) {
+			return this.getWebSavedPosts(this.browserCookies);
+		}
+
+		const items = await this.ig.feed.saved().items();
+		return items.map(item => mapSavedPost(item));
 	}
 
 	public async getThreads(
@@ -1166,6 +1241,39 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
+	private async getWebSavedPosts(cookies: BrowserCookies): Promise<Post[]> {
+		const response = await fetch(
+			'https://www.instagram.com/api/v1/feed/saved/posts/',
+			{
+				headers: {
+					Cookie: `sessionid=${cookies.sessionId}; csrftoken=${cookies.csrfToken}; ds_user_id=${cookies.dsUserId}`,
+					Referer: 'https://www.instagram.com/',
+					'User-Agent':
+						'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36',
+					'X-CSRFToken': cookies.csrfToken,
+					'X-IG-App-ID': '936619743392459',
+					'X-Requested-With': 'XMLHttpRequest',
+				},
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(
+				`Instagram web saved feed returned HTTP ${response.status}`,
+			);
+		}
+
+		const body = (await response.json()) as BrowserSavedFeedResponse;
+		if (body.status === 'fail') {
+			throw new Error(body.message ?? 'Instagram rejected the browser session');
+		}
+
+		return (body.items ?? [])
+			.map(item => ('media' in item ? item.media : item))
+			.filter((item): item is SavedFeedResponseMedia => item !== undefined)
+			.map(item => mapSavedPost(item));
+	}
+
 	private getThreadTitle(thread: DirectInboxFeedResponseThreadsItem): string {
 		if (thread.thread_title) {
 			return thread.thread_title;
@@ -1368,4 +1476,63 @@ export class InstagramClient extends EventEmitter {
 			})(),
 		]);
 	}
+}
+
+export function validateBrowserCookies(
+	cookies: BrowserCookies,
+): BrowserCookies {
+	const normalized = {
+		sessionId: cookies.sessionId.trim(),
+		csrfToken: cookies.csrfToken.trim(),
+		dsUserId: cookies.dsUserId.trim(),
+	};
+
+	for (const [name, value] of Object.entries(normalized)) {
+		if (!value) {
+			throw new Error(`${name} cannot be empty`);
+		}
+
+		const containsInvalidCharacter = [...value].some(character => {
+			const codePoint = character.codePointAt(0) ?? 0;
+			return character === ';' || codePoint <= 31 || codePoint === 127;
+		});
+		if (containsInvalidCharacter) {
+			throw new Error(`${name} contains invalid cookie characters`);
+		}
+	}
+
+	if (!/^\d+$/.test(normalized.dsUserId)) {
+		throw new Error('dsUserId must contain only digits');
+	}
+
+	return normalized;
+}
+
+function getBrowserSession(
+	state: Record<string, any>,
+): BrowserSession | undefined {
+	const browserSession = state['browserSession'] as BrowserSession | undefined;
+	if (
+		!browserSession ||
+		typeof browserSession.username !== 'string' ||
+		typeof browserSession.cookies !== 'object'
+	) {
+		return undefined;
+	}
+
+	return {
+		username: browserSession.username,
+		cookies: validateBrowserCookies(browserSession.cookies),
+	};
+}
+
+function mapSavedPost(item: SavedFeedResponseMedia): Post {
+	return {
+		...item,
+		carousel_media: item.carousel_media?.map(carouselItem => ({
+			...carouselItem,
+			user: item.user,
+			taken_at: item.taken_at,
+		})),
+	};
 }
