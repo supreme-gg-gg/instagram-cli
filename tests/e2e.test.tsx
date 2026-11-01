@@ -69,6 +69,13 @@ test('renders feed view', (t: ExecutionContext) => {
 	unmount();
 });
 
+test('renders saved posts view', (t: ExecutionContext) => {
+	const {lastFrame, unmount} = render(<AppMock view="saved" />);
+
+	t.not(lastFrame(), undefined);
+	unmount();
+});
+
 test('renders stories view', (t: ExecutionContext) => {
 	const {lastFrame, unmount} = render(<AppMock view="story" />);
 

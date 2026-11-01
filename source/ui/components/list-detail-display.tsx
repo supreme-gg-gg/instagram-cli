@@ -31,6 +31,7 @@ type Properties<T extends BaseMedia & MediaItemMetadata, M = undefined> = {
 	readonly protocol?: ImageProtocolName;
 	readonly client?: InstagramClient | undefined;
 	readonly mode: 'story' | 'post';
+	readonly sidebarTitle?: string;
 	readonly handleSearchSubmit?: (
 		query: string,
 	) => Promise<ListMediaItem<T, M> | undefined>;
@@ -76,6 +77,7 @@ export default function ListDetailDisplay<
 	protocol,
 	client,
 	mode,
+	sidebarTitle,
 	handleSearchSubmit,
 }: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -462,7 +464,9 @@ export default function ListDetailDisplay<
 
 	return (
 		<SplitView
-			sidebarTitle={mode === 'story' ? '✨ Stories' : '📜 Feed'}
+			sidebarTitle={
+				sidebarTitle ?? (mode === 'story' ? '✨ Stories' : '📜 Feed')
+			}
 			sidebarContent={sidebarContent}
 			mainContent={mainContent}
 			footerText={
