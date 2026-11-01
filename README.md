@@ -120,6 +120,7 @@ instagram-cli read <thread> --limit 10 --mark-seen --output json
 instagram-cli read <thread> --message-id <id> --download "./photo.jpg"
 instagram-cli reply <thread> --message-id <id> --text "Hey, how are you?"
 instagram-cli unsend <thread> --message-id <id>
+instagram-cli collection share <collection> <thread> --clean-dm
 ```
 
 `<thread>` accepts a thread ID, username, or fuzzy thread title. Prefer passing thread IDs (from `inbox -o json`) directly to avoid redundant lookups.

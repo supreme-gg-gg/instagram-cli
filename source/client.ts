@@ -32,6 +32,8 @@ import type {
 	Story,
 	ListMediaItem,
 	ProfileInfo,
+	SavedCollection,
+	ThreadItemSummary,
 } from './types/instagram.js';
 import {
 	parseMessageItem,
@@ -883,6 +885,116 @@ export class InstagramClient extends EventEmitter {
 			this.logger.error('Failed to unsend message', error);
 			throw error;
 		}
+	}
+
+	public async getSavedCollections(): Promise<SavedCollection[]> {
+		const {body} = await this.ig.request.send<{
+			items: Array<{
+				collection_id: string;
+				collection_name: string;
+				collection_media_count?: number;
+			}>;
+		}>({
+			url: '/api/v1/collections/list/',
+			qs: {collection_types: '["MEDIA"]', include_public_only: 0},
+		});
+		return body.items.map(item => ({
+			id: item.collection_id,
+			name: item.collection_name,
+			mediaCount: item.collection_media_count ?? 0,
+		}));
+	}
+
+	public async getCollectionMediaIds(collectionId: string): Promise<string[]> {
+		const ids: string[] = [];
+		let maxId: string | undefined;
+		do {
+			// eslint-disable-next-line no-await-in-loop -- pagination is sequential by nature
+			const {body} = await this.ig.request.send<{
+				items: Array<{media: {id: string}}>;
+				more_available: boolean;
+				next_max_id?: string;
+			}>({
+				url: `/api/v1/feed/collection/${collectionId}/`,
+				qs: maxId ? {max_id: maxId} : {},
+			});
+			ids.push(...body.items.map(item => item.media.id));
+			maxId = body.more_available ? body.next_max_id : undefined;
+		} while (maxId);
+
+		return ids;
+	}
+
+	/**
+	 * Create a saved collection. Passing `threadId` makes it a collaborative
+	 * collection shared with every member of that DM thread (this is what the
+	 * app does when you create a collection from a chat).
+	 */
+	public async createCollection(
+		name: string,
+		options: {threadId?: string; mediaIds?: string[]} = {},
+	): Promise<string> {
+		const {body} = await this.ig.request.send<{collection_id: string}>({
+			url: '/api/v1/collections/create/',
+			method: 'POST',
+			form: {
+				name,
+				module_name: 'collection_create',
+				added_media_ids: JSON.stringify(options.mediaIds ?? []),
+				...(options.threadId
+					? {thread_id: options.threadId, surface: 'direct'}
+					: {}),
+				_csrftoken: this.ig.state.cookieCsrfToken,
+				_uuid: this.ig.state.uuid,
+			},
+		});
+		return body.collection_id;
+	}
+
+	public async addToCollection(
+		collectionId: string,
+		mediaIds: string[],
+	): Promise<void> {
+		await this.ig.request.send({
+			url: `/api/v1/collections/${collectionId}/edit/`,
+			method: 'POST',
+			form: {
+				added_media_ids: JSON.stringify(mediaIds),
+				module_name: 'collection_editor',
+				_csrftoken: this.ig.state.cookieCsrfToken,
+				_uuid: this.ig.state.uuid,
+			},
+		});
+	}
+
+	/** Raw thread items posted since `sinceMs` (newest first), for housekeeping. */
+	public async getThreadItemsSince(
+		threadId: string,
+		sinceMs: number,
+	): Promise<ThreadItemSummary[]> {
+		const items: ThreadItemSummary[] = [];
+		let cursor: string | undefined;
+		for (;;) {
+			// eslint-disable-next-line no-await-in-loop -- pagination is sequential by nature
+			const {body} = await this.ig.request.send<{
+				thread: {items: ThreadItemSummary[]; oldest_cursor?: string};
+			}>({
+				url: `/api/v1/direct_v2/threads/${threadId}/`,
+				qs: cursor ? {limit: 100, cursor, direction: 'older'} : {limit: 100},
+			});
+			const page = body.thread.items;
+			items.push(...page);
+			const oldest = page.at(-1);
+			if (!oldest || Number(oldest.timestamp) / 1000 < sinceMs) break;
+			cursor = body.thread.oldest_cursor;
+			if (!cursor) break;
+		}
+
+		return items;
+	}
+
+	public get viewerId(): string {
+		return String(this.ig.state.cookieUserId);
 	}
 
 	public async downloadMedia(
