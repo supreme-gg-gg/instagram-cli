@@ -71,3 +71,12 @@ test('stops when the thread runs out', async t => {
 	t.is(result.messages.length, 7);
 	t.is(result.cursor, undefined);
 });
+
+test('read rejects a limit that is not a positive integer', async t => {
+	const {options} = await import('../source/commands/read.js');
+	for (const limit of [0, -3, 2.5]) {
+		t.false(options.safeParse({limit}).success, `limit ${limit}`);
+	}
+
+	t.true(options.safeParse({limit: 5}).success);
+});

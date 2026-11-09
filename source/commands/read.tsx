@@ -44,6 +44,8 @@ export const options = zod.object({
 		),
 	limit: zod
 		.number()
+		.int()
+		.positive()
 		.default(20)
 		.describe(
 			option({
