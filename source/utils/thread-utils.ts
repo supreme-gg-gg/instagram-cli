@@ -86,3 +86,43 @@ export function updateThreadByMessage(
 
 	return updatedThreads;
 }
+
+export type MessagePage = {
+	messages: Message[];
+	cursor: string | undefined;
+};
+
+/**
+ * Collects the `limit` most recent messages for the `read` command, starting
+ * at `cursor`. Older pages are fetched until the limit is met or the thread
+ * runs out. Messages are returned oldest first.
+ *
+ * When some fetched messages are not returned, the cursor points at the oldest
+ * returned message, so passing it back continues right after the last message
+ * the user saw instead of skipping the rest of the page.
+ */
+export async function collectReadMessages(
+	fetchPage: (cursor?: string) => Promise<MessagePage>,
+	limit: number,
+	cursor?: string,
+): Promise<MessagePage> {
+	if (limit <= 0) return {messages: [], cursor};
+
+	let collected: Message[] = [];
+	let nextCursor = cursor;
+
+	do {
+		// eslint-disable-next-line no-await-in-loop
+		const page = await fetchPage(nextCursor);
+		collected = [...page.messages, ...collected];
+		nextCursor = page.cursor;
+		if (page.messages.length === 0) break;
+	} while (collected.length < limit && nextCursor);
+
+	if (collected.length > limit) {
+		const messages = collected.slice(-limit);
+		return {messages, cursor: messages[0]!.id};
+	}
+
+	return {messages: collected, cursor: nextCursor};
+}
