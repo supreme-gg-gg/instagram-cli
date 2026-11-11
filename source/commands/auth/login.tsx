@@ -73,6 +73,7 @@ export const options = zod.object({
 		.default(false)
 		.describe(
 			option({
+				alias: 'v',
 				description: 'Display live verbose log output directly in the terminal',
 			}),
 		),
@@ -91,9 +92,7 @@ export default function Login({options}: Properties) {
 	const [logLines, setLogLines] = useState<string[]>([]);
 
 	const isVerbose =
-		options.verbose ||
-		Boolean(process.env['DEBUG']) ||
-		Boolean(process.env['INSTAGRAM_CLI_VERBOSE']);
+		options.verbose || Boolean(process.env['INSTAGRAM_CLI_VERBOSE']);
 
 	useEffect(() => {
 		if (isVerbose) {

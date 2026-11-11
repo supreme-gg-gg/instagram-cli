@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
+import process from 'node:process';
 import React from 'react';
 import test from 'ava';
 import {render} from 'ink-testing-library';
-import Login from '../source/commands/auth/login.js';
+import Login, {options as loginOptions} from '../source/commands/auth/login.js';
 import {InstagramClient} from '../source/client.js';
+import {getLogger} from '../source/utils/logger.js';
 
 const delay = async (ms: number): Promise<void> =>
 	new Promise(resolve => {
@@ -230,3 +232,106 @@ test.serial(
 		}
 	},
 );
+
+test('options: verbose flag defines -v alias', t => {
+	const optionDescription = loginOptions.shape.verbose.description ?? '';
+	const json = optionDescription.replace('__pastel_option_config__', '');
+	const parsed = JSON.parse(json) as {alias?: string};
+	t.is(parsed.alias, 'v');
+});
+
+test.serial(
+	'regression: does not stream verbose logs when --verbose is not passed and INSTAGRAM_CLI_VERBOSE is unset',
+	async t => {
+		const originalLogin = InstagramClient.prototype.login;
+		const originalDebug = process.env['DEBUG'];
+		const originalVerbose = process.env['INSTAGRAM_CLI_VERBOSE'];
+
+		// Emulate logger setting DEBUG env var internally
+		process.env['DEBUG'] = 'ig:*';
+		delete process.env['INSTAGRAM_CLI_VERBOSE'];
+
+		InstagramClient.prototype.login = async () => {
+			getLogger().info('regression test event: internal debug log');
+			return {success: true, username: 'testuser'};
+		};
+
+		try {
+			const {lastFrame, unmount} = render(
+				<Login
+					options={{
+						refresh: false,
+						username: 'testuser',
+						password: 'password123',
+						sms: false,
+						verbose: false,
+					}}
+				/>,
+			);
+
+			await delay(100);
+
+			const frame = lastFrame() ?? '';
+			t.false(
+				frame.includes('Verbose Logs'),
+				`Expected "Verbose Logs" section not to be rendered, got: ${frame}`,
+			);
+			t.false(
+				frame.includes('regression test event: internal debug log'),
+				`Expected internal log message not to be displayed, got: ${frame}`,
+			);
+			unmount();
+		} finally {
+			InstagramClient.prototype.login = originalLogin;
+			if (originalDebug === undefined) {
+				delete process.env['DEBUG'];
+			} else {
+				process.env['DEBUG'] = originalDebug;
+			}
+
+			if (originalVerbose === undefined) {
+				delete process.env['INSTAGRAM_CLI_VERBOSE'];
+			} else {
+				process.env['INSTAGRAM_CLI_VERBOSE'] = originalVerbose;
+			}
+		}
+	},
+);
+
+test.serial('streams verbose logs when --verbose is true', async t => {
+	const originalLogin = InstagramClient.prototype.login;
+
+	InstagramClient.prototype.login = async () => {
+		getLogger().info('verbose test event: live streaming line');
+		return {success: true, username: 'testuser'};
+	};
+
+	try {
+		const {lastFrame, unmount} = render(
+			<Login
+				options={{
+					refresh: false,
+					username: 'testuser',
+					password: 'password123',
+					sms: false,
+					verbose: true,
+				}}
+			/>,
+		);
+
+		await delay(100);
+
+		const frame = lastFrame() ?? '';
+		t.true(
+			frame.includes('Verbose Logs'),
+			`Expected "Verbose Logs" section to be rendered, got: ${frame}`,
+		);
+		t.true(
+			frame.includes('verbose test event: live streaming line'),
+			`Expected live log message to be displayed, got: ${frame}`,
+		);
+		unmount();
+	} finally {
+		InstagramClient.prototype.login = originalLogin;
+	}
+});
