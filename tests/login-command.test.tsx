@@ -234,7 +234,9 @@ test.serial(
 );
 
 test('options: verbose flag defines -v alias', t => {
-	const optionDescription = loginOptions.shape.verbose.description ?? '';
+	const optionDescription = String(
+		loginOptions.shape.verbose.description ?? '',
+	);
 	const json = optionDescription.replace('__pastel_option_config__', '');
 	const parsed = JSON.parse(json) as {alias?: string};
 	t.is(parsed.alias, 'v');
