@@ -5,12 +5,11 @@ import {ClientContext} from '../ui/context/client-context.js';
 import {ConfigManager} from '../config.js';
 import {initializeLogger} from '../utils/logger.js';
 import ChatView from '../ui/views/chat-view.js';
-import FeedView from '../ui/views/feed-view.js';
+import Feed from '../commands/feed.js';
 import StoryView from '../ui/views/story-view.js';
 import AltScreen from '../ui/components/alt-screen.js';
 import {MouseProvider} from '../ui/context/mouse-context.js';
 import {useStories} from '../ui/hooks/use-stories.js';
-import {useFeed} from '../ui/hooks/use-feed.js';
 import {useInstagramClient as useMockInstagramClient} from './use-instagram-client.mock.js';
 import {mockClient} from './index.js';
 
@@ -40,33 +39,6 @@ function MockStoryWrapper() {
 	return <StoryView reels={reels} loadMore={loadMore} client={client} />;
 }
 
-/**
- * Mock wrapper for Feed view that uses the real useFeed hook with a mock
- * client, so pagination can be exercised without hitting Instagram.
- */
-function MockFeedWrapper() {
-	const {posts, isLoading, isLoadingMore, error, loadMorePosts} = useFeed(
-		undefined,
-		useMockInstagramClient,
-	);
-
-	if (isLoading) {
-		return <Alert variant="info">Fetching Instagram feed...</Alert>;
-	}
-
-	if (error) {
-		return <Alert variant="error">{error}</Alert>;
-	}
-
-	return (
-		<FeedView
-			feed={{posts}}
-			isLoadingMore={isLoadingMore}
-			onEndReached={loadMorePosts}
-		/>
-	);
-}
-
 export function AppMock({view}: {readonly view: 'chat' | 'feed' | 'story'}) {
 	const renderView = () => {
 		switch (view) {
@@ -75,7 +47,14 @@ export function AppMock({view}: {readonly view: 'chat' | 'feed' | 'story'}) {
 			}
 
 			case 'feed': {
-				return <MockFeedWrapper />;
+				// The real feed command with a mock client, so pagination can be
+				// exercised without hitting Instagram
+				return (
+					<Feed
+						args={[undefined]}
+						useInstagramClient={useMockInstagramClient}
+					/>
+				);
 			}
 
 			case 'story': {

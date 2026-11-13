@@ -21,12 +21,20 @@ export const args = zod.tuple([
 
 type Properties = {
 	readonly args: zod.infer<typeof args>;
+	/** Lets the mock app run this command against a mock client */
+	readonly useInstagramClient?: Parameters<typeof useFeed>[1];
 };
 
-export default function Feed({args}: Properties) {
-	const {posts, isLoading, isLoadingMore, error, loadMorePosts} = useFeed(
-		args[0],
-	);
+export default function Feed({args, useInstagramClient}: Properties) {
+	const {
+		posts,
+		isLoading,
+		isLoadingMore,
+		error,
+		loadMoreError,
+		loadMorePosts,
+		retryLoadMore,
+	} = useFeed(args[0], useInstagramClient);
 
 	if (isLoading) {
 		return <Alert variant="info">Fetching Instagram feed...</Alert>;
@@ -40,7 +48,9 @@ export default function Feed({args}: Properties) {
 		<FeedView
 			feed={{posts}}
 			isLoadingMore={isLoadingMore}
+			loadMoreError={loadMoreError}
 			onEndReached={loadMorePosts}
+			onRetryLoadMore={retryLoadMore}
 		/>
 	);
 }

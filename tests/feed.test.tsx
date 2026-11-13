@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import React from 'react';
 import test from 'ava';
 import {render} from 'ink-testing-library';
@@ -30,19 +32,21 @@ const waitFor = async (condition: () => boolean, timeout = 8000) => {
 
 /**
  * Fake client that serves `pages` one after another and records each
- * `getTimelinePosts` call's `loadMore` argument.
+ * `getTimelinePosts` call's `loadMore` argument. An `Error` entry makes that
+ * request fail.
  */
-function createPagedClient(pages: Post[][]) {
+function createPagedClient(pages: Array<Post[] | Error>) {
 	const calls: boolean[] = [];
 	let page = 0;
 	const client = {
 		async getTimelinePosts(loadMore = false) {
 			calls.push(loadMore);
 			if (!loadMore) page = 0;
-			const posts = pages[page] ?? [];
+			const entry = pages[page] ?? [];
 			page += 1;
 			await delay(10);
-			return {posts, hasMore: page < pages.length};
+			if (entry instanceof Error) throw entry;
+			return {posts: entry, hasMore: page < pages.length};
 		},
 	} as unknown as InstagramClient;
 
@@ -158,4 +162,98 @@ test('feed view shows a hint while more posts are loading', async t => {
 
 	await waitFor(() => lastFrame()!.includes('📜 Feed'));
 	t.true(lastFrame()!.includes('Loading more posts'));
+});
+
+test('a failed load-more is reported and only retried on request', async t => {
+	const {calls, useClient} = createPagedClient([
+		page1,
+		new Error('network down'),
+		page2,
+	]);
+	let latest: FeedHook | undefined;
+	const {unmount} = render(
+		<FeedProbe
+			useClient={useClient}
+			onRender={feed => {
+				latest = feed;
+			}}
+		/>,
+	);
+	t.teardown(unmount);
+
+	await waitFor(() => latest?.posts.length === 2);
+	await latest?.loadMorePosts();
+	await waitFor(() => latest?.loadMoreError === 'network down');
+
+	// Scrolling again must not hammer a failing endpoint
+	await latest?.loadMorePosts();
+	t.deepEqual(calls, [false, true]);
+
+	await latest?.retryLoadMore();
+	await waitFor(() => latest?.posts.length === 4);
+	t.is(latest?.loadMoreError, undefined);
+	t.deepEqual(calls, [false, true, true]);
+});
+
+test('a page with no new posts ends the feed instead of stalling', async t => {
+	const {useClient} = createPagedClient([page1, page1, page2]);
+	let latest: FeedHook | undefined;
+	const {unmount} = render(
+		<FeedProbe
+			useClient={useClient}
+			onRender={feed => {
+				latest = feed;
+			}}
+		/>,
+	);
+	t.teardown(unmount);
+
+	await waitFor(() => latest?.posts.length === 2);
+	await latest?.loadMorePosts();
+	await waitFor(() => latest?.hasMore === false);
+	t.is(latest?.posts.length, 2);
+});
+
+test('feed view shows the load-more error and retries with r', async t => {
+	let retries = 0;
+	const {lastFrame, stdin, unmount} = render(
+		<FeedView
+			feed={{posts: mockPosts.slice(0, 6)}}
+			loadMoreError="network down"
+			onRetryLoadMore={() => {
+				retries += 1;
+			}}
+		/>,
+	);
+	t.teardown(unmount);
+
+	await waitFor(() => lastFrame()!.includes("Couldn't load more posts"));
+	await waitFor(() => stdin.listenerCount('readable') > 0);
+	stdin.write('r');
+	await waitFor(() => retries === 1);
+	t.is(retries, 1);
+});
+
+test('carousel position survives re-renders while more posts load', async t => {
+	t.timeout(30_000);
+	const [first, second, third] = mockPosts;
+	const carouselPost = {...first!, carousel_media: [first!, second!, third!]};
+	const posts = [carouselPost, ...mockPosts.slice(1, 4)];
+	const {lastFrame, stdin, rerender, unmount} = render(
+		<FeedView feed={{posts}} />,
+	);
+	t.teardown(unmount);
+
+	await waitFor(() => lastFrame()!.includes(' 1/ 3'));
+	await waitFor(() => stdin.listenerCount('readable') > 0);
+	stdin.write('l');
+	await waitFor(() => lastFrame()!.includes(' 2/ 3'));
+
+	// Loading starts, then a page is appended: the same post stays selected
+	rerender(<FeedView isLoadingMore feed={{posts}} />);
+	await waitFor(() => lastFrame()!.includes('Loading more posts'));
+	rerender(<FeedView feed={{posts: [...posts, ...mockPosts.slice(4, 6)]}} />);
+	await waitFor(() => !lastFrame()!.includes('Loading more posts'));
+
+	t.true(lastFrame()!.includes(' 2/ 3'));
 });

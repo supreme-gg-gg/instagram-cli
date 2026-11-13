@@ -25,8 +25,11 @@ export function useFeed(
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
 	const [hasMore, setHasMore] = useState(false);
 	const [error, setError] = useState<string | undefined>();
+	const [loadMoreError, setLoadMoreError] = useState<string | undefined>();
 	// Guards against firing a second page request while one is in flight
 	const isFetchingRef = useRef(false);
+	const postsRef = useRef(posts);
+	postsRef.current = posts;
 
 	useEffect(() => {
 		const fetchFirstPage = async () => {
@@ -54,25 +57,40 @@ export function useFeed(
 		void fetchFirstPage();
 	}, [client, clientError]);
 
-	const loadMorePosts = useCallback(async () => {
+	const fetchNextPage = useCallback(async () => {
 		if (!client || !hasMore || isFetchingRef.current) {
 			return;
 		}
 
 		isFetchingRef.current = true;
 		setIsLoadingMore(true);
+		setLoadMoreError(undefined);
 		try {
 			const page = await client.getTimelinePosts(true);
-			setPosts(previous => [...previous, ...page.posts]);
-			setHasMore(page.hasMore);
+			const seenIds = new Set(postsRef.current.map(post => post.id));
+			const newPosts = page.posts.filter(post => !seenIds.has(post.id));
+			setPosts(previous => [...previous, ...newPosts]);
+			// A page with nothing new would never move the selection closer to
+			// the end, so treat it as the end of the feed instead of stalling.
+			setHasMore(page.hasMore && newPosts.length > 0);
 		} catch (error_) {
-			// Keep the posts already shown; the user can retry by scrolling again
-			logger.error(`Failed to load more posts: ${getErrorMessage(error_)}`);
+			// Keep the posts already shown and let the user retry explicitly
+			const errorMessage = getErrorMessage(error_);
+			logger.error(`Failed to load more posts: ${errorMessage}`);
+			setLoadMoreError(errorMessage);
 		} finally {
 			isFetchingRef.current = false;
 			setIsLoadingMore(false);
 		}
 	}, [client, hasMore]);
+
+	// Automatic requests (scrolling near the end) stop after a failure, so a
+	// broken connection doesn't retry on every keypress; retryLoadMore resumes.
+	const loadMorePosts = useCallback(async () => {
+		if (loadMoreError === undefined) {
+			await fetchNextPage();
+		}
+	}, [fetchNextPage, loadMoreError]);
 
 	return {
 		posts,
@@ -80,6 +98,8 @@ export function useFeed(
 		isLoadingMore,
 		hasMore,
 		error: clientError ?? error,
+		loadMoreError,
 		loadMorePosts,
+		retryLoadMore: fetchNextPage,
 	};
 }

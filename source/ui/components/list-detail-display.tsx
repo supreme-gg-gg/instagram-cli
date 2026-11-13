@@ -37,6 +37,9 @@ type Properties<T extends BaseMedia & MediaItemMetadata, M = undefined> = {
 	/** Called when the selection gets close to the end of the list, to fetch the next page */
 	readonly onEndReached?: () => void;
 	readonly isLoadingMore?: boolean;
+	/** Set when fetching the next page failed; shown in the footer with a retry hint */
+	readonly loadMoreError?: string;
+	readonly onRetryLoadMore?: () => void;
 };
 
 // How many items from the end of the list to start fetching the next page
@@ -85,6 +88,8 @@ export default function ListDetailDisplay<
 	handleSearchSubmit,
 	onEndReached,
 	isLoadingMore = false,
+	loadMoreError,
+	onRetryLoadMore,
 }: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
@@ -142,7 +147,7 @@ export default function ListDetailDisplay<
 	const currentItem = combinedItems[selectedIndex];
 	const currentContentItem = currentItem?.content[carouselIndex];
 
-	// Trigger lazy loading and reset carousel when the user selects a new item
+	// Trigger lazy loading when the selected item has no content yet
 	useEffect(() => {
 		if (selectedIndex >= 0 && selectedIndex < combinedItems.length) {
 			const item = combinedItems[selectedIndex];
@@ -150,10 +155,14 @@ export default function ListDetailDisplay<
 				loadMore(selectedIndex);
 			}
 		}
-
-		// Reset carousel index when changing items
-		setCarouselIndex(0);
 	}, [selectedIndex, combinedItems, loadMore]);
+
+	// Reset the carousel only when a different item is selected, not when the
+	// list array is rebuilt (e.g. while the next page loads or is appended)
+	const currentPk = currentItem?.pk;
+	useEffect(() => {
+		setCarouselIndex(0);
+	}, [currentPk]);
 
 	// Ask for the next page when the selection nears the end of the list
 	useEffect(() => {
@@ -320,6 +329,8 @@ export default function ListDetailDisplay<
 					Math.min(prev + 1, currentItem.content.length - 1),
 				);
 			}
+		} else if (input === 'r' && loadMoreError && onRetryLoadMore) {
+			onRetryLoadMore();
 		} else if (input === 'o') {
 			if (currentContentItem) {
 				void openMediaUrl(currentContentItem);
@@ -341,6 +352,13 @@ export default function ListDetailDisplay<
 				: undefined,
 		[currentContentItem, stdout.columns],
 	);
+
+	let pageStatus = '';
+	if (isLoadingMore) {
+		pageStatus = ' · ⏳ Loading more posts...';
+	} else if (loadMoreError) {
+		pageStatus = " · ⚠ Couldn't load more posts, r: retry";
+	}
 
 	const visibleItems = combinedItems.slice(
 		scrollOffset,
@@ -487,9 +505,7 @@ export default function ListDetailDisplay<
 			footerText={
 				mode === 'story'
 					? 'j/k: users, h/l: stories, o: open, s: search user, Esc: quit'
-					: `j/k: navigate posts, h/l: navigate carousel, o: open, Esc: quit${
-							isLoadingMore ? ' · ⏳ Loading more posts...' : ''
-						}`
+					: `j/k: navigate posts, h/l: navigate carousel, o: open, Esc: quit${pageStatus}`
 			}
 		/>
 	);
