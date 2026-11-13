@@ -4,7 +4,6 @@ export {
 	mockThreads,
 	mockMessages,
 	mockUsers,
-	mockFeed,
 	mockPosts,
 	generateMessage,
 	generateThreads,
