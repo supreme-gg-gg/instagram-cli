@@ -1,8 +1,11 @@
+import {existsSync} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import process from 'node:process';
 import yaml from 'js-yaml';
 import {createContextualLogger} from './utils/logger.js';
+import {expandTilde} from './utils/path-utils.js';
 
 type LoginConfig = {
 	defaultUsername?: string;
@@ -30,12 +33,12 @@ type ImageConfig = {
 type AdvancedConfig = {
 	debugMode: boolean;
 	dataDir: string;
-	usersDir: string;
-	cacheDir: string;
-	mediaDir: string;
-	generatedDir: string;
-	logsDir: string;
-	downloadDir: string;
+	usersDir?: string;
+	cacheDir?: string;
+	mediaDir?: string;
+	generatedDir?: string;
+	logsDir?: string;
+	downloadDir?: string;
 };
 
 type Config = {
@@ -49,6 +52,44 @@ type Config = {
 };
 
 const DEFAULT_DATA_DIR = path.join(os.homedir(), '.instagram-cli');
+
+// Subdirectories of dataDir. Unset ones follow dataDir; relative ones resolve against it.
+const DATA_SUBDIRS = {
+	usersDir: 'users',
+	cacheDir: 'cache',
+	mediaDir: 'media',
+	generatedDir: 'generated',
+	logsDir: 'logs',
+	downloadDir: 'downloads',
+} as const;
+
+type DataSubdir = keyof typeof DATA_SUBDIRS;
+
+export function resolveDataSubdir(
+	advanced: AdvancedConfig,
+	key: DataSubdir,
+): string {
+	return path.resolve(
+		expandTilde(advanced.dataDir),
+		expandTilde(advanced[key] ?? DATA_SUBDIRS[key]),
+	);
+}
+
+// Prefer $XDG_CONFIG_HOME/instagram-cli/config.ts.yaml when it exists.
+// Per the spec, an unset, empty or relative XDG_CONFIG_HOME means ~/.config.
+export function findConfigFile(
+	env: NodeJS.ProcessEnv = process.env,
+	home: string = os.homedir(),
+): string {
+	const xdgEnv = env['XDG_CONFIG_HOME'] ?? '';
+	const xdgConfigHome = path.isAbsolute(xdgEnv)
+		? xdgEnv
+		: path.join(home, '.config');
+	const xdgFile = path.join(xdgConfigHome, 'instagram-cli', 'config.ts.yaml');
+	return existsSync(xdgFile)
+		? xdgFile
+		: path.join(home, '.instagram-cli', 'config.ts.yaml');
+}
 
 const DEFAULT_CONFIG: Config = {
 	language: 'en',
@@ -70,12 +111,6 @@ const DEFAULT_CONFIG: Config = {
 	advanced: {
 		debugMode: false,
 		dataDir: DEFAULT_DATA_DIR,
-		usersDir: path.join(DEFAULT_DATA_DIR, 'users'),
-		cacheDir: path.join(DEFAULT_DATA_DIR, 'cache'),
-		mediaDir: path.join(DEFAULT_DATA_DIR, 'media'),
-		generatedDir: path.join(DEFAULT_DATA_DIR, 'generated'),
-		logsDir: path.join(DEFAULT_DATA_DIR, 'logs'),
-		downloadDir: path.join(DEFAULT_DATA_DIR, 'downloads'),
 	},
 	image: {},
 };
@@ -93,8 +128,8 @@ export class ConfigManager {
 	private readonly logger = createContextualLogger('ConfigManager');
 
 	private constructor() {
-		this.configDir = DEFAULT_CONFIG.advanced.dataDir;
-		this.configFile = path.join(this.configDir, 'config.ts.yaml');
+		this.configFile = findConfigFile();
+		this.configDir = path.dirname(this.configFile);
 		this.config = {...DEFAULT_CONFIG};
 	}
 
@@ -104,6 +139,16 @@ export class ConfigManager {
 
 	public get<T = string>(keyPath: string, defaultValue?: T): T {
 		const keys = keyPath.split('.');
+		const [section, key] = keys;
+		if (
+			section === 'advanced' &&
+			keys.length === 2 &&
+			key &&
+			Object.hasOwn(DATA_SUBDIRS, key)
+		) {
+			return resolveDataSubdir(this.config.advanced, key as DataSubdir) as T;
+		}
+
 		let value: any = this.config;
 
 		for (const key of keys) {
@@ -157,6 +202,21 @@ export class ConfigManager {
 				const configData = await fs.readFile(this.configFile, 'utf8');
 				const loadedConfig = yaml.load(configData) as Partial<Config>;
 				this.config = this.mergeConfig(DEFAULT_CONFIG, loadedConfig);
+
+				// Older versions wrote the default subdirectories into the file,
+				// which pinned them to ~/.instagram-cli. Drop them once.
+				let removedDefaults = false;
+				for (const [key, name] of Object.entries(DATA_SUBDIRS)) {
+					const {advanced} = this.config;
+					if (
+						advanced[key as DataSubdir] === path.join(DEFAULT_DATA_DIR, name)
+					) {
+						Reflect.deleteProperty(advanced, key);
+						removedDefaults = true;
+					}
+				}
+
+				if (removedDefaults) await this.saveConfig();
 			} else {
 				await this.saveConfig();
 			}
