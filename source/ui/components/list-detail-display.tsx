@@ -34,7 +34,13 @@ type Properties<T extends BaseMedia & MediaItemMetadata, M = undefined> = {
 	readonly handleSearchSubmit?: (
 		query: string,
 	) => Promise<ListMediaItem<T, M> | undefined>;
+	/** Called when the selection gets close to the end of the list, to fetch the next page */
+	readonly onEndReached?: () => void;
+	readonly isLoadingMore?: boolean;
 };
+
+// How many items from the end of the list to start fetching the next page
+const END_REACHED_THRESHOLD = 3;
 
 function getBestImage(
 	candidates: MediaCandidate[] | undefined,
@@ -77,6 +83,8 @@ export default function ListDetailDisplay<
 	client,
 	mode,
 	handleSearchSubmit,
+	onEndReached,
+	isLoadingMore = false,
 }: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
@@ -146,6 +154,17 @@ export default function ListDetailDisplay<
 		// Reset carousel index when changing items
 		setCarouselIndex(0);
 	}, [selectedIndex, combinedItems, loadMore]);
+
+	// Ask for the next page when the selection nears the end of the list
+	useEffect(() => {
+		if (
+			onEndReached &&
+			combinedItems.length > 0 &&
+			selectedIndex >= combinedItems.length - END_REACHED_THRESHOLD
+		) {
+			onEndReached();
+		}
+	}, [selectedIndex, combinedItems.length, onEndReached]);
 
 	useEffect(() => {
 		if (
@@ -468,7 +487,9 @@ export default function ListDetailDisplay<
 			footerText={
 				mode === 'story'
 					? 'j/k: users, h/l: stories, o: open, s: search user, Esc: quit'
-					: 'j/k: navigate posts, h/l: navigate carousel, o: open, Esc: quit'
+					: `j/k: navigate posts, h/l: navigate carousel, o: open, Esc: quit${
+							isLoadingMore ? ' · ⏳ Loading more posts...' : ''
+						}`
 			}
 		/>
 	);

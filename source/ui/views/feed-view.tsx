@@ -12,7 +12,17 @@ export type FeedData = {
 	posts?: Post[];
 };
 
-export default function FeedView({feed}: {readonly feed: FeedData}) {
+type Properties = {
+	readonly feed: FeedData;
+	readonly isLoadingMore?: boolean;
+	readonly onEndReached?: () => void;
+};
+
+export default function FeedView({
+	feed,
+	isLoadingMore,
+	onEndReached,
+}: Properties) {
 	const imageProtocol = useImageProtocol();
 
 	const listItems: Array<ListMediaItem<Post, PostMetadata>> = (
@@ -45,6 +55,8 @@ export default function FeedView({feed}: {readonly feed: FeedData}) {
 				loadMore={() => {}}
 				protocol={imageProtocol}
 				mode="post"
+				isLoadingMore={isLoadingMore}
+				onEndReached={onEndReached}
 			/>
 		</InkPictureProvider>
 	);
