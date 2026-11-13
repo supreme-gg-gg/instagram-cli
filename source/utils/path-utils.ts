@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import process, {cwd} from 'node:process';
+import {cwd} from 'node:process';
 
 /**
  * Expands a path starting with '~' to an absolute path pointing to the user's home directory.
@@ -16,38 +16,6 @@ export function expandTilde(filePath: string): string {
 	}
 
 	return filePath;
-}
-
-// XDG Base Directory spec defaults, used when the variable is unset or empty.
-const xdgDefaults: Record<string, string[]> = {
-	XDG_CONFIG_HOME: ['.config'],
-	XDG_DATA_HOME: ['.local', 'share'],
-	XDG_STATE_HOME: ['.local', 'state'],
-	XDG_CACHE_HOME: ['.cache'],
-};
-
-/**
- * Expands '~' and `$VAR` / `${VAR}` environment variables in a path.
- * Unset XDG base directory variables fall back to their spec defaults
- * (e.g. `$XDG_DATA_HOME` becomes `~/.local/share`); other unset variables
- * are left as written.
- */
-export function expandPathVariables(
-	filePath: string,
-	env: NodeJS.ProcessEnv = process.env,
-): string {
-	const expanded = filePath.replaceAll(
-		/\$(?:{(\w+)}|(\w+))/g,
-		(match, braced?: string, bare?: string) => {
-			const name = (braced ?? bare)!;
-			const value = env[name];
-			if (value) return value;
-			const xdgDefault = xdgDefaults[name];
-			return xdgDefault ? path.join(os.homedir(), ...xdgDefault) : match;
-		},
-	);
-
-	return expandTilde(expanded);
 }
 
 /**

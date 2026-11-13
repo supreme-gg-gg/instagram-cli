@@ -75,11 +75,10 @@ instagram-cli config edit                      # open config file in editor
 ```
 
 > [!TIP]
-> To keep your data somewhere else (for example in XDG directories), set `advanced.dataDir`. Sessions, cache, media, logs and downloads all move with it, unless you have set their own `advanced.*Dir` keys. Path settings expand `~` and environment variables, and unset `$XDG_*` variables fall back to their standard defaults:
+> To follow the XDG Base Directory spec, move `~/.instagram-cli/config.ts.yaml` to `${XDG_CONFIG_HOME:-~/.config}/instagram-cli/config.ts.yaml` (it is used from there when it exists) and point `advanced.dataDir` at your data directory. Sessions, cache, media, logs and downloads follow `dataDir` unless you set their own `advanced.*Dir` keys. Existing data is not moved, so move the folders yourself or log in again.
 >
 > ```bash
-> instagram-cli config advanced.dataDir '$XDG_DATA_HOME/instagram-cli'
-> instagram-cli config advanced.cacheDir '$XDG_CACHE_HOME/instagram-cli'
+> instagram-cli config advanced.dataDir "${XDG_DATA_HOME:-$HOME/.local/share}/instagram-cli"
 > ```
 
 If you want to use Instagram CLI with AI agents, see [one-turn commands](#one-turn-commands-for-ai-agents) that are non-interactive and designed for agents.

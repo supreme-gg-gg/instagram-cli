@@ -1,82 +1,86 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'ava';
-import {resolveAdvancedPaths} from '../source/config.js';
-import {expandPathVariables} from '../source/utils/path-utils.js';
+import {findConfigFile, resolveDataSubdir} from '../source/config.js';
 
 const home = os.homedir();
 const defaultDataDir = path.join(home, '.instagram-cli');
 
-function advancedConfig(dataDir: string, overrides = {}) {
-	return {
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+test('default dataDir resolves to the same paths as before', t => {
+	const advanced = {debugMode: false, dataDir: defaultDataDir};
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+	t.deepEqual(
+		[
+			resolveDataSubdir(advanced, 'usersDir'),
+			resolveDataSubdir(advanced, 'downloadDir'),
+		],
+		[
+			path.join(defaultDataDir, 'users'),
+			path.join(defaultDataDir, 'downloads'),
+		],
+	);
+});
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+test('changing dataDir moves the subdirectories', t => {
+	const advanced = {debugMode: false, dataDir: '/data/ig'};
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+	t.deepEqual(
+		[
+			resolveDataSubdir(advanced, 'cacheDir'),
+			resolveDataSubdir(advanced, 'logsDir'),
+		],
+		[path.resolve('/data/ig/cache'), path.resolve('/data/ig/logs')],
+	);
+});
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+test('absolute, relative and ~ overrides are respected', t => {
+	const advanced = {
 		debugMode: false,
-		dataDir,
-		usersDir: path.join(defaultDataDir, 'users'),
-		cacheDir: path.join(defaultDataDir, 'cache'),
-		mediaDir: path.join(defaultDataDir, 'media'),
-		generatedDir: path.join(defaultDataDir, 'generated'),
-		logsDir: path.join(defaultDataDir, 'logs'),
-		downloadDir: path.join(defaultDataDir, 'downloads'),
-		...overrides,
+		dataDir: '/data/ig',
+		cacheDir: '/var/cache/ig',
+		mediaDir: 'pictures',
+		logsDir: '~/ig-logs',
 	};
-}
-
-// ── expandPathVariables ───────────────────────────────────────────────────────
-
-test('expandPathVariables: expands bare and braced variables and ~', t => {
-	const env = {XDG_DATA_HOME: '/xdg/data'};
-	t.is(expandPathVariables('$XDG_DATA_HOME/ig', env), '/xdg/data/ig');
-	// eslint-disable-next-line no-template-curly-in-string -- literal shell-style ${VAR} input
-	t.is(expandPathVariables('${XDG_DATA_HOME}/ig', env), '/xdg/data/ig');
-	t.is(expandPathVariables('~/ig', env), path.join(home, 'ig'));
-});
-
-test('expandPathVariables: unset XDG variables use spec defaults', t => {
-	t.is(
-		expandPathVariables('$XDG_DATA_HOME/ig', {}),
-		path.join(home, '.local', 'share') + '/ig',
-	);
-	t.is(
-		expandPathVariables('$XDG_CACHE_HOME/ig', {XDG_CACHE_HOME: ''}),
-		path.join(home, '.cache') + '/ig',
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+	t.deepEqual(
+		[
+			resolveDataSubdir(advanced, 'cacheDir'),
+			resolveDataSubdir(advanced, 'mediaDir'),
+			resolveDataSubdir(advanced, 'logsDir'),
+		],
+		[
+			path.resolve('/var/cache/ig'),
+			path.resolve('/data/ig/pictures'),
+			path.join(home, 'ig-logs'),
+		],
 	);
 });
 
-test('expandPathVariables: other unset variables are left as written', t => {
-	t.is(expandPathVariables('$NOT_SET/ig', {}), '$NOT_SET/ig');
-});
-
-// ── resolveAdvancedPaths ──────────────────────────────────────────────────────
-
-test('resolveAdvancedPaths: default config is unchanged', t => {
-	const advanced = advancedConfig(defaultDataDir);
-	t.deepEqual(resolveAdvancedPaths(advanced, {}), advanced);
-});
-
-test('resolveAdvancedPaths: changing dataDir moves default subdirectories', t => {
-	const resolved = resolveAdvancedPaths(
-		advancedConfig('$XDG_DATA_HOME/instagram-cli'),
-		{XDG_DATA_HOME: '/xdg/data'},
-	);
-	const dataDir = '/xdg/data/instagram-cli';
-
-	t.is(resolved.dataDir, dataDir);
-	t.is(resolved.usersDir, path.join(dataDir, 'users'));
-	t.is(resolved.cacheDir, path.join(dataDir, 'cache'));
-	t.is(resolved.mediaDir, path.join(dataDir, 'media'));
-	t.is(resolved.generatedDir, path.join(dataDir, 'generated'));
-	t.is(resolved.logsDir, path.join(dataDir, 'logs'));
-	t.is(resolved.downloadDir, path.join(dataDir, 'downloads'));
-});
-
-test('resolveAdvancedPaths: explicit subdirectories are kept and expanded', t => {
-	const resolved = resolveAdvancedPaths(
-		advancedConfig('/data/ig', {cacheDir: '$XDG_CACHE_HOME/instagram-cli'}),
-		{XDG_CACHE_HOME: '/xdg/cache'},
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+test('config lookup prefers the XDG location when that file exists', t => {
+	const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ig-config-'));
+	const legacyFile = path.join(fakeHome, '.instagram-cli', 'config.ts.yaml');
+	const xdgFile = path.join(
+		fakeHome,
+		'.config',
+		'instagram-cli',
+		'config.ts.yaml',
 	);
 
-	t.is(resolved.cacheDir, '/xdg/cache/instagram-cli');
-	t.is(resolved.usersDir, path.join('/data/ig', 'users'));
+	const before = findConfigFile({}, fakeHome);
+	fs.mkdirSync(path.dirname(xdgFile), {recursive: true});
+	fs.writeFileSync(xdgFile, '');
+	const after = findConfigFile({}, fakeHome);
+	const otherXdg = findConfigFile(
+		{XDG_CONFIG_HOME: path.join(fakeHome, 'elsewhere')},
+		fakeHome,
+	);
+	fs.rmSync(fakeHome, {recursive: true, force: true});
+
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+	t.deepEqual([before, after, otherXdg], [legacyFile, xdgFile, legacyFile]);
 });
