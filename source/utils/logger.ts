@@ -6,9 +6,9 @@ import nodeUtil from 'node:util';
 import debugModule from 'debug';
 import {ConfigManager} from '../config.js';
 
-type LogLevel = 'error' | 'warn' | 'info' | 'debug';
+export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
-type LogEntry = {
+export type LogEntry = {
 	readonly level: LogLevel;
 	readonly timestamp: string;
 	readonly message: string;
@@ -23,6 +23,7 @@ class Logger {
 	private logsDir: string;
 	private readonly sessionId: string;
 	private readonly logBuffer: LogEntry[] = [];
+	private readonly listeners: Array<(entry: LogEntry) => void> = [];
 	private isInitialized = false;
 	private debugHookInstalled = false;
 
@@ -63,6 +64,22 @@ class Logger {
 		} catch {}
 	}
 
+	onLog(listener: (entry: LogEntry) => void): () => void {
+		this.listeners.push(listener);
+		return () => {
+			const index = this.listeners.indexOf(listener);
+			if (index !== -1) {
+				this.listeners.splice(index, 1);
+			}
+		};
+	}
+
+	enableVerbose(): void {
+		debugModule.enable(
+			'ig:*,CaaLogin,CaaTransport,LoginCommand,InstagramClient',
+		);
+	}
+
 	error(message: string, context?: string, error?: Error | unknown): void {
 		const stack =
 			error instanceof Error
@@ -76,6 +93,7 @@ class Logger {
 			this.logBuffer.shift();
 		}
 
+		this.notifyListeners(entry);
 		void this.writeToFile(entry);
 	}
 
@@ -86,6 +104,7 @@ class Logger {
 			this.logBuffer.shift();
 		}
 
+		this.notifyListeners(entry);
 		void this.writeToFile(entry);
 	}
 
@@ -96,6 +115,7 @@ class Logger {
 			this.logBuffer.shift();
 		}
 
+		this.notifyListeners(entry);
 		void this.writeToFile(entry);
 	}
 
@@ -106,6 +126,7 @@ class Logger {
 			this.logBuffer.shift();
 		}
 
+		this.notifyListeners(entry);
 		void this.writeToFile(entry);
 	}
 
@@ -128,6 +149,14 @@ class Logger {
 	async flush(): Promise<void> {
 		// All writes are already async, so this is mainly for cleanup
 		// Can be used to ensure all pending writes are complete
+	}
+
+	private notifyListeners(entry: LogEntry): void {
+		for (const listener of this.listeners) {
+			try {
+				listener(entry);
+			} catch {}
+		}
 	}
 
 	/**

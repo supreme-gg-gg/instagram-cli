@@ -140,6 +140,9 @@ Login-related config keys:
 ## Edge Cases
 
 - **Session expired**: Falls back to credential login
-- **2FA method detection**: TOTP vs SMS based on `totp_two_factor_on` / `sms_two_factor_on`; an 8-digit code is submitted as a backup code
+- **2FA method detection**: Defaults to Authenticator app (TOTP) when enabled on the account (`totp_two_factor_on`), or SMS when only SMS is configured. Passing `--sms` explicitly directs Instagram to dispatch the one-time code via SMS to your phone. 8-digit backup codes are also supported directly.
+- **Automatic TOTP generation**: A Base32 2FA secret can be provided via `--totp-secret <secret>` or the `INSTAGRAM_CLI_TOTP_SECRET` environment variable to automatically generate standard RFC 6238 6-digit one-time passcodes without manual intervention
+- **Verbose diagnostics**: Live stream of debug and operational logs can be shown in terminal with `--verbose` or `INSTAGRAM_CLI_VERBOSE=1`.
 - **Challenge retry**: Multiple attempts allowed
+- **Connection resilience**: HTTP/2 sessions are properly invalidated and reconnected on socket timeout or stream error; safe idempotent preflight requests retry once on connection failures
 - **Client cleanup**: Automatic shutdown on component unmount

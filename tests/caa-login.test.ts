@@ -312,3 +312,203 @@ test('extractEmbeddedLogin: returns undefined without a login payload', t => {
 	);
 	t.is(extractEmbeddedLogin({}), undefined);
 });
+
+test.serial('CAA preflight retries once on transport error', async t => {
+	const originalPost = CaaTransport.prototype.post;
+	let attempts = 0;
+	try {
+		CaaTransport.prototype.post = async path => {
+			if (path.includes('process_client_data')) {
+				attempts++;
+				if (attempts === 1) {
+					throw new Error('socket hang up');
+				}
+
+				return {
+					statusCode: 200,
+					headers: {},
+					body: JSON.stringify({
+						layout: {
+							bloks_payload: {
+								data: [
+									{
+										data: {
+											key: 'CAA_ACCOUNT_ACCESS_CONTEXT:aac',
+											initial: 'recovered-aac-token',
+										},
+									},
+								],
+							},
+						},
+					}),
+				};
+			}
+
+			if (path === '/graphql_www') {
+				return {
+					statusCode: 200,
+					headers: {},
+					body: JSON.stringify({data: {usdid_registration: {success: true}}}),
+				};
+			}
+
+			if (path.includes('create_android_keystore')) {
+				return {
+					statusCode: 200,
+					headers: {},
+					body: JSON.stringify({challenge_nonce: 'nonce123'}),
+				};
+			}
+
+			if (path.includes('oauth.token.fetch')) {
+				return {
+					statusCode: 200,
+					headers: {},
+					body: JSON.stringify({layout: {bloks_payload: {data: []}}}),
+				};
+			}
+
+			return {
+				statusCode: 200,
+				headers: {},
+				body: JSON.stringify({layout: {bloks_payload: {data: []}}}),
+			};
+		};
+
+		const ig = new IgApiClient();
+		ig.state.generateDevice('mock-login');
+		ig.state.passwordEncryptionPubKey = 'mock-key';
+		const login = new CaaLogin(ig);
+
+		// Testing preflight extraction
+		await (login as unknown as {prepare: (u: string) => Promise<void>}).prepare(
+			'testuser',
+		);
+		t.is(attempts, 2, 'Should have retried the failed preflight request');
+		t.is(
+			(login as unknown as {aac: string}).aac,
+			'recovered-aac-token',
+			'Should have successfully recovered aac context',
+		);
+	} finally {
+		CaaTransport.prototype.post = originalPost;
+	}
+});
+
+test('routeVerification: respects preferredMethod for SMS vs TOTP', async t => {
+	const ig = new IgApiClient();
+	ig.state.generateDevice('mock-login');
+	const login = new CaaLogin(ig);
+
+	(
+		login as unknown as {openTwoStepScreens: () => Promise<void>}
+	).openTwoStepScreens = async () => {};
+
+	const mockResponseWithBoth = {
+		two_step_verification_context: 'ctx123',
+		layout: {
+			bloks_payload: {
+				data: [
+					{data: {key: 'sms_two_factor_on', initial: true}},
+					{data: {key: 'totp_two_factor_on', initial: true}},
+				],
+			},
+		},
+	};
+
+	// When sms preferred
+	const outcomeSms = (await (
+		login as unknown as {
+			routeVerification: (
+				r: unknown,
+				m?: 'sms' | 'totp',
+			) => Promise<{status: string; message: string; method?: string}>;
+		}
+	).routeVerification(mockResponseWithBoth, 'sms')) as {
+		status: string;
+		message: string;
+		method?: string;
+	};
+	t.is(outcomeSms.status, 'code_required');
+	t.is(outcomeSms.method, 'sms');
+	t.is(
+		(login as unknown as {pending: {challenge: string}}).pending.challenge,
+		'sms',
+	);
+	t.true(outcomeSms.message.includes('via SMS'));
+
+	// When totp preferred
+	const outcomeTotp = (await (
+		login as unknown as {
+			routeVerification: (
+				r: unknown,
+				m?: 'sms' | 'totp',
+			) => Promise<{status: string; message: string; method?: string}>;
+		}
+	).routeVerification(mockResponseWithBoth, 'totp')) as {
+		status: string;
+		message: string;
+		method?: string;
+	};
+	t.is(outcomeTotp.status, 'code_required');
+	t.is(outcomeTotp.method, 'totp');
+	t.is(
+		(login as unknown as {pending: {challenge: string}}).pending.challenge,
+		'totp',
+	);
+	t.true(outcomeTotp.message.includes('Authenticator App'));
+
+	// When no preference specified but both on -> defaults to totp
+	const outcomeDefault = (await (
+		login as unknown as {
+			routeVerification: (
+				r: unknown,
+				m?: 'sms' | 'totp',
+			) => Promise<{status: string; message: string; method?: string}>;
+		}
+	).routeVerification(mockResponseWithBoth)) as {
+		status: string;
+		message: string;
+		method?: string;
+	};
+	t.is(outcomeDefault.status, 'code_required');
+	t.is(outcomeDefault.method, 'totp');
+	t.is(
+		(login as unknown as {pending: {challenge: string}}).pending.challenge,
+		'totp',
+	);
+});
+
+test('routeVerification: returns security_code method for profile code entrypoint', async t => {
+	const ig = new IgApiClient();
+	ig.state.generateDevice('mock-login');
+	const login = new CaaLogin(ig);
+
+	const mockProfileResponse = {
+		action: `(bk.action.core.Navigate "com.bloks.www.ap.two_step_verification.entrypoint_async" (f4i (dkc "context_data") (dkc "entry-ctx")))`,
+	};
+
+	(login as unknown as Record<string, unknown>)['apEntrypoint'] = async () => ({
+		action: `(bk.action.core.Navigate "com.bloks.www.ap.two_step_verification.code_entry" (f4i (dkc "context_data") (dkc "code-ctx")))`,
+	});
+
+	(login as unknown as Record<string, unknown>)['apCodeEntry'] = async () => ({
+		action: `(bk.action.core.Navigate "com.bloks.www.ap.two_step_verification.code_entry_async" (f4i (dkc "context_data") (dkc "submit-ctx-123")))`,
+	});
+
+	const outcome = await (
+		login as unknown as {
+			routeVerification: (
+				r: unknown,
+			) => Promise<{status: string; message: string; method?: string}>;
+		}
+	).routeVerification(mockProfileResponse);
+
+	t.is(outcome.status, 'code_required');
+	t.is(outcome.method, 'security_code');
+	t.true(outcome.message.includes('security code'));
+	t.deepEqual((login as unknown as {pending: unknown}).pending, {
+		kind: 'profile_code',
+		submitContext: 'submit-ctx-123',
+	});
+});
