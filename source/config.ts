@@ -1,8 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import process from 'node:process';
 import yaml from 'js-yaml';
 import {createContextualLogger} from './utils/logger.js';
+import {expandPathVariables} from './utils/path-utils.js';
 
 type LoginConfig = {
 	defaultUsername?: string;
@@ -49,6 +51,42 @@ type Config = {
 };
 
 const DEFAULT_DATA_DIR = path.join(os.homedir(), '.instagram-cli');
+
+// Directories that live under `advanced.dataDir` unless set explicitly.
+const dataSubdirectories = {
+	usersDir: 'users',
+	cacheDir: 'cache',
+	mediaDir: 'media',
+	generatedDir: 'generated',
+	logsDir: 'logs',
+	downloadDir: 'downloads',
+} as const;
+
+/**
+ * Expands `~` and environment variables (e.g. `$XDG_DATA_HOME`) in the
+ * advanced path settings, and places every subdirectory that is unset or
+ * still at its built-in default under `dataDir`. Changing `dataDir` alone
+ * therefore moves all user data.
+ */
+export function resolveAdvancedPaths(
+	advanced: AdvancedConfig,
+	env: NodeJS.ProcessEnv = process.env,
+): AdvancedConfig {
+	const dataDir = expandPathVariables(advanced.dataDir, env);
+	const resolved: AdvancedConfig = {...advanced, dataDir};
+
+	for (const [key, name] of Object.entries(dataSubdirectories) as Array<
+		[keyof typeof dataSubdirectories, string]
+	>) {
+		const value = advanced[key];
+		resolved[key] =
+			!value || value === path.join(DEFAULT_DATA_DIR, name)
+				? path.join(dataDir, name)
+				: expandPathVariables(value, env);
+	}
+
+	return resolved;
+}
 
 const DEFAULT_CONFIG: Config = {
 	language: 'en',
@@ -104,7 +142,10 @@ export class ConfigManager {
 
 	public get<T = string>(keyPath: string, defaultValue?: T): T {
 		const keys = keyPath.split('.');
-		let value: any = this.config;
+		let value: any = {
+			...this.config,
+			advanced: resolveAdvancedPaths(this.config.advanced),
+		};
 
 		for (const key of keys) {
 			if (value && typeof value === 'object' && key in value) {
