@@ -100,3 +100,24 @@ test('getBestMediaUrl picks highest quality image', t => {
 	t.is(best?.url, 'high.jpg');
 	t.is(best?.type, 'image');
 });
+
+test('parseMessageItem handles xma_link message type', t => {
+	const rawMessage = {
+		item_id: 'msg_125',
+		user_id: 1002,
+		timestamp: String(Date.now() * 1000),
+		item_type: 'xma_link',
+		xma_link: {
+			link_context: {
+				link_url: 'https://example.com',
+			},
+		},
+	};
+
+	const result = parseMessageItem(rawMessage as any, 'thread_1', mockContext);
+
+	t.truthy(result);
+	t.is(result?.id, 'msg_125');
+	t.is(result?.itemType, 'link');
+	t.is((result as any)?.link?.url, 'https://example.com');
+});

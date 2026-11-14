@@ -38,18 +38,21 @@ type ThreadCommonMessageItem = ThreadGenericMessageItem & {
 };
 
 type RealLinkMessageItem = ThreadGenericMessageItem & {
-	item_type: MessageSyncMessageTypes.Link;
+	item_type: MessageSyncMessageTypes.Link | 'xma_link' | 'xma_share';
 	link?: {
-		text: string;
-		link_context: {
-			link_url: string;
-			link_title: string;
-			link_summary: string;
-			link_image_url: string;
+		text?: string;
+		link_context?: {
+			link_url?: string;
+			link_title?: string;
+			link_summary?: string;
+			link_image_url?: string;
 		};
-		mutation_token: string;
-		client_context: string;
+		link_url?: string;
+		url?: string;
+		mutation_token?: string;
+		client_context?: string;
 	};
+	xma_link?: any;
 	text?: string;
 };
 
@@ -102,7 +105,7 @@ type RawMediaSharePayload = {
  * The media_share field contains the full post data.
  */
 type MediaShareItem = ThreadGenericMessageItem & {
-	item_type: MessageSyncMessageTypes.MediaShare;
+	item_type: MessageSyncMessageTypes.MediaShare | 'xma_media_share' | 'direct_media_share';
 	media_share?: RawMediaSharePayload;
 	xma_media_share?: RawMediaSharePayload;
 	direct_media_share?: RawMediaSharePayload;
@@ -202,8 +205,8 @@ function normalizeMediaShareToPost(
 	if (!rawMediaShare) return undefined;
 
 	const media = rawMediaShare.media ?? rawMediaShare;
-	const user = media.user ?? rawMediaShare.user;
-	const id = media.id ?? media.pk ?? rawMediaShare.id ?? rawMediaShare.pk;
+	const user = media.user ?? rawMediaShare.user ?? (media as any).owner ?? (rawMediaShare as any).owner;
+	const id = media.id ?? media.pk ?? rawMediaShare.id ?? rawMediaShare.pk ?? (media as any).code ?? (rawMediaShare as any).code;
 
 	if (!id || !user?.username) return undefined;
 
@@ -295,7 +298,7 @@ export function parseMessageItem(
 		client_context: (item as any).client_context,
 	};
 
-	switch (item.item_type) {
+	switch (item.item_type as string) {
 		case MessageSyncMessageTypes.Text: {
 			return {...baseMessage, itemType: 'text', text: item.text ?? ''};
 		}
@@ -325,16 +328,64 @@ export function parseMessageItem(
 			};
 		}
 
-		case MessageSyncMessageTypes.Link: {
-			if (item.link) {
+		case MessageSyncMessageTypes.Link:
+		case 'xma_link':
+		case 'xma_share': {
+			const mediaShareItem = item as MediaShareItem;
+			const mediaShare =
+				mediaShareItem.media_share ??
+				mediaShareItem.xma_media_share ??
+				mediaShareItem.direct_media_share ??
+				(mediaShareItem.media as RawMediaSharePayload | undefined);
+
+			const post = normalizeMediaShareToPost(mediaShare);
+			if (post) {
 				return {
 					...baseMessage,
-					itemType: 'link',
-					link: {
-						text: item.link.text,
-						url: parseInstagramRedirectUrl(item.link.link_context.link_url),
-					},
+					itemType: 'media_share',
+					mediaSharePost: post,
 				};
+			}
+
+			const linkItem = item as RealLinkMessageItem;
+			const linkObj =
+				linkItem.link ??
+				(item as any).xma_link ??
+				(Array.isArray((item as any).xma_share)
+					? (item as any).xma_share[0]
+					: (item as any).xma_share) ??
+				(Array.isArray((item as any).xma)
+					? (item as any).xma[0]
+					: (item as any).xma);
+
+			if (linkObj) {
+				const linkUrl =
+					linkObj.link_context?.link_url ??
+					linkObj.link_url ??
+					linkObj.target_url ??
+					linkObj.url;
+
+				if (linkUrl) {
+					return {
+						...baseMessage,
+						itemType: 'link',
+						link: {
+							text: linkObj.text ?? linkObj.title ?? linkObj.title_text ?? linkUrl,
+							url: parseInstagramRedirectUrl(linkUrl),
+						},
+					};
+				}
+
+				if (linkObj.text) {
+					return {
+						...baseMessage,
+						itemType: 'link',
+						link: {
+							text: linkObj.text,
+							url: parseInstagramRedirectUrl(linkObj.text),
+						},
+					};
+				}
 			}
 
 			if (item.text) {
@@ -343,7 +394,7 @@ export function parseMessageItem(
 					itemType: 'link',
 					link: {
 						text: item.text,
-						url: item.text,
+						url: parseInstagramRedirectUrl(item.text),
 					},
 				};
 			}
@@ -363,7 +414,9 @@ export function parseMessageItem(
 			};
 		}
 
-		case MessageSyncMessageTypes.MediaShare: {
+		case MessageSyncMessageTypes.MediaShare:
+		case 'xma_media_share':
+		case 'direct_media_share': {
 			const mediaShareItem = item as MediaShareItem;
 			const mediaShare =
 				mediaShareItem.media_share ??
@@ -418,6 +471,49 @@ export function parseMessageItem(
 					itemType: 'placeholder',
 					text: `[Instagram CLI successfully blocked a brainrot]`,
 				};
+			}
+
+			const post = normalizeMediaShareToPost(
+				(item as MediaShareItem).media_share ??
+					(item as MediaShareItem).xma_media_share ??
+					(item as MediaShareItem).direct_media_share ??
+					((item as any).media as RawMediaSharePayload | undefined),
+			);
+			if (post) {
+				return {
+					...baseMessage,
+					itemType: 'media_share',
+					mediaSharePost: post,
+				};
+			}
+
+			const linkObj =
+				(item as RealLinkMessageItem).link ??
+				(item as any).xma_link ??
+				(Array.isArray((item as any).xma_share)
+					? (item as any).xma_share[0]
+					: (item as any).xma_share) ??
+				(Array.isArray((item as any).xma)
+					? (item as any).xma[0]
+					: (item as any).xma);
+
+			if (linkObj) {
+				const linkUrl =
+					linkObj.link_context?.link_url ??
+					linkObj.link_url ??
+					linkObj.target_url ??
+					linkObj.url;
+
+				if (linkUrl) {
+					return {
+						...baseMessage,
+						itemType: 'link',
+						link: {
+							text: linkObj.text ?? linkObj.title ?? linkObj.title_text ?? linkUrl,
+							url: parseInstagramRedirectUrl(linkUrl),
+						},
+					};
+				}
 			}
 
 			return {
