@@ -71,7 +71,7 @@ We use `esbuild` for both production and development builds. You can find the co
 
 ## Debugging APIs
 
-Refer to [this document](docs/api-debugging.md) for several utilities that can help with your development.
+To see what Instagram actually returns (finding requests in the logs, capturing raw responses, tracking schema changes, and updating mock data), see [docs/api-debugging.md](docs/api-debugging.md).
 
 ## Install
 

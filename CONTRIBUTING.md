@@ -44,12 +44,25 @@ git checkout -b feature-new-command  # For new features
 
 Setup the development environment as per the instructions in [DEVELOPMENT.md](./DEVELOPMENT.md). More guidelines for contributing code are included there as well.
 
-Test your changes before submitting. _For UI changes, provide screenshots or GIFs._
+### 5. Test Your Changes
+
+> [!IMPORTANT]
+> **PRs that have not been tested locally will be closed without review.**
+
+Before opening a PR, make sure that:
+
+1. **Tests and linters pass.** Run `npm test`, which runs Prettier, XO and the Ava test suite. If the pre-commit hooks did not run, also run `npm run format` and `npm run lint-check`. See [DEVELOPMENT.md](./DEVELOPMENT.md) for details.
+2. **You have run your change in the CLI**, not only built it. How you do this depends on what you changed:
+   - **UI-only changes** (layout, styling, keybindings, and similar): testing with mock data is fine (`npm run start:mock -- --chat | --feed | --story`). Attach screenshots or GIFs to your PR.
+   - **Changes involving API calls** (anything in `source/client.ts`, auth, realtime/MQTT, or new endpoints): you must test against a real Instagram account. Mock data cannot show how Instagram actually responds. Capturing real responses also makes it easier to update the mocks; see the [API Debugging Guide](./docs/api-debugging.md).
+3. **Your PR description says how you tested.** List the commands you ran and the scenarios you tried (e.g. "sent a text and an image in a DM and a group chat").
+
+If you cannot test against a real account (for example because your account is restricted) but you believe the change is correct, say so in your PR description. Explain why you could not test it and what you did to check it instead. Untested API changes are reviewed more slowly and may need a maintainer to test them before they can be merged.
 
 > [!TIP]
-> During development, we recommend using a secondary Instagram account if you are making a lot of API calls to avoid appearing suspicious to Instagram. Alternatively, use our mock data for UI changes.
+> During development, we recommend using a secondary Instagram account if you are making a lot of API calls to avoid appearing suspicious to Instagram.
 
-### 5. Submit a Pull Request (PR)
+### 6. Submit a Pull Request (PR)
 
 Once you're done with your changes:
 
@@ -58,10 +71,6 @@ Once you're done with your changes:
 2. Open a Pull Request (PR) against the `main` branch of this repository.
 3. In your PR description, mention the issue number it resolves (e.g., `Closes #123`).
 4. Wait for review and respond to any feedback.
-
-### 6. Code Review & Merging
-
-- Your PR will be reviewed, and maintainers may request changes.
 
 ### 7. Releases and Versioning
 
@@ -82,7 +91,3 @@ Be respectful to others in the community. Follow GitHub’s [Community Guideline
 ## License
 
 By contributing, you agree that your contributions will be licensed under the same license as this project.
-
----
-
-Happy coding! 🚀 Thanks for contributing!

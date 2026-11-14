@@ -32,6 +32,7 @@ This documentation provides context for AI coding tools like VSCode, Cursor, Gem
 - Prefer mock runs (`npm run start:mock -- --chat|--feed|--story`) during UI work; update `source/mocks/mock-data.ts` if expectations shift.
 - **TUI testing quirks:** Ink renders to a string buffer, not a real terminal. Use `render()` from `ink-testing-library` and assert against `lastFrame()` output. For visual elements like unread indicators or selection highlights, check for the expected Unicode/ANSI characters in the frame string (e.g., `t.truthy(output?.includes('●'))`).
 - **What to test:** Component rendering with mock data, keyboard input handling (`stdin.write()`), edge cases like empty states and Unicode text. Do not test Instagram API calls directly — mock the client.
+- **Inspecting API responses:** session logs only contain response bodies for _failed_ requests. To see successful responses, follow `docs/api-debugging.md` (temporary dumps to `data/`, property tracker). Remove any dump or `registerProperties()` code before finishing.
 
 ## External Documentation
 
@@ -54,5 +55,6 @@ This documentation provides context for AI coding tools like VSCode, Cursor, Gem
 ## Security Considerations
 
 - Avoid committing real credentials or session artefacts; all secrets should flow through `ConfigManager`/`SessionManager` paths.
+- Never commit captured API responses or schema files from `data/` — they contain real usernames, IDs, messages and media URLs. When deriving mock data from a capture, replace every real value with fake data.
 - Respect rate limits by using mocks for iterative UI work and keeping realtime connections (`InstagramClient.initializeRealtime`) scoped to active sessions.
 - Leave the logger initialisation and debug redirection intact to capture API diagnostics without leaking to stdout. Logs are available in `.instagram-cli/logs`, ask the user to provide them if troubleshooting is needed.
