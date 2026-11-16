@@ -347,10 +347,6 @@ export const mockPosts: Post[] = Array.from({length: MOCK_USER_COUNT}, (_, i) =>
 	buildPost(i),
 );
 
-export const mockFeed = {
-	posts: mockPosts,
-};
-
 // Core Stories List
 export const mockStories: Story[] = Array.from(
 	{length: MOCK_USER_COUNT},

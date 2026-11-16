@@ -31,6 +31,7 @@ import type {
 	User,
 	Story,
 	ListMediaItem,
+	Post,
 	ProfileInfo,
 } from './types/instagram.js';
 import {
@@ -173,6 +174,11 @@ export class InstagramClient extends EventEmitter {
 	// Inbox feed instance for pagination
 	private inboxFeed:
 		| ReturnType<IgApiClientExt['feed']['directInbox']>
+		| undefined = undefined;
+
+	// Timeline feed instance for pagination
+	private timelineFeed:
+		| ReturnType<IgApiClientExt['feed']['timeline']>
 		| undefined = undefined;
 
 	// Threads cache for search functionality
@@ -946,6 +952,33 @@ export class InstagramClient extends EventEmitter {
 		}
 
 		return this.downloadMedia(message.media.id, mediaUrl, finalDownloadPath);
+	}
+
+	/**
+	 * Fetch a page of posts from the home timeline feed.
+	 *
+	 * @param loadMore - Fetch the next page of the current feed instead of starting over
+	 * @returns The posts on that page and whether another page is available
+	 */
+	public async getTimelinePosts(
+		loadMore = false,
+	): Promise<{posts: Post[]; hasMore: boolean}> {
+		try {
+			// Create a new feed for fresh load, or reuse existing for pagination
+			if (!loadMore || !this.timelineFeed) {
+				this.timelineFeed = this.ig.feed.timeline();
+			}
+
+			const items = await this.timelineFeed.items();
+
+			return {
+				posts: items as unknown as Post[],
+				hasMore: this.timelineFeed.isMoreAvailable(),
+			};
+		} catch (error) {
+			this.logger.error('Failed to fetch timeline feed', error);
+			throw error;
+		}
 	}
 
 	/**

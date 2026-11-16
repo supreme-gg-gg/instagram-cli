@@ -13,6 +13,7 @@ import type {
 	User,
 	Story,
 	ListMediaItem,
+	Post,
 	ProfileInfo,
 } from '../types/instagram.js';
 import {createContextualLogger} from '../utils/logger.js';
@@ -21,6 +22,7 @@ import {
 	generateThreads,
 	mockStories,
 	mockUsers,
+	mockPosts,
 } from './mock-data.js';
 
 const logger = createContextualLogger('MockClient');
@@ -38,6 +40,7 @@ class MockClient extends EventEmitter {
 
 	private readonly threads: Thread[] = generateThreads(50);
 	private threadsPage = 0;
+	private postsPage = 0;
 	private readonly sentMessages: Message[] = [];
 
 	private readonly sentReactions = new Map<
@@ -460,6 +463,27 @@ class MockClient extends EventEmitter {
 			mediaCount: 127,
 			externalUrl: 'https://example.com',
 		};
+	}
+
+	async getTimelinePosts(
+		loadMore = false,
+	): Promise<{posts: Post[]; hasMore: boolean}> {
+		// Simulate network delay
+		await new Promise(resolve => {
+			setTimeout(resolve, 500);
+		});
+		const postsPerPage = 10;
+		if (!loadMore) {
+			this.postsPage = 0;
+		}
+
+		const posts = mockPosts.slice(
+			this.postsPage * postsPerPage,
+			(this.postsPage + 1) * postsPerPage,
+		);
+		const hasMore = (this.postsPage + 1) * postsPerPage < mockPosts.length;
+		this.postsPage += 1;
+		return {posts, hasMore};
 	}
 
 	async getReelsTray(): Promise<Array<ListMediaItem<Story>>> {

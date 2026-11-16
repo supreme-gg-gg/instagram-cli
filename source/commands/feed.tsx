@@ -2,9 +2,8 @@ import React from 'react';
 import {Alert} from '@inkjs/ui';
 import zod from 'zod';
 import {argument} from 'pastel';
-import FeedView, {type FeedData} from '../ui/views/feed-view.js';
-import {useInstagramClient} from '../ui/hooks/use-instagram-client.js';
-import {createContextualLogger} from '../utils/logger.js';
+import FeedView from '../ui/views/feed-view.js';
+import {useFeed} from '../ui/hooks/use-feed.js';
 
 export const description = 'Fetch and display Instagram feed in TUI';
 
@@ -22,43 +21,20 @@ export const args = zod.tuple([
 
 type Properties = {
 	readonly args: zod.infer<typeof args>;
+	/** Lets the mock app run this command against a mock client */
+	readonly useInstagramClient?: Parameters<typeof useFeed>[1];
 };
 
-const logger = createContextualLogger('FeedCommand');
-
-export default function Feed({args}: Properties) {
-	const {client, isLoading, error} = useInstagramClient(args[0], {
-		realtime: false,
-	});
-	const [feed, setFeed] = React.useState<FeedData>({posts: []});
-	const [feedError, setFeedError] = React.useState<string | undefined>();
-
-	React.useEffect(() => {
-		const fetchFeed = async () => {
-			if (!client) {
-				return;
-			}
-
-			try {
-				const ig = client.getInstagramClient();
-				const timelineFeed = ig.feed.timeline();
-				const items = await timelineFeed.items();
-				if (items.length === 0) {
-					// If no items, set an error or handle appropriately
-					// setError('No feed items found.'); // This would require adding setError to the hook or handling it here
-				} else {
-					setFeed({posts: items as any});
-				}
-			} catch (error_) {
-				const errorMessage =
-					error_ instanceof Error ? error_.message : String(error_);
-				logger.error(`Feed error: ${errorMessage}`);
-				setFeedError(`Failed to fetch feed: ${errorMessage}`);
-			}
-		};
-
-		void fetchFeed();
-	}, [client]);
+export default function Feed({args, useInstagramClient}: Properties) {
+	const {
+		posts,
+		isLoading,
+		isLoadingMore,
+		error,
+		loadMoreError,
+		loadMorePosts,
+		retryLoadMore,
+	} = useFeed(args[0], useInstagramClient);
 
 	if (isLoading) {
 		return <Alert variant="info">Fetching Instagram feed...</Alert>;
@@ -68,9 +44,13 @@ export default function Feed({args}: Properties) {
 		return <Alert variant="error">{error}</Alert>;
 	}
 
-	if (feedError) {
-		return <Alert variant="error">{feedError}</Alert>;
-	}
-
-	return <FeedView feed={feed} />;
+	return (
+		<FeedView
+			feed={{posts}}
+			isLoadingMore={isLoadingMore}
+			loadMoreError={loadMoreError}
+			onEndReached={loadMorePosts}
+			onRetryLoadMore={retryLoadMore}
+		/>
+	);
 }
