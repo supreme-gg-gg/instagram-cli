@@ -53,18 +53,27 @@ jobs:
         env:
           GH_PAT: ${{ secrets.GH_PAT_SECRET }}
         run: |
-          # Wait a moment for NPM to propagate
-          sleep 30
-
           VERSION=${GITHUB_REF#refs/tags/ts-v}
           URL="https://registry.npmjs.org/@i7m/instagram-cli/-/instagram-cli-${VERSION}.tgz"
 
-          # Compute SHA256
-          echo "Fetching tarball from $URL..."
-          SHA256=$(curl -sL "$URL" | sha256sum | awk '{print $1}')
+          # Wait for NPM package to propagate and compute SHA256
+          MAX_RETRIES=20
+          RETRY_DELAY=15
+          SHA256=""
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $i: Fetching tarball from $URL..."
+            if curl -sfL "$URL" -o tarball.tgz; then
+              SHA256=$(sha256sum tarball.tgz | awk '{print $1}')
+              rm -f tarball.tgz
+              break
+            fi
+            echo "Tarball not ready yet; retrying in ${RETRY_DELAY}s..."
+            sleep $RETRY_DELAY
+          done
 
           if [ -z "$SHA256" ]; then
-            echo "Failed to calculate SHA256"
+            echo "Failed to calculate SHA256 after propagation window"
             exit 1
           fi
 

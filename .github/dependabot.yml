@@ -5,16 +5,6 @@
 
 version: 2
 updates:
-  - package-ecosystem: 'pip' # See documentation for possible values
-    directory: './instagram-py' # Location of package manifests
-    schedule:
-      interval: 'weekly'
-    # Group all updates into a single pull request
-    groups:
-      dependencies:
-        patterns:
-          - '*'
-
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:

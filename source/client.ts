@@ -6,13 +6,10 @@ import {pipeline} from 'node:stream/promises';
 import {
 	type IgApiClient,
 	IgCheckpointError,
-	IgLoginTwoFactorRequiredError,
 	IgExactUserNotFoundError,
-	IgLoginBadPasswordError,
 	type DirectInboxFeedResponseThreadsItem,
 	type DirectInboxFeedResponseUsersItem,
 	type DirectThreadFeedResponseItemsItem,
-	type AccountRepositoryLoginErrorResponseTwoFactorInfo,
 	type UserStoryFeedResponseItemsItem,
 	type ReelsTrayFeedResponseTrayItem,
 	type DirectThreadRepositoryBroadcastResponseRootObject,
@@ -43,14 +40,20 @@ import {
 	getBestMediaUrl,
 } from './utils/message-parser.js';
 import {createContextualLogger} from './utils/logger.js';
+import {
+	CaaLogin,
+	type CaaLoginOutcome,
+	applyCurrentDevice,
+} from './utils/caa-login.js';
 
 export type LoginResult = {
 	success: boolean;
 	error?: string;
 	username?: string;
 	checkpointError?: IgCheckpointError;
-	twoFactorInfo?: AccountRepositoryLoginErrorResponseTwoFactorInfo;
-	badPassword?: boolean;
+	/** Set when Instagram asks for a verification code; pass it to `submitLoginCode` */
+	verificationMessage?: string;
+	verificationMethod?: 'totp' | 'sms' | 'security_code';
 };
 
 export type SearchResult = {
@@ -185,6 +188,9 @@ export class InstagramClient extends EventEmitter {
 		postLoginDone: false,
 	};
 
+	// In-progress credential login, kept between the password and code steps
+	private caaLogin: CaaLogin | undefined = undefined;
+
 	constructor(username?: string) {
 		super();
 		this.ig = new IgApiClientExt();
@@ -217,14 +223,15 @@ export class InstagramClient extends EventEmitter {
 	public async login(
 		username: string,
 		password: string,
-		options?: {initializeRealtime: boolean},
+		options?: {initializeRealtime?: boolean; otpMethod?: 'sms' | 'totp'},
 	): Promise<LoginResult> {
-		const loginOptions = options ?? {initializeRealtime: true};
+		const loginOptions = {initializeRealtime: true, ...options};
 		try {
 			this.username = username;
 			this.sessionManager = new SessionManager(username);
 
 			this.ig.state.generateDevice(username);
+			applyCurrentDevice(this.ig, username);
 
 			this.ig.request.end$.subscribe(async () => {
 				await this.saveSessionState();
@@ -236,29 +243,16 @@ export class InstagramClient extends EventEmitter {
 				this.loginFlowStates.preLoginDone = true;
 			}
 
-			await this.ig.account.login(username, password);
-			await this.postLoginSetup(username, {
-				initializeRealtime: loginOptions.initializeRealtime,
+			// The legacy accounts/login endpoint now always answers needs_upgrade,
+			// so log in through the app's current Bloks (CAA) flow instead.
+			this.caaLogin = new CaaLogin(this.ig);
+			const outcome = await this.caaLogin.login(username, password, {
+				otpMethod: loginOptions.otpMethod,
 			});
-
-			return {success: true, username};
+			return await this.handleCaaOutcome(outcome, username, loginOptions);
 		} catch (error) {
-			if (error instanceof IgLoginTwoFactorRequiredError) {
-				return {
-					success: false,
-					twoFactorInfo: error.response.body.two_factor_info,
-				};
-			}
-
 			if (error instanceof IgCheckpointError) {
 				return {success: false, checkpointError: error};
-			}
-
-			if (error instanceof IgLoginBadPasswordError) {
-				return {
-					success: false,
-					badPassword: true,
-				};
 			}
 
 			this.logger.error('Login failed', error);
@@ -269,41 +263,26 @@ export class InstagramClient extends EventEmitter {
 		}
 	}
 
-	public async twoFactorLogin({
-		verificationCode,
-		twoFactorIdentifier,
-		totp_two_factor_on,
-	}: {
-		verificationCode: string;
-		twoFactorIdentifier: string;
-		totp_two_factor_on: boolean;
-	}): Promise<LoginResult> {
-		if (!this.username) {
-			return {success: false, error: 'No username set for 2FA login'};
+	/**
+	 * Completes a login that returned `verificationMessage` (two-factor or
+	 * security code challenge) by submitting the code the user received.
+	 */
+	public async submitLoginCode(code: string): Promise<LoginResult> {
+		if (!this.username || !this.caaLogin) {
+			return {success: false, error: 'No login in progress'};
 		}
 
 		try {
-			if (!this.loginFlowStates.preLoginDone) {
-				await this.preLoginFlow();
-				// Continue even if preLoginFlow fails
-				this.loginFlowStates.preLoginDone = true;
-			}
-
-			const verificationMethod = totp_two_factor_on ? '0' : '1';
-			await this.ig.account.twoFactorLogin({
-				username: this.username,
-				verificationCode,
-				twoFactorIdentifier,
-				verificationMethod,
+			const outcome = await this.caaLogin.submitCode(code);
+			return await this.handleCaaOutcome(outcome, this.username, {
+				initializeRealtime: false,
 			});
-			await this.postLoginSetup(this.username, {initializeRealtime: false});
-
-			return {success: true, username: this.username ?? undefined};
 		} catch (error) {
-			this.logger.error('2FA Login failed', error);
+			this.logger.error('Verification code login failed', error);
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown 2FA error',
+				error:
+					error instanceof Error ? error.message : 'Unknown verification error',
 			};
 		}
 	}
@@ -1320,12 +1299,24 @@ export class InstagramClient extends EventEmitter {
 	 *
 	 */
 	private async preLoginFlow(): Promise<boolean> {
+		let timeoutId: NodeJS.Timeout | undefined;
 		try {
-			await this.ig.launcher.preLoginSync();
+			await Promise.race([
+				this.ig.launcher.preLoginSync(),
+				new Promise((_, reject) => {
+					timeoutId = setTimeout(() => {
+						reject(new Error('launcher preLoginSync timed out'));
+					}, 15_000);
+				}),
+			]);
 			return true;
 		} catch (error) {
 			this.logger.error('Pre login flow failed', error);
 			return false;
+		} finally {
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
 		}
 	}
 
@@ -1343,6 +1334,32 @@ export class InstagramClient extends EventEmitter {
 		} catch (error) {
 			this.logger.error('Post login flow failed', error);
 			return false;
+		}
+	}
+
+	private async handleCaaOutcome(
+		outcome: CaaLoginOutcome,
+		username: string,
+		options: {initializeRealtime: boolean},
+	): Promise<LoginResult> {
+		switch (outcome.status) {
+			case 'success': {
+				this.caaLogin = undefined;
+				await this.postLoginSetup(username, options);
+				return {success: true, username};
+			}
+
+			case 'code_required': {
+				return {
+					success: false,
+					verificationMessage: outcome.message,
+					verificationMethod: outcome.method,
+				};
+			}
+
+			case 'error': {
+				return {success: false, error: outcome.error};
+			}
 		}
 	}
 

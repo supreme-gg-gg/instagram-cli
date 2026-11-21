@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {cwd} from 'node:process';
@@ -32,4 +33,33 @@ export function resolveUserPath(
 	}
 
 	return path.resolve(cwdPath, expandedPath);
+}
+
+/**
+ * Converts a message that consists solely of a raw drag-and-dropped absolute
+ * file path into the existing `#path` syntax handled by preprocessMessage.
+ * Terminals insert the path either with spaces escaped as `\ ` (Ghostty,
+ * Terminal.app) or wrapped in quotes (VS Code). Anything else, including paths
+ * inside other text and paths that are not existing files, is returned
+ * unchanged.
+ */
+export async function normalizeDroppedPath(text: string): Promise<string> {
+	const quotedPath = (/^'(\/[^']*)'$/.exec(text) ??
+		/^"(\/[^"]*)"$/.exec(text))?.[1];
+	if (quotedPath === undefined && !/^\/(?:\\ |\S)*$/.test(text)) return text;
+
+	const filePath = quotedPath ?? text.replaceAll(String.raw`\ `, ' ');
+	try {
+		const stats = await fs.stat(filePath);
+		if (!stats.isFile()) return text;
+	} catch {
+		return text;
+	}
+
+	// Pick the existing #path form that can represent this path.
+	if (filePath.includes('#')) return text;
+	if (!filePath.includes('"')) return `#"${filePath}"`;
+	if (!filePath.includes("'")) return `#'${filePath}'`;
+	if (!/\s/.test(filePath)) return `#${filePath}`;
+	return text;
 }

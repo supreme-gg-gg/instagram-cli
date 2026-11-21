@@ -162,6 +162,7 @@ The `preprocessMessage` function takes the raw text in input box, checks if it c
   - The `#<path>` string will be removed from the message text.
   - If the message contains only image paths, no text message will be sent.
   - If the message contains text and image paths, the images will be uploaded, and the remaining text will be sent as a separate message.
+- **Drag-and-drop**: If the whole message is a single absolute path to an existing file (as inserted by dropping a file onto the terminal, either with spaces escaped as `\ ` or wrapped in single or double quotes), it is rewritten to the `#"<path>"` form before the rules above apply. Paths inside other text are not affected.
 
 > NOTE: For those interested, this design follows directly from Gemini CLI's UX, but we modified where text files are added. For AI, it doesn't matter if you just replace `#<path>` with the file content inline. But for human users, we're more used to seeing the file content as an "appendix" and referencing the file content with the file path. This is an intentional UX choice.
 > since instagram uses `@' for mentions we are using `#` for triggering.
