@@ -1,4 +1,11 @@
-import React, {useState, useEffect, useMemo, useRef} from 'react';
+import React, {
+	useState,
+	useEffect,
+	useMemo,
+	useRef,
+	useReducer,
+	useCallback,
+} from 'react';
 import {
 	Box,
 	Text,
@@ -21,6 +28,7 @@ import {
 } from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
 import {type InstagramClient} from '../../client.js';
+import {SeenStoriesManager} from '../../utils/seen-stories.js';
 import SplitView from './split-view.js';
 import MediaPane from './media-pane.js';
 import TextInput from './text-input.js';
@@ -31,6 +39,10 @@ type Properties<T extends BaseMedia & MediaItemMetadata, M = undefined> = {
 	readonly protocol?: ImageProtocolName;
 	readonly client?: InstagramClient | undefined;
 	readonly mode: 'story' | 'post';
+	readonly seenUserPks?: ReadonlySet<string>;
+	readonly latestReelMediaByUser?: ReadonlyMap<string, number>;
+	readonly reelSeenByUser?: ReadonlyMap<string, number>;
+	readonly markAsSeen?: boolean;
 	readonly handleSearchSubmit?: (
 		query: string,
 	) => Promise<ListMediaItem<T, M> | undefined>;
@@ -76,20 +88,52 @@ export default function ListDetailDisplay<
 	protocol,
 	client,
 	mode,
+	seenUserPks,
+	latestReelMediaByUser,
+	reelSeenByUser,
+	markAsSeen = false,
 	handleSearchSubmit,
 }: Properties<T, M>) {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [scrollOffset, setScrollOffset] = useState(0);
-	const [carouselIndex, setCarouselIndex] = useState<number>(0);
+	const [, forceCarouselUpdate] = useReducer((x: number) => x + 1, 0);
+	const carouselRef = useRef<Map<string, number>>(new Map());
 	const [isSearchMode, setIsSearchMode] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [searchError, setSearchError] = useState<string | undefined>();
 	const [combinedItems, setCombinedItems] =
 		useState<Array<ListMediaItem<T, M>>>(initialItems);
 	const seenStories = useRef(new Set<string>());
+	const seenStoriesManager = useRef<SeenStoriesManager | undefined>(undefined);
+	const [seenLoaded, setSeenLoaded] = useState(false);
+	const carouselInitializedRef = useRef(new Set<string>());
+	const [liveSeenUserPks, setLiveSeenUserPks] = useState<ReadonlySet<string>>(
+		() => seenUserPks ?? new Set<string>(),
+	);
+	const loadedIndicesRef = useRef(new Set<number>());
 	const sidebarRef = useRef<DOMElement>(null as unknown as DOMElement);
 	const combinedItemsRef = useRef(combinedItems);
 	combinedItemsRef.current = combinedItems;
+
+	const refreshSeenUserPks = useCallback((): void => {
+		const manager = seenStoriesManager.current;
+		if (!manager || !seenLoaded || !latestReelMediaByUser) {
+			return;
+		}
+
+		const seenPks = new Set<string>();
+		for (const item of combinedItemsRef.current) {
+			const latestReelMedia = latestReelMediaByUser.get(item.pk);
+			if (
+				latestReelMedia &&
+				manager.areAllStoriesSeen(item.pk, latestReelMedia)
+			) {
+				seenPks.add(item.pk);
+			}
+		}
+
+		setLiveSeenUserPks(seenPks);
+	}, [latestReelMediaByUser, seenLoaded]);
 
 	const {exit} = useApp();
 	const {stdout} = useStdout();
@@ -114,6 +158,42 @@ export default function ListDetailDisplay<
 	}, [initialItems]);
 
 	useEffect(() => {
+		if (mode === 'story' && client) {
+			const username = client.getUsername();
+			if (username && !seenStoriesManager.current) {
+				const manager = new SeenStoriesManager(
+					username,
+					undefined,
+					Boolean(markAsSeen),
+				);
+				seenStoriesManager.current = manager;
+
+				if (markAsSeen && reelSeenByUser) {
+					for (const [pk, seen] of reelSeenByUser) {
+						manager.registerSeenTimestamp(pk, seen);
+					}
+
+					setSeenLoaded(true);
+					refreshSeenUserPks();
+				} else {
+					void manager.load().then(() => {
+						setSeenLoaded(true);
+						refreshSeenUserPks();
+					});
+				}
+			}
+		}
+	}, [client, mode, refreshSeenUserPks, markAsSeen, reelSeenByUser]);
+
+	useEffect(() => {
+		return () => {
+			if (!markAsSeen) {
+				void seenStoriesManager.current?.flush();
+			}
+		};
+	}, [markAsSeen]);
+
+	useEffect(() => {
 		const clampedIndex = Math.min(
 			selectedIndex,
 			Math.max(0, combinedItems.length - 1),
@@ -132,40 +212,101 @@ export default function ListDetailDisplay<
 	}, [combinedItems.length, viewportSize, scrollOffset, selectedIndex]);
 
 	const currentItem = combinedItems[selectedIndex];
+	const carouselIndex =
+		(currentItem ? carouselRef.current.get(currentItem.pk) : undefined) ?? 0;
 	const currentContentItem = currentItem?.content[carouselIndex];
 
-	// Trigger lazy loading and reset carousel when the user selects a new item
+	// Trigger lazy loading when the user selects a new item
 	useEffect(() => {
 		if (selectedIndex >= 0 && selectedIndex < combinedItems.length) {
 			const item = combinedItems[selectedIndex];
-			if (item?.content.length === 0) {
+			if (
+				item?.content.length === 0 &&
+				!loadedIndicesRef.current.has(selectedIndex)
+			) {
+				loadedIndicesRef.current.add(selectedIndex);
 				loadMore(selectedIndex);
 			}
 		}
-
-		// Reset carousel index when changing items
-		setCarouselIndex(0);
 	}, [selectedIndex, combinedItems, loadMore]);
 
 	useEffect(() => {
-		if (
-			mode === 'story' &&
-			currentContentItem &&
-			client &&
-			'id' in currentContentItem &&
-			!seenStories.current.has((currentContentItem as Story).id)
-		) {
-			// Fire and forget: explicitly ignore the promise result
-			void client
-				.markStoriesAsSeen([currentContentItem as Story])
-				.then(() => {
-					seenStories.current.add((currentContentItem as Story).id);
-				})
-				.catch((error: unknown) => {
-					logger.error('Failed to mark story as seen:', error);
-				});
+		if (mode !== 'story' || !seenStoriesManager.current || !seenLoaded) {
+			return;
 		}
-	}, [currentContentItem, client, mode]);
+
+		for (const item of combinedItems) {
+			if (
+				item.content.length === 0 ||
+				carouselInitializedRef.current.has(item.pk)
+			) {
+				continue;
+			}
+
+			carouselInitializedRef.current.add(item.pk);
+			const stories = item.content as Story[];
+			const firstUnseen = seenStoriesManager.current.getFirstUnseenIndex(
+				item.pk,
+				stories,
+			);
+
+			if (firstUnseen > 0) {
+				carouselRef.current.set(item.pk, firstUnseen);
+				forceCarouselUpdate();
+			}
+		}
+	}, [combinedItems, mode, seenLoaded, forceCarouselUpdate]);
+
+	const currentItemPk = currentItem?.pk;
+	const currentStory = currentItem?.content[carouselIndex] as Story | undefined;
+	const currentStoryTakenAt = currentStory?.taken_at;
+
+	const markStoryAsSeen = useCallback(
+		(pk: string, story: Story | undefined): void => {
+			if (
+				!seenStoriesManager.current ||
+				!story ||
+				story.taken_at === undefined
+			) {
+				return;
+			}
+
+			seenStoriesManager.current.registerSeenTimestamp(pk, story.taken_at);
+			refreshSeenUserPks();
+
+			if (
+				mode === 'story' &&
+				markAsSeen &&
+				client &&
+				!seenStories.current.has(story.id)
+			) {
+				void client
+					.markStoriesAsSeen([story])
+					.then(() => {
+						seenStories.current.add(story.id);
+					})
+					.catch((error: unknown) => {
+						logger.error('Failed to mark story as seen:', error);
+					});
+			}
+		},
+		[mode, markAsSeen, client, refreshSeenUserPks],
+	);
+
+	useEffect(() => {
+		if (currentItemPk && currentStory) {
+			markStoryAsSeen(currentItemPk, currentStory);
+		}
+	}, [
+		currentItemPk,
+		currentStoryTakenAt,
+		currentStory,
+		client,
+		mode,
+		markAsSeen,
+		refreshSeenUserPks,
+		markStoryAsSeen,
+	]);
 
 	const getCurrentImage = (item: BaseMedia): MediaCandidate | undefined => {
 		if (!item) return undefined;
@@ -291,15 +432,24 @@ export default function ListDetailDisplay<
 
 				return newIndex;
 			});
-		} else if (key.leftArrow || input === 'h') {
+		} else if (
+			key.leftArrow ||
+			input === 'h' ||
+			key.rightArrow ||
+			input === 'l'
+		) {
 			if (currentItem && currentItem.content.length > 1) {
-				setCarouselIndex(prev => Math.max(0, prev - 1));
-			}
-		} else if (key.rightArrow || input === 'l') {
-			if (currentItem && currentItem.content.length > 1) {
-				setCarouselIndex(prev =>
-					Math.min(prev + 1, currentItem.content.length - 1),
+				const direction = key.leftArrow || input === 'h' ? -1 : 1;
+				const newCarouselIndex = Math.min(
+					Math.max(0, carouselIndex + direction),
+					currentItem.content.length - 1,
 				);
+				carouselRef.current.set(currentItem.pk, newCarouselIndex);
+				const targetStory = currentItem.content[newCarouselIndex] as
+					| Story
+					| undefined;
+				markStoryAsSeen(currentItem.pk, targetStory);
+				forceCarouselUpdate();
 			}
 		} else if (input === 'o') {
 			if (currentContentItem) {
@@ -332,13 +482,16 @@ export default function ListDetailDisplay<
 		<Box ref={sidebarRef} flexDirection="column" flexGrow={1}>
 			{visibleItems.map((item, index) => {
 				const absoluteIndex = scrollOffset + index;
+				const isSelected = absoluteIndex === selectedIndex;
+				const isSeen =
+					mode === 'story' && !isSelected && liveSeenUserPks.has(item.pk);
 				return (
 					<Box key={item.pk} height={1} flexShrink={0}>
 						<Text
-							color={absoluteIndex === selectedIndex ? 'blue' : undefined}
+							color={isSelected ? 'blue' : isSeen ? 'gray' : undefined}
 							wrap="truncate-end"
 						>
-							{absoluteIndex === selectedIndex ? '➜ ' : '   '}
+							{isSelected ? '➜ ' : '   '}
 							{item.label}
 						</Text>
 					</Box>

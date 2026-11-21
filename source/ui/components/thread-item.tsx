@@ -55,7 +55,6 @@ export default function ThreadItem({
 						src={threadAvatar}
 						width={4}
 						height={2}
-						objectFit="contain"
 						protocol={{full: imageProtocol}}
 					/>
 				</Box>

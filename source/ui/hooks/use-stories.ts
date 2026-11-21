@@ -1,6 +1,8 @@
-import {useState, useEffect, useCallback} from 'react';
+import {useState, useEffect, useCallback, useRef} from 'react';
 import {type ListMediaItem, type Story} from '../../types/instagram.js';
 import {createContextualLogger} from '../../utils/logger.js';
+import {SeenStoriesManager} from '../../utils/seen-stories.js';
+import {ConfigManager} from '../../config.js';
 import {useInstagramClient as useInstagramClientImpl} from './use-instagram-client.js';
 
 type UseInstagramClientHook = typeof useInstagramClientImpl;
@@ -16,8 +18,21 @@ export function useStories(
 		isLoading: clientLoading,
 	} = useInstagramClient(undefined, {realtime: false});
 	const [reels, setReels] = useState<Array<ListMediaItem<Story>>>([]);
+	const [seenUserPks, setSeenUserPks] = useState<Set<string>>(new Set());
+	const [latestReelMediaByUser, setLatestReelMediaByUser] = useState<
+		ReadonlyMap<string, number>
+	>(new Map());
+	const [reelSeenByUser, setReelSeenByUser] = useState<
+		ReadonlyMap<string, number>
+	>(new Map());
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | undefined>();
+	const seenStoriesManager = useRef<SeenStoriesManager | undefined>(undefined);
+
+	const markAsSeen = ConfigManager.getInstance().get<boolean>(
+		'stories.markAsSeen',
+		false,
+	);
 
 	const loadStoriesForReel = useCallback(
 		async (index: number, currentItems: Array<ListMediaItem<Story>>) => {
@@ -58,6 +73,19 @@ export function useStories(
 	);
 
 	useEffect(() => {
+		if (client && !seenStoriesManager.current) {
+			const username = client.getUsername();
+			if (username) {
+				const manager = new SeenStoriesManager(username, undefined, markAsSeen);
+				seenStoriesManager.current = manager;
+				if (!markAsSeen) {
+					void manager.load();
+				}
+			}
+		}
+	}, [client, markAsSeen]);
+
+	useEffect(() => {
 		const fetchReelsTray = async () => {
 			if (!client || clientError) {
 				setIsLoading(false);
@@ -66,29 +94,80 @@ export function useStories(
 
 			try {
 				setIsLoading(true);
-				const listItems = await client.getReelsTray();
-				if (listItems.length > 0) {
-					setReels(listItems);
-					await loadStoriesForReel(0, listItems);
+				const {
+					items: listItems,
+					latestReelMediaByUser: latestByUser,
+					reelSeenByUser: apiSeenByUser,
+				} = await client.getReelsTray();
+				setLatestReelMediaByUser(latestByUser);
+				setReelSeenByUser(apiSeenByUser);
 
-					if (listItems.length > 1) {
-						void loadStoriesForReel(1, listItems).catch((error_: unknown) => {
-							const errorMessage =
-								error_ instanceof Error ? error_.message : String(error_);
-							logger.error(
-								`Failed to load stories for reel 1: ${errorMessage}`,
-							);
-						});
+				const seenPks = new Set<string>();
+				if (seenStoriesManager.current) {
+					if (markAsSeen) {
+						for (const [pk, seen] of apiSeenByUser) {
+							seenStoriesManager.current.registerSeenTimestamp(pk, seen);
+						}
 					}
 
-					if (listItems.length > 2) {
-						void loadStoriesForReel(2, listItems).catch((error_: unknown) => {
-							const errorMessage =
-								error_ instanceof Error ? error_.message : String(error_);
-							logger.error(
-								`Failed to load stories for reel 2: ${errorMessage}`,
-							);
-						});
+					const currentUserPks = listItems.map(item => item.pk);
+					seenStoriesManager.current.syncUsers(currentUserPks);
+
+					for (const item of listItems) {
+						const latestReelMedia = latestByUser.get(item.pk);
+						if (
+							latestReelMedia &&
+							seenStoriesManager.current.areAllStoriesSeen(
+								item.pk,
+								latestReelMedia,
+							)
+						) {
+							seenPks.add(item.pk);
+						}
+					}
+
+					setSeenUserPks(seenPks);
+				}
+
+				const unseenItems: Array<ListMediaItem<Story>> = [];
+				const seenItems: Array<ListMediaItem<Story>> = [];
+
+				for (const item of listItems) {
+					if (seenPks.has(item.pk)) {
+						seenItems.push(item);
+					} else {
+						unseenItems.push(item);
+					}
+				}
+
+				const orderedItems = [...unseenItems, ...seenItems];
+
+				if (orderedItems.length > 0) {
+					setReels(orderedItems);
+					await loadStoriesForReel(0, orderedItems);
+
+					if (orderedItems.length > 1) {
+						void loadStoriesForReel(1, orderedItems).catch(
+							(error_: unknown) => {
+								const errorMessage =
+									error_ instanceof Error ? error_.message : String(error_);
+								logger.error(
+									`Failed to load stories for reel 1: ${errorMessage}`,
+								);
+							},
+						);
+					}
+
+					if (orderedItems.length > 2) {
+						void loadStoriesForReel(2, orderedItems).catch(
+							(error_: unknown) => {
+								const errorMessage =
+									error_ instanceof Error ? error_.message : String(error_);
+								logger.error(
+									`Failed to load stories for reel 2: ${errorMessage}`,
+								);
+							},
+						);
 					}
 				}
 			} catch (error_) {
@@ -102,7 +181,7 @@ export function useStories(
 		};
 
 		void fetchReelsTray();
-	}, [client, clientError, loadStoriesForReel]);
+	}, [client, clientError, loadStoriesForReel, markAsSeen]);
 
 	const loadMore = useCallback(
 		async (index: number) => {
@@ -134,6 +213,10 @@ export function useStories(
 
 	return {
 		reels,
+		seenUserPks,
+		latestReelMediaByUser,
+		reelSeenByUser,
+		markAsSeen,
 		isLoading: isLoading || clientLoading,
 		error: clientError ?? error,
 		loadMore,

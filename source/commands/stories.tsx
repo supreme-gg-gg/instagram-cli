@@ -9,9 +9,18 @@ export const description = 'Fetch and display Instagram stories in TUI';
 export const args = zod.tuple([]);
 
 export const options = zod.object({});
-
 export default function Stories(): React.ReactElement {
-	const {reels, isLoading, error, loadMore, client} = useStories();
+	const {
+		reels,
+		seenUserPks,
+		latestReelMediaByUser,
+		reelSeenByUser,
+		markAsSeen,
+		isLoading,
+		error,
+		loadMore,
+		client,
+	} = useStories();
 
 	if (isLoading) {
 		return <Alert variant="info">Fetching Instagram stories...</Alert>;
@@ -25,5 +34,15 @@ export default function Stories(): React.ReactElement {
 		return <Alert variant="info">No stories to display.</Alert>;
 	}
 
-	return <StoryView reels={reels} loadMore={loadMore} client={client} />;
+	return (
+		<StoryView
+			reels={reels}
+			seenUserPks={seenUserPks}
+			latestReelMediaByUser={latestReelMediaByUser}
+			reelSeenByUser={reelSeenByUser}
+			markAsSeen={markAsSeen}
+			loadMore={loadMore}
+			client={client}
+		/>
+	);
 }
