@@ -32,7 +32,7 @@ type ImageConfig = {
 
 type AdvancedConfig = {
 	debugMode: boolean;
-	dataDir: string;
+	dataDir?: string;
 	usersDir?: string;
 	cacheDir?: string;
 	mediaDir?: string;
@@ -51,9 +51,11 @@ type Config = {
 	advanced: AdvancedConfig;
 };
 
-const DEFAULT_DATA_DIR = path.join(os.homedir(), '.instagram-cli');
+const APP_NAME = 'instagram-cli';
+const CONFIG_FILE_NAME = 'config.ts.yaml';
 
-// Subdirectories of dataDir. Unset ones follow dataDir; relative ones resolve against it.
+// Subdirectories of dataDir. Unset ones use the layout default; relative ones
+// resolve against dataDir.
 const DATA_SUBDIRS = {
 	usersDir: 'users',
 	cacheDir: 'cache',
@@ -65,30 +67,93 @@ const DATA_SUBDIRS = {
 
 type DataSubdir = keyof typeof DATA_SUBDIRS;
 
+export type PathLayout = {
+	configFile: string;
+	dataDir: string;
+	/** Defaults for unset subdirectories that live outside dataDir */
+	subdirDefaults: Partial<Record<DataSubdir, string>>;
+};
+
+// Per the XDG spec, an unset, empty or relative variable means the default.
+function xdgBaseDir(
+	env: NodeJS.ProcessEnv,
+	name: string,
+	fallback: string,
+): string {
+	const value = env[name] ?? '';
+	return path.isAbsolute(value) ? value : fallback;
+}
+
+/**
+ * Where config and data live. An existing ~/.instagram-cli/config.ts.yaml keeps
+ * everything under ~/.instagram-cli (legacy mode); otherwise XDG locations are used.
+ */
+export function resolvePathLayout(
+	env: NodeJS.ProcessEnv = process.env,
+	home: string = os.homedir(),
+): PathLayout {
+	const legacyDir = path.join(home, `.${APP_NAME}`);
+	const legacyFile = path.join(legacyDir, CONFIG_FILE_NAME);
+	if (existsSync(legacyFile)) {
+		return {configFile: legacyFile, dataDir: legacyDir, subdirDefaults: {}};
+	}
+
+	const base = (name: string, ...fallback: string[]) =>
+		path.join(xdgBaseDir(env, name, path.join(home, ...fallback)), APP_NAME);
+	return {
+		configFile: path.join(base('XDG_CONFIG_HOME', '.config'), CONFIG_FILE_NAME),
+		dataDir: base('XDG_DATA_HOME', '.local', 'share'),
+		subdirDefaults: {
+			cacheDir: base('XDG_CACHE_HOME', '.cache'),
+			logsDir: path.join(base('XDG_STATE_HOME', '.local', 'state'), 'logs'),
+		},
+	};
+}
+
+export function resolveDataDir(
+	advanced: AdvancedConfig,
+	layout: PathLayout,
+): string {
+	return advanced.dataDir
+		? path.resolve(expandTilde(advanced.dataDir))
+		: layout.dataDir;
+}
+
 export function resolveDataSubdir(
 	advanced: AdvancedConfig,
 	key: DataSubdir,
+	layout: PathLayout,
 ): string {
-	return path.resolve(
-		expandTilde(advanced.dataDir),
-		expandTilde(advanced[key] ?? DATA_SUBDIRS[key]),
-	);
+	const dataDir = resolveDataDir(advanced, layout);
+	const value = advanced[key];
+	if (value) return path.resolve(dataDir, expandTilde(value));
+	return layout.subdirDefaults[key] ?? path.join(dataDir, DATA_SUBDIRS[key]);
 }
 
-// Prefer $XDG_CONFIG_HOME/instagram-cli/config.ts.yaml when it exists.
-// Per the spec, an unset, empty or relative XDG_CONFIG_HOME means ~/.config.
-export function findConfigFile(
-	env: NodeJS.ProcessEnv = process.env,
+/**
+ * Older versions wrote the default subdirectories (~/.instagram-cli/<name>) into
+ * the config file. Drop them so they follow dataDir again, but only while dataDir
+ * is still the old default: anyone who set a custom dataDir back then still has
+ * their sessions under ~/.instagram-cli. Returns whether anything was removed.
+ */
+export function dropPinnedDefaults(
+	advanced: AdvancedConfig,
 	home: string = os.homedir(),
-): string {
-	const xdgEnv = env['XDG_CONFIG_HOME'] ?? '';
-	const xdgConfigHome = path.isAbsolute(xdgEnv)
-		? xdgEnv
-		: path.join(home, '.config');
-	const xdgFile = path.join(xdgConfigHome, 'instagram-cli', 'config.ts.yaml');
-	return existsSync(xdgFile)
-		? xdgFile
-		: path.join(home, '.instagram-cli', 'config.ts.yaml');
+): boolean {
+	const legacyDir = path.join(home, `.${APP_NAME}`);
+	if (advanced.dataDir !== undefined && advanced.dataDir !== legacyDir) {
+		return false;
+	}
+
+	let removed = false;
+	for (const [key, name] of Object.entries(DATA_SUBDIRS)) {
+		if (advanced[key as DataSubdir] === path.join(legacyDir, name)) {
+			Reflect.deleteProperty(advanced, key);
+			removed = true;
+		}
+	}
+
+	return removed;
 }
 
 const DEFAULT_CONFIG: Config = {
@@ -110,7 +175,6 @@ const DEFAULT_CONFIG: Config = {
 	},
 	advanced: {
 		debugMode: false,
-		dataDir: DEFAULT_DATA_DIR,
 	},
 	image: {},
 };
@@ -123,12 +187,14 @@ export class ConfigManager {
 
 	private static instance: ConfigManager;
 	private config: Config;
+	private readonly layout: PathLayout;
 	private readonly configDir: string;
 	private readonly configFile: string;
 	private readonly logger = createContextualLogger('ConfigManager');
 
 	private constructor() {
-		this.configFile = findConfigFile();
+		this.layout = resolvePathLayout();
+		this.configFile = this.layout.configFile;
 		this.configDir = path.dirname(this.configFile);
 		this.config = {...DEFAULT_CONFIG};
 	}
@@ -140,13 +206,18 @@ export class ConfigManager {
 	public get<T = string>(keyPath: string, defaultValue?: T): T {
 		const keys = keyPath.split('.');
 		const [section, key] = keys;
-		if (
-			section === 'advanced' &&
-			keys.length === 2 &&
-			key &&
-			Object.hasOwn(DATA_SUBDIRS, key)
-		) {
-			return resolveDataSubdir(this.config.advanced, key as DataSubdir) as T;
+		if (section === 'advanced' && keys.length === 2 && key) {
+			if (key === 'dataDir') {
+				return resolveDataDir(this.config.advanced, this.layout) as T;
+			}
+
+			if (Object.hasOwn(DATA_SUBDIRS, key)) {
+				return resolveDataSubdir(
+					this.config.advanced,
+					key as DataSubdir,
+					this.layout,
+				) as T;
+			}
 		}
 
 		let value: any = this.config;
@@ -202,21 +273,7 @@ export class ConfigManager {
 				const configData = await fs.readFile(this.configFile, 'utf8');
 				const loadedConfig = yaml.load(configData) as Partial<Config>;
 				this.config = this.mergeConfig(DEFAULT_CONFIG, loadedConfig);
-
-				// Older versions wrote the default subdirectories into the file,
-				// which pinned them to ~/.instagram-cli. Drop them once.
-				let removedDefaults = false;
-				for (const [key, name] of Object.entries(DATA_SUBDIRS)) {
-					const {advanced} = this.config;
-					if (
-						advanced[key as DataSubdir] === path.join(DEFAULT_DATA_DIR, name)
-					) {
-						Reflect.deleteProperty(advanced, key);
-						removedDefaults = true;
-					}
-				}
-
-				if (removedDefaults) await this.saveConfig();
+				if (dropPinnedDefaults(this.config.advanced)) await this.saveConfig();
 			} else {
 				await this.saveConfig();
 			}

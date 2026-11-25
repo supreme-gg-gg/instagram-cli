@@ -8,7 +8,7 @@ The logging system also **automatically captures all API network requests** made
 
 ## Log Location
 
-All logs are stored in: `~/.instagram-cli/logs/`
+All logs are stored in `$XDG_STATE_HOME/instagram-cli/logs/` (`~/.local/state/instagram-cli/logs/` by default), or in `~/.instagram-cli/logs/` if you have a legacy `~/.instagram-cli/config.ts.yaml`. The examples below use the legacy path. Run `instagram-cli config advanced.logsDir` to see yours.
 
 Each session creates a new log file with the naming pattern: `session-YYYY-MM-DD_HH-MM-SS.log`
 

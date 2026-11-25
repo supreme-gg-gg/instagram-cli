@@ -99,7 +99,7 @@ These requests go through `source/utils/caa-transport.ts`, a small HTTP/2 client
 
 ### Session Management
 
-- Sessions stored in `~/.instagram-cli/users/{username}/session.ts.json`
+- Sessions stored in `<advanced.usersDir>/{username}/session.ts.json` (`~/.local/share/instagram-cli/users` by default, or `~/.instagram-cli/users` in legacy mode)
 - Current username tracked in config: `login.currentUsername`
 - Automatic session saving after successful login
 
@@ -112,7 +112,7 @@ Added debug logs for non-standard login scenarios:
 - Login failures with error details
 - Session login failures
 
-Logs are written to `~/.instagram-cli/logs/session-{timestamp}.log`
+Logs are written to `<advanced.logsDir>/session-{timestamp}.log` (see [logging.md](logging.md#log-location))
 
 CAA login logs include the app and Bloks versions, request status codes, duration,
 response size, and the selected verification flow. Unexpected responses produce

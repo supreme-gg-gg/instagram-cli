@@ -68,18 +68,24 @@ instagram-cli stories                          # view stories from people you fo
 instagram-cli notify                           # view notifications (inbox, followers, mentions)
 
 # Modify configuration
-# The configuration file is located at `~/.instagram-cli/config.ts.yaml`.
+# See "Where files are stored" below for the config file location.
 instagram-cli config                           # lists all config
 instagram-cli config <key> <value>             # set config key to value
 instagram-cli config edit                      # open config file in editor
 ```
 
-> [!TIP]
-> To follow the XDG Base Directory spec, move `~/.instagram-cli/config.ts.yaml` to `${XDG_CONFIG_HOME:-~/.config}/instagram-cli/config.ts.yaml` (it is used from there when it exists) and point `advanced.dataDir` at your data directory. Sessions, cache, media, logs and downloads follow `dataDir` unless you set their own `advanced.*Dir` keys. Existing data is not moved, so move the folders yourself or log in again.
->
-> ```bash
-> instagram-cli config advanced.dataDir "${XDG_DATA_HOME:-$HOME/.local/share}/instagram-cli"
-> ```
+#### Where files are stored
+
+Instagram CLI follows the [XDG Base Directory spec](https://specifications.freedesktop.org/basedir-spec/latest/). Unset variables fall back to the defaults in brackets:
+
+| What                                        | Location                                                      |
+| ------------------------------------------- | ------------------------------------------------------------- |
+| Config                                      | `$XDG_CONFIG_HOME/instagram-cli/config.ts.yaml` (`~/.config`) |
+| Data (`advanced.dataDir`): sessions, media… | `$XDG_DATA_HOME/instagram-cli` (`~/.local/share`)             |
+| Cache                                       | `$XDG_CACHE_HOME/instagram-cli` (`~/.cache`)                  |
+| Logs                                        | `$XDG_STATE_HOME/instagram-cli/logs` (`~/.local/state`)       |
+
+If `~/.instagram-cli/config.ts.yaml` exists, everything stays under `~/.instagram-cli` as in earlier versions. To switch to XDG locations, move the config file and your data (`users`, `media`, …) to the paths above, or log in again. Each `advanced.*Dir` key can also be set explicitly; relative paths resolve against `advanced.dataDir`.
 
 If you want to use Instagram CLI with AI agents, see [one-turn commands](#one-turn-commands-for-ai-agents) that are non-interactive and designed for agents.
 
