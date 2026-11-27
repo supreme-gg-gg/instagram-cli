@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import process from 'node:process';
 import nodeUtil from 'node:util';
 import debugModule from 'debug';
@@ -19,8 +18,9 @@ export type LogEntry = {
 class Logger {
 	// eslint-disable-next-line @typescript-eslint/class-literal-property-style
 	private static readonly MAX_BUFFER_SIZE = 1000;
-	private logFilePath: string;
-	private logsDir: string;
+	// Set in initialize() from advanced.logsDir; nothing is written before then
+	private logFilePath = '';
+	private logsDir = '';
 	private readonly sessionId: string;
 	private readonly logBuffer: LogEntry[] = [];
 	private readonly listeners: Array<(entry: LogEntry) => void> = [];
@@ -28,10 +28,7 @@ class Logger {
 	private debugHookInstalled = false;
 
 	constructor() {
-		// Initialize with default path; will be updated in initialize()
-		this.logsDir = path.join(os.homedir(), '.instagram-cli', 'logs');
 		this.sessionId = this.generateSessionId();
-		this.logFilePath = path.join(this.logsDir, `session-${this.sessionId}.log`);
 	}
 
 	async initialize(): Promise<void> {
@@ -43,15 +40,11 @@ class Logger {
 			// Get logs directory from config
 			const configManager = ConfigManager.getInstance();
 			await configManager.initialize();
-			const configuredLogsDir = configManager.get('advanced.logsDir');
-			if (configuredLogsDir) {
-				this.logsDir = configuredLogsDir;
-				// Update logFilePath with the configured logs directory
-				this.logFilePath = path.join(
-					this.logsDir,
-					`session-${this.sessionId}.log`,
-				);
-			}
+			this.logsDir = configManager.get('advanced.logsDir');
+			this.logFilePath = path.join(
+				this.logsDir,
+				`session-${this.sessionId}.log`,
+			);
 
 			await fs.promises.mkdir(this.logsDir, {recursive: true});
 			this.isInitialized = true;

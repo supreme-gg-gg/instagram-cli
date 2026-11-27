@@ -68,11 +68,24 @@ instagram-cli stories                          # view stories from people you fo
 instagram-cli notify                           # view notifications (inbox, followers, mentions)
 
 # Modify configuration
-# The configuration file is located at `~/.instagram-cli/config.ts.yaml`.
+# See "Where files are stored" below for the config file location.
 instagram-cli config                           # lists all config
 instagram-cli config <key> <value>             # set config key to value
 instagram-cli config edit                      # open config file in editor
 ```
+
+#### Where files are stored
+
+Instagram CLI follows the [XDG Base Directory spec](https://specifications.freedesktop.org/basedir-spec/latest/). Unset variables fall back to the defaults in brackets:
+
+| What                                        | Location                                                      |
+| ------------------------------------------- | ------------------------------------------------------------- |
+| Config                                      | `$XDG_CONFIG_HOME/instagram-cli/config.ts.yaml` (`~/.config`) |
+| Data (`advanced.dataDir`): sessions, media… | `$XDG_DATA_HOME/instagram-cli` (`~/.local/share`)             |
+| Cache                                       | `$XDG_CACHE_HOME/instagram-cli` (`~/.cache`)                  |
+| Logs                                        | `$XDG_STATE_HOME/instagram-cli/logs` (`~/.local/state`)       |
+
+If `~/.instagram-cli/config.ts.yaml` exists, everything stays under `~/.instagram-cli` as in earlier versions. To switch to XDG locations, move the config file and your data (`users`, `media`, …) to the paths above, or log in again. Each `advanced.*Dir` key can also be set explicitly; relative paths resolve against `advanced.dataDir`.
 
 If you want to use Instagram CLI with AI agents, see [one-turn commands](#one-turn-commands-for-ai-agents) that are non-interactive and designed for agents.
 
@@ -148,7 +161,7 @@ We welcome contributors! Please see the comprehensive [CONTRIBUTING.md](CONTRIBU
 
 ### Reporting Issues
 
-Occasionally, Instagram may update their API or protocols which can cause certain features to break. If you encounter any issues, please report them on our [GitHub Issues page](https://github.com/supreme-gg-gg/instagram-cli/issues). Make sure to attach the relevant log files located at `~/.instagram-cli/logs/` to help us diagnose and fix the problem quickly. You may want to redact sensitive data like your username for privacy.
+Occasionally, Instagram may update their API or protocols which can cause certain features to break. If you encounter any issues, please report them on our [GitHub Issues page](https://github.com/supreme-gg-gg/instagram-cli/issues). Make sure to attach the relevant log files from the directory printed by `instagram-cli config advanced.logsDir` to help us diagnose and fix the problem quickly. You may want to redact sensitive data like your username for privacy.
 
 ### Sister projects
 
