@@ -14,6 +14,24 @@ const delay = async (ms: number): Promise<void> => {
 	});
 };
 
+// Poll the rendered frame instead of sleeping a fixed time, so slow CI
+// runners don't cause intermittent failures. Returns the last frame seen.
+const waitForFrame = async (
+	lastFrame: () => string | undefined,
+	predicate: (frame: string) => boolean,
+	timeoutMs = 5000,
+): Promise<string> => {
+	const deadline = Date.now() + timeoutMs;
+	let frame = lastFrame() ?? '';
+	while (!predicate(frame) && Date.now() < deadline) {
+		// eslint-disable-next-line no-await-in-loop -- polling must be sequential
+		await delay(50);
+		frame = lastFrame() ?? '';
+	}
+
+	return frame;
+};
+
 test('sanity check', (t: ExecutionContext) => {
 	const {lastFrame, unmount} = render(<Index />);
 
@@ -33,21 +51,22 @@ test('unknown command shows helpful error', (t: ExecutionContext) => {
 test('version command renders all version info', async (t: ExecutionContext) => {
 	const {lastFrame, unmount} = render(<Version />);
 
-	await delay(500);
-
-	const output = lastFrame();
+	const output = await waitForFrame(
+		() => lastFrame() as string | undefined,
+		frame => frame.includes('Instagram app version:'),
+	);
 	t.regex(
-		output ?? '',
+		output,
 		/instagram-cli: v\d+\.\d+\.\d+/,
 		'Should display instagram-cli with a valid version number',
 	);
 	t.regex(
-		output ?? '',
+		output,
 		/instagram-private-api: v\d+\.\d+\.\d+ \(patched\)/,
 		'Should display instagram-private-api with a valid version number and (patched) label',
 	);
 	t.regex(
-		output ?? '',
+		output,
 		// eslint-disable-next-line unicorn/better-regex
 		/Instagram app version: \d+\.\d+\.\d+\.\d+\.\d+/,
 		'Should display Instagram app version as a valid version number',
@@ -72,9 +91,12 @@ test('renders feed view', (t: ExecutionContext) => {
 test('renders saved posts view', async (t: ExecutionContext) => {
 	const {lastFrame, unmount} = render(<AppMock view="saved" />);
 
-	await delay(100);
+	const output = await waitForFrame(
+		() => lastFrame() as string | undefined,
+		frame => frame.includes('Saved posts'),
+	);
 
-	t.truthy(lastFrame()?.includes('Saved posts'));
+	t.true(output.includes('Saved posts'));
 	unmount();
 });
 
@@ -88,27 +110,30 @@ test('renders stories view', (t: ExecutionContext) => {
 test('chat view displays messages when thread is selected', async (t: ExecutionContext) => {
 	const {lastFrame, stdin, unmount} = render(<AppMock view="chat" />);
 
-	await delay(1100);
-
 	// Verify threads are displayed
-	let output = lastFrame();
+	let output = await waitForFrame(
+		() => lastFrame() as string | undefined,
+		frame => frame.includes(mockThreads[0]!.title),
+	);
 	t.truthy(output, 'Frame should render threads');
 	t.true(
-		output!.includes(mockThreads[0]!.title),
+		output.includes(mockThreads[0]!.title),
 		'Thread should be visible before selection',
 	);
 
 	// Select first thread by pressing Enter
 	stdin.write('\r');
 
-	await delay(500);
-
-	output = lastFrame();
-	t.truthy(output, 'Frame should render after thread selection');
 	const lastMessage = mockMessages.at(-1)!;
+	output = await waitForFrame(
+		() => lastFrame() as string | undefined,
+		frame =>
+			lastMessage.itemType === 'text' && frame.includes(lastMessage.text),
+	);
+	t.truthy(output, 'Frame should render after thread selection');
 	if (lastMessage.itemType === 'text') {
 		t.true(
-			output!.includes(lastMessage.text),
+			output.includes(lastMessage.text),
 			'First message should be visible',
 		);
 	} else {
