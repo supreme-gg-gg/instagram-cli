@@ -32,7 +32,7 @@ If applicable, add screenshots to help explain your problem.
 
 **Logs (optional)**
 
-Paste in the logs from `.instagram-cli/logs` here. You may want to redact sensitive data like your username for privacy.
+Paste in the latest log file from your logs directory here (run `instagram-cli config advanced.logsDir` to find it). You may want to redact sensitive data like your username for privacy.
 
 **Additional context**
 Add any other context about the problem here.

@@ -131,10 +131,12 @@ export function resolveDataSubdir(
 }
 
 /**
- * Older versions wrote the default subdirectories (~/.instagram-cli/<name>) into
- * the config file. Drop them so they follow dataDir again, but only while dataDir
- * is still the old default: anyone who set a custom dataDir back then still has
- * their sessions under ~/.instagram-cli. Returns whether anything was removed.
+ * Older versions wrote dataDir (~/.instagram-cli) and the default subdirectories
+ * (~/.instagram-cli/<name>) into the config file. Drop them so they follow the
+ * layout again: in legacy mode that is still ~/.instagram-cli, and a config moved
+ * to XDG follows the XDG paths. Subdirectories are only dropped while dataDir is
+ * the old default: anyone who set a custom dataDir back then still has their
+ * sessions under ~/.instagram-cli. Returns whether anything was removed.
  */
 export function dropPinnedDefaults(
 	advanced: AdvancedConfig,
@@ -146,6 +148,11 @@ export function dropPinnedDefaults(
 	}
 
 	let removed = false;
+	if (advanced.dataDir === legacyDir) {
+		Reflect.deleteProperty(advanced, 'dataDir');
+		removed = true;
+	}
+
 	for (const [key, name] of Object.entries(DATA_SUBDIRS)) {
 		if (advanced[key as DataSubdir] === path.join(legacyDir, name)) {
 			Reflect.deleteProperty(advanced, key);

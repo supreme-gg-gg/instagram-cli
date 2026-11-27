@@ -55,4 +55,4 @@ This documentation provides context for AI coding tools like VSCode, Cursor, Gem
 
 - Avoid committing real credentials or session artefacts; all secrets should flow through `ConfigManager`/`SessionManager` paths.
 - Respect rate limits by using mocks for iterative UI work and keeping realtime connections (`InstagramClient.initializeRealtime`) scoped to active sessions.
-- Leave the logger initialisation and debug redirection intact to capture API diagnostics without leaking to stdout. Logs are available in `.instagram-cli/logs`, ask the user to provide them if troubleshooting is needed.
+- Leave the logger initialisation and debug redirection intact to capture API diagnostics without leaking to stdout. Logs are in the directory printed by `instagram-cli config advanced.logsDir`; ask the user to provide them if troubleshooting is needed.

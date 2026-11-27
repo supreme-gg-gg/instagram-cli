@@ -8,11 +8,17 @@ The logging system also **automatically captures all API network requests** made
 
 ## Log Location
 
-All logs are stored in `$XDG_STATE_HOME/instagram-cli/logs/` (`~/.local/state/instagram-cli/logs/` by default), or in `~/.instagram-cli/logs/` if you have a legacy `~/.instagram-cli/config.ts.yaml`. The examples below use the legacy path. Run `instagram-cli config advanced.logsDir` to see yours.
+All logs are stored in `$XDG_STATE_HOME/instagram-cli/logs/` (`~/.local/state/instagram-cli/logs/` by default), or in `~/.instagram-cli/logs/` if you have a legacy `~/.instagram-cli/config.ts.yaml`. Run `instagram-cli config advanced.logsDir` to see yours.
+
+The examples below use `$LOGS` for that directory:
+
+```bash
+LOGS=~/.local/state/instagram-cli/logs   # or ~/.instagram-cli/logs in legacy mode
+```
 
 Each session creates a new log file with the naming pattern: `session-YYYY-MM-DD_HH-MM-SS.log`
 
-Example log file: `~/.instagram-cli/logs/session-2025-10-18_14-30-45.log`
+Example log file: `$LOGS/session-2025-10-18_14-30-45.log`
 
 ## Log File Format
 
@@ -142,27 +148,27 @@ await initializeLogger();
 View the latest session log:
 
 ```bash
-ls -lt ~/.instagram-cli/logs/ | head -1
-cat ~/.instagram-cli/logs/session-*.log
+ls -lt "$LOGS" | head -1
+cat "$LOGS"/session-*.log
 ```
 
 Monitor logs in real-time:
 
 ```bash
-tail -f ~/.instagram-cli/logs/session-*.log
+tail -f "$LOGS"/session-*.log
 ```
 
 Search for specific errors:
 
 ```bash
-grep "ERROR" ~/.instagram-cli/logs/session-*.log
-grep "Failed to fetch" ~/.instagram-cli/logs/session-*.log
+grep "ERROR" "$LOGS"/session-*.log
+grep "Failed to fetch" "$LOGS"/session-*.log
 ```
 
 Check logs from a specific date:
 
 ```bash
-ls ~/.instagram-cli/logs/session-2025-10-18_*.log
+ls "$LOGS"/session-2025-10-18_*.log
 ```
 
 ## Best Practices
@@ -203,8 +209,8 @@ To remove old log files (logs are per-session, so you can safely delete them):
 
 ```bash
 # Delete all logs older than 7 days
-find ~/.instagram-cli/logs -name "session-*.log" -mtime +7 -delete
+find "$LOGS" -name "session-*.log" -mtime +7 -delete
 
 # Delete all logs
-rm ~/.instagram-cli/logs/session-*.log
+rm "$LOGS"/session-*.log
 ```

@@ -139,14 +139,62 @@ test('pinned default subdirectories are dropped only with the default dataDir', 
 
 	const withDefault = {debugMode: false, dataDir: legacyDir, ...pinned};
 	t.true(dropPinnedDefaults(withDefault, home));
-	t.deepEqual(withDefault, {
-		debugMode: false,
-		dataDir: legacyDir,
-		cacheDir: '/custom/cache',
-	});
+	t.deepEqual(withDefault, {debugMode: false, cacheDir: '/custom/cache'});
 
 	// Sessions are still in ~/.instagram-cli/users, so keep pointing there
 	const withCustom = {debugMode: false, dataDir: '/data/ig', ...pinned};
 	t.false(dropPinnedDefaults(withCustom, home));
 	t.is(withCustom.usersDir, path.join(legacyDir, 'users'));
+});
+
+test('an old fully pinned config moved to XDG resolves to XDG paths', t => {
+	const home = makeHome();
+	const legacyDir = path.join(home, '.instagram-cli');
+	// No ~/.instagram-cli/config.ts.yaml any more, so this is XDG mode
+	const layout = resolvePathLayout({}, home);
+	const advanced = {
+		debugMode: false,
+		dataDir: legacyDir,
+		usersDir: path.join(legacyDir, 'users'),
+		cacheDir: path.join(legacyDir, 'cache'),
+		logsDir: path.join(legacyDir, 'logs'),
+	};
+
+	dropPinnedDefaults(advanced, home);
+
+	const xdgData = path.join(home, '.local', 'share', 'instagram-cli');
+	t.is(resolveDataDir(advanced, layout), xdgData);
+	t.is(
+		resolveDataSubdir(advanced, 'usersDir', layout),
+		path.join(xdgData, 'users'),
+	);
+	t.is(
+		resolveDataSubdir(advanced, 'cacheDir', layout),
+		path.join(home, '.cache', 'instagram-cli'),
+	);
+	t.is(
+		resolveDataSubdir(advanced, 'logsDir', layout),
+		path.join(home, '.local', 'state', 'instagram-cli', 'logs'),
+	);
+});
+
+test('the same pinned config still resolves to ~/.instagram-cli in legacy mode', t => {
+	const home = makeHome();
+	const legacyDir = path.join(home, '.instagram-cli');
+	fs.mkdirSync(legacyDir);
+	fs.writeFileSync(path.join(legacyDir, 'config.ts.yaml'), '');
+	const layout = resolvePathLayout({}, home);
+	const advanced = {
+		debugMode: false,
+		dataDir: legacyDir,
+		usersDir: path.join(legacyDir, 'users'),
+	};
+
+	dropPinnedDefaults(advanced, home);
+
+	t.is(resolveDataDir(advanced, layout), legacyDir);
+	t.is(
+		resolveDataSubdir(advanced, 'usersDir', layout),
+		path.join(legacyDir, 'users'),
+	);
 });
