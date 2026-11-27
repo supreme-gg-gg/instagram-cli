@@ -69,10 +69,12 @@ test('renders feed view', (t: ExecutionContext) => {
 	unmount();
 });
 
-test('renders saved posts view', (t: ExecutionContext) => {
+test('renders saved posts view', async (t: ExecutionContext) => {
 	const {lastFrame, unmount} = render(<AppMock view="saved" />);
 
-	t.not(lastFrame(), undefined);
+	await delay(100);
+
+	t.truthy(lastFrame()?.includes('Saved posts'));
 	unmount();
 });
 

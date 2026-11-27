@@ -9,17 +9,22 @@ const cli = meow(
 	Options
 	  --chat   Render the chat view (default)
 	  --feed   Render the feed view
+	  --saved  Render the saved posts view
 	  --story  Render the story view
 
 	Examples
 	  $ npm run start:mock -- --chat
 	  $ npm run start:mock -- --feed
+	  $ npm run start:mock -- --saved
 	  $ npm run start:mock -- --story
 	`,
 	{
 		importMeta: import.meta,
 		flags: {
 			feed: {
+				type: 'boolean',
+			},
+			saved: {
 				type: 'boolean',
 			},
 			story: {
@@ -29,7 +34,13 @@ const cli = meow(
 	},
 );
 
-const view = cli.flags.feed ? 'feed' : cli.flags.story ? 'story' : 'chat';
+const view = cli.flags.feed
+	? 'feed'
+	: cli.flags.saved
+		? 'saved'
+		: cli.flags.story
+			? 'story'
+			: 'chat';
 
 try {
 	await run(view);
